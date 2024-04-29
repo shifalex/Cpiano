@@ -18,7 +18,14 @@ namespace GestureSample.ViewModels
 			set { SetProperty(ref text, value); }
 		}
 
-		public ICommand DownCommand { get; protected set; }
+        private string text2 = "Initialized aalek";
+        public string Text2
+        {
+            get { return text2; }
+            set { SetProperty(ref text2, value); }
+        }
+
+        public ICommand DownCommand { get; protected set; }
 		public ICommand UpCommand { get; protected set; }
 		public ICommand TappingCommand { get; protected set; }
 		public ICommand TappedCommand { get; protected set; }
@@ -61,27 +68,34 @@ namespace GestureSample.ViewModels
 
 		public virtual void AddText(string text)
 		{
-			text = $"{ThreadInfo} {text}";
-			var s = $"{text}\n{Text}";
-			if (s.Length > 2000)
-				s = s.Substring(0, 2000);
-			Text = s;
+			var sb = new StringBuilder(text).Append("\n").Append(Text);
+			Text = sb.ToString(0, Math.Min(sb.Length, 2000));
 
 			Debug.WriteLine(text);
 		}
 
 		public virtual void AddText(string format, params object[] args)
-			=> AddText(string.Format(format, args));
-
-		public static string ThreadInfo
 		{
-			get
-			{
-				var threadType = System.Threading.Thread.CurrentThread.IsBackground ? "BG" : "UI";
-				var threadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+			var sb = new StringBuilder().AppendFormat(format, args).Append("\n").Append(Text);
+			Text = sb.ToString(0, Math.Min(sb.Length, 2000));
 
-				return $"[T:{threadType}#{threadId}]";
-			}
+			Debug.WriteLine(text);
 		}
-	}
+
+        public virtual void AddText2(string text)
+        {
+            var sb = new StringBuilder(text2).Append("\n").Append(Text2);
+            Text2 = sb.ToString(0, Math.Min(sb.Length, 2000));
+
+            Debug.WriteLine(text2);
+        }
+
+        public virtual void AddText2(string format, params object[] args)
+        {
+            var sb = new StringBuilder().AppendFormat(format, args).Append("\n").Append(Text2);
+            Text2 = sb.ToString(0, Math.Min(sb.Length, 2000));
+
+            //Debug.WriteLine(text2);
+        }
+    }
 }

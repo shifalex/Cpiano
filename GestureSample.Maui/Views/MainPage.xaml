@@ -6,11 +6,11 @@
 	<ListView ItemsSource="{Binding}" ItemTapped="ListItem_Tapped">
 		<ListView.ItemTemplate>
 			<DataTemplate>
-                <ViewCell>
-                    <Label Text="{Binding Title}" VerticalOptions="Center" Margin="16,0,0,0" />
-                </ViewCell>
-				<!--<TextCell Text="{Binding Title}" />-->
-			</DataTemplate>
+                <!--<ViewCell>
+                    <Label Text="{Binding Title}" VerticalOptions="Center" Margin="16,0,0,0" BackgroundColor="White" TextColor="Black" />
+                </ViewCell>-->
+                <TextCell Text="{Binding Title}" />
+            </DataTemplate>
 		</ListView.ItemTemplate>
 	</ListView>
 
