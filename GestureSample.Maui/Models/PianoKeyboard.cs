@@ -38,12 +38,20 @@ namespace GestureSample.Maui.Models
 
         #region Timer
         private IDispatcherTimer timer;
-        private int _seconds_pressed = -1;
+        private int _seconds_pressed = 0;
+        private int _seconds_pressedHS = 0;
         public string SecondsToEnd
         {
             get
             {
                 return string.Format("{0}", 3 - _seconds_pressed);
+            }
+        }
+        public string SecondsToEndHS
+        {
+            get
+            {
+                return string.Format("{0} number.\nTime Left: {1} seconds",_secondNumChoosing? "Second" : "First", 10 - (_seconds_pressedHS / 2));
             }
         }
         private void TimerInit()
@@ -62,23 +70,71 @@ namespace GestureSample.Maui.Models
                         _seconds_pressed = -1;
                         timer.Stop();
 
-                        if (_halfSync && !_secondNumChoosing)
-                        {
-                            _secondNumChoosing = true; return;
-                        }
-                       
-
-                            //OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
-                            //_gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
                         
-
+                        IsEnabled = false;
                         if (_gamePlay.Check())
                         {
-                            IsEnabled = false;
                             await Task.Delay(3000);
                             _gamePlay.GenerateExercise();
-                            PianoInit();
+                           
+                        } 
+                        else
+                        {
+                            await Task.Delay(3000);
                         }
+                        PianoInit();
+                    }
+                });
+            };
+        }
+
+        private void TimerInitHS()
+        {
+            timer = Application.Current.Dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(500);
+            timer.Tick += (s, e) => {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    
+                    if ((!_secondNumChoosing && _addent1 != 0) || (_secondNumChoosing && _addent2 != 0))
+                    {
+                        
+                        _lblTimer.Text = Statement.Selecting;
+                        _seconds_pressed++;
+                    }
+                    else
+                    {
+                        _seconds_pressedHS++;
+                        _lblTimer.Text = SecondsToEndHS;
+                    }
+
+                    if (_seconds_pressed >= 2 || _seconds_pressedHS >= 20)
+                    {
+                        _seconds_pressed = -1;
+                        _seconds_pressedHS = 0;
+                        if (!_secondNumChoosing)
+                        {
+                            _secondNumChoosing = true;
+                            return;
+                        }
+                        timer.Stop();
+
+                        IsEnabled = false;
+                        if (_gamePlay.Check())
+                        {
+
+                            await Task.Delay(3000);
+                            _gamePlay.GenerateExercise();
+                            
+                            
+                        }
+                        else
+                        {
+                            await Task.Delay(3000);
+                        }
+                        _secondNumChoosing = false; // get this into pianoInit with inheritance
+                        PianoInit();
+                        timer.Start();
                     }
                 });
             };
@@ -89,8 +145,8 @@ namespace GestureSample.Maui.Models
             _patterns = keysInRow > 10 || imposeEdges || halfSync; _imposeEdges = imposeEdges; _fromNumToNum = fromNumToNum; _halfSync = halfSync;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
-             
-            if (isSync) TimerInit();
+
+            
             NUMBER_OF_KEYS = keysInRow * rows;
             this.ColumnSpacing = 5;
             this.BackgroundColor = Colors.Black;
@@ -118,19 +174,22 @@ namespace GestureSample.Maui.Models
                         BackgroundColor = Colors.White,
                         CommandParameter = i + 1+ keysInRow * r,
                         Margin = new Thickness(0, 5, 0, 0),
-                        DownCommand = isSync ? new Command<MR.Gestures.DownUpEventArgs>(OnDownSync) : new Command<MR.Gestures.DownUpEventArgs>(OnDown),
-                        UpCommand = isSync ? new Command<MR.Gestures.DownUpEventArgs>(OnUpSync) : new Command<MR.Gestures.DownUpEventArgs>(OnUp)
+                        DownCommand = halfSync ? new Command<MR.Gestures.DownUpEventArgs>(OnDownHalfSync) : isSync ? new Command<MR.Gestures.DownUpEventArgs>(OnDownSync) : new Command<MR.Gestures.DownUpEventArgs>(OnDown),
+                        UpCommand = halfSync ? new Command<MR.Gestures.DownUpEventArgs>(OnUpHalfSync) : isSync ? new Command<MR.Gestures.DownUpEventArgs>(OnUpSync) : new Command<MR.Gestures.DownUpEventArgs>(OnUp)
                     }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows-r 
                     );
                 }
 
+                if (_halfSync) { TimerInitHS(); timer.Start(); } else if (isSync) TimerInit();
             }
 
             Microsoft.Maui.Controls.Button btnInit = new()
             {
-                Text = "Init",
+                Text = "Reset",
                 Command = new Command(() => { PianoInit(); }),
                 HorizontalOptions = LayoutOptions.Start,
+                WidthRequest = 80,
+                HeightRequest = 16
             };
 
             if (textBoxesQuantity > 0)
@@ -183,13 +242,23 @@ namespace GestureSample.Maui.Models
                 a1.SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addent1));
                 a2.SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addent2));
                 entrSum.SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Sum));
+
+                
+
                 Microsoft.Maui.Controls.HorizontalStackLayout hzl = new()
                 {
-                    btnInit, a1, spacing, entrSum, spacing2, a2
+                      a1, spacing, entrSum, spacing2, a2
                 };
-                //hzl.HorizontalOptions = LayoutOptions.Center;
-                this.SetColumnSpan(hzl, keysInRow + 1);
-                this.Add(hzl, 0);
+                hzl.HorizontalOptions = LayoutOptions.Center;
+                Microsoft.Maui.Controls.Grid g = new();
+                g.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(55) });
+                g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
+                g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
+                g.Add(hzl,1); g.Add(btnInit,0);
+                this.SetColumnSpan(g, keysInRow + 1);
+                g.HorizontalOptions = LayoutOptions.Fill;
+                this.Add(g, 0);
             }
             else
             {
@@ -223,6 +292,7 @@ namespace GestureSample.Maui.Models
 
         }
 
+        //WHEN HalfSync - temporal, When !HalfSync - spatial
         private void setPatternAddents()
         {
             _addent1 = 0; _addent2 = 0; bool yellowStreak = false; int yellowStreakCount = 0;
@@ -291,15 +361,7 @@ namespace GestureSample.Maui.Models
 
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
-            if (_halfSync)
-            {
-                if (!_secondNumChoosing)
-                    sender.BackgroundColor = Colors.Yellow;
-                else if (_secondNumChoosing && sender.BackgroundColor != Colors.Yellow)
-                    sender.BackgroundColor = Colors.LightGreen;
-            }
-            else
-               sender.BackgroundColor = Colors.Yellow;
+            sender.BackgroundColor = Colors.Yellow;
             
 
             if (Convert.ToInt32(sender.CommandParameter) > 5)
@@ -315,7 +377,6 @@ namespace GestureSample.Maui.Models
             }
 
             if (_patterns) setPatternAddents();
-
             OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
             _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
             //SaveState();
@@ -327,39 +388,78 @@ namespace GestureSample.Maui.Models
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
 
-                _seconds_pressed = 0; OnPropertyChanged(nameof(SecondsToEnd));
-                if (_halfSync)
-                {
-                    if (!_secondNumChoosing || sender.BackgroundColor == Colors.LightGreen)
-                        sender.BackgroundColor = Colors.White;
-                    else if (_secondNumChoosing && sender.BackgroundColor == Colors.Yellow)
-                        sender.BackgroundColor = Colors.Yellow;
-                }
-                else
-                    sender.BackgroundColor = Colors.Yellow;
+            _seconds_pressed = 0; OnPropertyChanged(nameof(SecondsToEnd));
+            sender.BackgroundColor = Colors.White;
 
-                if (Convert.ToInt32(sender.CommandParameter) > 5)
-                    _addent2--;
-                else
-                    _addent1--;
-                if (_addent1 == 0 && _addent2 == 0)
-                {
-                    _seconds_pressed = -1; timer.Stop();
-                    _lblTimer.Text = Statement.Neutral;
-                }
-                else
-                    _lblTimer.Text = SecondsToEnd;
+            if (Convert.ToInt32(sender.CommandParameter) > 5)
+                _addent2--;
+            else
+                _addent1--;
+            if (_addent1 == 0 && _addent2 == 0)
+            {
+                _seconds_pressed = -1; timer.Stop();
+                _lblTimer.Text = Statement.Neutral;
+            }
+            else
+                _lblTimer.Text = SecondsToEnd;
 
             //TODO:make closingButonHandle private function
             if (_addent1 < 0) _addent1 = 0;
             if (_addent2 < 0) _addent2 = 0;
 
-
             if (_patterns) setPatternAddents();
+            //SaveState();
+            OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
+            _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
+        }
+
+        protected void OnDownHalfSync(MR.Gestures.DownUpEventArgs e)
+        {
+
+            if (!IsEnabled) { return; }
+            MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
+            if (!_secondNumChoosing)
+                sender.BackgroundColor = Colors.Yellow;
+            else if (_secondNumChoosing && sender.BackgroundColor != Colors.Yellow)
+                sender.BackgroundColor = Colors.LightGreen;
+            
+
+
+            if (_seconds_pressed <= 0)
+            {
+                //_seconds_pressedHS = 0;
+                _seconds_pressed = -1;
+                //_lblTimer.Text = SecondsToEndHS;
+                //timer.Start();
+            }
+
+            setPatternAddents();
+
+            OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
+            _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
+            //SaveState();
+        }
+
+        protected void OnUpHalfSync(MR.Gestures.DownUpEventArgs e)
+        {
+
+            if (!IsEnabled) { return; }
+            MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
+
+            
+            if (!_secondNumChoosing || sender.BackgroundColor == Colors.LightGreen)
+                sender.BackgroundColor = Colors.White;
+            else if (_secondNumChoosing && sender.BackgroundColor == Colors.Yellow)
+                sender.BackgroundColor = Colors.Yellow;
+            
+
+            setPatternAddents();
 
             //SaveState();
             OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
             _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
+
+            _seconds_pressed = -1; //OnPropertyChanged(nameof(SecondsToEndHS));
         }
         #endregion
     }
