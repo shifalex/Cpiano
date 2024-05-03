@@ -69,7 +69,7 @@ namespace GestureSample.Views.Tests
             bool isDecomposeWithKeyboard = _gameType == GameType.DecompositionGameWithKeyboardHelp || _gameType == GameType.DecompositionGameFullWithKeyboardHelp;
             if(_gameType == GameType.DecompositionGameFullWithKeyboardHelp)
                 _gamePlay = new PPWGamePlay(gameType, this, isHistory,20 ,20 , VariableTypes.OneCanBeSum);
-            else if (_gameType == GameType.DecompositionGameFull)
+            else if (_gameType == GameType.DecompositionGameFull || halfSync)
                 _gamePlay = new PPWGamePlay(gameType, this, isHistory, 10, 10);
             else
                 _gamePlay = new PPWGamePlay(gameType, this, isHistory);
