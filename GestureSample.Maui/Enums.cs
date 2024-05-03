@@ -29,8 +29,9 @@
         public const string Neutral = "| |";
         public const string True = "Correct :D";
         public const string False = "Wrong :(";
-        public const string WrongInput = "Wrong Imput";
+        public const string WrongInput = "Wrong Input";
         public const string New = "Find NEW combination";
+        public const string Selecting = "SELECTING...";
         public static string Win { get
             {
                 Application.Current.MainPage.DisplayAlert("Win", "You Won!!", "OK");
