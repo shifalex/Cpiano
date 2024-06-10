@@ -1,4 +1,5 @@
 using GestureSample.Maui;
+using GestureSample.Maui.ViewModels;
 
 namespace GestureSample.Views
 {
@@ -7,8 +8,14 @@ namespace GestureSample.Views
 		public ShowDataXaml()
 		{
 			InitializeComponent();
-            //StateList.ItemsSource = App.CurrentDB.GetStates();
+			//StateList.ItemsSource = App.CurrentDB.GetStates();
 
+			ShowData();	
+        }
+
+		public async void ShowData()
+		{
+            StateList.ItemsSource = await GestureSample.Maui.Data.StateConnection.Instance.GetStatesAsync();
         }
 	}
 }
