@@ -34,6 +34,7 @@ namespace GestureSample.Maui.Models
         private bool _isFirstGuess = true;
 
         protected readonly GameType _gameType;
+        public GameType GameType { get => _gameType; }
         protected readonly SimpleViewCellsPage _view;
 
         public PPWGamePlay(GameType gameType, SimpleViewCellsPage view, bool isHistory=false, int maxAddent = 5, int maxSum=10, VariableTypes numberOfVariables = VariableTypes.TwoNoSum)

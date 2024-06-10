@@ -31,9 +31,9 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
-	  <CodesignKey>iPhone Developer</CodesignKey>
+	  <CodesignKey>Apple Development: Created via API (H6BKVF583L)</CodesignKey>
 	  <CodesignProvision>VS: WildCard Development</CodesignProvision>
-	  <ProvisioningType>manual</ProvisioningType>
+	  <ProvisioningType>automatic</ProvisioningType>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
@@ -72,6 +72,8 @@
 	  <PackageReference Include="MR.Gestures" Version="4.0.1" />
 	  <PackageReference Include="MvvmCross" Version="9.0.0" />
 	  <PackageReference Include="Sentry" Version="4.1.0" />
+	  <PackageReference Include="SQLite" Version="3.13.0" />
+	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
 
 	<ItemGroup>
