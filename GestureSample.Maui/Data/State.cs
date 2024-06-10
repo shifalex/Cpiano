@@ -6,14 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using SQLite;
 
-namespace GestureSample.Maui.Models
+namespace GestureSample.Maui.Data
 {
     //[Table("State")]
     public class State
 
     {
-        //[PrimaryKey, AutoIncrement, Column("Id")]
+        [PrimaryKey, AutoIncrement, Column("Id")]
         public int Id { get; set; }
         public int UserId { get; set; }
         public string TypeName { get; set; }
