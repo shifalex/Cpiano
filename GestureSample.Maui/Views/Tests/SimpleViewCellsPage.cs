@@ -152,7 +152,12 @@ namespace GestureSample.Views.Tests
                 IsVisible = isHistory
             };
 
-            _pianoKeyboard = new(_gamePlay, lblStatement, isSync, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10,imposeEdges,fromNumToNum,halfSync);
+            if(halfSync)
+                _pianoKeyboard = new PianoKeyboardHalfSync(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10,imposeEdges,fromNumToNum);
+            else if (isSync)
+                _pianoKeyboard = new PianoKeyboardSync(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10, imposeEdges, fromNumToNum);
+            else
+                _pianoKeyboard = new(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10, imposeEdges, fromNumToNum);
 
             HorizontalStackLayout hslBtns = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
             if (!isSync || isDecomposeWithKeyboard)
