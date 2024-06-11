@@ -44,19 +44,19 @@ namespace GestureSample.Maui.Models
                 Addent1 = this.Addent1,
                 Addent2 = this.Addent2,
                 Sum = this.Sum, //TODO:make more elegant
-                B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED?true:false,
-                B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ? true : false,
-                B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ? true : false,
-                B4 = btnKeys[3].BackgroundColor == COLOR_PRESSED ? true : false,
-                B5 = btnKeys[4].BackgroundColor == COLOR_PRESSED ? true : false,
-                B6 = btnKeys[5].BackgroundColor == COLOR_PRESSED ? true : false,
-                B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED ? true : false,
-                B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED ? true : false,
-                B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED ? true : false,
-                B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED ? true : false,
+                B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
+                B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ,
+                B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ,
+                B4 = btnKeys[3].BackgroundColor == COLOR_PRESSED,
+                B5 = btnKeys[4].BackgroundColor == COLOR_PRESSED,
+                B6 = btnKeys[5].BackgroundColor == COLOR_PRESSED,
+                B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED,
+                B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED,
+                B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED,
+                B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED,
 
             } ; 
-            Data.StateConnection.Instance.SaveStateAsync(s);
+            //Data.StateConnection.Instance.SaveStateAsync(s);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity=0, int rows=1, int keysInRow=10, bool imposeEdges =false, bool fromNumToNum = false) : base(rows, keysInRow) {
@@ -187,7 +187,7 @@ namespace GestureSample.Maui.Models
             ImposeEdgesIfNeeded();
         }
 
-        protected void ImposeEdgesIfNeeded()
+        protected virtual void ImposeEdgesIfNeeded()
         {
             bool begin = true; bool end = true;
             if (_imposeEdges /*Make wrong input if edges weren't imposed*/)
@@ -238,7 +238,7 @@ namespace GestureSample.Maui.Models
 
             OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
             _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
-            //SaveState();
+            SaveState();
         }
     }
 }

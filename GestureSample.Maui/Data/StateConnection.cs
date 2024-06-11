@@ -1,5 +1,4 @@
 ﻿using GestureSample.Maui.Models;
-using Microsoft.EntityFrameworkCore;
 
 using SQLite;
 using System;
@@ -30,7 +29,18 @@ namespace GestureSample.Maui.Data
             {
                 var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StatesDocumentation.db3");
                 _database = new SQLiteAsyncConnection(dbPath);
-                await _database.CreateTableAsync<State>();
+                Console.WriteLine("Database created successfully.");
+                try
+                {
+
+                    await MainThread.InvokeOnMainThreadAsync(async () => await _database.CreateTableAsync<State>());
+                    Console.WriteLine("Table created successfully.");
+                }
+                catch (Exception ex)
+                {
+                    // Log or handle the exception as needed
+                    Console.WriteLine($"Database initialization failed: {ex.Message}");
+                }
             }
         }
 

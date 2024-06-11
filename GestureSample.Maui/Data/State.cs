@@ -1,6 +1,5 @@
 ﻿//using SQLite;
 //using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
