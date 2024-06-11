@@ -76,7 +76,15 @@ namespace GestureSample.Maui.Models
         Microsoft.Maui.Controls.Button btnInit = new()
             {
                 Text = "Reset",
-                Command = new Command(() => { PianoInit(); }),
+                Command = new Command(() => { 
+                    PianoInit(); 
+                    for (int i = 0; i < btnKeys.Length; i++)
+                    {
+                        btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
+                        btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
+
+                    }
+                }),
                 HorizontalOptions = LayoutOptions.Start,
                 WidthRequest = 80,
                 HeightRequest = 16
