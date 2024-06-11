@@ -176,13 +176,23 @@ namespace GestureSample.Maui.Models
                         break;
                     }
             }
-            if (_imposeEdges /*Make wrong input if edges weren't imposed*/)
-                if ((_addent1>0 && btnKeys[0].BackgroundColor == COLOR_FREE) || (_addent2>0 && btnKeys[NUMBER_OF_KEYS - 1].BackgroundColor == COLOR_FREE))
-                {
-                    _addent1 = 0; _addent2 = -1;
-                }
+            ImposeEdgesIfNeeded();
         }
 
+        protected void ImposeEdgesIfNeeded()
+        {
+            bool begin = true; bool end = true;
+            if (_imposeEdges /*Make wrong input if edges weren't imposed*/)
+            {
+                for (int i = 0; i < NUMBER_OF_KEYS; i++)
+                    if (begin && btnKeys[i].BackgroundColor == COLOR_FREE) begin = false;
+                    else if (!begin && btnKeys[i].BackgroundColor != COLOR_FREE) end = false;
+                    else if (!end && btnKeys[i].BackgroundColor == COLOR_FREE)
+                    {
+                        _addent1 = -1; _addent2 = -1; return;
+                    }
+            }
+        }
         protected virtual bool InnerKeyDown (MR.Gestures.Button sender) {
             sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
             return false;

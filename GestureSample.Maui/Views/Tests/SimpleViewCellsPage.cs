@@ -63,14 +63,14 @@ namespace GestureSample.Views.Tests
 
         #endregion
 
-        public SimpleViewCellsPage(GameType gameType = GameType.SimpleDecompositionGame, bool isHistory = false, bool isKeyboard = false, bool isSync = false, bool useKeyboardLabels = false, bool imposeEdges = false, bool fromNumToNum = false, bool halfSync = false)
+        public SimpleViewCellsPage(GameType gameType = GameType.SimpleDecompositionGame, bool isHistory = false, bool isKeyboard = false, bool isSync = false, bool useKeyboardLabels = false, bool imposeEdges = false, bool fromNumToNum = false, bool halfSync = false, bool withoutZero = false)
         {
             _gameType = gameType; //_isKeyboard= isKeyboard;
             bool isDecomposeWithKeyboard = _gameType == GameType.DecompositionGameWithKeyboardHelp || _gameType == GameType.DecompositionGameFullWithKeyboardHelp;
             if(_gameType == GameType.DecompositionGameFullWithKeyboardHelp)
-                _gamePlay = new PPWGamePlay(gameType, this, isHistory,20 ,20 , VariableTypes.OneCanBeSum);
+                _gamePlay = new PPWGamePlay(gameType, this, isHistory,0,0,20 ,20 , VariableTypes.OneCanBeSum);
             else if (_gameType == GameType.DecompositionGameFull || halfSync)
-                _gamePlay = new PPWGamePlay(gameType, this, isHistory, 10, 10);
+                _gamePlay = new PPWGamePlay(gameType, this, isHistory, withoutZero ? 1 : 0, withoutZero ? 2 : 0, 10, 10);
             else
                 _gamePlay = new PPWGamePlay(gameType, this, isHistory);
 
@@ -153,7 +153,7 @@ namespace GestureSample.Views.Tests
             };
 
             if(halfSync)
-                _pianoKeyboard = new PianoKeyboardHalfSync(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10,imposeEdges,fromNumToNum);
+                _pianoKeyboard = new PianoKeyboardHalfSync(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10,imposeEdges,fromNumToNum, withoutZero);
             else if (isSync)
                 _pianoKeyboard = new PianoKeyboardSync(_gamePlay, lblStatement, useKeyboardLabels ? (_gameType == GameType.GuessOne ? 1 : 2) : 0, isDecomposeWithKeyboard ? 2 : 1, _gameType == GameType.DecompositionGameFull ? 11 : 10, imposeEdges, fromNumToNum);
             else

@@ -13,18 +13,20 @@ namespace GestureSample.Maui.Models
         private bool _secondNumChoosing = false;
         private int _seconds_pressedHS = 0;
 
-        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, int textBoxesQuantity = 0, int rows = 1, int keysInRow = 10, bool imposeEdges = false, bool fromNumToNum = false) : base(gamePlay, lblTimer, textBoxesQuantity, rows, keysInRow, imposeEdges, fromNumToNum)
+        private bool _withoutZero;
+
+        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, int textBoxesQuantity = 0, int rows = 1, int keysInRow = 10, bool imposeEdges = false, bool fromNumToNum = false, bool withoutZero = false) : base(gamePlay, lblTimer, textBoxesQuantity, rows, keysInRow, imposeEdges, fromNumToNum)
         {
+            _withoutZero = withoutZero;
             _patterns = true;
             timer.Start();
-
         }
 
         public override string SecondsToEnd
         {
             get
             {
-                return string.Format("{0} number.\nTime Left: {1} seconds", _secondNumChoosing ? "Second" : "First", 10 - (_seconds_pressedHS));
+                return string.Format("{0} number", _secondNumChoosing ? "Second" : "First") + ((_withoutZero)?"":string.Format( ".\nTime Left: {0} seconds", 10 - (_seconds_pressedHS)));
             }
         }
         protected override void TimerInit()
@@ -40,7 +42,7 @@ namespace GestureSample.Maui.Models
                     if ((!_secondNumChoosing && _addent1 != 0) || (_secondNumChoosing && _addent2 != 0))
                     {
 
-                        _lblTimer.Text = Statement.Selecting;
+                        if(!_withoutZero) _lblTimer.Text = Statement.Selecting;
                         _seconds_pressed++;
                     }
                     else
@@ -48,8 +50,19 @@ namespace GestureSample.Maui.Models
                         _lblTimer.Text = SecondsToEnd;
                     }
 
-                    if (_seconds_pressed >= 1 || _seconds_pressedHS >= (10))
+                    if (_seconds_pressed >= 1 || (_seconds_pressedHS >= (10) && !_withoutZero) )
                     {
+
+                        if (_imposeEdges)
+                        {
+                            ImposeEdgesIfNeeded();
+                            if (_withoutZero && _secondNumChoosing &&
+                                (btnKeys[NUMBER_OF_KEYS - 1].BackgroundColor == COLOR_FREE || btnKeys[0].BackgroundColor == COLOR_FREE))
+                            {
+                                _addent1 = -1; _addent2 = -1;
+                            }
+                            _gamePlay.Addent1 = _addent1; _gamePlay.Addent2 = _addent2;
+                        }
                         _seconds_pressed = -1;
                         _seconds_pressedHS = 0;
                         if (!_secondNumChoosing)
@@ -66,6 +79,7 @@ namespace GestureSample.Maui.Models
                         IsEnabled = false;
                         bool isCorrect = _gamePlay.Check();
                         await Task.Delay(3000);
+                        PianoInit();
                         if (isCorrect)
                         {
                             _gamePlay.GenerateExercise();
@@ -74,7 +88,6 @@ namespace GestureSample.Maui.Models
                         {
                             _lblTimer.Text = SecondsToEnd;
                         }
-                        PianoInit();
 
 
                         timer.Start();
@@ -94,7 +107,7 @@ namespace GestureSample.Maui.Models
             _addent1 = 0; _addent2 = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
-                if (btnKeys[i].BackgroundColor == Colors.Yellow)
+                if (btnKeys[i].BackgroundColor ==COLOR_PRESSED)
                     _addent1++;
                 else if (btnKeys[i].BackgroundColor == SECOND_COLOR) 
                     _addent2++;
@@ -105,11 +118,11 @@ namespace GestureSample.Maui.Models
         {
 
             if (!_secondNumChoosing)
-                sender.BackgroundColor = Colors.Yellow;
-            else if (_secondNumChoosing && sender.BackgroundColor != Colors.Yellow)
+                sender.BackgroundColor = COLOR_PRESSED;
+            else if (_secondNumChoosing && sender.BackgroundColor != COLOR_PRESSED)
                 sender.BackgroundColor = SECOND_COLOR;
             
-                _seconds_pressed = 0;
+            _seconds_pressed = 0;
             
             return true;
         }
@@ -121,7 +134,11 @@ namespace GestureSample.Maui.Models
             else if (_secondNumChoosing && sender.BackgroundColor == COLOR_PRESSED)
                 sender.BackgroundColor = COLOR_PRESSED;
 
-            _seconds_pressed = -1; //OnPropertyChanged(nameof(SecondsToEndHS));
+           /* setAddentsByPattern();
+            if ((_secondNumChoosing && _addent2==0) || _addent1==0)
+                _seconds_pressed = -1;
+            else
+                _seconds_pressed = 0;*/
 
             return true;
 
