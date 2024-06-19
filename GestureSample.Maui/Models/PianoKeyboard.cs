@@ -33,17 +33,19 @@ namespace GestureSample.Maui.Models
         public int Addent2 { get => _addent2; }
         public int Sum { get => _addent1+_addent2; }
 
+        //private readonly Data.RealmService _realmService;
 
-        protected void SaveState()
+        protected async void SaveState()
         {
             Data.State s = new()
             {
                 UserId = 1,
-                TimeStamp = DateTime.Now,
+                //TimeStamp = DateTime.Now,
                 TypeName = _gamePlay.GameType.ToString(),
                 Addent1 = this.Addent1,
                 Addent2 = this.Addent2,
                 Sum = this.Sum, //TODO:make more elegant
+                                /*
                 B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
                 B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ,
                 B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ,
@@ -53,10 +55,11 @@ namespace GestureSample.Maui.Models
                 B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED,
                 B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED,
                 B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED,
-                B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED,
-
+                B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
+                */
             } ; 
-            //Data.StateConnection.Instance.SaveStateAsync(s);
+            await Data.StateConnection.Instance.SaveStateAsync(s);
+            //await _realmService.AddStateAsync(s);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity=0, int rows=1, int keysInRow=10, bool imposeEdges =false, bool fromNumToNum = false) : base(rows, keysInRow) {
@@ -64,6 +67,8 @@ namespace GestureSample.Maui.Models
             _patterns = keysInRow > 10 || imposeEdges; _imposeEdges = imposeEdges; _fromNumToNum = fromNumToNum;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
+
+            //_realmService = new();
 
             for (int i = 0; i < btnKeys.Length; i++)
             {

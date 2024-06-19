@@ -1,12 +1,14 @@
 ﻿using GestureSample.Maui.Models;
 
 using SQLite;
+using SQLitePCL;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 //using Microsoft.Data.Sqlite;
 //using Microsoft.EntityFrameworkCore.Sqlite;
 using System.Data.Common;
+using Microsoft.Maui.Controls.PlatformConfiguration;
 
 namespace GestureSample.Maui.Data
 {
@@ -27,13 +29,21 @@ namespace GestureSample.Maui.Data
         {
             if (_database == null)
             {
-                var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StatesDocumentation.db3");
+                var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MathOPiano.db");
+
+#if WINDOWS || IOS
+
+                dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MathOPiano.db");
+
+#endif
+                Console.WriteLine($"Database path: {dbPath}");
+
                 _database = new SQLiteAsyncConnection(dbPath);
                 Console.WriteLine("Database created successfully.");
                 try
                 {
 
-                    await MainThread.InvokeOnMainThreadAsync(async () => await _database.CreateTableAsync<State>());
+                    _database.CreateTableAsync<State>().Wait();
                     Console.WriteLine("Table created successfully.");
                 }
                 catch (Exception ex)

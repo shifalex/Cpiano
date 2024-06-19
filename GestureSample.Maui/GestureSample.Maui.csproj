@@ -66,8 +66,11 @@
 
 	<ItemGroup>
 	  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+	  <PackageReference Include="MongoDB.Bson" Version="2.26.0" />
+	  <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
 	  <PackageReference Include="MR.Gestures" Version="4.0.1" />
 	  <PackageReference Include="MvvmCross" Version="9.0.0" />
+	  <PackageReference Include="Realm" Version="12.2.0" />
 	  <PackageReference Include="Sentry" Version="4.1.0" />
 	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
