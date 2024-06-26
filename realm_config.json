@@ -1,0 +1,7 @@
+{
+    "app_id": "mathopiano-rxznboi",
+    "config_version": 20210101,
+    "name": "MathOPiano",
+    "provider_region": "azure-westeurope",
+    "deployment_model": "LOCAL"
+}
