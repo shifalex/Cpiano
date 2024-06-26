@@ -23,7 +23,7 @@ namespace GestureSample.Maui.Data
         public int Addent1 { get; set; }
         public int Addent2 { get; set; }
 
-
+        //public Color[] KeysPressed { get; set; }
 
 
 
