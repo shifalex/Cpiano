@@ -1,4 +1,5 @@
 ﻿using GestureSample.Maui;
+using GestureSample.Maui.Models;
 using GestureSample.Views.Tests;
 
 namespace GestureSample.Views
@@ -104,7 +105,9 @@ namespace GestureSample.Views
             new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true)),
             new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(GameType.DecompositionGameFull)),
             new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true)),
-            new PageConfig("new Number", "decomposition game Through 10 With kebyboard", () => new SimpleViewCellsPage(GameType.DecompositionGameWithKeyboardHelp, false,true,false)),
+            new PageConfig("new Number", "decomposition game Through 10 With kebyboard Only Yellow", () => new SimpleViewCellsPage(GameType.DecompositionGameWithKeyboardHelp, false,true,false)),
+            new PageConfig("new Number", "decomposition game Through 10 With kebyboard HalfSync", () => new SimpleViewCellsPage(GameType.DecompositionGameWithKeyboardHelp, false,true,false,false,false,false,true,true, 3, true)),
+
             new PageConfig("new Number", "decomposition game Full With kebyboard", () => new SimpleViewCellsPage(GameType.DecompositionGameFullWithKeyboardHelp, false,true,false)),
             new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(GameType.DecompositionGame)),
 			

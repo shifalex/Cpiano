@@ -9,12 +9,13 @@ using System.Threading.Tasks;
 //using Microsoft.EntityFrameworkCore.Sqlite;
 using System.Data.Common;
 using Microsoft.Maui.Controls.PlatformConfiguration;
+using System.Net.Http.Headers;
 
 namespace GestureSample.Maui.Data
 {
     public class StateConnection
     {
-
+        private static string _dbPath;
         private static SQLiteAsyncConnection _database;
         private static readonly Lazy<StateConnection> lazy = new Lazy<StateConnection>(() => new StateConnection());
 
@@ -29,16 +30,14 @@ namespace GestureSample.Maui.Data
         {
             if (_database == null)
             {
-                var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MathOPiano.db");
+                _dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MathOPiano.db");
 
 #if WINDOWS || IOS
-
-                dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MathOPiano.db");
-
+                _dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MathOPiano.db");
 #endif
-                Console.WriteLine($"Database path: {dbPath}");
+                Console.WriteLine($"Database path: {_dbPath}");
 
-                _database = new SQLiteAsyncConnection(dbPath);
+                _database = new SQLiteAsyncConnection(_dbPath);
                 Console.WriteLine("Database created successfully.");
                 try
                 {
@@ -62,6 +61,43 @@ namespace GestureSample.Maui.Data
         public Task<List<State>> GetStatesAsync()
         {
             return _database.Table<State>().ToListAsync();
+        }
+
+        public async Task UploadDatabaseAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    
+                    var uri = new Uri("https://mathopiano.herokuapp.com/upload");
+
+                    using (var form = new MultipartFormDataContent())
+                    {
+                        var fileContent = new StreamContent(File.OpenRead(_dbPath));
+                        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+                        form.Add(fileContent, "file", "MathOPiano.db3");
+
+                        var response = await client.PostAsync(uri, form);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Console.WriteLine("Database uploaded successfully.");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to upload database. Status code: {response.StatusCode}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading database: {ex.Message}");
+            }
         }
 
         /*
