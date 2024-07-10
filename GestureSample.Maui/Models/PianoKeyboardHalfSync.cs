@@ -12,7 +12,7 @@ namespace GestureSample.Maui.Models
         private readonly Color THIRD_COLOR = Colors.Blue;
         private readonly Color REMOVE_COLOR = Colors.Red;
 
-        private Color[] colors;
+        
 
         public enum KeyboardType
         {
@@ -40,8 +40,7 @@ namespace GestureSample.Maui.Models
                 Type = KeyboardType.TwoAddens;
             _withoutZero = withoutZero;
             _patterns = true;
-            colors = new Color[NUMBER_OF_KEYS];
-            for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
+            
         }
 
         public override string SecondsToEnd
@@ -100,8 +99,8 @@ namespace GestureSample.Maui.Models
                         }
 
                         //if (Type == KeyboardType.ThreeAddensWithRemoval) return;
-                        //PianoInitWithTimer();
-
+                        await PianoInitWithTimer();
+                        /*
                         timer.Stop();
 
 
@@ -119,7 +118,7 @@ namespace GestureSample.Maui.Models
                         }
 
 
-                        timer.Start();
+                        timer.Start();*/
                     }
                 });
             };

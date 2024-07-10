@@ -57,7 +57,7 @@ namespace GestureSample.Maui.Data
 
 
             //_app = Realms.Sync.App.Create(appId);
-            InitializeRealm();
+            //InitializeRealm();
         }
 
         private  async Task InitializeRealm()

@@ -22,7 +22,7 @@ namespace GestureSample.Maui.Models
         private int _guessNumber = 0;
         public int GuessNumber { get { return _guessNumber; } }
 
-        protected int _minSum = 0, _maxSum = 10, _minAddent = 0, _maxAddent = 5;
+        protected int _minSum = 1, _maxSum = 10, _minAddent = 1, _maxAddent = 5;
         protected VariableTypes _numberOfVariables = VariableTypes.TwoNoSum;//TODO: now it is only in the "history games. Maybe I will have to change it
         
 
@@ -37,13 +37,13 @@ namespace GestureSample.Maui.Models
         public GameType GameType { get => _gameType; }
         protected readonly SimpleViewCellsPage _view;
 
-        public PPWGamePlay(GameType gameType, SimpleViewCellsPage view, bool isHistory=false, int minAddent = 0, int minSum = 0, int maxAddent = 5, int maxSum=10, VariableTypes numberOfVariables = VariableTypes.TwoNoSum)
+        public PPWGamePlay(GameType gameType, SimpleViewCellsPage view, bool isHistory=false, int minAddent = 0, int minSum = 1, int maxAddent = 5, int maxSum=10, VariableTypes numberOfVariables = VariableTypes.TwoNoSum)
         {
             _gameType = gameType; _view = view;
             _isHistory = isHistory; _maxAddent = maxAddent; _maxSum = maxSum; _numberOfVariables = numberOfVariables;
             _minAddent = minAddent; _minSum = minSum;
             if (_isHistory) _minSum = 1;
-            if (_gameType == GameType.Multiplication) { _maxAddent = 10; _maxSum = 100; _numberOfVariables = VariableTypes.OneCanBeSum; }
+            if (_gameType == GameType.Multiplication) { _minAddent = 2; _maxAddent = 10; _maxSum = 100; _numberOfVariables = VariableTypes.OneCanBeSum; }
         }
 
 

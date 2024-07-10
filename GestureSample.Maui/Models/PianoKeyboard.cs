@@ -24,7 +24,8 @@ namespace GestureSample.Maui.Models
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
         protected readonly bool _fromNumToNum = false;
-        
+
+        protected Color[] colors;
 
         //TODO: add constructor for 20 keys and for keyboard questions
         //public BitArray Keys;
@@ -62,11 +63,13 @@ namespace GestureSample.Maui.Models
             //await _realmService.AddStateAsync(s);
         }
 
-        public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity=0, int rows=1, int keysInRow=10, bool imposeEdges =false, bool fromNumToNum = false) : base(rows, keysInRow) {
+        public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity=0, int rows=1, int keysInRow=10, bool imposeEdges =false, bool fromNumToNum = false, bool isDummies = false) : base(rows, keysInRow) {
 
             _patterns = keysInRow > 10 || imposeEdges; _imposeEdges = imposeEdges; _fromNumToNum = fromNumToNum;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
+            colors = new Color[NUMBER_OF_KEYS];
+            for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
 
             //_realmService = new();
 
@@ -148,8 +151,14 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        public virtual void PianoInitWithDummies()
+        {
+                    
+        }
+
         public virtual void PianoInit()
         {
+
             IsEnabled = true;
             if (_fromNumToNum) return;
 

@@ -39,19 +39,18 @@ namespace GestureSample.Maui.Models
                     if (_seconds_pressed >= SECONDS_TO_ANSWER)
                     {
                         _seconds_pressed = 0;
-                        PianoInitWithTimer();
+                        await PianoInitWithTimer();
                     }
                 });
             };
         }
 
-        protected async void PianoInitWithTimer()
+        protected async Task PianoInitWithTimer()
         {
             timer.Stop();
             IsEnabled = false;
             bool isCorrect = _gamePlay.Check();
             await Task.Delay(3000);
-            PianoInit();
             if (isCorrect)
             {
                 _gamePlay.GenerateExercise();
@@ -60,6 +59,7 @@ namespace GestureSample.Maui.Models
             {
                 _lblTimer.Text = Statement.Neutral;
             }
+            PianoInit();
             timer.Start();
         }
 
