@@ -108,7 +108,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.Yellow,
                 TextColor = Colors.Black,
-            WidthRequest = 240,
+                WidthRequest = 240,
                 FontSize = 32
 
                 /* Text = "{Binding SSum}"   IsReadOnly = "{Binding IsReadOnly}"   IsEnabled = "{Binding SumEnabled}"*/
