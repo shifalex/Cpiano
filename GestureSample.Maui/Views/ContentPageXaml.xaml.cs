@@ -12,8 +12,8 @@ namespace GestureSample.Views
 
         private readonly bool _isSync = false;
 
-        private int _addent1 = 0;
-        private int _addent2 = 0;
+        private int _addend1 = 0;
+        private int _addend2 = 0;
         //private int _sum = 0;
         
         
@@ -109,9 +109,9 @@ namespace GestureSample.Views
             {
                 sender.BackgroundColor = Colors.Yellow;
                 if (Convert.ToInt32(sender.CommandParameter) > 4)
-                    _addent2++;
+                    _addend2++;
                 else
-                    _addent1++;
+                    _addend1++;
                 _waiting_check = true;
                 _seconds_pressed = 0;
                 if (!_isTimerWorking)
@@ -125,7 +125,7 @@ namespace GestureSample.Views
                 sender.BackgroundColor = (sender.BackgroundColor != Colors.Yellow) ? Colors.Yellow : Colors.White;
             }
 
-            //NotifyPropertyChanged(nameof(SAddent1)); NotifyPropertyChanged(nameof(SAddent2)); NotifyPropertyChanged(nameof(SecondsToEnd));
+            //NotifyPropertyChanged(nameof(Saddend1)); NotifyPropertyChanged(nameof(Saddend2)); NotifyPropertyChanged(nameof(SecondsToEnd));
             //SaveState();
         }
 
@@ -137,10 +137,10 @@ namespace GestureSample.Views
                 _seconds_pressed = 0; //NotifyPropertyChanged(nameof(SecondsToEnd));
                 sender.BackgroundColor = Colors.White;
                 if (Convert.ToInt32(sender.CommandParameter) > 4)
-                    _addent2--;
+                    _addend2--;
                 else
-                    _addent1--;
-                if (_addent1 == 0 && _addent2 == 0) { 
+                    _addend1--;
+                if (_addend1 == 0 && _addend2 == 0) { 
                     _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; timer.Stop(); 
                     //NotifyPropertyChanged(nameof(TrueStatement)); 
                 }
@@ -150,15 +150,15 @@ namespace GestureSample.Views
             {
 
                 if (Convert.ToInt32(sender.CommandParameter) > 4)
-                    _addent2= (sender.BackgroundColor != Colors.Yellow)? _addent2 - 1 : _addent2 + 1;
+                    _addend2= (sender.BackgroundColor != Colors.Yellow)? _addend2 - 1 : _addend2 + 1;
                 else
-                    _addent1 = (sender.BackgroundColor != Colors.Yellow) ? _addent1 - 1 : _addent1 + 1;
+                    _addend1 = (sender.BackgroundColor != Colors.Yellow) ? _addend1 - 1 : _addend1 + 1;
             }
-            if (_addent1 < 0) _addent1 = 0;
-            if (_addent2 < 0) _addent2 = 0;
-            //AddText2("{0} {1}", _addent1, _addent2);
+            if (_addend1 < 0) _addend1 = 0;
+            if (_addend2 < 0) _addend2 = 0;
+            //AddText2("{0} {1}", _addend1, _addend2);
             //SaveState();
-            //NotifyPropertyChanged(nameof(SAddent1)); NotifyPropertyChanged(nameof(SAddent2));
+            //NotifyPropertyChanged(nameof(Saddend1)); NotifyPropertyChanged(nameof(Saddend2));
         }
     }
 }

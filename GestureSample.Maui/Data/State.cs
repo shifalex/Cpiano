@@ -20,8 +20,8 @@ namespace GestureSample.Maui.Data
         public int UserId { get; set; }
         public string TypeName { get; set; }
         public int Sum { get; set; }
-        public int Addent1 { get; set; }
-        public int Addent2 { get; set; }
+        public int Addend1 { get; set; }
+        public int Addend2 { get; set; }
 
         //public Color[] KeysPressed { get; set; }
 

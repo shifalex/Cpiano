@@ -32,13 +32,13 @@ namespace GestureSample.Maui.Models
 
         private bool _withoutZero;
 
-        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, int textBoxesQuantity = 0, int rows = 1, int keysInRow = 10, bool imposeEdges = false, bool fromNumToNum = false, bool withoutZero = false, int addentsNum=2, bool allowRemoval=false) : base(gamePlay, lblTimer, textBoxesQuantity, rows, keysInRow, imposeEdges, fromNumToNum)
+        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
         {
-            if (allowRemoval && addentsNum == 3)
+            if (pianoConfig.AllowRemoval && pianoConfig.AddendsNum == 3)
                 Type = KeyboardType.ThreeAddensWithRemoval;
             else
                 Type = KeyboardType.TwoAddens;
-            _withoutZero = withoutZero;
+            _withoutZero = pianoConfig.WithoutZero;
             _patterns = true;
             
         }
@@ -74,7 +74,7 @@ namespace GestureSample.Maui.Models
 
                     _seconds_pressedHS++;
 
-                    if ((_numbersChosen<1 && _addent1 != 0) || (_numbersChosen>=1 && _addent2 != 0))
+                    if ((_numbersChosen<1 && _addend1 != 0) || (_numbersChosen>=1 && _addend2 != 0))
                     {
 
                         if(!_withoutZero) _lblTimer.Text = Statement.Selecting;
@@ -132,9 +132,9 @@ namespace GestureSample.Maui.Models
                 if (_withoutZero && _numbersChosen==1 &&
                     (btnKeys[NUMBER_OF_KEYS - 1].BackgroundColor == COLOR_FREE || btnKeys[0].BackgroundColor == COLOR_FREE))
                 {
-                    _addent1 = -1; _addent2 = -1;
+                    _addend1 = -1; _addend2 = -1;
                 }
-                _gamePlay.Addent1 = _addent1; _gamePlay.Addent2 = _addent2;
+                _gamePlay.addend1 = _addend1; _gamePlay.addend2 = _addend2;
             }
         }
 
@@ -146,15 +146,15 @@ namespace GestureSample.Maui.Models
             base.PianoInit();
         }
 
-        protected override void setAddentsByPattern()
+        protected override void setAddendsByPattern()
         {
-            _addent1 = 0; _addent2 = 0;
+            _addend1 = 0; _addend2 = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
                 if (btnKeys[i].BackgroundColor ==COLOR_PRESSED)
-                    _addent1++;
+                    _addend1++;
                 else if (btnKeys[i].BackgroundColor == SECOND_COLOR) 
-                    _addent2++;
+                    _addend2++;
             }
         }
 
@@ -209,8 +209,8 @@ namespace GestureSample.Maui.Models
                 sender.BackgroundColor = COLOR_FREE;
 
 
-            /* setAddentsByPattern();
-             if ((_secondNumChoosing && _addent2==0) || _addent1==0)
+            /* setAddendsByPattern();
+             if ((_secondNumChoosing && _addend2==0) || _addend1==0)
                  _seconds_pressed = -1;
              else
                  _seconds_pressed = 0;*/

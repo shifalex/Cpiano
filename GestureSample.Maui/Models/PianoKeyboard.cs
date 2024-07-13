@@ -12,10 +12,12 @@ namespace GestureSample.Maui.Models
 {
     internal class PianoKeyboard: PianoKeyboardReadOnly
     {
+        
+
         protected override int heading_height { get; } = 55;
 
-        protected int _addent1 = 0;
-        protected int _addent2 = 0;
+        protected int _addend1 = 0;
+        protected int _addend2 = 0;
 
         protected readonly PPWGamePlay _gamePlay;
         
@@ -30,9 +32,9 @@ namespace GestureSample.Maui.Models
         //TODO: add constructor for 20 keys and for keyboard questions
         //public BitArray Keys;
 
-        public int Addent1 { get => _addent1; }
-        public int Addent2 { get => _addent2; }
-        public int Sum { get => _addent1+_addent2; }
+        public int Addend1 { get => _addend1; }
+        public int Addend2 { get => _addend2; }
+        public int Sum { get => _addend1+_addend2; }
 
         //private readonly Data.RealmService _realmService;
 
@@ -43,8 +45,8 @@ namespace GestureSample.Maui.Models
                 UserId = 1,
                 //TimeStamp = DateTime.Now,
                 TypeName = _gamePlay.GameType.ToString(),
-                Addent1 = this.Addent1,
-                Addent2 = this.Addent2,
+                Addend1 = this.Addend1,
+                Addend2 = this.Addend2,
                 Sum = this.Sum, //TODO:make more elegant
                                 /*
                 B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
@@ -63,9 +65,11 @@ namespace GestureSample.Maui.Models
             //await _realmService.AddStateAsync(s);
         }
 
-        public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity=0, int rows=1, int keysInRow=10, bool imposeEdges =false, bool fromNumToNum = false, bool isDummies = false) : base(rows, keysInRow) {
+        public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
+            KeyboardConfig pianoConfig) : base(pianoConfig.Rows, pianoConfig.KeysInRow) {
 
-            _patterns = keysInRow > 10 || imposeEdges; _imposeEdges = imposeEdges; _fromNumToNum = fromNumToNum;
+            _patterns = pianoConfig.KeysInRow > 10 || pianoConfig.ImposeEdges; _imposeEdges = pianoConfig.ImposeEdges; _fromNumToNum = pianoConfig.FromNumToNum;
+            int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
             colors = new Color[NUMBER_OF_KEYS];
@@ -116,8 +120,8 @@ namespace GestureSample.Maui.Models
                         BindingContext = this
                     };
                 }
-                a_array[0].IsVisible = textBoxesQuantity >= 2; a_array[0].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addent1)); 
-                a_array[1].IsVisible = textBoxesQuantity >= 2; a_array[1].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addent2));
+                a_array[0].IsVisible = textBoxesQuantity >= 2; a_array[0].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend1)); 
+                a_array[1].IsVisible = textBoxesQuantity >= 2; a_array[1].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend2));
                 a_array[2].IsVisible = textBoxesQuantity == 1 || textBoxesQuantity == 3;
                 a_array[2].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Sum));
 
@@ -136,7 +140,7 @@ namespace GestureSample.Maui.Models
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
                 g.Add(hzl,1); g.Add(btnInit,0);
-                this.SetColumnSpan(g, keysInRow + 1);
+                this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
                 g.HorizontalOptions = LayoutOptions.Fill;
                 this.Add(g, 0);
             }
@@ -146,7 +150,7 @@ namespace GestureSample.Maui.Models
                 {
                     btnInit
                 };
-                this.SetColumnSpan(hzl, keysInRow + 1);
+                this.SetColumnSpan(hzl, pianoConfig.KeysInRow + 1);
                 this.Add(hzl, 0);
             }
         }
@@ -166,35 +170,35 @@ namespace GestureSample.Maui.Models
             {
                 btnKeys[i].BackgroundColor = COLOR_FREE;
             }
-            _addent1 = 0;
-            _addent2=0;
-            OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
+            _addend1 = 0;
+            _addend2=0;
+            OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
         }
 
         //Spatial
-        protected virtual void setAddentsByPattern()
+        protected virtual void setAddendsByPattern()
         {
-            _addent1 = 0; _addent2 = 0; bool isNowYellowStreak = false; int yellowStreaksTillNowIncluding = 0;
+            _addend1 = 0; _addend2 = 0; bool isNowYellowStreak = false; int yellowStreaksTillNowIncluding = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
                 if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
                 {
                     if (!isNowYellowStreak) { isNowYellowStreak = true; yellowStreaksTillNowIncluding++; }
-                    if (yellowStreaksTillNowIncluding == 1) _addent1++;
-                    else if (yellowStreaksTillNowIncluding == 2) _addent2++;
-                    else if (yellowStreaksTillNowIncluding > 2) { _addent1 = 0; _addent2 = -1; break; }
+                    if (yellowStreaksTillNowIncluding == 1) _addend1++;
+                    else if (yellowStreaksTillNowIncluding == 2) _addend2++;
+                    else if (yellowStreaksTillNowIncluding > 2) { _addend1 = 0; _addend2 = -1; break; }
                 }
                 else
                     isNowYellowStreak = false;
             }
-            if (yellowStreaksTillNowIncluding == 1 /*one addent is 0 - which one? if most keys in the left - addent2, if most keys in the right - addent1*/)
+            if (yellowStreaksTillNowIncluding == 1 /*one addend is 0 - which one? if most keys in the left - addend2, if most keys in the right - addend1*/)
             {
                 for (int i = 0; i < NUMBER_OF_KEYS; i++)
                     if (btnKeys[i].BackgroundColor == COLOR_PRESSED && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_FREE)
                         break;
                     else if (btnKeys[i].BackgroundColor == COLOR_FREE && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_PRESSED)
                     {
-                        _addent2 = _addent1; _addent1 = 0;
+                        _addend2 = _addend1; _addend1 = 0;
                         break;
                     }
             }
@@ -211,7 +215,7 @@ namespace GestureSample.Maui.Models
                     else if (!begin && btnKeys[i].BackgroundColor != COLOR_FREE) end = false;
                     else if (!end && btnKeys[i].BackgroundColor == COLOR_FREE)
                     {
-                        _addent1 = -1; _addent2 = -1; return;
+                        _addend1 = -1; _addend2 = -1; return;
                     }
             }
         }
@@ -223,13 +227,13 @@ namespace GestureSample.Maui.Models
         protected virtual bool InnerKeyUp(MR.Gestures.Button sender)
         {
             if (Convert.ToInt32(sender.CommandParameter) > 5)
-                _addent2 = (sender.BackgroundColor != COLOR_PRESSED) ? _addent2 - 1 : _addent2 + 1;
+                _addend2 = (sender.BackgroundColor != COLOR_PRESSED) ? _addend2 - 1 : _addend2 + 1;
             else
-                _addent1 = (sender.BackgroundColor != COLOR_PRESSED) ? _addent1 - 1 : _addent1 + 1;
+                _addend1 = (sender.BackgroundColor != COLOR_PRESSED) ? _addend1 - 1 : _addend1 + 1;
 
 
-            if (_addent1 < 0) _addent1 = 0;
-            if (_addent2 < 0) _addent2 = 0;
+            if (_addend1 < 0) _addend1 = 0;
+            if (_addend2 < 0) _addend2 = 0;
 
 
             return true;
@@ -248,10 +252,10 @@ namespace GestureSample.Maui.Models
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
 
             if ((isDown?InnerKeyDown(sender):InnerKeyUp(sender)) && _patterns)
-                setAddentsByPattern();
+                setAddendsByPattern();
 
-            OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(Sum));
-            _gamePlay.Addent1 = Addent1; _gamePlay.Addent2 = Addent2;
+            OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
+            _gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
             SaveState();
         }
     }

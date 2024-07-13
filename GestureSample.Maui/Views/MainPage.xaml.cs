@@ -7,7 +7,7 @@ namespace GestureSample.Views
     public partial class MainPage
 	{
 		private PageConfig[] AllPages = new PageConfig[]
-		{
+        {
 			// main page
 			//new PageConfig(null, "ContentPage", () => new ContentPageXaml { BindingContext = new ContentPageXaml() }),
 			//new PageConfig(null, "Layouts", null),
@@ -22,13 +22,13 @@ namespace GestureSample.Views
 
 			// Layouts
 			new PageConfig("Layouts", "AbsoluteLayout", () => new AbsoluteLayoutXaml { BindingContext = new ViewModels.MarksViewModel() }),
-			new PageConfig("Layouts", "ContentView", () => new ContentViewMain { BindingContext = new ViewModels.TransformViewModel() }),
-			new PageConfig("Layouts", "FlexLayout", () => new FlexLayoutXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Layouts", "Frame", () => new FrameXaml { BindingContext = new ViewModels.TransformViewModel() }),
-			new PageConfig("Layouts", "Grid", () => new GridXaml { BindingContext = new ViewModels.TicTacToeViewModel() }),
-			new PageConfig("Layouts", "ScrollView", () => new ScrollViewXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Layouts", "StackLayout", () => new StackLayoutXaml { BindingContext = new ViewModels.TransformViewModel() }),
-			new PageConfig("Layouts", "TabbedPage", () => new TabbedPageXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Layouts", "ContentView", () => new ContentViewMain { BindingContext = new ViewModels.TransformViewModel() }),
+            new PageConfig("Layouts", "FlexLayout", () => new FlexLayoutXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Layouts", "Frame", () => new FrameXaml { BindingContext = new ViewModels.TransformViewModel() }),
+            new PageConfig("Layouts", "Grid", () => new GridXaml { BindingContext = new ViewModels.TicTacToeViewModel() }),
+            new PageConfig("Layouts", "ScrollView", () => new ScrollViewXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Layouts", "StackLayout", () => new StackLayoutXaml { BindingContext = new ViewModels.TransformViewModel() }),
+            new PageConfig("Layouts", "TabbedPage", () => new TabbedPageXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
 
 			// Views
 			//new PageConfig("Views", "ActivityIndicator", () => new ActivityIndicatorXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
@@ -37,7 +37,7 @@ namespace GestureSample.Views
             new PageConfig("Keyboard", "Sync one number", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,true,false) }),
             new PageConfig("Keyboard", "Sync one number Blind", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,true,false,false) }),
             new PageConfig("Keyboard", "Async decomposition not required new combinations", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,false,false, false) }),
-			new PageConfig("Keyboard", "Sync decomposition not required new combinations", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,false,false) }),
+            new PageConfig("Keyboard", "Sync decomposition not required new combinations", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,false,false) }),
             new PageConfig("Keyboard", "Sync decomposition not required new combinations Blind", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,false,false, false) }),
             new PageConfig("Keyboard", "Async decomposition required new combinations", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,false,false,true) }),
             new PageConfig("Keyboard", "Sync decomposition required new combinations", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true,true,false,true) }),
@@ -73,47 +73,314 @@ namespace GestureSample.Views
             //new PageConfig("Views", "Piano Sync decomposition one by one", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true) }),
             //new PageConfig("Views", "Piano Sync decomposition one by one 2 layers", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true) }),
             new PageConfig("Number", "Multiplication", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(false,true,true, true) }),
-			new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(GameType.GuessOne,false,true,false,true)) ,
-            new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(GameType.GuessOne,false,true,false,true,false,true)) ,
-            //new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(GameType.GuessOne,false,true,false,true,true)) ,
-            //new PageConfig("new Keyboard", "Async one number Impose edges From Num To Num", () => new SimpleViewCellsPage(GameType.GuessOne,false,true,false,true,true,true)) ,
+            new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            TextBoxesQuantity = 1
+        }
+    })),
 
-            new PageConfig("new Keyboard", "Sync one number", () => new SimpleViewCellsPage(GameType.GuessOne,false,true, true,true)),
-            new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(GameType.GuessOne,false,true, true)),
-            new PageConfig("new Keyboard", "Sync one number Blind Impose edges", () => new SimpleViewCellsPage(GameType.GuessOne,false,true, true, false, true)),
+    new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            TextBoxesQuantity = 1,
+            FromNumToNum = true
+        }
+    })),
 
-            //new PageConfig("new Keyboard", "Async decomposition not required new combinations  Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,false,true,false,true)),
-            //new PageConfig("new Keyboard", "Sync decomposition not required new combinations  Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,false,true,true,true)),
-            //new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind  Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,false,true,true)),
-            //new PageConfig("new Keyboard", "Async decomposition required new combinations  Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,false,true)),
-            new PageConfig("new Keyboard", "Sync decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,true,true)),
-            new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind  Right hand Left hand", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,true)),
-            //new PageConfig("new Keyboard", "Async decomposition not required new combinations Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,false,true,false,true)),
-            //new PageConfig("new Keyboard", "Sync decomposition not required new combinations Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,false,true,true,true)),
-            new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,false,true,true)),
-            //new PageConfig("new Keyboard", "Async decomposition required new combinations Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true,true,false,true)),
-            //new PageConfig("new Keyboard", "Sync decomposition required new combinations Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true,true,true,true)),
-            new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true,true,true)),
-            new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true,true,true,false, true)),
+    // Uncomment and update as needed
+    // new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.GuessOne,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         TextBoxesQuantity = 1,
+    //         ImposeEdges = true
+    //     }
+    // })),
 
-            new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,true,false, false, false, true)),
-            new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,true,false, false, false, true,true)),
-            new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero Impose Edges", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true,true,true,false, true, false, true, true)),
+    // new PageConfig("new Keyboard", "Async one number Impose edges From Num To Num", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.GuessOne,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         TextBoxesQuantity = 1,
+    //         ImposeEdges = true,
+    //         FromNumToNum = true
+    //     }
+    // })),
 
+    new PageConfig("new Keyboard", "Sync one number", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            TextBoxesQuantity = 1
+        }
+    })),
 
-            new PageConfig("new Number", "decomposition not required new combinations(up to 5)", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame)),
-            new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame,true)),
-            new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(GameType.DecompositionGameFull)),
-            new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(GameType.DecompositionGameFull,true)),
-            new PageConfig("new Number", "decomposition game Through 10 With kebyboard Only Yellow", () => new SimpleViewCellsPage(GameType.DecompositionGameWithKeyboardHelp, false,true,false)),
-            new PageConfig("new Number", "decomposition game Through 10 With kebyboard HalfSync", () => new SimpleViewCellsPage(GameType.DecompositionGameWithKeyboardHelp, false,true,false,false,false,false,true,true, 3, true)),
+    new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
 
-            new PageConfig("new Number", "decomposition game Full With kebyboard", () => new SimpleViewCellsPage(GameType.DecompositionGameFullWithKeyboardHelp, false,true,false)),
-            new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(GameType.DecompositionGame)),
-			
-            //new PageConfig("Views", "Piano Sync decomposition one by one", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true) })),
-            //new PageConfig("Views", "Piano Sync decomposition one by one 2 layers", () => new SimpleViewCellsPage(true,false,true,false)),
-            new PageConfig("new Number", "Multiplication", () => new SimpleViewCellsPage(GameType.Multiplication)),
+    new PageConfig("new Keyboard", "Sync one number Blind Impose edges", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true
+        }
+    })),
+
+    // Uncomment and update as needed
+    // new PageConfig("new Keyboard", "Async decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.SimpleDecompositionGame,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.SimpleDecompositionGame,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //        SyncType = SyncType.Sync,
+    //        TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.SimpleDecompositionGame,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync
+    //     }
+    // })),
+
+    // new PageConfig("new Keyboard", "Async decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.SimpleDecompositionGame,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //        SyncType = SyncType.Sync,
+    //        TextBoxesQuantity = 2
+   //     }
+    // })),
+
+    new PageConfig("new Keyboard", "Sync decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            TextBoxesQuantity = 2
+        }
+    })),
+
+    new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+    // Uncomment and update as needed
+    // new PageConfig("new Keyboard", "Async decomposition not required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.DecompositionGameFull,
+    //     IsHistory = false,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync,
+    //         TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.DecompositionGameFull,
+    //     IsHistory = false,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync,
+    //         TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFull,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+    // Uncomment and update as needed
+    // new PageConfig("new Keyboard", "Async decomposition required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.DecompositionGameFull,
+    //     IsHistory = true,
+    //     addendsNum = 2,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync,
+    //         TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    // new PageConfig("new Keyboard", "Sync decomposition required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     GameType = GameType.DecompositionGameFull,
+    //     IsHistory = true,
+    //     addendsNum = 2,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync,
+    //         TextBoxesQuantity = 2
+    //     }
+    // })),
+
+    new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFull,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+    new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFull,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true
+        }
+    })),
+
+    /*new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            WithoutZero = false
+        }
+    })),*/
+
+    new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {   
+            SyncType = SyncType.HalfSync
+            
+        }
+    })),
+
+    new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero Impose Edges", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            ImposeEdges = true
+        }
+    })),
+
+    new PageConfig("new Number", "decomposition not required new combinations(up to 5)", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame
+    })),
+
+    new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.SimpleDecompositionGame,
+        IsHistory = true
+    })),
+
+    new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFull
+    })),
+
+    new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFull,
+        IsHistory = true
+    })),
+
+    new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameWithKeyboardHelp,
+        KeyboardConfig = new KeyboardConfig()
+    })),
+
+    new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameWithKeyboardHelp,
+        
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            AddendsNum = 3,
+            AllowRemoval = true
+        }
+    })),
+
+    new PageConfig("new Number", "decomposition game Full With keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGameFullWithKeyboardHelp,
+        KeyboardConfig = new KeyboardConfig()
+    })),
+
+    new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.DecompositionGame
+    })),
+
+    // Uncomment and update as needed
+    // new PageConfig("Views", "Piano Sync decomposition one by one", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(true) }),
+    // new PageConfig("Views", "Piano Sync decomposition one by one 2 layers", () => new SimpleViewCellsPage(new GameConfig
+    // {
+    //     IsHistory = true,
+    //     addendsNum = 2,
+    //     KeyboardConfig = new KeyboardConfig
+    //     {
+    //         SyncType = SyncType.Sync
+    //     }
+    // })),
+
+    new PageConfig("new Number", "Multiplication", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.Multiplication
+    })),
 
 			// Cells
 			new PageConfig("Cells", "TextCell", () => new TextCellMain { BindingContext = new ViewModels.ListOfStringsViewModel() }),
@@ -124,7 +391,7 @@ namespace GestureSample.Views
 			new PageConfig("Tests", "Clear in Handler", () => new DisposeInHandlerPage()),
 			new PageConfig("Tests", "Horizontal ScrollView", () => new HorizontalScrollViewXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
 			new PageConfig("Tests", "BigButton", () => new BigButtonPage()),
-			new PageConfig("Tests", "ViewCells", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame)),
+			//new PageConfig("Tests", "ViewCells", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame)),
 			new PageConfig("Tests", "Custom ListView", () => new CustomListViewPage { BindingContext = new ViewModels.ListOfStringsViewModel() }),
 			new PageConfig("Tests", "ScrollView with Images", () => new ScrollViewWithImages { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
 			new PageConfig("Tests", "InputTransparent", () => new InputTransparent { BindingContext = new ViewModels.TextOnlyViewModel() }),

@@ -23,50 +23,50 @@ namespace GestureSample.ViewModels
         //private readonly bool ASSERT = false;
         private readonly int NAN = 0;
 
-        int _minAddent = 0;
-        int _maxAddent = 5;
+        int _minaddend = 0;
+        int _maxaddend = 5;
         int _minSum = 1;
         int _maxSum = 10;
 
 
-        private int _addent1;
+        private int _addend1;
 
-        private int _addent2;
+        private int _addend2;
 
         private int _sum = 5;
 
-        public string SAddent1
+        public string Saddend1
         {
             get
             {
-                if (_onlyOneAddent) return (_addent1 + _addent2).ToString();
-                if (_addent1 == NAN && (!_isPiano)) return "";
-                if (_addent1 == NAN) return "0";
-                return _addent1.ToString();
+                if (_onlyOneaddend) return (_addend1 + _addend2).ToString();
+                if (_addend1 == NAN && (!_isPiano)) return "";
+                if (_addend1 == NAN) return "0";
+                return _addend1.ToString();
             }
             set
             {
-                if (_onlyOneAddent) return;
-                int _addent22;
-                try { _addent22 = Int32.Parse(value); } catch { _addent22 = NAN; }
-                SetProperty(ref _addent1, _addent22);
-                //OnPropertyChanged(nameof(Addent1)); OnPropertyChanged(nameof(TrueStatement));
+                if (_onlyOneaddend) return;
+                int _addend22;
+                try { _addend22 = Int32.Parse(value); } catch { _addend22 = NAN; }
+                SetProperty(ref _addend1, _addend22);
+                //OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(TrueStatement));
             }
         }
-        public string SAddent2
+        public string Saddend2
         {
             get
             {
-                if (_addent2 == NAN && (!_isPiano)) return "";
-                if (_addent2 == NAN) return "0";
-                return _addent2.ToString();
+                if (_addend2 == NAN && (!_isPiano)) return "";
+                if (_addend2 == NAN) return "0";
+                return _addend2.ToString();
             }
             set
             {
-                int _addent22;
-                try { _addent22 = Int32.Parse(value); } catch { _addent22 = NAN; }
-                SetProperty(ref _addent2, _addent22);
-                //OnPropertyChanged(nameof(Addent2)); OnPropertyChanged(nameof(TrueStatement));
+                int _addend22;
+                try { _addend22 = Int32.Parse(value); } catch { _addend22 = NAN; }
+                SetProperty(ref _addend2, _addend22);
+                //OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(TrueStatement));
             }
         }
         public string SSum
@@ -94,18 +94,18 @@ namespace GestureSample.ViewModels
 
         }
 
-        public int Addent1
+        public int addend1
         {
-            get { return _addent1; }
-            set { SetProperty(ref _addent1, value); }
+            get { return _addend1; }
+            set { SetProperty(ref _addend1, value); }
         }
 
 
 
-        public int Addent2
+        public int addend2
         {
-            get { return _addent2; }
-            set { SetProperty(ref _addent2, value); }
+            get { return _addend2; }
+            set { SetProperty(ref _addend2, value); }
         }
 
         private Color _bgColor = Color.FromArgb("FFFFFF");
@@ -139,8 +139,8 @@ namespace GestureSample.ViewModels
         public bool IsNotSync { get { return !_isSync; } }
         public bool IsNotBlind { get { return _isNotBlind; } }
         //public bool ShowSecondsToEnd { get { return (_seconds_pressed > 0 && _seconds_pressed < 3); } }
-        readonly private bool _onlyOneAddent;
-        public bool HasTwoAddents { get { return (!_onlyOneAddent && _isNotBlind); } }
+        readonly private bool _onlyOneaddend;
+        public bool HasTwoaddends { get { return (!_onlyOneaddend && _isNotBlind); } }
 
 
         public ButtonViewModel2()
@@ -151,13 +151,13 @@ namespace GestureSample.ViewModels
 
             this._isPiano = true;
             NAN = -1111;
-            _addent1 = NAN;
-            _addent2 = NAN;
-            NotifyPropertyChanged(nameof(SAddent1));
-            NotifyPropertyChanged(nameof(SAddent2));
+            _addend1 = NAN;
+            _addend2 = NAN;
+            NotifyPropertyChanged(nameof(Saddend1));
+            NotifyPropertyChanged(nameof(Saddend2));
             this._isSync = false;
-            this._onlyOneAddent = false;
-            //this._requireNewAddents = false;
+            this._onlyOneaddend = false;
+            //this._requireNewaddends = false;
             this._isNotBlind = true;
 
             _keys = new MR.Gestures.Button[10];
@@ -197,10 +197,10 @@ namespace GestureSample.ViewModels
             {
                 ((VisualElement)e.Sender).BackgroundColor = Colors.Yellow;
                 if (Convert.ToInt32(((Button)e.Sender).CommandParameter) > 4)
-                    _addent2++;
+                    _addend2++;
                 else
-                    _addent1++;
-                //if(_addent1==0 && _addent2==0) { _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; return; }
+                    _addend1++;
+                //if(_addend1==0 && _addend2==0) { _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; return; }
                 /*_waiting_check = true;
                 _seconds_pressed = 0;
                 if (!_isTimerWorking)
@@ -220,7 +220,7 @@ namespace GestureSample.ViewModels
 
             }
 
-            NotifyPropertyChanged(nameof(SAddent1)); NotifyPropertyChanged(nameof(SAddent2)); NotifyPropertyChanged(nameof(SecondsToEnd));
+            NotifyPropertyChanged(nameof(Saddend1)); NotifyPropertyChanged(nameof(Saddend2)); NotifyPropertyChanged(nameof(SecondsToEnd));
         }
 
         protected override void OnUp(MR.Gestures.DownUpEventArgs e)
@@ -234,10 +234,10 @@ namespace GestureSample.ViewModels
                 _seconds_pressed = 0; NotifyPropertyChanged(nameof(SecondsToEnd));
                 ((VisualElement)e.Sender).BackgroundColor = Color.FromArgb("FFFFFF");
                 if (Convert.ToInt32(((Button)e.Sender).CommandParameter) > 4)
-                    _addent2--;
+                    _addend2--;
                 else
-                    _addent1--;
-                //if (_addent1 == 0 && _addent2 == 0) { _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; timer.Stop(); NotifyPropertyChanged(nameof(TrueStatement)); }
+                    _addend1--;
+                //if (_addend1 == 0 && _addend2 == 0) { _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; timer.Stop(); NotifyPropertyChanged(nameof(TrueStatement)); }
 
             }
             else
@@ -245,19 +245,19 @@ namespace GestureSample.ViewModels
 
                 if (Convert.ToInt32(((Button)e.Sender).CommandParameter) > 4)
                     if (((VisualElement)e.Sender).BackgroundColor != Colors.Yellow)
-                        _addent2--;
+                        _addend2--;
                     else
-                        _addent2++;
+                        _addend2++;
                 else
                     if (((VisualElement)e.Sender).BackgroundColor != Colors.Yellow)
-                    _addent1--;
+                    _addend1--;
                 else
-                    _addent1++;
+                    _addend1++;
             }
-            if (_addent1 < 0) _addent1 = 0;
-            if (_addent2 < 0) _addent2 = 0;
-            //AddText2("{0} {1}", _addent1, _addent2);
-            NotifyPropertyChanged(nameof(SAddent1)); NotifyPropertyChanged(nameof(SAddent2));
+            if (_addend1 < 0) _addend1 = 0;
+            if (_addend2 < 0) _addend2 = 0;
+            //AddText2("{0} {1}", _addend1, _addend2);
+            NotifyPropertyChanged(nameof(Saddend1)); NotifyPropertyChanged(nameof(Saddend2));
         }
 
 
@@ -268,22 +268,22 @@ namespace GestureSample.ViewModels
             //    SentrySdk.CaptureMessage("Hello Sentry");
 
             //TODO: validation also in the form with Binding
-            if (_minAddent < 0) _minAddent = 0;
-            if (_maxAddent < _minAddent + 3) _maxAddent = _minAddent + 2;
-            if (_maxSum > 2 * _maxAddent || _maxSum <= 2 * _minAddent) _maxSum = 2 * _maxAddent;
+            if (_minaddend < 0) _minaddend = 0;
+            if (_maxaddend < _minaddend + 3) _maxaddend = _minaddend + 2;
+            if (_maxSum > 2 * _maxaddend || _maxSum <= 2 * _minaddend) _maxSum = 2 * _maxaddend;
 
 
             int[] factors = new int[3];
             Random r = new();
             factors[2] = r.Next(_minSum, _maxSum + 1);
             //if (_fInsisitentOnOne) factors[2] = _lastNum;
-            factors[0] = r.Next(_minAddent, Math.Min(_maxAddent, factors[2]) + 1);
+            factors[0] = r.Next(_minaddend, Math.Min(_maxaddend, factors[2]) + 1);
             factors[1] = factors[2] - factors[0];
 
             if (_mult)
             {
-                factors[0] = r.Next(_minAddent, Math.Min(_maxAddent, factors[2]) + 1);
-                factors[1] = r.Next(_minAddent, Math.Min(_maxAddent, factors[2]) + 1);
+                factors[0] = r.Next(_minaddend, Math.Min(_maxaddend, factors[2]) + 1);
+                factors[1] = r.Next(_minaddend, Math.Min(_maxaddend, factors[2]) + 1);
                 factors[2] = factors[0] * factors[1];
 
             }
@@ -296,15 +296,15 @@ namespace GestureSample.ViewModels
             /*if (_decompositionLevel > 1)
             {
 
-                if (_sum != _addent1 + _addent2) StreakWrong++;//you moved next without solving
+                if (_sum != _addend1 + _addend2) StreakWrong++;//you moved next without solving
                 int minSum = (_decompositionLevel >= 3) ? 20 : 10;
-                factors[2] = r.Next(Math.Max(_minAddent, minSum), _maxSum);
-                while (factors[2] % 10 == 9) factors[2] = r.Next(Math.Max(_minAddent, minSum), _maxSum);
-                if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddent, Math.Min(_maxAddent + 1, factors[2]));
+                factors[2] = r.Next(Math.Max(_minaddend, minSum), _maxSum);
+                while (factors[2] % 10 == 9) factors[2] = r.Next(Math.Max(_minaddend, minSum), _maxSum);
+                if (factors[2] % 10 == 0) factors[0] = r.Next(_minaddend, Math.Min(_maxaddend + 1, factors[2]));
                 else
                 {
 
-                    int tens = r.Next(Math.Max(_minAddent / 10, 0), factors[2] / 10 - 1);
+                    int tens = r.Next(Math.Max(_minaddend / 10, 0), factors[2] / 10 - 1);
                     int ones = r.Next(factors[2] % 10 + 1, 10);
                     factors[0] = tens * 10 + ones;
                 }
@@ -325,8 +325,8 @@ namespace GestureSample.ViewModels
 
 
 
-            //SAddent1 = factors[0].ToString();
-            //SAddent2 = factors[1].ToString();
+            //Saddend1 = factors[0].ToString();
+            //Saddend2 = factors[1].ToString();
             SSum = factors[2].ToString(); //NotifyPropertyChanged(nameof(History));
 
             NotifyPropertyChanged(nameof(TrueStatement));
@@ -336,17 +336,17 @@ namespace GestureSample.ViewModels
             //NotifyPropertyChanged(SSum);
             if (_isPiano)
             {
-                _addent1 = NAN;
-                _addent2 = NAN;
+                _addend1 = NAN;
+                _addend2 = NAN;
             }
             else
             {
-                _addent1 = factors[0];
-                _addent2 = factors[1];
+                _addend1 = factors[0];
+                _addend2 = factors[1];
                 _sum = factors[2];
             }
-            NotifyPropertyChanged(nameof(SAddent1));
-            NotifyPropertyChanged(nameof(SAddent2));
+            NotifyPropertyChanged(nameof(Saddend1));
+            NotifyPropertyChanged(nameof(Saddend2));
             NotifyPropertyChanged(nameof(SSum));
             //Color = 
             //Color = Color.FromArgb("FFFFFF");

@@ -1,0 +1,37 @@
+{
+  "Configurations": [
+    {
+      "GameTitle": "Simple Math Game 1",
+      "addendsNum": 2,
+      "IsHistory": false,
+      "isKeyboard": false,
+      "KeyboardResponseProperties": {
+        "isSync": "NotSync",
+        "useKeyboardLabels": false,
+        "imposeEdges": false,
+        "fromNumToNum": false,
+        "halfSync": false,
+        "withoutZero": false,
+        "allowRemoval": false
+      }
+
+
+    },
+    {
+      "GameTitle": "Simple Math Game 2",
+      "Operations": [ "Multiplication", "Division" ],
+      "DefaultMinNumber": 1,
+      "DefaultMaxNumber": 20,
+      "AllowMissingAddend": true,
+      "MaxAddends": 2
+    },
+    {
+      "GameTitle": "Simple Math Game 3",
+      "Operations": [ "Addition", "Subtraction", "Multiplication", "Division" ],
+      "DefaultMinNumber": -10,
+      "DefaultMaxNumber": 10,
+      "AllowMissingAddend": true,
+      "MaxAddends": 3
+    }
+  ]
+}

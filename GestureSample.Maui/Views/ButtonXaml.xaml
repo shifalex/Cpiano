@@ -22,15 +22,15 @@
             HorizontalOptions="Center"
                                IsVisible="{Binding IsReadOnly}"
             >
-            <Entry Keyboard="Numeric"  Text="{Binding SAddent1}" IsReadOnly="True" IsVisible="{Binding IsNotBlind}" IsEnabled="{Binding Addent1Enabled}"
+            <Entry Keyboard="Numeric"  Text="{Binding Saddend1}" IsReadOnly="True" IsVisible="{Binding IsNotBlind}" IsEnabled="{Binding addend1Enabled}"
                     
                     FontSize="18"
                     BackgroundColor="White"
                    HorizontalTextAlignment="Center"
                     WidthRequest="50" >
             </Entry>
-            <Label WidthRequest="50" IsVisible="{Binding HasTwoAddents}"/>
-            <Entry Keyboard="Numeric"    Text="{Binding SAddent2}" IsReadOnly="true" IsVisible="{Binding HasTwoAddents}" IsEnabled="{Binding Addent2Enabled}"
+            <Label WidthRequest="50" IsVisible="{Binding HasTwoaddends}"/>
+            <Entry Keyboard="Numeric"    Text="{Binding Saddend2}" IsReadOnly="true" IsVisible="{Binding HasTwoaddends}" IsEnabled="{Binding addend2Enabled}"
                 
 
                    HorizontalTextAlignment="Center"
@@ -75,15 +75,15 @@
             HorizontalOptions="Center"  IsVisible="{Binding IsNotReadOnly}"
             >
 
-                    <Entry Keyboard="Numeric"  Text="{Binding SAddent1}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding IsNotBlind}" IsEnabled="{Binding Addent1Enabled}"
-                    x:Name="txtAddent1"
+                    <Entry Keyboard="Numeric"  Text="{Binding Saddend1}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding IsNotBlind}" IsEnabled="{Binding addend1Enabled}"
+                    x:Name="txtaddend1"
                     FontSize="18"
                     BackgroundColor="White"
                     WidthRequest="120" >
                     </Entry>
 
-                    <Entry Keyboard="Numeric"    Text="{Binding SAddent2}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding HasTwoAddents}" IsEnabled="{Binding Addent2Enabled}"
-                 x:Name="txtAddent2"
+                    <Entry Keyboard="Numeric"    Text="{Binding Saddend2}" IsReadOnly="{Binding IsReadOnly}" IsVisible="{Binding HasTwoaddends}" IsEnabled="{Binding addend2Enabled}"
+                 x:Name="txtaddend2"
 
                        FontSize="18"
                     BackgroundColor="White"
