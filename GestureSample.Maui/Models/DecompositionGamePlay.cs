@@ -72,14 +72,14 @@ namespace GestureSample.Maui.Models
 
             int[] factors = new int[3];
             Random r = new();
-            if (Sum != Addent1 + Addent2) 
+            if (Sum != addend1 + addend2) 
                 _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
-            factors[2] = r.Next(Math.Max(_minAddent, _minSum), _maxSum);
-            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minAddent, _minSum), _maxSum);
-            if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddent, Math.Min(_maxAddent + 1, factors[2]));
+            factors[2] = r.Next(Math.Max(_minaddend, _minSum), _maxSum);
+            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minaddend, _minSum), _maxSum);
+            if (factors[2] % 10 == 0) factors[0] = r.Next(_minaddend, Math.Min(_maxaddend + 1, factors[2]));
             else
             {
-               int tens = r.Next(Math.Max(_minAddent / 10, 0), factors[2] / 10 - 1);
+               int tens = r.Next(Math.Max(_minaddend / 10, 0), factors[2] / 10 - 1);
                int ones = r.Next(factors[2] % 10 + 1, 10);
                factors[0] = tens * 10 + ones;
             }
@@ -100,13 +100,13 @@ namespace GestureSample.Maui.Models
                     _level = 2;
                     break;
                 case 1:
-                    _minSum = 10; _maxSum = 10; _minAddent = 0;_maxAddent = 10;
+                    _minSum = 10; _maxSum = 10; _minaddend = 0;_maxaddend = 10;
                     break;
                 case 2:
-                    _minSum = 0; _maxSum = 20; _minAddent = 0; _maxAddent = 20;
+                    _minSum = 0; _maxSum = 20; _minaddend = 0; _maxaddend = 20;
                     break;
                 case 3:
-                    _minSum = 0; _maxSum = 100; _minAddent = 0; _maxAddent = 100;
+                    _minSum = 0; _maxSum = 100; _minaddend = 0; _maxaddend = 100;
                     break;
                 case 4:
                     _status= Statement.Win;

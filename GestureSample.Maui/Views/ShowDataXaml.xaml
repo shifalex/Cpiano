@@ -14,9 +14,9 @@
                             <Label Grid.Column="1" Text="{Binding UserId}"/>
                             <Label Grid.Column="2" Text="{Binding TypeName}"/>
                             <Label Grid.Column="3" Text="{Binding Sum}"/>
-                            <Label Grid.Column="4" Text="{Binding Addent1}"/>
+                            <Label Grid.Column="4" Text="{Binding addend1}"/>
                             
-                            <Label Grid.Column="5" Text="{Binding Addent2}"/>
+                            <Label Grid.Column="5" Text="{Binding addend2}"/>
 
                             <Label Grid.Column="6" Text="{Binding B1}"/>
                             <Label Grid.Column="7" Text="{Binding B2}"/>

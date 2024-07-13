@@ -1,5 +1,6 @@
 ﻿namespace GestureSample.Maui
 {
+    
     public enum GameType
     {
         GuessOne,

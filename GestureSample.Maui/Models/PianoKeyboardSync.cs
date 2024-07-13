@@ -13,7 +13,7 @@ namespace GestureSample.Maui.Models
         protected int _seconds_pressed = 0;
         protected virtual int SECONDS_TO_ANSWER { get; } = 3;
 
-        public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, int textBoxesQuantity = 0, int rows = 1, int keysInRow = 10, bool imposeEdges = false, bool fromNumToNum = false) : base(gamePlay, lblTimer, textBoxesQuantity, rows, keysInRow, imposeEdges, fromNumToNum)
+        public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
         {
             TimerInit();
             timer.Start();
@@ -33,8 +33,8 @@ namespace GestureSample.Maui.Models
             timer.Tick += (s, e) => {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    _seconds_pressed = (_addent1 == 0 && _addent2 == 0) ? 0 : (_seconds_pressed + 1);
-                    _lblTimer.Text = (_addent1 == 0 && _addent2 == 0)?Statement.Neutral :SecondsToEnd;
+                    _seconds_pressed = (_addend1 == 0 && _addend2 == 0) ? 0 : (_seconds_pressed + 1);
+                    _lblTimer.Text = (_addend1 == 0 && _addend2 == 0)?Statement.Neutral :SecondsToEnd;
 
                     if (_seconds_pressed >= SECONDS_TO_ANSWER)
                     {
@@ -69,9 +69,9 @@ namespace GestureSample.Maui.Models
             sender.BackgroundColor = COLOR_PRESSED;
 
             if (Convert.ToInt32(sender.CommandParameter) > 5)
-                _addent2++;
+                _addend2++;
             else
-                _addent1++;
+                _addend1++;
 
             return true;
         }
@@ -82,13 +82,13 @@ namespace GestureSample.Maui.Models
             sender.BackgroundColor = COLOR_FREE;
 
             if (Convert.ToInt32(sender.CommandParameter) > 5)
-                _addent2--;
+                _addend2--;
             else
-                _addent1--;
+                _addend1--;
 
             //TODO:make closingButonHandle private function
-            if (_addent1 < 0) _addent1 = 0;
-            if (_addent2 < 0) _addent2 = 0;
+            if (_addend1 < 0) _addend1 = 0;
+            if (_addend2 < 0) _addend2 = 0;
 
             return true;
         }
