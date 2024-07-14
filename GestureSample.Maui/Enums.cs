@@ -5,11 +5,8 @@
     {
         GuessOne,
         CompletionOneInAddition,
-        SimpleDecompositionGame,
-        DecompositionGameFull,
-        DecompositionGameFullWithKeyboardHelp,
+        SimpleDecomposition,
         DecompositionGame,
-        DecompositionGameWithKeyboardHelp,
         Multiplication,
         Logic
     }

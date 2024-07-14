@@ -1,4 +1,4 @@
-﻿using Sentry;
+﻿//using Sentry;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -145,7 +145,7 @@ namespace GestureSample.ViewModels
 
         public ButtonViewModel2()
         {
-            SentrySdk.CaptureMessage("page build started");
+            //SentrySdk.CaptureMessage("page build started");
             CheckCommand = new Command(() => Check());
             NextCommand = new Command(() => GenerateExercise());
 
@@ -163,7 +163,7 @@ namespace GestureSample.ViewModels
             _keys = new MR.Gestures.Button[10];
 
 
-            SentrySdk.CaptureMessage("page build ended");
+            //SentrySdk.CaptureMessage("page build ended");
 
 
         }
@@ -298,13 +298,13 @@ namespace GestureSample.ViewModels
 
                 if (_sum != _addend1 + _addend2) StreakWrong++;//you moved next without solving
                 int minSum = (_decompositionLevel >= 3) ? 20 : 10;
-                factors[2] = r.Next(Math.Max(_minaddend, minSum), _maxSum);
-                while (factors[2] % 10 == 9) factors[2] = r.Next(Math.Max(_minaddend, minSum), _maxSum);
-                if (factors[2] % 10 == 0) factors[0] = r.Next(_minaddend, Math.Min(_maxaddend + 1, factors[2]));
+                factors[2] = r.Next(Math.Max(_minAddend, minSum), _maxSum);
+                while (factors[2] % 10 == 9) factors[2] = r.Next(Math.Max(_minAddend, minSum), _maxSum);
+                if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddend, Math.Min(_maxAddend + 1, factors[2]));
                 else
                 {
 
-                    int tens = r.Next(Math.Max(_minaddend / 10, 0), factors[2] / 10 - 1);
+                    int tens = r.Next(Math.Max(_minAddend / 10, 0), factors[2] / 10 - 1);
                     int ones = r.Next(factors[2] % 10 + 1, 10);
                     factors[0] = tens * 10 + ones;
                 }

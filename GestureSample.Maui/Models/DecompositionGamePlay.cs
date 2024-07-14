@@ -29,7 +29,7 @@ namespace GestureSample.Maui.Models
 
         public int Level { get { return _level; } set { _level = value; } }
 
-        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(GameType.DecompositionGame, view, false)
+        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(GameType.DecompositionGame, view, null)
         {
             _numberOfVariables = VariableTypes.OneCanBeSum;
             _lblStats = lblStats;
@@ -74,12 +74,12 @@ namespace GestureSample.Maui.Models
             Random r = new();
             if (Sum != addend1 + addend2) 
                 _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
-            factors[2] = r.Next(Math.Max(_minaddend, _minSum), _maxSum);
-            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minaddend, _minSum), _maxSum);
-            if (factors[2] % 10 == 0) factors[0] = r.Next(_minaddend, Math.Min(_maxaddend + 1, factors[2]));
+            factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
+            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
+            if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddend, Math.Min(_maxAddend + 1, factors[2]));
             else
             {
-               int tens = r.Next(Math.Max(_minaddend / 10, 0), factors[2] / 10 - 1);
+               int tens = r.Next(Math.Max(_minAddend / 10, 0), factors[2] / 10 - 1);
                int ones = r.Next(factors[2] % 10 + 1, 10);
                factors[0] = tens * 10 + ones;
             }
@@ -100,13 +100,13 @@ namespace GestureSample.Maui.Models
                     _level = 2;
                     break;
                 case 1:
-                    _minSum = 10; _maxSum = 10; _minaddend = 0;_maxaddend = 10;
+                    _minSum = 10; _maxSum = 10; _minAddend = 0;_maxAddend = 10;
                     break;
                 case 2:
-                    _minSum = 0; _maxSum = 20; _minaddend = 0; _maxaddend = 20;
+                    _minSum = 0; _maxSum = 20; _minAddend = 0; _maxAddend = 20;
                     break;
                 case 3:
-                    _minSum = 0; _maxSum = 100; _minaddend = 0; _maxaddend = 100;
+                    _minSum = 0; _maxSum = 100; _minAddend = 0; _maxAddend = 100;
                     break;
                 case 4:
                     _status= Statement.Win;

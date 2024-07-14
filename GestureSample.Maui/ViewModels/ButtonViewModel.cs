@@ -184,7 +184,7 @@ namespace GestureSample.ViewModels
                     if (_requireNewaddends)
                     {
                         foreach (PPWObject ppw in _allHistory)
-                            if (ppw.Sum == _sum && ppw.addend1 == _addend1)
+                            if (ppw.Sum == _sum && ppw.Addend1 == _addend1)
                             {
 
                                 //Addend1 = NAN; Addend2 = NAN;
@@ -436,7 +436,7 @@ namespace GestureSample.ViewModels
                     s = "HISTORY:\n";
                     foreach (PPWObject ppw in _allHistory)
                         if (ppw.Sum == _sum)
-                            s += ppw.addend1 + "\t" + ppw.addend2 + "\n";
+                            s += ppw.Addend1 + "\t" + ppw.Addend2 + "\n";
                 }
 
                 return s;
@@ -451,7 +451,7 @@ namespace GestureSample.ViewModels
             {
                 bool isExist = false;
                 foreach (PPWObject ppw in _allHistory)
-                    if (ppw.Sum == newSum && ppw.addend1 == i) isExist = true;
+                    if (ppw.Sum == newSum && ppw.Addend1 == i) isExist = true;
                 if (!isExist)
                     possibleaddends.Add(i);
             }
