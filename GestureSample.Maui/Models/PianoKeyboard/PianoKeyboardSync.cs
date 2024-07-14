@@ -49,7 +49,7 @@ namespace GestureSample.Maui.Models
         {
             timer.Stop();
             IsEnabled = false;
-            bool isCorrect = _gamePlay.Check();
+            bool isCorrect = _gamePlay.Check(this);
             await Task.Delay(3000);
             if (isCorrect)
             {

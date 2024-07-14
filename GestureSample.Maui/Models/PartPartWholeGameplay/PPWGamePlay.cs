@@ -40,12 +40,13 @@ namespace GestureSample.Maui.Models
         private GameConfig _config;
         public PPWGamePlay(GameType gameType, SimpleViewCellsPage view, GameConfig config)
         {
-            _gameType = gameType; _view = view;
+            _gameType = gameType; _view = view; _config = config;
             if (config != null)
             {
                 _isHistory = config.IsHistory; _maxAddend = config.MaxAddend; _maxSum = config.MaxSum; _numberOfVariables = config.VariableTypes;
                 _minAddend = config.MinAddend; _minSum = config.MinSum;
             }
+            //TODO: Move these to MainPage
             if (_isHistory) _minSum = 1;
             if (_gameType == GameType.Multiplication) { _minAddend = 2; _maxAddend = 10; _maxSum = 100; _numberOfVariables = VariableTypes.OneCanBeSum; }
         }
@@ -94,6 +95,11 @@ namespace GestureSample.Maui.Models
                 return false;
             }
             addend1 = a1; addend2= a2; Sum = s; return Check();
+        }
+
+        public virtual bool Check(PianoKeyboard pianoKeyboard)
+        { 
+            return Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, pianoKeyboard.Sum);
         }
 
         public virtual void GenerateExercise()

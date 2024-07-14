@@ -1,26 +1,5 @@
 ﻿namespace GestureSample.Maui
 {
-    
-    public enum GameType
-    {
-        GuessOne,
-        CompletionOneInAddition,
-        SimpleDecomposition,
-        DecompositionGame,
-        Multiplication,
-        Logic
-    }
-
-    public enum VariableTypes
-    {
-        OneNoSum =1,
-        TwoNoSum,
-        OneCanBeSum,
-        SumOnly,
-        TwoAny
-
-
-    }
 
     public static class Statement
     {

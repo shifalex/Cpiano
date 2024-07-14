@@ -13,8 +13,11 @@ namespace GestureSample.Maui.Models
         protected readonly int NUMBER_OF_KEYS;
         protected readonly int FINGER_SEPERATOR = 5;
         protected readonly MR.Gestures.Button[] btnKeys;
+        
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
+        public Color[] colors;
+        public int  Length => btnKeys.Length;
         protected virtual int heading_height { get; } = 20;
         public PianoKeyboardReadOnly(int rows = 1, int keysInRow = 10) : base()
         {
@@ -51,6 +54,55 @@ namespace GestureSample.Maui.Models
                     );
                 }
             }
+        }
+        /// <summary>
+        /// Creates pressed piano
+        /// </summary>
+        /// <param name="array">Must be the size of the piano buttons</param>
+        public void PianoInit(Boolean[] array)
+        {
+            for(int i = 0;  i < btnKeys.Length;i++)
+            {
+                btnKeys[i].BackgroundColor = (array[i])?COLOR_PRESSED: COLOR_FREE;
+            }
+        }
+        public void PianoInit(Color[] array)
+        {
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].BackgroundColor = array[i];
+            }
+            SaveColors();
+        }
+        public void Random()
+        {
+            Random r = new();
+
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].BackgroundColor = (r.Next(2)==1) ? COLOR_PRESSED : COLOR_FREE;
+            }
+            SaveColors();
+        }
+
+        public bool[] ToBitArray()
+        {
+            bool[] bitArray = new bool[btnKeys.Length];
+            for (int i = 0; i < btnKeys.Length; i++)
+                bitArray[i] = btnKeys[i].BackgroundColor != COLOR_FREE;
+            return bitArray;
+        }
+
+        public int Sum {  get {
+                int sum = 0;
+                for (int i = 0; i < btnKeys.Length; i++)
+                    sum += btnKeys[i].BackgroundColor == COLOR_PRESSED ? 1 : 0;
+                return sum; } }
+
+        protected void SaveColors()
+        {
+
+            for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = btnKeys[i].BackgroundColor;
         }
     }
 }
