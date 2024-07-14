@@ -6,7 +6,7 @@ namespace GestureSample.Views
 {
     public partial class MainPage
 	{
-		private PageConfig[] AllPages = new PageConfig[]
+        private PageConfig[] AllPages = new PageConfig[]
         {
 			// main page
 			//new PageConfig(null, "ContentPage", () => new ContentPageXaml { BindingContext = new ContentPageXaml() }),
@@ -146,7 +146,7 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecompositionGame,
+    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 2
@@ -155,7 +155,7 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecompositionGame,
+    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //        SyncType = SyncType.Sync,
@@ -165,7 +165,7 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecompositionGame,
+    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         SyncType = SyncType.Sync
@@ -174,7 +174,7 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Async decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecompositionGame,
+    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //        SyncType = SyncType.Sync,
@@ -184,7 +184,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -195,7 +195,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -206,7 +206,7 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async decomposition not required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.DecompositionGameFull,
+    //     GameType = GameType.FullDecomposition,
     //     IsHistory = false,
     //     KeyboardConfig = new KeyboardConfig
     //     {
@@ -217,10 +217,11 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.DecompositionGameFull,
+    //     GameType = GameType.FullDecomposition,
     //     IsHistory = false,
     //     KeyboardConfig = new KeyboardConfig
     //     {
+    //        KeysInRow=11,
     //         SyncType = SyncType.Sync,
     //         TextBoxesQuantity = 2
     //     }
@@ -228,9 +229,10 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFull,
+        GameType = GameType.SimpleDecomposition,
+        MaxAddend=10,
         KeyboardConfig = new KeyboardConfig
-        {
+        {KeysInRow = 11,
             SyncType = SyncType.Sync
         }
     })),
@@ -238,11 +240,12 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async decomposition required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.DecompositionGameFull,
+    //     GameType = GameType.FullDecomposition,
     //     IsHistory = true,
     //     addendsNum = 2,
     //     KeyboardConfig = new KeyboardConfig
     //     {
+    //        KeysInRow=11,
     //         SyncType = SyncType.Sync,
     //         TextBoxesQuantity = 2
     //     }
@@ -250,11 +253,12 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition required new combinations Full", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.DecompositionGameFull,
+    //     GameType = GameType.FullDecomposition,
     //     IsHistory = true,
     //     addendsNum = 2,
     //     KeyboardConfig = new KeyboardConfig
     //     {
+    //        KeysInRow=11,
     //         SyncType = SyncType.Sync,
     //         TextBoxesQuantity = 2
     //     }
@@ -262,20 +266,24 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFull,
+       GameType = GameType.SimpleDecomposition,
+        MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
+            KeysInRow=11,
             SyncType = SyncType.Sync
         }
     })),
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFull,
+        GameType = GameType.SimpleDecomposition,
+        MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
+            KeysInRow=11,
             SyncType = SyncType.Sync,
             ImposeEdges = true
         }
@@ -283,7 +291,7 @@ namespace GestureSample.Views
 
     /*new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -294,61 +302,77 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
+        MinAddend=1,
+        MinSum=2,
+        MaxAddend=9,
         KeyboardConfig = new KeyboardConfig
-        {   
-            SyncType = SyncType.HalfSync
-            
+        {
+            SyncType = SyncType.HalfSync,
+            WithoutZero=true
+
         }
     })),
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
+        MinAddend=1,
+        MinSum=2,
+        MaxAddend=9,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,
+            WithoutZero=true,
             ImposeEdges = true
         }
     })),
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 5)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame
+        GameType = GameType.SimpleDecomposition
     })),
 
     new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecompositionGame,
+        GameType = GameType.SimpleDecomposition,
         IsHistory = true
     })),
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFull
+        GameType = GameType.SimpleDecomposition,
+        MaxAddend=10
     })),
 
     new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFull,
+        GameType = GameType.SimpleDecomposition,
+        MaxAddend=10,
         IsHistory = true
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameWithKeyboardHelp,
+        GameType = GameType.DecompositionGame,
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
         KeyboardConfig = new KeyboardConfig()
+        {
+            Rows = 2
+        }
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameWithKeyboardHelp,
-        
+        GameType = GameType.DecompositionGame,
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,
+            Rows=2,
             AddendsNum = 3,
             AllowRemoval = true
         }
@@ -356,7 +380,8 @@ namespace GestureSample.Views
 
     new PageConfig("new Number", "decomposition game Full With keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGameFullWithKeyboardHelp,
+        GameType = GameType.DecompositionGame,
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
         KeyboardConfig = new KeyboardConfig()
     })),
 
@@ -384,30 +409,30 @@ namespace GestureSample.Views
 
 			// Cells
 			new PageConfig("Cells", "TextCell", () => new TextCellMain { BindingContext = new ViewModels.ListOfStringsViewModel() }),
-			new PageConfig("Cells", "ImageCell", () => new ImageCellMain { BindingContext = new ViewModels.ListOfObjectsViewModel() }),
-			new PageConfig("Cells", "All Cells", () => new AllCellsXaml { BindingContext = new ViewModels.AllCellsViewModel() }),
+            new PageConfig("Cells", "ImageCell", () => new ImageCellMain { BindingContext = new ViewModels.ListOfObjectsViewModel() }),
+            new PageConfig("Cells", "All Cells", () => new AllCellsXaml { BindingContext = new ViewModels.AllCellsViewModel() }),
 
 			// Tests
 			new PageConfig("Tests", "Clear in Handler", () => new DisposeInHandlerPage()),
-			new PageConfig("Tests", "Horizontal ScrollView", () => new HorizontalScrollViewXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Tests", "BigButton", () => new BigButtonPage()),
-			//new PageConfig("Tests", "ViewCells", () => new SimpleViewCellsPage(GameType.SimpleDecompositionGame)),
+            new PageConfig("Tests", "Horizontal ScrollView", () => new HorizontalScrollViewXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Tests", "BigButton", () => new BigButtonPage()),
+			//new PageConfig("Tests", "ViewCells", () => new SimpleViewCellsPage(GameType.SimpleDecomposition)),
 			new PageConfig("Tests", "Custom ListView", () => new CustomListViewPage { BindingContext = new ViewModels.ListOfStringsViewModel() }),
-			new PageConfig("Tests", "ScrollView with Images", () => new ScrollViewWithImages { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Tests", "InputTransparent", () => new InputTransparent { BindingContext = new ViewModels.TextOnlyViewModel() }),
-			new PageConfig("Tests", "Simple LongPress", () => new SimpleLongPress()),
-			new PageConfig("Tests", "Page and ListView", () => new PageAndListView { BindingContext = new ViewModels.ListOfStringsViewModel() }),
+            new PageConfig("Tests", "ScrollView with Images", () => new ScrollViewWithImages { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Tests", "InputTransparent", () => new InputTransparent { BindingContext = new ViewModels.TextOnlyViewModel() }),
+            new PageConfig("Tests", "Simple LongPress", () => new SimpleLongPress()),
+            new PageConfig("Tests", "Page and ListView", () => new PageAndListView { BindingContext = new ViewModels.ListOfStringsViewModel() }),
 			//new PageConfig("Tests", "Custom Button", () => new CustomButtonPage() { BindingContext = new ViewModels.ButtonViewModel() }),
 			new PageConfig("Tests", "Nested Controls", () => new NestedControls()),
-			new PageConfig("Tests", "BottomTabbedPage", () => new BottomTabbedPageXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Tests", "Delete Bound Items", () => new DeleteBoundItems { BindingContext = new ViewModels.Tests.DeleteBoundItemsViewModel() }),
-			new PageConfig("Tests", "Scaling X and Y seperately", () => new FrameScaleXYXaml { BindingContext = new ViewModels.TransformViewModel() }),
-			new PageConfig("Tests", "Dynamically add Event handler", () => new DynamicallyAddHandler { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Tests", "Test first panning args", () => new PrintFirstPanning { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
-			new PageConfig("Tests", "Invisible Button", () => new InvisibleButtonPage()),
-			new PageConfig("Tests", "Draggable Items on TabbedPage", () => new DraggableItemsOnTabbedPage { BindingContext = new ViewModels.Tests.DraggableItemsViewModel() }),
-			new PageConfig("Tests", "Drag&Drop Items in FlexLayout", () => new DragAndDropPage { BindingContext = new ViewModels.Tests.DragAndDropViewModel() })
-		};
+            new PageConfig("Tests", "BottomTabbedPage", () => new BottomTabbedPageXaml { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Tests", "Delete Bound Items", () => new DeleteBoundItems { BindingContext = new ViewModels.Tests.DeleteBoundItemsViewModel() }),
+            new PageConfig("Tests", "Scaling X and Y seperately", () => new FrameScaleXYXaml { BindingContext = new ViewModels.TransformViewModel() }),
+            new PageConfig("Tests", "Dynamically add Event handler", () => new DynamicallyAddHandler { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Tests", "Test first panning args", () => new PrintFirstPanning { BindingContext = new ViewModels.CustomEventArgsViewModel() }),
+            new PageConfig("Tests", "Invisible Button", () => new InvisibleButtonPage()),
+            new PageConfig("Tests", "Draggable Items on TabbedPage", () => new DraggableItemsOnTabbedPage { BindingContext = new ViewModels.Tests.DraggableItemsViewModel() }),
+            new PageConfig("Tests", "Drag&Drop Items in FlexLayout", () => new DragAndDropPage { BindingContext = new ViewModels.Tests.DragAndDropViewModel() })
+        };
 
 
 		#region MainPage code

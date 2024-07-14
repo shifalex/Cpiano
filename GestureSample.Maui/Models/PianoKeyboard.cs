@@ -191,7 +191,7 @@ namespace GestureSample.Maui.Models
                 else
                     isNowYellowStreak = false;
             }
-            if (yellowStreaksTillNowIncluding == 1 /*one addend is 0 - which one? if most keys in the left - addend2, if most keys in the right - addend1*/)
+            if (yellowStreaksTillNowIncluding == 1 /*one addend is 0 - which one? if most keys in the left - Addend2, if most keys in the right - Addend1*/)
             {
                 for (int i = 0; i < NUMBER_OF_KEYS; i++)
                     if (btnKeys[i].BackgroundColor == COLOR_PRESSED && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_FREE)

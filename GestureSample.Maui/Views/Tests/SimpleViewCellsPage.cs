@@ -10,29 +10,40 @@ using System.ComponentModel.Design;
 namespace GestureSample.Views.Tests
 {
 
-    //TODO: Organizer for JSON
-    //TODO: JSON file for the menu buttons
+    //ODO: Organizer for JSON - DONE with Property Initialization instead
+    //ODO: JSON file for the menu buttons -DONE
     public class SimpleViewCellsPage : ContentPage
     {
-        //private readonly bool _isKeyboard = true;//, _isHistory=false;
         private readonly GameType _gameType;
-        private readonly PianoKeyboard _pianoKeyboard = null;
-        private readonly PPWGamePlay _gamePlay;
+        private readonly bool _isDecomposeWithKeyboard;
+        private readonly bool _isKeyboard;
+        private  PianoKeyboard _pianoKeyboard = null;
+        private  PPWGamePlay _gamePlay;
 
         #region view updating
-        private readonly Label lblStatement;
-        private readonly Label lblHistory;
-        private readonly Entry txtaddend1;
-        private readonly Entry txtaddend2;
-        private readonly Entry txtSum;
-        private readonly Label lblAction;
-        private readonly Entry txtResult;
-        private readonly PianoKeyboardReadOnly keyboardTask1;
-        private readonly PianoKeyboardReadOnly keyboardTask2;
+        private  Label lblStatement = new Label
+        {
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Start,
+            FontSize = 18,
+            TextColor = Colors.Black,
+            Text = Statement.Neutral
+        };
+        private  Label lblHistory;
+        private  Entry txtAddend1;
+        private  Entry txtAddend2;
+        private  Entry txtSum;
+        private  Label lblAction;
+        private  Entry txtResult;
+        private  PianoKeyboardReadOnly keyboardTask1;
+        private  PianoKeyboardReadOnly keyboardTask2;
         //TODO: show arrows for patterns
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
-        private readonly Button btnNext = null;
+        private  Button btnNext = null;
+        private Button btnCheck = null;
 
+        private Command cmdNext = null;
+        private Command cmdCheck = null;
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
 
@@ -46,26 +57,26 @@ namespace GestureSample.Views.Tests
         {
             lblStatement.Text = _gamePlay.Status;
 
-            txtaddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
-            txtaddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
+            txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
+            txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
             txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
             if (newExercise)
             {
-                erntryEnabled(txtaddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
-                erntryEnabled(txtaddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
+                erntryEnabled(txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
+                erntryEnabled(txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
                 erntryEnabled(txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
             }
             if (btnNext != null) btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
             //OnPropertyChanged(nameof(BtnNextEnabled));
 
-            lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
+            if(_config.IsHistory)lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
         }
 
         private static string GenerateHistoryString(List<PPWObject> ppwHistoryArray)
         {
             String strHistory = "HISTORY:\n";
             foreach (PPWObject ppw in ppwHistoryArray)
-                strHistory += ppw.addend1 + "\t" + ppw.addend2 + "\n";
+                strHistory += ppw.Addend1 + "\t" + ppw.Addend2 + "\n";
 
             return strHistory;
         }
@@ -79,22 +90,54 @@ namespace GestureSample.Views.Tests
             _config = config;
             _gameType = config.GameType;
 
-            bool isDecomposeWithKeyboard = _gameType == GameType.DecompositionGameWithKeyboardHelp || _gameType == GameType.DecompositionGameFullWithKeyboardHelp;
-            bool isKeyboard = config.KeyboardConfig != null;
+            _isKeyboard = _config.KeyboardConfig != null;
+            _isDecomposeWithKeyboard = _gameType == GameType.DecompositionGame && _isKeyboard;
 
-            if (_gameType == GameType.DecompositionGameFullWithKeyboardHelp)
-                _gamePlay = new PPWGamePlay(_gameType, this, config.IsHistory, 0, 0, 20, 20, VariableTypes.OneCanBeSum);
-            else if (_gameType == GameType.DecompositionGameFull || config.KeyboardConfig.SyncType==SyncType.HalfSync)
-                _gamePlay = new PPWGamePlay(_gameType, this, config.IsHistory, config.KeyboardConfig.WithoutZero ? 1 : 0, config.KeyboardConfig.WithoutZero ? 2 : 0, 10, 10);
-            else
-                _gamePlay = new PPWGamePlay(_gameType, this, config.IsHistory);
+            InitializeGamePlay();
+            InitializeUI();
+                        
+            _gamePlay.GenerateExercise();
+        }
+
+        private void InitializeGamePlay()
+        {
+            _gamePlay = new PPWGamePlay(_gameType, this, _config);
+            //if (_isKeyboard)
+            //{
+                //if (_isDecomposeWithKeyboard) { _config.KeyboardConfig.Rows = 2; }
+                //if (_gameType == GameType.FullDecomposition) { _config.KeyboardConfig.KeysInRow = 11; }
+                
+            //}
+            cmdCheck = new Command(() =>
+            {
+                if (_isKeyboard && !_isDecomposeWithKeyboard)
+                    _pianoKeyboard.IsEnabled = !_gamePlay.Check();
+                else
+                    try
+                    {
+                        _gamePlay.Check(Convert.ToInt32(txtAddend1.Text), Convert.ToInt32(txtAddend2.Text), Convert.ToInt32(txtSum.Text));
+                    }
+                    catch
+                    {
+                        lblStatement.Text = "WrongInput"; // Replace with actual statement
+                    }
+            });
+            cmdNext = new Command(() => 
+            { 
+                _gamePlay.GenerateExercise(); 
+                if (_isKeyboard) _pianoKeyboard.PianoInit(); 
+            });
+        }
+
+        private void InitializeUI()
+        {
 
             Grid grid = new()
             {
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(isKeyboard ? 40 : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(_isKeyboard ? 40 : 1, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
@@ -107,14 +150,7 @@ namespace GestureSample.Views.Tests
                 Color = Colors.AntiqueWhite
             });
 
-            lblStatement = new Label
-            {
-                HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
-                TextColor = Colors.Black,
-                Text = "Statement.Neutral" // Replace with the actual statement text
-            };
+            
 
             txtSum = new Entry
             {
@@ -127,7 +163,7 @@ namespace GestureSample.Views.Tests
                 FontSize = 32
             };
 
-            txtaddend1 = new Entry
+            txtAddend1 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
@@ -136,10 +172,10 @@ namespace GestureSample.Views.Tests
                 TextColor = Colors.Black,
                 WidthRequest = 120,
                 FontSize = 18,
-                IsVisible = !isKeyboard || isDecomposeWithKeyboard
+                IsVisible = !_isKeyboard || _isDecomposeWithKeyboard
             };
 
-            txtaddend2 = new Entry
+            txtAddend2 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
@@ -148,70 +184,60 @@ namespace GestureSample.Views.Tests
                 TextColor = Colors.Black,
                 WidthRequest = 120,
                 FontSize = 18,
-                IsVisible = !isKeyboard || isDecomposeWithKeyboard
+                IsVisible = !_isKeyboard || _isDecomposeWithKeyboard
             };
 
-            lblHistory = new Label
-            {
-                Text = "History:\n",
-                HorizontalOptions = LayoutOptions.Center,
-                IsVisible = config.IsHistory
+
+            VerticalStackLayout vsl = new()
+        {
+            lblStatement
             };
-            
-            if(isKeyboard)
+            vsl.Add(txtSum);
+            vsl.Add(new HorizontalStackLayout { txtAddend1, txtAddend2 });
+
+
+
+
+            if (_isDecomposeWithKeyboard || !_isKeyboard || _config.KeyboardConfig.SyncType == SyncType.None)
             {
-                if (isDecomposeWithKeyboard) { config.KeyboardConfig.Rows = 2; }
-                if (_gameType == GameType.DecompositionGameFull) { config.KeyboardConfig.KeysInRow = 11; }
-                switch (config.KeyboardConfig.SyncType)
-                {
-                    case SyncType.HalfSync:
-                        _pianoKeyboard = new PianoKeyboardHalfSync(_gamePlay, lblStatement, config.KeyboardConfig);
-                        break;
-                    case SyncType.Sync:
-                        _pianoKeyboard = new PianoKeyboardSync(_gamePlay, lblStatement, config.KeyboardConfig);
-                        break;
-                    default:
-                        _pianoKeyboard = new PianoKeyboard(_gamePlay, lblStatement, config.KeyboardConfig);
-                        break;
-                }
-            }
-            HorizontalStackLayout hslBtns = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
-            if (isDecomposeWithKeyboard || (isKeyboard && config.KeyboardConfig.SyncType==SyncType.None))
-            {
+                HorizontalStackLayout hslBtns = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
+
                 Button btnCheck = new()
                 {
                     Text = "Check",
-                    Command = new Command(() =>
-                    {
-                        if (isKeyboard && !isDecomposeWithKeyboard)
-                            _pianoKeyboard.IsEnabled = !_gamePlay.Check();
-                        else
-                            try
-                            {
-                                _gamePlay.Check(Convert.ToInt32(txtaddend1.Text), Convert.ToInt32(txtaddend2.Text), Convert.ToInt32(txtSum.Text));
-                            }
-                            catch
-                            {
-                                lblStatement.Text = "WrongInput"; // Replace with actual statement
-                            }
-                    }),
+                    Command = cmdCheck,
                     HorizontalOptions = LayoutOptions.Center
                 };
 
                 btnNext = new Button
                 {
                     Text = "Next",
-                    Command = new Command(() => { _gamePlay.GenerateExercise(); if (isKeyboard) _pianoKeyboard.PianoInit(); }),
+                    Command = cmdNext,
                     HorizontalOptions = LayoutOptions.Center
                 };
 
                 hslBtns.Add(btnCheck);
                 hslBtns.Add(btnNext);
+
+                vsl.Add(hslBtns);
             }
 
-            VerticalStackLayout vslDecompositionDashboard = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
-            if (_gameType == GameType.DecompositionGame || _gameType == GameType.DecompositionGameWithKeyboardHelp)
+            if (_config.IsHistory)
             {
+                lblHistory = new Label
+                {
+                    Text = "History:\n",
+                    HorizontalOptions = LayoutOptions.Center,
+                    //IsVisible = _config.IsHistory
+                };
+                vsl.Add(lblHistory);
+            }
+
+
+            if (_gameType == GameType.DecompositionGame)
+            {
+                VerticalStackLayout vslDecompositionDashboard = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
+
                 Label lblStats = new();
                 Picker pc = new()
                 {
@@ -227,28 +253,36 @@ namespace GestureSample.Views.Tests
                     vslDecompositionDashboard.Add(pc);
                     vslDecompositionDashboard.Add(lblStats);
                 }
+                vsl.Add(vslDecompositionDashboard);
+
             }
 
-            VerticalStackLayout vsl = new()
-        {
-            lblStatement,
-            txtSum,
-            new HorizontalStackLayout { txtaddend1, txtaddend2 },
-            hslBtns,
-            lblHistory,
-            vslDecompositionDashboard
-        };
+
             vsl.HorizontalOptions = LayoutOptions.Center;
             vsl.Padding = 15;
             vsl.Spacing = 10;
             grid.Add(vsl);
 
-            Grid.SetRow(_pianoKeyboard, 2);
-            if (isKeyboard) grid.Add(_pianoKeyboard);
 
+            if (_isKeyboard)
+            {
+                switch (_config.KeyboardConfig.SyncType)
+                {
+                    case SyncType.HalfSync:
+                        _pianoKeyboard = new PianoKeyboardHalfSync(_gamePlay, lblStatement, _config.KeyboardConfig);
+                        break;
+                    case SyncType.Sync:
+                        _pianoKeyboard = new PianoKeyboardSync(_gamePlay, lblStatement, _config.KeyboardConfig);
+                        break;
+                    default:
+                        _pianoKeyboard = new PianoKeyboard(_gamePlay, lblStatement, _config.KeyboardConfig);
+                        break;
+                }
+                grid.Add(_pianoKeyboard);
+                Grid.SetRow(_pianoKeyboard, 2);
+            }
             Content = grid;
 
-            _gamePlay.GenerateExercise();
         }
     }
 }
