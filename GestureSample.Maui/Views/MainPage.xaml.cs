@@ -85,10 +85,10 @@ namespace GestureSample.Views
     new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(new GameConfig
     {
         GameType = GameType.GuessOne,
+        FromNumToNum = true,
         KeyboardConfig = new KeyboardConfig
         {
-            TextBoxesQuantity = 1,
-            FromNumToNum = true
+            TextBoxesQuantity = 1
         }
     })),
 
@@ -127,6 +127,15 @@ namespace GestureSample.Views
     new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
     {
         GameType = GameType.GuessOne,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+    new PageConfig("new Keyboard", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.BitArrayGame,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -360,7 +369,8 @@ namespace GestureSample.Views
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
         KeyboardConfig = new KeyboardConfig()
         {
-            Rows = 2
+            Rows = 2,
+            KeyboardOnlyForHelp = true
         }
     })),
 
@@ -374,17 +384,18 @@ namespace GestureSample.Views
             SyncType = SyncType.HalfSync,
             Rows=2,
             AddendsNum = 3,
-            AllowRemoval = true
+            AllowRemoval = true,
+            KeyboardOnlyForHelp = true
         }
     })),
 
-    new PageConfig("new Number", "decomposition game Full With keyboard", () => new SimpleViewCellsPage(new GameConfig
+    /*new PageConfig("new Number", "decomposition game Full With keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
         GameType = GameType.DecompositionGame,
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
         KeyboardConfig = new KeyboardConfig()
     })),
-
+    */
     new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(new GameConfig
     {
         GameType = GameType.DecompositionGame

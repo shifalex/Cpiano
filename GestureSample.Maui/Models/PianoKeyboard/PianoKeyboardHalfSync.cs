@@ -185,11 +185,7 @@ namespace GestureSample.Maui.Models
             return true;
         }
 
-        private void SaveColors()
-        {
-
-            for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = btnKeys[i].BackgroundColor;
-        }
+        
 
         protected override bool InnerKeyUp(MR.Gestures.Button sender)
         {

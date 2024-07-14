@@ -1,18 +1,23 @@
 ﻿namespace GestureSample.Maui
 {
-    //TODO: addends of history get lost
-    //TODO: number shows keyboard when shouldnt
+    //ODO: addends of history get lost
+    //ODO: number shows keyboard when shouldnt
+    //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes
     //TODO: keyboard questions
+    //TODO: Check decompositiongame
     //TODO: Hand questions
     //TODO: Logic questions
     //TODO: Arrows for kwyboard (First one arrow, then 2 arrows)
     //TODO: Dummies for keyboard
+    //TODO: generate a configuration page using chatGPT and the config classes. By categories
     //TODO: Multiplication reordering of multipliers(start with 1 being 2 and the other anyone, next some by three and etc.
     //TODO: Interleaving && Block && Block-withException practices
     //TODO: DB save
     //TODO: combination of questions on the same exercise in different modalities (first missing, second missin, third missing, addition, subtraction, addition subtraction with different addends)
     //TODO: Negative numbers interface
     //TODO: pattern recognizer - and ask for new pattern..
+    //TODO: 
+    //TODO: a list of configuration you can go from one screen to another. These configurations can change dynamiclly. 
 
 
     public enum SyncType
@@ -31,10 +36,12 @@
 
         public int KeysInRow { get; set; } = 10;
         public bool ImposeEdges { get; set; } = false;
-        public bool FromNumToNum { get; set; } = false;
+        public bool ImposeSerealization { get; set; } = false;
         public bool WithoutZero { get; set; } = true;
         public bool AllowRemoval { get; set; } = false;
 
         public int AddendsNum { get; set; } = 2;
+
+        public bool KeyboardOnlyForHelp = false;
     }
 }
