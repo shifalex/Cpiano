@@ -47,8 +47,7 @@ namespace GestureSample.Maui.Models
                 _minAddend = config.MinAddend; _minSum = config.MinSum;
             }
             //TODO: Move these to MainPage
-            if (_isHistory) _minSum = 1;
-            if (_gameType == GameType.Multiplication) { _minAddend = 2; _maxAddend = 10; _maxSum = 100; _numberOfVariables = VariableTypes.OneCanBeSum; }
+            //if (_isHistory) _minSum = 1;
         }
 
 
@@ -99,7 +98,7 @@ namespace GestureSample.Maui.Models
 
         public virtual bool Check(PianoKeyboard pianoKeyboard)
         { 
-            return Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, pianoKeyboard.Sum);
+            return Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
         }
 
         public virtual void GenerateExercise()

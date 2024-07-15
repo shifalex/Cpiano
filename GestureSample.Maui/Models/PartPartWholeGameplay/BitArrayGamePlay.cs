@@ -22,7 +22,10 @@ namespace GestureSample.Maui.Models
 
         public override bool Check(PianoKeyboard pianoKeyboard)
         {
-            return Check(pianoKeyboard.ToBitArray());
+            bool result = Check(pianoKeyboard.ToBitArray());
+            _status = result?Statement.True:Statement.False;
+            _view.UpdateView();
+            return result;
         }
 
         public bool Check(bool[] bitArrayAnswer)

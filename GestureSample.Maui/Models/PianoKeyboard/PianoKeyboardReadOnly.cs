@@ -29,6 +29,8 @@ namespace GestureSample.Maui.Models
             //this.Padding = textBoxesQuantity==0? new Thickness(0, 30, 0, 0):0;
             int handSeperator = 5; if (keysInRow > 10) handSeperator = keysInRow + 1;
 
+            colors = new Color[NUMBER_OF_KEYS];
+
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
             btnKeys = new MR.Gestures.Button[NUMBER_OF_KEYS];
             for (int i = 0; i < keysInRow + (handSeperator < keysInRow ? 1 : 0); i++)
