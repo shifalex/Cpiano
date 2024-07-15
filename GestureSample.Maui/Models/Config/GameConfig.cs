@@ -33,7 +33,7 @@ namespace GestureSample.Maui
     }
 
 
-    public enum GameType
+    public enum GameType//TODO: Difuse to "variable types" and "three texts"
     {
         GuessOne,
         CompletionOneInAddition,

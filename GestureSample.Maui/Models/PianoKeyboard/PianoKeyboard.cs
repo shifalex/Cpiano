@@ -74,7 +74,6 @@ namespace GestureSample.Maui.Models
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
-            colors = new Color[NUMBER_OF_KEYS];
             for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
 
             //_realmService = new();
@@ -174,6 +173,7 @@ namespace GestureSample.Maui.Models
             _addend1 = 0;
             _addend2=0;
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
+            SaveColors();
         }
 
         //Spatial

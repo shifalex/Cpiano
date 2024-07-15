@@ -136,6 +136,7 @@ namespace GestureSample.Views
     new PageConfig("new Keyboard", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
         GameType = GameType.BitArrayGame,
+        UIQuestionType = UIQuestionType.BitArrayQuestion,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -415,7 +416,11 @@ namespace GestureSample.Views
 
     new PageConfig("new Number", "Multiplication", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.Multiplication
+        GameType = GameType.Multiplication,
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum
     })),
 
 			// Cells
