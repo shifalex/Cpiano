@@ -75,6 +75,9 @@
 	  <PackageReference Include="MR.Gestures" Version="4.0.1" />
 	  <PackageReference Include="MvvmCross" Version="9.0.0" />
 	  <PackageReference Include="Realm" Version="12.2.0" />
+	  <PackageReference Include="SkiaSharp" Version="2.88.8" />
+	  <PackageReference Include="SkiaSharp.Views" Version="2.88.8" />
+	  <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.8" />
 	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
 
