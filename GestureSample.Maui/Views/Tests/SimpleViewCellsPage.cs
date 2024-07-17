@@ -1,11 +1,10 @@
 ﻿using GestureSample.Maui.Models;
 using GestureSample.Maui;
-using Microsoft.Maui.Controls;
-using static System.Net.Mime.MediaTypeNames;
-using System.Windows.Input;
-using MvvmCross.Binding.Extensions;
-using System.ComponentModel;
-using System.ComponentModel.Design;
+using SkiaSharp;
+using SkiaSharp.Views.Maui;
+using SkiaSharp.Views.Maui.Controls;
+using System.Linq;
+
 
 namespace GestureSample.Views.Tests
 {
@@ -16,29 +15,27 @@ namespace GestureSample.Views.Tests
     {
         private readonly GameType _gameType;
         private readonly bool _isKeyboard;
-        private  PianoKeyboard _pianoKeyboard = null;
-        private  PPWGamePlay _gamePlay;
+        private PianoKeyboard _pianoKeyboard = null;
+        private PPWGamePlay _gamePlay;
+
+        private SKCanvasView leftHandCanvas;
+        private SKCanvasView rightHandCanvas;
+        private int[] leftHandBits;
+        private int[] rightHandBits;
 
         #region view updating
-        private  Label lblStatement = new Label
-        {
-            HorizontalOptions = LayoutOptions.Center,
-            VerticalOptions = LayoutOptions.Start,
-            FontSize = 18,
-            TextColor = Colors.Black,
-            Text = Statement.Neutral
-        };
-        private  Label lblHistory;
-        private  Entry txtAddend1;
-        private  Entry txtAddend2;
-        private  Entry txtSum;
-        private  Label lblAction;
+        private Label lblStatement;
+        private Label lblHistory;
+        private Entry txtAddend1;
+        private Entry txtAddend2;
+        private Entry txtSum;
+        private Label lblAction;
         //private  Entry txtResult;
-        private  PianoKeyboardReadOnly keyboardTask1;
-        private  PianoKeyboardReadOnly keyboardTask2;
+        private PianoKeyboardReadOnly keyboardTask1;
+        private PianoKeyboardReadOnly keyboardTask2;
         //TODO: show arrows for patterns
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
-        private  Button btnNext = null;
+        private Button btnNext = null;
         private Button btnCheck = null;
 
         private Command cmdNext = null;
@@ -52,7 +49,7 @@ namespace GestureSample.Views.Tests
             ent.TextColor = enabled ? Colors.Black : Colors.Gray;
 
         }
-        public void UpdateView(bool newExercise=false)
+        public void UpdateView(bool newExercise = false)
         {
             lblStatement.Text = _gamePlay.Status;
 
@@ -70,27 +67,44 @@ namespace GestureSample.Views.Tests
                 }
             }
             if (btnNext != null) btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
-            
-            if(_config.UIQuestionType == UIQuestionType.BitArrayQuestion && newExercise)
+
+            if (_config.UIQuestionType == UIQuestionType.BitArrayQuestion && newExercise)
             {
-                if(_config.ArrayQuestionTypes==ArrayQuestionTypes.Keyboard) { 
-                    keyboardTask1.Random(); 
-                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = keyboardTask1.ToBitArray(); 
+                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Keyboard)
+                {
+                    keyboardTask1.Random();
+                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = keyboardTask1.ToBitArray();
                 }
+                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
+                {
+                    GenerateHandsImage();
+                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = BoolArrayFromHands(leftHandBits, rightHandBits);
+                }
+
+                if (_isKeyboard && !_config.FromNumToNum) _pianoKeyboard.PianoInit();
+                if (_config.IsHistory) lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
+            }
+        }
+
+            private static string GenerateHistoryString(List<PPWObject> ppwHistoryArray)
+            {
+                String strHistory = "HISTORY:\n";
+                foreach (PPWObject ppw in ppwHistoryArray)
+                    strHistory += ppw.Addend1 + "\t" + ppw.Addend2 + "\n";
+
+                return strHistory;
             }
 
-            if (_isKeyboard && !_config.FromNumToNum) _pianoKeyboard.PianoInit();
-            if(_config.IsHistory)lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
-        }
-
-        private static string GenerateHistoryString(List<PPWObject> ppwHistoryArray)
-        {
-            String strHistory = "HISTORY:\n";
-            foreach (PPWObject ppw in ppwHistoryArray)
-                strHistory += ppw.Addend1 + "\t" + ppw.Addend2 + "\n";
-
-            return strHistory;
-        }
+            private static bool[] BoolArrayFromHands(int[] leftHandBits, int[] rightHandBits)
+            {
+                int[] array = leftHandBits.Concat(rightHandBits).ToArray();
+                bool[] result = new bool[array.Length];
+                for (int i = 0; i < array.Length; i++)
+                {
+                    result[i] = array[i] > 0;
+                }
+                return result;
+            } 
 
         #endregion
 
@@ -105,7 +119,7 @@ namespace GestureSample.Views.Tests
 
             InitializeGamePlay();
             InitializeUI();
-                        
+
             _gamePlay.GenerateExercise();
         }
 
@@ -123,21 +137,21 @@ namespace GestureSample.Views.Tests
                     }
                     catch
                     {
-                        lblStatement.Text = Statement.WrongInput; 
+                        lblStatement.Text = Statement.WrongInput;
                     }
             });
-            cmdNext = new Command(() => 
-            { 
+            cmdNext = new Command(() =>
+            {
                 _gamePlay.GenerateExercise();
-                if (_isKeyboard) 
-                    if (_config.FromNumToNum) 
-                        _pianoKeyboard.IsEnabled = true; 
-                    else 
-                        _pianoKeyboard.PianoInit(); 
+                if (_isKeyboard)
+                    if (_config.FromNumToNum)
+                        _pianoKeyboard.IsEnabled = true;
+                    else
+                        _pianoKeyboard.PianoInit();
             });
         }
 
-       
+
 
         private void InitializeUI()
         {
@@ -160,9 +174,16 @@ namespace GestureSample.Views.Tests
                 Color = Colors.AntiqueWhite
             });
 
-            
 
 
+            lblStatement = new Label
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                FontSize = 18,
+                TextColor = Colors.Black,
+                Text = Statement.Neutral
+            };
             VerticalStackLayout vsl = new()
         {
             lblStatement
@@ -176,7 +197,7 @@ namespace GestureSample.Views.Tests
                 vsl.Add(new HorizontalStackLayout { txtAddend1, txtAddend2 });
             }
 
-            if ( !_isKeyboard || 
+            if (!_isKeyboard ||
                 _config.KeyboardConfig.SyncType == SyncType.None ||
                 _config.KeyboardConfig.KeyboardOnlyForHelp)
             {
@@ -201,12 +222,16 @@ namespace GestureSample.Views.Tests
                     keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
                     vsl.Add(keyboardTask1);
                 }
+                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
+                {
+                    vsl.Add(InitializeCanvasComponents());
+                }
             }
 
 
             if (_gameType == GameType.DecompositionGame)
             {
-                 vsl.Add(GenerateDecompositionGameUI());
+                vsl.Add(GenerateDecompositionGameUI());
             }
 
 
@@ -247,8 +272,109 @@ namespace GestureSample.Views.Tests
 
             vslDecompositionDashboard.Add(pc);
             vslDecompositionDashboard.Add(lblStats);
-            
+
             return vslDecompositionDashboard;
+        }
+
+
+        private StackLayout InitializeCanvasComponents()
+        {
+            leftHandCanvas = new SKCanvasView
+            {
+                IsVisible = false,
+                HeightRequest = 200,
+                WidthRequest = 200
+            };
+            leftHandCanvas.PaintSurface += OnLeftHandCanvasPaintSurface;
+
+            rightHandCanvas = new SKCanvasView
+            {
+                IsVisible = false,
+                HeightRequest = 200,
+                WidthRequest = 200
+            };
+            rightHandCanvas.PaintSurface += OnRightHandCanvasPaintSurface;
+
+
+            StackLayout stackLayout = new ()
+            {
+                Children = { leftHandCanvas, rightHandCanvas }
+            };
+
+            Content = stackLayout;
+
+            return stackLayout;
+        }
+
+        private void GenerateHandsImage()
+        {
+            Random r = new Random();
+            leftHandBits = new int[] { r.Next(2), r.Next(2), r.Next(2), r.Next(2), r.Next(2) };
+            rightHandBits = new int[] { r.Next(2), r.Next(2), r.Next(2), r.Next(2), r.Next(2) };
+
+            leftHandCanvas.IsVisible = true;
+            rightHandCanvas.IsVisible = true;
+
+            leftHandCanvas.InvalidateSurface();
+            rightHandCanvas.InvalidateSurface();
+
+            // Wait for 2 seconds
+            //await Task.Delay(2000);
+
+            leftHandCanvas.IsVisible = false;
+            rightHandCanvas.IsVisible = false;
+        }
+
+        private void OnLeftHandCanvasPaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            var canvas = e.Surface.Canvas;
+            canvas.Clear(SKColors.White);
+            DrawHand(canvas, leftHandBits);
+        }
+
+        private void OnRightHandCanvasPaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            var canvas = e.Surface.Canvas;
+            canvas.Clear(SKColors.White);
+            DrawHand(canvas, rightHandBits);
+        }
+
+        private void DrawHand(SKCanvas canvas, int[] bits)
+        {
+            var paint = new SKPaint
+            {
+                Style = SKPaintStyle.Stroke,
+                Color = SKColors.Black,
+                StrokeWidth = 5
+            };
+
+            // Draw palm
+            var palmPath = new SKPath();
+            palmPath.MoveTo(50, 100);
+            palmPath.LineTo(150, 100);
+            palmPath.LineTo(150, 150);
+            palmPath.LineTo(50, 150);
+            palmPath.Close();
+            canvas.DrawPath(palmPath, paint);
+
+            // Coordinates for fingers
+            var fingers = new[]
+            {
+                new[] { new SKPoint(60, 50), new SKPoint(80, 100) },  // Thumb
+                new[] { new SKPoint(90, 30), new SKPoint(110, 100) }, // Index
+                new[] { new SKPoint(120, 20), new SKPoint(140, 100) },// Middle
+                new[] { new SKPoint(150, 30), new SKPoint(170, 100) },// Ring
+                new[] { new SKPoint(180, 50), new SKPoint(200, 100) } // Pinky
+            };
+
+            // Draw fingers based on the bit array
+            for (int i = 0; i < bits.Length; i++)
+            {
+                if (bits[i] == 1)
+                {
+                    canvas.DrawLine(fingers[i][0], fingers[i][1], paint);
+                }
+            }
         }
 
         private HorizontalStackLayout GenerateButtons()
