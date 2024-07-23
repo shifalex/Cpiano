@@ -95,7 +95,7 @@ namespace GestureSample.Maui.Models
             return bitArray;
         }
 
-        public int Sum {  get {
+        public virtual int Sum {  get {
                 int sum = 0;
                 for (int i = 0; i < btnKeys.Length; i++)
                     sum += btnKeys[i].BackgroundColor == COLOR_PRESSED ? 1 : 0;

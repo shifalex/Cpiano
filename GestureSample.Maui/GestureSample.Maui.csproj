@@ -27,25 +27,28 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 
+		
+		
 		<AssemblyName>GestureSample</AssemblyName>
 	</PropertyGroup>
-
+<UsingTask TaskName="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\CodeTaskFactory\Microsoft.Build.Tasks.CodeTaskFactory.dll" />
 	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
-	  <CodesignKey>Apple Development: Created via API (6S98TQ2Q7N)</CodesignKey>
+	  <CodesignKey>Apple Development: Created via API (H6BKVF583L)</CodesignKey>
 	  <CodesignProvision>VS: WildCard Development</CodesignProvision>
 	  <ProvisioningType>automatic</ProvisioningType>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
 	  <MtouchUseLlvm>True</MtouchUseLlvm>
-	  <MtouchLink>None</MtouchLink>
-	  <EnableSGenConc>False</EnableSGenConc>
+	  <MtouchLink>SdkOnly</MtouchLink>
+	  <EnableSGenConc>True</EnableSGenConc>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
-	  <EnableSGenConc>False</EnableSGenConc>
+	  <EnableSGenConc>True</EnableSGenConc>
+	  <MtouchLink>SdkOnly</MtouchLink>
 	</PropertyGroup>
-
+	
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#3498DB" />
@@ -67,19 +70,16 @@
 	<ItemGroup>
 	  <Compile Remove="Models\configLoader.cs" />
 	</ItemGroup>
-
 	<ItemGroup>
-	  <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-	  <PackageReference Include="MongoDB.Bson" Version="2.26.0" />
-	  <PackageReference Include="MongoDB.Driver" Version="2.26.0" />
-	  <PackageReference Include="MR.Gestures" Version="4.0.1" />
-	  <PackageReference Include="MvvmCross" Version="9.0.0" />
-	  <PackageReference Include="Realm" Version="12.2.0" />
-	  <PackageReference Include="SkiaSharp" Version="3.0.0-preview.3.1" />
-	  <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="3.0.0-preview.3.1" />
-	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="7.0.101" />
+		<PackageReference Include="MongoDB.Bson" Version="2.26.0" />
+		<PackageReference Include="MongoDB.Driver" Version="2.26.0" />
+		<PackageReference Include="MR.Gestures" Version="4.0.1" />
+		<PackageReference Include="MvvmCross" Version="9.0.0" />
+		<PackageReference Include="Realm" Version="12.2.0" />
+		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
-
 	<ItemGroup>
 	  <PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
 	</ItemGroup>
