@@ -147,6 +147,7 @@ namespace GestureSample.Views
         GameType = GameType.BitArrayGame,
         UIQuestionType = UIQuestionType.BitArrayQuestion,
         ArrayQuestionTypes = ArrayQuestionTypes.Hand,
+        BitArrayGameType = BitArrayGameType.Copy,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
