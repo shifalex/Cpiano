@@ -1,6 +1,8 @@
 ﻿using GestureSample.Maui.Models;
 using GestureSample.Maui;
 
+//https://appstoreconnect.apple.com/access/integrations/api
+
 //=======ADDING NEW CONFIGURATION
 //Start with new configuration here
 //Add the new configuration to MainPage.Xaml.cs

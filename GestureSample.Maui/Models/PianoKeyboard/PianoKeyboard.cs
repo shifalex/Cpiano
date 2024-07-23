@@ -36,7 +36,7 @@ namespace GestureSample.Maui.Models
 
         public int Addend1 { get => _addend1; }
         public int Addend2 { get => _addend2; }
-        public int Sum { get => _addend1+_addend2; }
+        public override int Sum { get => _addend1+_addend2; }
 
         //private readonly Data.RealmService _realmService;
 

@@ -142,6 +142,16 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
+    new PageConfig("new Keyboard", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameType = GameType.BitArrayGame,
+        UIQuestionType = UIQuestionType.BitArrayQuestion,
+        ArrayQuestionTypes = ArrayQuestionTypes.Hand,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
 
     new PageConfig("new Keyboard", "Sync one number Blind Impose edges", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -456,8 +466,7 @@ namespace GestureSample.Views
 		public MainPage(string title, IEnumerable<PageConfig> contents)
 		{
 			Title = title;
-			if (contents == null)
-				contents = AllPages.Where(pc => pc.Parent == null);
+			contents ??= AllPages.Where(pc => pc.Parent == null);
 			BindingContext = contents;
 
 			InitializeComponent();

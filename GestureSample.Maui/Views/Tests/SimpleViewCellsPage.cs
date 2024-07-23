@@ -1,10 +1,10 @@
 ﻿using GestureSample.Maui.Models;
 using GestureSample.Maui;
-using SkiaSharp;
-using SkiaSharp.Views.Maui;
-using SkiaSharp.Views.Maui.Controls;
 using System.Linq;
-
+using System.Diagnostics;
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Graphics.Skia;
+using System;
 
 namespace GestureSample.Views.Tests
 {
@@ -18,8 +18,8 @@ namespace GestureSample.Views.Tests
         private PianoKeyboard _pianoKeyboard = null;
         private PPWGamePlay _gamePlay;
 
-        private SKCanvasView leftHandCanvas;
-        private SKCanvasView rightHandCanvas;
+        private GraphicsView leftHandCanvas;
+        private GraphicsView rightHandCanvas;
         private int[] leftHandBits;
         private int[] rightHandBits;
 
@@ -43,7 +43,7 @@ namespace GestureSample.Views.Tests
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
 
-        private void erntryEnabled(Entry ent, bool enabled)
+        private static void EntryEnabled(Entry ent, bool enabled)
         {
             ent.IsEnabled = enabled;
             ent.TextColor = enabled ? Colors.Black : Colors.Gray;
@@ -61,9 +61,9 @@ namespace GestureSample.Views.Tests
 
                 if (newExercise)
                 {
-                    erntryEnabled(txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
-                    erntryEnabled(txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
-                    erntryEnabled(txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
+                    EntryEnabled(txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
+                    EntryEnabled(txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
+                    EntryEnabled(txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
                 }
             }
             if (btnNext != null) btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
@@ -77,8 +77,7 @@ namespace GestureSample.Views.Tests
                 }
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
                 {
-                    GenerateHandsImage();
-                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = BoolArrayFromHands(leftHandBits, rightHandBits);
+                    GenerateHandsFingers();
                 }
 
                 if (_isKeyboard && !_config.FromNumToNum) _pianoKeyboard.PianoInit();
@@ -104,6 +103,26 @@ namespace GestureSample.Views.Tests
                 result[i] = array[i] > 0;
             }
             return result;
+        }
+
+        private void GenerateHandsFingers()
+        {
+            Random random = new Random();
+            leftHandBits = new int[5];
+            rightHandBits = new int[5];
+
+            for (int i = 0; i < 5; i++)
+            {
+                leftHandBits[i] = random.Next(2); // Generates either 0 or 1
+                rightHandBits[i] = random.Next(2); // Generates either 0 or 1
+            }
+                    ((HandDrawable)leftHandCanvas.Drawable).Bits = leftHandBits;
+            ((HandDrawable)rightHandCanvas.Drawable).Bits = rightHandBits;
+
+            leftHandCanvas.Invalidate();
+            rightHandCanvas.Invalidate();
+            //GenerateHandsImage();
+            ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = BoolArrayFromHands(leftHandBits, rightHandBits);
         }
 
         #endregion
@@ -225,6 +244,7 @@ namespace GestureSample.Views.Tests
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
                 {
                     vsl.Add(InitializeCanvasComponents());
+
                 }
             }
 
@@ -277,102 +297,71 @@ namespace GestureSample.Views.Tests
         }
 
 
-        private StackLayout InitializeCanvasComponents()
+        private HorizontalStackLayout InitializeCanvasComponents()
         {
-            leftHandCanvas = new SKCanvasView
+            leftHandCanvas = new ()
             {
-                IsVisible = false,
-                HeightRequest = 200,
-                WidthRequest = 200
+                HeightRequest = 300,
+                WidthRequest = 200,
+                BackgroundColor = Colors.Grey,
+                Drawable = new HandDrawable()
             };
-            leftHandCanvas.PaintSurface += OnLeftHandCanvasPaintSurface;
 
-            rightHandCanvas = new SKCanvasView
+            rightHandCanvas = new ()
             {
-                IsVisible = false,
-                HeightRequest = 200,
-                WidthRequest = 200
+                HeightRequest = 300,
+                WidthRequest = 200,
+                BackgroundColor = Colors.Red,
+                Drawable = new HandDrawable()
             };
-            rightHandCanvas.PaintSurface += OnRightHandCanvasPaintSurface;
 
+                
+            
 
-            StackLayout stackLayout = new()
+            var stackLayout = new HorizontalStackLayout
             {
                 Children = { leftHandCanvas, rightHandCanvas }
             };
 
-            Content = stackLayout;
+
 
             return stackLayout;
         }
 
-        private void GenerateHandsImage()
+        private class HandDrawable : IDrawable
         {
-            Random r = new Random();
-            leftHandBits = new int[] { r.Next(2), r.Next(2), r.Next(2), r.Next(2), r.Next(2) };
-            rightHandBits = new int[] { r.Next(2), r.Next(2), r.Next(2), r.Next(2), r.Next(2) };
+            public int[] Bits { get; set; } = new int[5];
 
-            leftHandCanvas.IsVisible = true;
-            rightHandCanvas.IsVisible = true;
-
-            leftHandCanvas.InvalidateSurface();
-            rightHandCanvas.InvalidateSurface();
-
-            // Wait for 2 seconds
-            //await Task.Delay(2000);
-
-            leftHandCanvas.IsVisible = false;
-            rightHandCanvas.IsVisible = false;
-        }
-
-        private void OnLeftHandCanvasPaintSurface(object sender, SKPaintSurfaceEventArgs e)
-        {
-            var canvas = e.Surface.Canvas;
-            canvas.Clear(SKColors.White);
-            DrawHand(canvas, leftHandBits);
-        }
-
-        private void OnRightHandCanvasPaintSurface(object sender, SKPaintSurfaceEventArgs e)
-        {
-            var canvas = e.Surface.Canvas;
-            canvas.Clear(SKColors.White);
-            DrawHand(canvas, rightHandBits);
-        }
-
-        private void DrawHand(SKCanvas canvas, int[] bits)
-        {
-            var paint = new SKPaint
+            public void Draw(ICanvas canvas, RectF dirtyRect)
             {
-                Style = SKPaintStyle.Stroke,
-                Color = SKColors.Black,
-                StrokeWidth = 5
-            };
+                canvas.StrokeColor = Colors.Black;
+                canvas.StrokeSize = 5;
+                canvas.FillColor = Colors.SandyBrown;
 
-            // Draw palm
-            var palmPath = new SKPath();
-            palmPath.MoveTo(50, 100);
-            palmPath.LineTo(150, 100);
-            palmPath.LineTo(150, 150);
-            palmPath.LineTo(50, 150);
-            palmPath.Close();
-            canvas.DrawPath(palmPath, paint);
+                // Draw palm with rounded corners
+                var palmRect = new RectF(50, 200, 100, 150);
+                canvas.FillRoundedRectangle(palmRect, 30);
+                canvas.DrawRoundedRectangle(palmRect, 30);
 
-            // Coordinates for fingers
-            var fingers = new[]
-            {
-                new[] { new SKPoint(60, 50), new SKPoint(80, 100) },  // Thumb
-                new[] { new SKPoint(90, 30), new SKPoint(110, 100) }, // Index
-                new[] { new SKPoint(120, 20), new SKPoint(140, 100) },// Middle
-                new[] { new SKPoint(150, 30), new SKPoint(170, 100) },// Ring
-                new[] { new SKPoint(180, 50), new SKPoint(200, 100) } // Pinky
-            };
-
-            // Draw fingers based on the bit array
-            for (int i = 0; i < bits.Length; i++)
-            {
-                if (bits[i] == 1)
+                // Coordinates for fingers
+                var fingerCoordinates = new[]
                 {
-                    canvas.DrawLine(fingers[i][0], fingers[i][1], paint);
+                    new { Base = new PointF(70, 200), Tip = new PointF(70, 100) },  // Thumb
+                    new { Base = new PointF(85, 200), Tip = new PointF(85, 50) },   // Index
+                    new { Base = new PointF(100, 200), Tip = new PointF(100, 40) }, // Middle
+                    new { Base = new PointF(115, 200), Tip = new PointF(115, 50) }, // Ring
+                    new { Base = new PointF(130, 200), Tip = new PointF(130, 100) } // Pinky
+                };
+
+                // Draw fingers based on the bit array
+                for (int i = 0; i < Bits.Length; i++)
+                {
+                    if (Bits[i] == 1)
+                    {
+                        var finger = fingerCoordinates[i];
+                        canvas.FillRoundedRectangle(new RectF(finger.Tip.X - 10, finger.Tip.Y, 20, finger.Base.Y - finger.Tip.Y), 10);
+                        canvas.DrawRoundedRectangle(new RectF(finger.Tip.X - 10, finger.Tip.Y, 20, finger.Base.Y - finger.Tip.Y), 10);
+                    }
                 }
             }
         }
@@ -381,7 +370,7 @@ namespace GestureSample.Views.Tests
         {
             HorizontalStackLayout hslBtns = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
 
-            Button btnCheck = new()
+            btnCheck = new()
             {
                 Text = "Check",
                 Command = cmdCheck,
