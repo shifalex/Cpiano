@@ -4,21 +4,23 @@
     //ODO: number shows keyboard when shouldnt
     //ODO: keyboard questions
     //ODO: Hand questions
+    //ODO: check the hand image and check if it is dosen't flip the bits of left hand
 
     //TODO: HS second number bug fix
     //TODO: Design KeyboardReadOnly
-    //TODO: check the hand image and check if it is dosen't flip the bits of left hand
     //TODO: Combine the Config of GamePlay to two: GameUI and Logic
     //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes.
     //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
     //TODO: Logic questions
-
-    //TODO: Arrows for kwyboard (First one arrow, then 2 arrows)
+    //TODO: generate a configuration page using chatGPT and the config classes. By categories
+    
+    //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Dummies for keyboard
+    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones
 
     //TODO: Show Objects in different sizes
     //TODO: add recognition of pattern as Copy of the question as opposed to reorganization of the question
-    //TODO: generate a configuration page using chatGPT and the config classes. By categories
+    
     //TODO: Multiplication reordering of multipliers(start with 1 being 2 and the other anyone, next some by three and etc.
     //TODO: Interleaving && Block && Block-withException practices
     //TODO: DB save

@@ -43,6 +43,19 @@ namespace GestureSample.Maui.Models
         public override void GenerateExercise()
         {
            _view.UpdateView(true);
+            while(IsAllZeros())
+                _view.UpdateView(true);
+        }
+
+         private bool IsAllZeros()
+        {
+            bool isAllZeros = true;
+            for (int i = 0; i < bitArrayQuestion.Length; i++)
+            {
+                if (bitArrayQuestion[i] == true) { isAllZeros = false; break; }
+            }
+            return isAllZeros;
+
         }
 
         public bool Equals(bool[] bitArrayAnswer)

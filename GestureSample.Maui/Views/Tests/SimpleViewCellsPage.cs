@@ -20,8 +20,6 @@ namespace GestureSample.Views.Tests
 
         private GraphicsView leftHandCanvas;
         private GraphicsView rightHandCanvas;
-        private int[] leftHandBits;
-        private int[] rightHandBits;
 
         #region view updating
         private Label lblStatement;
@@ -77,7 +75,7 @@ namespace GestureSample.Views.Tests
                 }
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
                 {
-                    GenerateHandsFingers();
+                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = GenerateHandsFingersArray();
                 }
 
                 if (_isKeyboard && !_config.FromNumToNum) _pianoKeyboard.PianoInit();
@@ -96,7 +94,7 @@ namespace GestureSample.Views.Tests
 
         private static bool[] BoolArrayFromHands(int[] leftHandBits, int[] rightHandBits)
         {
-            int[] array = leftHandBits.Concat(rightHandBits).ToArray();
+            int[] array = leftHandBits.Reverse().Concat(rightHandBits).ToArray();
             bool[] result = new bool[array.Length];
             for (int i = 0; i < array.Length; i++)
             {
@@ -105,24 +103,24 @@ namespace GestureSample.Views.Tests
             return result;
         }
 
-        private void GenerateHandsFingers()
+        private bool[] GenerateHandsFingersArray()
         {
             Random random = new Random();
-            leftHandBits = new int[5];
-            rightHandBits = new int[5];
+            int[] leftHandBits = new int[5];
+            int[] rightHandBits = new int[5];
 
             for (int i = 0; i < 5; i++)
             {
                 leftHandBits[i] = random.Next(2); // Generates either 0 or 1
                 rightHandBits[i] = random.Next(2); // Generates either 0 or 1
             }
-                    ((HandDrawable)leftHandCanvas.Drawable).Bits = leftHandBits;
+           ((HandDrawable)leftHandCanvas.Drawable).Bits = leftHandBits;
             ((HandDrawable)rightHandCanvas.Drawable).Bits = rightHandBits;
 
             leftHandCanvas.Invalidate();
             rightHandCanvas.Invalidate();
-            //GenerateHandsImage();
-            ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = BoolArrayFromHands(leftHandBits, rightHandBits);
+            return BoolArrayFromHands(leftHandBits, rightHandBits);
+           
         }
 
         #endregion
@@ -302,17 +300,15 @@ namespace GestureSample.Views.Tests
             leftHandCanvas = new ()
             {
                 HeightRequest = 300,
-                WidthRequest = 200,
-                BackgroundColor = Colors.Grey,
-                Drawable = new HandDrawable()
+                WidthRequest = 150,
+                Drawable = new HandDrawable(isLeftHand: true)
             };
 
             rightHandCanvas = new ()
             {
                 HeightRequest = 300,
-                WidthRequest = 200,
-                BackgroundColor = Colors.Red,
-                Drawable = new HandDrawable()
+                WidthRequest = 150,
+                Drawable = new HandDrawable(isLeftHand: false)
             };
 
                 
@@ -328,43 +324,7 @@ namespace GestureSample.Views.Tests
             return stackLayout;
         }
 
-        private class HandDrawable : IDrawable
-        {
-            public int[] Bits { get; set; } = new int[5];
-
-            public void Draw(ICanvas canvas, RectF dirtyRect)
-            {
-                canvas.StrokeColor = Colors.Black;
-                canvas.StrokeSize = 5;
-                canvas.FillColor = Colors.SandyBrown;
-
-                // Draw palm with rounded corners
-                var palmRect = new RectF(50, 200, 100, 150);
-                canvas.FillRoundedRectangle(palmRect, 30);
-                canvas.DrawRoundedRectangle(palmRect, 30);
-
-                // Coordinates for fingers
-                var fingerCoordinates = new[]
-                {
-                    new { Base = new PointF(70, 200), Tip = new PointF(70, 100) },  // Thumb
-                    new { Base = new PointF(85, 200), Tip = new PointF(85, 50) },   // Index
-                    new { Base = new PointF(100, 200), Tip = new PointF(100, 40) }, // Middle
-                    new { Base = new PointF(115, 200), Tip = new PointF(115, 50) }, // Ring
-                    new { Base = new PointF(130, 200), Tip = new PointF(130, 100) } // Pinky
-                };
-
-                // Draw fingers based on the bit array
-                for (int i = 0; i < Bits.Length; i++)
-                {
-                    if (Bits[i] == 1)
-                    {
-                        var finger = fingerCoordinates[i];
-                        canvas.FillRoundedRectangle(new RectF(finger.Tip.X - 10, finger.Tip.Y, 20, finger.Base.Y - finger.Tip.Y), 10);
-                        canvas.DrawRoundedRectangle(new RectF(finger.Tip.X - 10, finger.Tip.Y, 20, finger.Base.Y - finger.Tip.Y), 10);
-                    }
-                }
-            }
-        }
+        
 
         private HorizontalStackLayout GenerateButtons()
         {
