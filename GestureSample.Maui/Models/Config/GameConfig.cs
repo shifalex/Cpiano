@@ -19,49 +19,51 @@ namespace GestureSample.Maui
     {
         //OneText,//Can be also objects.. always exists
         ThreeTexts, //Can be with following options: history, levelPicker, DirectionsText, Guess one
-        SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options
-        BitArrayQuestion, //Can be Hand or Keyboard
-        Tower, //Can be text or keys tower
-        ArrowQuestion,//May also have twoArrows. Can have or not a number on it On every exercise it is like new., Without text or with for pattern recognition
-        LogicalQuestion //2kyboards, first optional, 1 operand
-    }
-
-    public enum ArrayQuestionTypes
-    {
-        TextNumber,
-        Hand,
-        Keyboard,
-        Objects
-    }
-
-
-    public enum GameType//TODO: Difuse to "variable types" and "three texts"
-    {
-        GuessOne,
-        CompletionOneInAddition,
-        SimpleDecomposition,
+        SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options,
+        CanvasesHands,
+        CanvasesObjects,
         DecompositionGame,
-        BitArrayGame,
-        Multiplication,
-        Logic
+        //BitArrayQuestion, //Can be Hand or Keyboard
+        Tower, //Can be text or keys tower
+        ArrowOnKeyboard,//May also have twoArrows. Can have or not a number on it On every exercise it is like new., Without text or with for pattern recognition
+        LogicalKeyboards //2kyboards, second optional, 1 operand
     }
 
-    public enum BitArrayGameType
+
+    public enum Invisability
     {
+        None,
+        All,
+        OneSideOnly,
+        RightSideOnly,
+        LeftSideOnly,
+        PartialScreenCovering
+    }
+
+    public enum Operation
+    {
+        Sum,
+        Multiplication,
         Copy,
         Quantity,
-        Reorder,
-        SerializeWithArrow //TODO: Try to solve the conflict that they can be both together and separate entities
+        Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
+        //Reorder,
+        Not,
+        And,
+        Or,
+        Neutralize
 
     }
 
     public enum VariableTypes
     {
-        OneNoSum = 1,
+        ShowOnlySum=0,
+        OneNoSum,
         TwoNoSum,
         OneCanBeSum,
         SumOnly,
-        TwoAny
+        TwoAny,
+        
 
 
     }
@@ -70,19 +72,22 @@ namespace GestureSample.Maui
     public class GameConfig
     {
 
+        public static List<Operation> LogicaOperations = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
+        public static List<Operation> ArithmeticOperations = new() { Operation.Multiplication, Operation.Sum };
+        public static List<Operation> BitArrayOperation = new() { Operation.Copy, Operation.Quantity, Operation.Serialize };
+        public static List<Operation> LogicalDualOperations = new() { Operation.Or, Operation.And, Operation.Neutralize };
         // Properties with default values
-        public GameType GameType { get; set; } = GameType.SimpleDecomposition;
         public bool IsHistory { get; set; } = false;
 
         public int MinAddend { get; set; } = 0;
         public int MaxAddend { get; set; } = 5;
-        public int MinSum {  get; set; } = 1;
+        public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
 
         public bool OnlyThrougTen = false;
 
         public List<int> addendsList = new();
-        public List<int> addendsListSecond =null;
+        public List<int> addendsListSecond = null;
 
 
         public bool FromNumToNum { get; set; } = false;
@@ -90,11 +95,7 @@ namespace GestureSample.Maui
         public int SecondsToShowExercise { get; set; } = -1;
 
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
-
-        public ArrayQuestionTypes ArrayQuestionTypes = ArrayQuestionTypes.Keyboard;
-        public BitArrayGameType BitArrayGameType = BitArrayGameType.Quantity;
-
-
+        public List<Operation> OperationList = new (){ Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
         // Nested configuration with defaults
         public KeyboardConfig KeyboardConfig { get; set; } = null;

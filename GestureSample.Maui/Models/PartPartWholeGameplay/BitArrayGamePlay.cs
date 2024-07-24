@@ -5,59 +5,75 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GestureSample.Maui.Models
 {
     internal class BitArrayGamePlay : PPWGamePlay
     {
-        public bool[] bitArrayQuestion = new bool[10];
-        public ArrayQuestionTypes arrayQuestionType;
-        public BitArrayGameType bitArrayGameType;
-        public BitArrayGamePlay(GameType gameType, SimpleViewCellsPage view, GameConfig config) : base(gameType, view, config)
-        {
-            arrayQuestionType = config.ArrayQuestionTypes;
-            bitArrayGameType = config.BitArrayGameType;
+        public bool[] bitArrayQuestion;
+        public bool[] bitArrayQuestion2 ;
+        public UIQuestionType arrayQuestionType;
 
+        
+
+        public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
+        {
+            arrayQuestionType = config.UIQuestionType;
+            bitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
+            bitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
 
         }
 
         public override bool Check(PianoKeyboard pianoKeyboard)
         {
-            bool result = Check(pianoKeyboard.ToBitArray());
+            bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result?Statement.True:Statement.False;
             _view.UpdateView();
             return result;
         }
 
-        public bool Check(bool[] bitArrayAnswer)
+        public bool CheckOnly(bool[] bitArrayAnswer)
         {
-            return bitArrayGameType switch
+            return CurrentOperation switch
             {
-                BitArrayGameType.Copy => this.Equals(bitArrayAnswer),
+                Operation.Copy => this.Equals(bitArrayAnswer),
                 //BitArrayGameType.Reorder => this.Equals(),
-                BitArrayGameType.Quantity => this.SumEquals(bitArrayAnswer),
+                Operation.Quantity => this.SumEquals(bitArrayAnswer),
                 //BitArrayGameType.SerializeWithArrow => this.Equals(),
+                Operation.Not => this.Not(bitArrayAnswer),
+                Operation.And => this.And(bitArrayAnswer),
+                Operation.Or => this.Or(bitArrayAnswer),
+                Operation.Neutralize => this.Neutralize(bitArrayAnswer),
                 _ => false
             };
         }
 
         public override void GenerateExercise()
         {
+            Random r = new();
+            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+            
+
             bitArrayQuestion = RandomArray();
-            while (IsAllZeros())
+            bitArrayQuestion2 = RandomArray();
+            while (IsResultAllZeros())
+            {
                 bitArrayQuestion = RandomArray();
+                bitArrayQuestion2 = RandomArray();
+            }
             _view.UpdateView(true);
             
         }
 
-         private bool IsAllZeros()
+         private bool IsResultAllZeros()
         {
-            bool isAllZeros = true;
-            for (int i = 0; i < bitArrayQuestion.Length; i++)
+            bool[] wrongArray = new bool[bitArrayQuestion.Length];
+            for (int i = 0; i < wrongArray.Length; i++)
             {
-                if (bitArrayQuestion[i] == true) { isAllZeros = false; break; }
+                wrongArray[i] = false;
             }
-            return isAllZeros;
+            return !CheckOnly(wrongArray);
 
         }
 
@@ -73,10 +89,7 @@ namespace GestureSample.Maui.Models
             return array; 
         }
 
-
-
-
-        public void BitArrayforHands(int[] leftHandBits, int[] rightHandBits)
+         public void BitArrayforHands(int[] leftHandBits, int[] rightHandBits)
         {
             for (int i = 0; i < rightHandBits.Length; i++)
             {
@@ -100,6 +113,36 @@ namespace GestureSample.Maui.Models
             for (int i = 0; i < bitArrayAnswer.Length; i++)
                { s1 += bitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
             return s1==s2;
+        }
+
+        public bool Not(bool[] bitArrayAnswer)
+        {
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (bitArrayAnswer[i] != bitArrayQuestion[i]) return true;
+            return false;
+        }
+
+        public bool And(bool[] bitArrayAnswer)
+        {
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (bitArrayAnswer[i] != (bitArrayQuestion[i]&& bitArrayQuestion2[i])) return false;
+            return true;
+        }
+
+        public bool Or(bool[] bitArrayAnswer)
+        {
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (bitArrayAnswer[i] != (bitArrayQuestion[i] || bitArrayQuestion2[i])) return false;
+            return true;
+        }
+
+        public bool Neutralize(bool[] bitArrayAnswer)
+        {
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if ((bitArrayAnswer[i] && bitArrayQuestion[i] && bitArrayQuestion2[i])||
+                    bitArrayAnswer[i] != (bitArrayQuestion[i] || bitArrayQuestion2[i])) 
+                    return false;
+            return true;
         }
     }
 }

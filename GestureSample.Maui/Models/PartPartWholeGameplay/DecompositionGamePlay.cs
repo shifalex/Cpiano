@@ -29,7 +29,7 @@ namespace GestureSample.Maui.Models
 
         public int Level { get { return _level; } set { _level = value; } }
 
-        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(GameType.DecompositionGame, view, null)
+        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(view, null)
         {
             _numberOfVariables = VariableTypes.OneCanBeSum;
             _lblStats = lblStats;
@@ -66,27 +66,20 @@ namespace GestureSample.Maui.Models
             return check;
         }
 
-        protected override int[] GenerateFactors()
+        protected override int[] Factors
         {
-            if(_level==1) { return base.GenerateFactors(); }
-
-            int[] factors = new int[3];
-            Random r = new();
-            if (Sum != addend1 + addend2) 
-                _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
-            factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
-            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
-            if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddend, Math.Min(_maxAddend + 1, factors[2]));
-            else
+            get
             {
-               int tens = r.Next(Math.Max(_minAddend / 10, 0), factors[2] / 10 - 1);
-               int ones = r.Next(factors[2] % 10 + 1, 10);
-               factors[0] = tens * 10 + ones;
-            }
-            factors[1] = factors[2] - factors[0];
-            
+                if (_level == 1) { return base.Factors; }
 
-            return factors;
+                int[] factors = new int[3];
+                Random r = new();
+                if (Sum != addend1 + addend2)
+                    _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
+                return FactorsThroughTen;
+
+
+            }
         }
 
         private void UpdateLevelStats()

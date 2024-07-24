@@ -19,6 +19,9 @@ namespace GestureSample.Maui.Models
         public int addend2;
         public int Sum;
 
+        
+        public Operation CurrentOperation { get; set; }
+
         private int _guessNumber = 0;
         public int GuessNumber { get { return _guessNumber; } }
 
@@ -33,19 +36,17 @@ namespace GestureSample.Maui.Models
         private readonly bool _isHistory = false;
         private bool _isFirstGuess = true;
 
-        protected readonly GameType _gameType;
-        public GameType GameType { get => _gameType; }
         protected readonly SimpleViewCellsPage _view;
 
-        private GameConfig _config;
-        public PPWGamePlay(GameType gameType, SimpleViewCellsPage view, GameConfig config)
+        public GameConfig Config;
+        public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
         {
-            _gameType = gameType; _view = view; _config = config;
-            if (config != null)
-            {
-                _isHistory = config.IsHistory; _maxAddend = config.MaxAddend; _maxSum = config.MaxSum; _numberOfVariables = config.VariableTypes;
-                _minAddend = config.MinAddend; _minSum = config.MinSum;
-            }
+             _view = view; Config = config;
+            CurrentOperation = Config.OperationList[0];
+            
+            _isHistory = config.IsHistory; _maxAddend = config.MaxAddend; _maxSum = config.MaxSum; _numberOfVariables = config.VariableTypes;
+            _minAddend = config.MinAddend; _minSum = config.MinSum;
+            
             //TODO: Move these to MainPage
             //if (_isHistory) _minSum = 1;
         }
@@ -65,11 +66,12 @@ namespace GestureSample.Maui.Models
             else
             {
                 _guessNumber++;
-                _status = _gameType switch
+                _status = CurrentOperation switch
                 {
-                    GameType.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
-                    GameType.Logic => Statement.True,
-                    _ => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
+                    Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
+                    //GameType.Logic => Statement.True,
+                    Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
+                    _ => Statement.True
                 };
                 if (_isHistory && _status==Statement.True)
                 {
@@ -104,15 +106,20 @@ namespace GestureSample.Maui.Models
         public virtual void GenerateExercise()
         {
 
-            int[] factors;
-            if (_gameType == GameType.Multiplication) 
-                factors = GenerateMultFactors();
-            else 
-                factors= GenerateFactors();
-            if(_isHistory) 
-                GenerateNewExerciseWithHistory(factors);
-
             Random r = new();
+            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count())];
+
+            int[] factors;
+            if (CurrentOperation == Operation.Multiplication) 
+                factors = FactorsMultiplication;
+            else if(Config.OnlyThrougTen)
+                factors = FactorsThroughTen;
+            else if(_isHistory) 
+                factors = FactorsByHistory;
+            else
+                factors= Factors;
+            
+
             int n = (_numberOfVariables == VariableTypes.OneCanBeSum || _numberOfVariables == VariableTypes.TwoAny) ? r.Next(3) : r.Next(2);
             switch (_numberOfVariables)   {
                 case VariableTypes.OneCanBeSum:
@@ -132,40 +139,71 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count())];
             _status = Statement.Neutral;
             _guessNumber = 0;
             _view.UpdateView(true);
         }
 
-        protected virtual int[] GenerateFactors()
-        {
-            int[] factors = new int[3];
-            Random r = new();
 
-            if (_isFirstGuess)
+
+        protected virtual int[] Factors
+        {
+            get
             {
-                factors[0] = 2; factors[1] = 3; factors[2] = 5;
-                _isFirstGuess = false;
+                int[] factors = new int[3];
+                Random r = new();
+
+                if (_isFirstGuess)
+                {
+                    factors[0] = 2; factors[1] = 3; factors[2] = 5;
+                    _isFirstGuess = false;
+                    return factors;
+                }
+                factors[2] = r.Next(_minSum, _maxSum + 1);
+                //if (_fInsisitentOnOne) factors[2] = _lastNum;
+                factors[0] = r.Next(_minAddend, Math.Min(_maxAddend, factors[2]) + 1);
+                factors[1] = factors[2] - factors[0];
+
                 return factors;
             }
-            factors[2] = r.Next(_minSum, _maxSum + 1);
-            //if (_fInsisitentOnOne) factors[2] = _lastNum;
-            factors[0] = r.Next(_minAddend, Math.Min(_maxAddend, factors[2]) + 1);
-            factors[1] = factors[2] - factors[0];
-
-            return factors;
         }
 
-        private int[] GenerateMultFactors()
+        protected int[] FactorsThroughTen
         {
-            int[] factors = new int[3];
-            Random r = new();
+            get
+            {
+                int[] factors = new int[3];
+                Random r = new();
 
-            factors[0] = r.Next(_minAddend, _maxAddend + 1);
-            factors[1] = r.Next(_minAddend, _maxAddend + 1);
-            factors[2] = factors[0] * factors[1];
+                factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
+                while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
+                if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddend, Math.Min(_maxAddend + 1, factors[2]));
+                else
+                {
+                    int tens = r.Next(Math.Max(_minAddend / 10, 0), factors[2] / 10 - 1);
+                    int ones = r.Next(factors[2] % 10 + 1, 10);
+                    factors[0] = tens * 10 + ones;
+                }
+                factors[1] = factors[2] - factors[0];
 
-            return factors;
+                return factors;
+            }
+        }
+
+        private int[] FactorsMultiplication
+        {
+            get
+            {
+                int[] factors = new int[3];
+                Random r = new();
+
+                factors[0] = r.Next(_minAddend, _maxAddend + 1);
+                factors[1] = r.Next(_minAddend, _maxAddend + 1);
+                factors[2] = factors[0] * factors[1];
+
+                return factors;
+            }
         }
 
 
@@ -191,27 +229,30 @@ namespace GestureSample.Maui.Models
             return NAN;
         }
 
-        //ASK ANNA: is sit ok that I'm passing arrays instead of variables?
-        //TODO: check if works with "void" too
-        private void GenerateNewExerciseWithHistory(int[] factors) {
-            
-            Random r = new();
-            factors[2] = r.Next(_minSum, _maxSum + 1);
-            factors[0] = GenerateNewAddend(factors[2]);
-            factors[1] = factors[2] - factors[0];
-            while (_impossibleSums.Contains(factors[2]) || _impossibleSums.Count >= _maxSum - 2 * _minAddend - 1)
+        
+        private int[] FactorsByHistory
+        {
+            get
             {
-                if (_impossibleSums.Count >= _maxSum - 2 * _minAddend - 1)
-                {
-                    _status = Statement.Win;
-                    _impossibleSums.Clear(); AllHistory.Clear(); _numberOfVariables = (_numberOfVariables == VariableTypes.OneNoSum)?VariableTypes.TwoNoSum: VariableTypes.OneNoSum;
-                }
+                int[] factors = new int[3];
+                Random r = new();
                 factors[2] = r.Next(_minSum, _maxSum + 1);
                 factors[0] = GenerateNewAddend(factors[2]);
                 factors[1] = factors[2] - factors[0];
-                //What about multiplicaiton with history?
+                while (_impossibleSums.Contains(factors[2]) || _impossibleSums.Count >= _maxSum - 2 * _minAddend - 1)
+                {
+                    if (_impossibleSums.Count >= _maxSum - 2 * _minAddend - 1)
+                    {
+                        _status = Statement.Win;
+                        _impossibleSums.Clear(); AllHistory.Clear(); _numberOfVariables = (_numberOfVariables == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
+                    }
+                    factors[2] = r.Next(_minSum, _maxSum + 1);
+                    factors[0] = GenerateNewAddend(factors[2]);
+                    factors[1] = factors[2] - factors[0];
+                    //What about multiplicaiton with history?
+                }
+                return factors;
             }
-            //return factors;
         }
 
         #endregion
