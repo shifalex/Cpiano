@@ -11,7 +11,7 @@ namespace GestureSample.Views.Tests
 
     public class SimpleViewCellsPage : ContentPage
     {
-        private readonly GameType _gameType;
+        
         private readonly bool _isKeyboard;
         private PianoKeyboard _pianoKeyboard = null;
         private PPWGamePlay _gamePlay;
@@ -65,19 +65,17 @@ namespace GestureSample.Views.Tests
             }
             if (btnNext != null) btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
 
-            if (_config.UIQuestionType == UIQuestionType.BitArrayQuestion && newExercise)
+            if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards && newExercise)
             {
-                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Keyboard)
-                {
-                    keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).bitArrayQuestion);
-                }
-                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
-                {
-                    ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
-                    leftHandCanvas.Invalidate();
-                    rightHandCanvas.Invalidate();
-                }
+                keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).bitArrayQuestion);
             }
+            if (_config.UIQuestionType == UIQuestionType.CanvasesHands && newExercise)
+            {
+                ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
+                leftHandCanvas.Invalidate();
+                rightHandCanvas.Invalidate();
+            }
+            
 
             if (_isKeyboard && !_config.FromNumToNum && newExercise) _pianoKeyboard.PianoInit();
             if (_config.IsHistory) lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
@@ -99,7 +97,6 @@ namespace GestureSample.Views.Tests
         public SimpleViewCellsPage(GameConfig config)
         {
             _config = config;
-            _gameType = config.GameType;
 
             _isKeyboard = _config.KeyboardConfig != null;
 
@@ -111,7 +108,7 @@ namespace GestureSample.Views.Tests
 
         private void InitializeGamePlay()
         {
-            _gamePlay = new PPWGamePlay(_gameType, this, _config);
+            _gamePlay = new PPWGamePlay(this, _config);
             cmdCheck = new Command(() =>
             {
                 if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
@@ -200,25 +197,24 @@ namespace GestureSample.Views.Tests
                 vsl.Add(lblHistory);
             }
 
-            if (_config.UIQuestionType == UIQuestionType.BitArrayQuestion)
+            if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
             {
-                _gamePlay = new BitArrayGamePlay(_gameType, this, _config);
-                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Keyboard)
-                {
-                    keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
-                    keyboardTask1.WidthRequest = TASK_WIDTH;
-                    keyboardTask1.HeightRequest = TASK_WIDTH / 2;
-                    vsl.Add(keyboardTask1);
-                }
-                if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
-                {
-                    vsl.Add(InitializeCanvasComponents());
+                _gamePlay = new BitArrayGamePlay(this, _config);
+                keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
+                keyboardTask1.WidthRequest = TASK_WIDTH;
+                keyboardTask1.HeightRequest = TASK_WIDTH / 2;
+                vsl.Add(keyboardTask1);
+            }
+            if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
+            {
+                _gamePlay = new BitArrayGamePlay(this, _config);
+                vsl.Add(InitializeCanvasComponents());
 
-                }
+            
             }
 
 
-            if (_gameType == GameType.DecompositionGame)
+            if (_config.UIQuestionType == UIQuestionType.DecompositionGame)
             {
                 vsl.Add(GenerateDecompositionGameUI());
             }

@@ -75,7 +75,7 @@ namespace GestureSample.Views
             new PageConfig("Number", "Multiplication", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(false,true,true, true) }),
             new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.GuessOne,
+        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             TextBoxesQuantity = 1
@@ -84,7 +84,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.GuessOne,
+        VariableTypes = VariableTypes.ShowOnlySum,
         FromNumToNum = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -95,7 +95,7 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.GuessOne,
+    //     VariableTypes = VariableTypes.ShowOnlySum,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 1,
@@ -105,7 +105,7 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Async one number Impose edges From Num To Num", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.GuessOne,
+    //     VariableTypes = VariableTypes.ShowOnlySum,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 1,
@@ -116,7 +116,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.GuessOne,
+        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -126,7 +126,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.GuessOne,
+        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -135,8 +135,9 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.BitArrayGame,
-        UIQuestionType = UIQuestionType.BitArrayQuestion,
+
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new (){  Operation.Quantity },
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -144,10 +145,9 @@ namespace GestureSample.Views
     })),
     new PageConfig("new Keyboard", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.BitArrayGame,
-        UIQuestionType = UIQuestionType.BitArrayQuestion,
-        ArrayQuestionTypes = ArrayQuestionTypes.Hand,
-        BitArrayGameType = BitArrayGameType.Copy,
+
+        UIQuestionType = UIQuestionType.CanvasesHands,
+        OperationList = new (){  Operation.Copy },
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -156,7 +156,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number Blind Impose edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.GuessOne,
+        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -167,7 +167,7 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecomposition,
+    //     VariableTypes = VariableTypes.TwoNoSum,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 2
@@ -176,7 +176,6 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //        SyncType = SyncType.Sync,
@@ -186,7 +185,6 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         SyncType = SyncType.Sync
@@ -195,7 +193,6 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Async decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     GameType = GameType.SimpleDecomposition,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //        SyncType = SyncType.Sync,
@@ -205,7 +202,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -216,7 +212,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -250,7 +245,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         MaxAddend=10,
         KeyboardConfig = new KeyboardConfig
         {KeysInRow = 11,
@@ -287,7 +281,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-       GameType = GameType.SimpleDecomposition,
         MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
@@ -299,7 +292,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
@@ -312,7 +304,6 @@ namespace GestureSample.Views
 
     /*new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -323,7 +314,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         MinAddend=1,
         MinSum=2,
@@ -338,7 +328,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations Blind Full Without Zero Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true,
         MinAddend=1,
         MinSum=2,
@@ -352,33 +341,28 @@ namespace GestureSample.Views
     })),
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 5)", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameType = GameType.SimpleDecomposition
-    })),
+        {
+        })),
 
     new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         IsHistory = true
     })),
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         MaxAddend=10
     })),
 
     new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.SimpleDecomposition,
         MaxAddend=10,
         IsHistory = true
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGame,
-        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,
         KeyboardConfig = new KeyboardConfig()
         {
             Rows = 2,
@@ -388,8 +372,8 @@ namespace GestureSample.Views
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGame,
-        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+        
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
 
         KeyboardConfig = new KeyboardConfig
         {
@@ -410,7 +394,7 @@ namespace GestureSample.Views
     */
     new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.DecompositionGame
+        UIQuestionType = UIQuestionType.DecompositionGame
     })),
 
     // Uncomment and update as needed
@@ -427,7 +411,7 @@ namespace GestureSample.Views
 
     new PageConfig("new Number", "Multiplication", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameType = GameType.Multiplication,
+        OperationList = new() { Operation.Multiplication},
         MinAddend = 2,
         MaxAddend = 9,
         MaxSum=100,
