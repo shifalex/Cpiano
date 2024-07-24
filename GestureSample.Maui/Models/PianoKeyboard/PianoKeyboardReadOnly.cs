@@ -18,7 +18,7 @@ namespace GestureSample.Maui.Models
         protected readonly Color COLOR_FREE = Colors.White;
         public Color[] colors;
         public int  Length => btnKeys.Length;
-        protected virtual int heading_height { get; } = 20;
+        protected virtual int heading_height { get; } = 5;
         public PianoKeyboardReadOnly(int rows = 1, int keysInRow = 10) : base()
         {
 
