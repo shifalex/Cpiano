@@ -5,9 +5,9 @@
     //ODO: keyboard questions
     //ODO: Hand questions
     //ODO: check the hand image and check if it is dosen't flip the bits of left hand
+    //ODO: Design KeyboardReadOnly
 
     //TODO: HS second number bug fix
-    //TODO: Design KeyboardReadOnly
     //TODO: Combine the Config of GamePlay to two: GameUI and Logic
     //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes.
     //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
@@ -16,7 +16,8 @@
     
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Dummies for keyboard
-    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones
+    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
+    //TODO: Only one hand for decompositions (up to 4)
 
     //TODO: Show Objects in different sizes
     //TODO: add recognition of pattern as Copy of the question as opposed to reorganization of the question

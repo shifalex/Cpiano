@@ -9,8 +9,6 @@ using System;
 namespace GestureSample.Views.Tests
 {
 
-    //ODO: Organizer for JSON - DONE with Property Initialization instead
-    //ODO: JSON file for the menu buttons -DONE
     public class SimpleViewCellsPage : ContentPage
     {
         private readonly GameType _gameType;
@@ -21,7 +19,8 @@ namespace GestureSample.Views.Tests
         private GraphicsView leftHandCanvas;
         private GraphicsView rightHandCanvas;
 
-        #region view updating
+       
+        private readonly int TASK_WIDTH = 240;//TODO: if phone then make smaller and make answer keyboard only notSync
         private Label lblStatement;
         private Label lblHistory;
         private Entry txtAddend1;
@@ -40,7 +39,7 @@ namespace GestureSample.Views.Tests
         private Command cmdCheck = null;
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
-
+ #region view updating
         private static void EntryEnabled(Entry ent, bool enabled)
         {
             ent.IsEnabled = enabled;
@@ -70,17 +69,18 @@ namespace GestureSample.Views.Tests
             {
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Keyboard)
                 {
-                    keyboardTask1.Random();
-                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = keyboardTask1.ToBitArray();
+                    keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).bitArrayQuestion);
                 }
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
                 {
-                    ((BitArrayGamePlay)_gamePlay).bitArrayQuestion = GenerateHandsFingersArray();
+                    ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
+                    leftHandCanvas.Invalidate();
+                    rightHandCanvas.Invalidate();
                 }
-
-                if (_isKeyboard && !_config.FromNumToNum) _pianoKeyboard.PianoInit();
-                if (_config.IsHistory) lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
             }
+
+            if (_isKeyboard && !_config.FromNumToNum && newExercise) _pianoKeyboard.PianoInit();
+            if (_config.IsHistory) lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
         }
 
         private static string GenerateHistoryString(List<PPWObject> ppwHistoryArray)
@@ -90,37 +90,6 @@ namespace GestureSample.Views.Tests
                 strHistory += ppw.Addend1 + "\t" + ppw.Addend2 + "\n";
 
             return strHistory;
-        }
-
-        private static bool[] BoolArrayFromHands(int[] leftHandBits, int[] rightHandBits)
-        {
-            int[] array = leftHandBits.Reverse().Concat(rightHandBits).ToArray();
-            bool[] result = new bool[array.Length];
-            for (int i = 0; i < array.Length; i++)
-            {
-                result[i] = array[i] > 0;
-            }
-            return result;
-        }
-
-        private bool[] GenerateHandsFingersArray()
-        {
-            Random random = new Random();
-            int[] leftHandBits = new int[5];
-            int[] rightHandBits = new int[5];
-
-            for (int i = 0; i < 5; i++)
-            {
-                leftHandBits[i] = random.Next(2); // Generates either 0 or 1
-                rightHandBits[i] = random.Next(2); // Generates either 0 or 1
-            }
-           ((HandDrawable)leftHandCanvas.Drawable).Bits = leftHandBits;
-            ((HandDrawable)rightHandCanvas.Drawable).Bits = rightHandBits;
-
-            leftHandCanvas.Invalidate();
-            rightHandCanvas.Invalidate();
-            return BoolArrayFromHands(leftHandBits, rightHandBits);
-           
         }
 
         #endregion
@@ -237,6 +206,8 @@ namespace GestureSample.Views.Tests
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Keyboard)
                 {
                     keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
+                    keyboardTask1.WidthRequest = TASK_WIDTH;
+                    keyboardTask1.HeightRequest = TASK_WIDTH / 2;
                     vsl.Add(keyboardTask1);
                 }
                 if (_config.ArrayQuestionTypes == ArrayQuestionTypes.Hand)
@@ -299,15 +270,15 @@ namespace GestureSample.Views.Tests
         {
             leftHandCanvas = new ()
             {
-                HeightRequest = 300,
-                WidthRequest = 150,
+                HeightRequest = TASK_WIDTH,
+                WidthRequest = TASK_WIDTH/2,
                 Drawable = new HandDrawable(isLeftHand: true)
             };
 
             rightHandCanvas = new ()
             {
-                HeightRequest = 300,
-                WidthRequest = 150,
+                HeightRequest = TASK_WIDTH,
+                WidthRequest = TASK_WIDTH/2,
                 Drawable = new HandDrawable(isLeftHand: false)
             };
 
@@ -360,7 +331,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.Yellow,
                 TextColor = Colors.Black,
-                WidthRequest = 240,
+                WidthRequest = TASK_WIDTH,
                 FontSize = 32
             };
 
@@ -371,7 +342,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = 120,
+                WidthRequest = TASK_WIDTH/2,
                 FontSize = 18,
                 IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
             };
@@ -383,7 +354,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = 120,
+                WidthRequest = TASK_WIDTH/2,
                 FontSize = 18,
                 IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
             };

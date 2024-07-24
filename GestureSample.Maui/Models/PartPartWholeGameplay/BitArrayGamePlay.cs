@@ -10,13 +10,14 @@ namespace GestureSample.Maui.Models
 {
     internal class BitArrayGamePlay : PPWGamePlay
     {
-        public bool[] bitArrayQuestion;
+        public bool[] bitArrayQuestion = new bool[10];
         public ArrayQuestionTypes arrayQuestionType;
         public BitArrayGameType bitArrayGameType;
         public BitArrayGamePlay(GameType gameType, SimpleViewCellsPage view, GameConfig config) : base(gameType, view, config)
         {
             arrayQuestionType = config.ArrayQuestionTypes;
             bitArrayGameType = config.BitArrayGameType;
+
 
         }
 
@@ -42,9 +43,11 @@ namespace GestureSample.Maui.Models
 
         public override void GenerateExercise()
         {
-           _view.UpdateView(true);
-            while(IsAllZeros())
-                _view.UpdateView(true);
+            bitArrayQuestion = RandomArray();
+            while (IsAllZeros())
+                bitArrayQuestion = RandomArray();
+            _view.UpdateView(true);
+            
         }
 
          private bool IsAllZeros()
@@ -58,6 +61,31 @@ namespace GestureSample.Maui.Models
 
         }
 
+        public bool[] RandomArray()
+        {
+            Random random = new Random();
+            bool[] array = new bool[bitArrayQuestion.Length];
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                array[i] = random.Next(2)==1; // Generates either true or false
+            }
+            return array; 
+        }
+
+
+
+
+        public void BitArrayforHands(int[] leftHandBits, int[] rightHandBits)
+        {
+            for (int i = 0; i < rightHandBits.Length; i++)
+            {
+                leftHandBits[i] = bitArrayQuestion[rightHandBits.Length -1 - i]?1:0; // Generates either 0 or 1
+                rightHandBits[i] = bitArrayQuestion[rightHandBits.Length + i]?1:0; // Generates either 0 or 1
+            }
+            
+        }
+        
         public bool Equals(bool[] bitArrayAnswer)
         {
             //TODO? Through Exceptions

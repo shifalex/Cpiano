@@ -87,6 +87,8 @@ namespace GestureSample.Maui
 
         public bool FromNumToNum { get; set; } = false;
 
+        public int SecondsToShowExercise { get; set; } = -1;
+
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
 
         public ArrayQuestionTypes ArrayQuestionTypes = ArrayQuestionTypes.Keyboard;
