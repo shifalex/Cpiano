@@ -27,17 +27,13 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        public int Level { get { return _level; } set { _level = value; } }
+       
 
         public DecompositionGamePlay(SimpleViewCellsPage view, GameConfig config, Label lblStats, Picker pkrLevel) : base(view, config)
         {
             _lblStats = lblStats;
             _pkrLevel = pkrLevel;
-            /*
-            _lblStats.BindingContext = this;
-            _lblStats.SetBinding(Label.TextProperty, nameof(StatsString));*/
             _pkrLevel.BindingContext = this;
-            _pkrLevel.SetBinding(Picker.SelectedItemProperty, nameof(Level));
 
             _lblStats.Text = StatsString;
 
@@ -76,6 +72,17 @@ namespace GestureSample.Maui.Models
                 return FactorsThroughTen;
             }
         }
+        private bool _levelChangedByUser = false;
+        public void SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _level = _pkrLevel.SelectedIndex+1;
+            _levelChangedByUser = true;
+            _streakCorrect = 0; _streakWrong = 0;
+            UpdateLevelStats();
+            _levelChangedByUser = false;
+            GenerateExercise();
+
+        }
 
         private void UpdateLevelStats()
         {
@@ -88,7 +95,7 @@ namespace GestureSample.Maui.Models
                     _level = 2;
                     break;
                 case 1:
-                    Config.MinSum = 10; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10;
+                    Config.MinSum = 0; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10;
                     break;
                 case 2:
                     Config.MinSum = 0; Config.MaxSum = 20; Config.MinAddend = 0; Config.MaxAddend = 20;
@@ -103,7 +110,11 @@ namespace GestureSample.Maui.Models
                 default: _level = 2; break;
             }
 
-            _pkrLevel.SelectedItem = Level;
+            if (!_levelChangedByUser)
+                _pkrLevel.SelectedIndex = _level - 1;
+                
+            string selectedItem = _pkrLevel.Items[_pkrLevel.SelectedIndex];
+            Console.WriteLine("Selected Item", $"You selected: {selectedItem}", "OK");
         }
 
     }

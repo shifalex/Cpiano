@@ -19,6 +19,7 @@
     //TODO: Equation questions
 
     //TODO: GUI equation and decomposition game(= Sum width)
+    //TODO: for ios: entry only numerical? keyboard down on button press?
     //TODO Allow minus and divide in equation
     //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
     //TODO: Dummies for keyboard
@@ -55,7 +56,9 @@
 
 
     //TODO: small classroom model (6 children - teacher can see how everyone of them works and progress of everyone)
-    //TODO: Another app for Tinom, golden equations etc.
+    //TODO: Another app for Trinom, golden equations etc.
+    //TODO: another app for 3D puzzels moving it with hands
+    //TODO: rhythmic and "melody" patterns
 
     public enum SyncType
         {
