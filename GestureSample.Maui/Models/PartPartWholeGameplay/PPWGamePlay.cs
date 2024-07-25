@@ -80,7 +80,7 @@ namespace GestureSample.Maui.Models
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
             int[] factors;
-            if (CurrentOperation == Operation.Multiplication) 
+            if (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) 
                 factors = FactorsMultiplication;
             else if (Config.OnlyThrougTen)
                 factors = FactorsThroughTen;
@@ -88,7 +88,7 @@ namespace GestureSample.Maui.Models
                 factors = FactorsByHistory;
             else
                 factors = Factors;
-            
+            Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0],CurrentOperation.ToDString(),factors[1],factors[2]);
             int n = (Config.VariableTypes == VariableTypes.OneCanBeSum || Config.VariableTypes == VariableTypes.TwoAny) ? r.Next(3) : r.Next(2);
             switch (Config.VariableTypes)   {
                 case VariableTypes.OneCanBeSum:
@@ -127,17 +127,17 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }
                 
-                factors[2] = r.Next(Config.MinSum, Config.MaxSum + 1);
+                //factors[2] = r.Next(Config.MinAddend * 2, Config.MaxAddend*2 + 1);//This is instead MinSum MaxSum for negative numbers
+                //Console.WriteLine("rand from {0}=>min({1},{2})", Config.MinAddend, Config.MaxAddend, factors[2] - Config.MinAddend);
                 //if (_fInsisitentOnOne) factors[2] = _lastNum;
-                factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend, factors[2]) + 1);
-                factors[1] = factors[2] - factors[0];
-                while (factors[1] < Config.MinAddend || factors[1]>Config.MaxAddend )
+                factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                factors[1] = r.Next(Config.MinAddend, Config.MaxAddend + 1); 
+                factors[2] = factors[0]+factors[1];
+                while (factors[2] < Config.MinSum || factors[2]>Config.MaxSum )
                 {
-                    factors[2] = r.Next(Config.MinSum, Config.MaxSum + 1);
-                    //if (_fInsisitentOnOne) factors[2] = _lastNum;
-                    factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend, factors[2]) + 1);
-                    factors[1] = factors[2] - factors[0];
-
+                    factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                    factors[1] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                    factors[2] = factors[0] + factors[1];
                 }
 
                 return factors;

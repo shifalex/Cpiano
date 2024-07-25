@@ -65,6 +65,10 @@ namespace GestureSample.Maui
         Sum ,
         [Description("X")]
         Multiplication ,
+        [Description(":")]
+        Divide,
+        [Description("-")]
+        Minus,
         [Description("COPY")]
         Copy ,
         [Description("Press same amount")]
@@ -97,7 +101,7 @@ namespace GestureSample.Maui
     {
         public class Operations { 
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
-            public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum };
+            public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
             public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }

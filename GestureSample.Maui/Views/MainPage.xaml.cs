@@ -433,6 +433,16 @@ namespace GestureSample.Views
     new PageConfig("new Number", "Equation Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType= UIQuestionType.SimpleEquation,
+        OperationList ={  Operation.Sum, Operation.Multiplication},
+        MinAddend = -10,
+        MaxAddend = 10,
+        MinSum = -100,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum
+    })),
+    new PageConfig("new Number", "Equations Full", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType= UIQuestionType.SimpleEquation,
         OperationList =GameConfig.Operations.Arithmetic,
         MinAddend = -10,
         MaxAddend = 10,

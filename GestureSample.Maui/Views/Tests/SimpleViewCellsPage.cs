@@ -43,14 +43,41 @@ namespace GestureSample.Views.Tests
 
         private Command _cmdNext = null;
         private Command _cmdCheck = null;
+        private HorizontalStackLayout _hzlEquation;
+        VerticalStackLayout _vsl;
+
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
- #region view updating
+        #region view updating
         private static void EntryEnabled(Entry ent, bool enabled)
         {
             ent.IsEnabled = enabled;
             ent.TextColor = enabled ? Colors.Black : Colors.Gray;
 
+        }
+
+        private void OrderEntries(HorizontalStackLayout layout, Entry entFirst, Entry entSecond)
+        {
+            int index1 = -1, index2 = -1;
+            HorizontalStackLayout layout2;
+            for (int i= 0; i< layout.Children.Count; i++)
+            {
+                if(layout.Children[i] == entFirst ) index1 = i;
+
+                if (layout.Children[i] == entSecond) index2 = i;
+                
+            } 
+            if (index1 < 0 || index2 < 0 )
+            {
+                throw new ArgumentOutOfRangeException("Index is out of range.");
+            }
+            if(index2>index1) return;
+
+
+            _hzlEquation.Children.RemoveAt(index1);
+            _hzlEquation.Children.RemoveAt(index2);
+            _hzlEquation.Children.Insert(index2, entFirst);
+            _hzlEquation.Children.Insert(index1, entSecond);
         }
         public void UpdateView(bool newExercise = false)
         {
@@ -72,7 +99,13 @@ namespace GestureSample.Views.Tests
                     EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
                     EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
                     EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
+                    
                 }
+                if (_config.UIQuestionType == UIQuestionType.SimpleEquation) 
+                    if( Operation.Divide  == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
+                         OrderEntries(_hzlEquation, _txtSum, _txtAddend1);
+                    else
+                        OrderEntries(_hzlEquation, _txtAddend1, _txtSum);
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
@@ -204,17 +237,8 @@ namespace GestureSample.Views.Tests
                 InitTextsUI();
                 if(_config.UIQuestionType== UIQuestionType.SimpleEquation)
                 {
-                    _txtSum.WidthRequest = TASK_WIDTH/2;
-                    _txtSum.BackgroundColor = Colors.White;
-                    _txtSum.FontSize = 18;
-                    vsl.Add(new HorizontalStackLayout
-                    {
-                        HorizontalOptions = LayoutOptions.Center,
-                        Children ={ _txtAddend1, _lblAction, _txtAddend2,
-                            new Label {FontSize=18, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
-                            _txtSum }
-                    }
-                        );
+                    _hzlEquation=InitEquationUI();
+                    vsl.Add(_hzlEquation);
                 }
                 else 
                 {
@@ -280,6 +304,24 @@ namespace GestureSample.Views.Tests
             Content = grid;
 
         }
+
+        private HorizontalStackLayout InitEquationUI()
+        {
+            _txtAddend1.WidthRequest = TASK_WIDTH / 4;
+            _txtAddend2.WidthRequest = TASK_WIDTH / 4;
+            _txtSum.WidthRequest = TASK_WIDTH / 4;
+            _txtSum.BackgroundColor = Colors.White;
+            _txtSum.FontSize = 18;
+            HorizontalStackLayout hzlEquation = new HorizontalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                Children ={ _txtAddend1, _lblAction, _txtAddend2,
+                            new Label {FontSize=18, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
+                            _txtSum }
+            };
+            return hzlEquation;
+        }
+        
 
         private VerticalStackLayout InitDecompositionGameUI()
         {
@@ -440,6 +482,7 @@ namespace GestureSample.Views.Tests
             _txtAddend2 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
+               
                 HorizontalOptions = LayoutOptions.Center,
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.White,
@@ -448,6 +491,9 @@ namespace GestureSample.Views.Tests
                 FontSize = 18,
                 IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
             };
+            _txtAddend1.Keyboard = Keyboard.Numeric;
+            _txtAddend2.Keyboard = Keyboard.Numeric;
+            _txtSum.Keyboard = Keyboard.Numeric;
 
         }
     }

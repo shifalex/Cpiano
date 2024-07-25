@@ -15,21 +15,24 @@
     //ODO: Make Code more consistent in SimpleViewCellsPage and the PPWObjects
     //ODO: Solve Errors
     //ODO: Neuralize fix and width 100% for keyboards
-    //TODO: Check that in decomposition game the level is changing
-    //TODO: Equation questions
-
-    //TODO: GUI equation and decomposition game(= Sum width)
-    //TODO: for ios: entry only numerical? keyboard down on button press?
-    //TODO Allow minus and divide in equation
+    //ODO: Check that in decomposition game the level is changing
+    //ODO: Equation questions
+    //ODO: GUI equation and decomposition game(= Sum width)
+    //ODO:InitializeLogicalKeyboardsUI Obselete
+    //ODO: for ios: entry only numerical? keyboard down on button press?
+    //ODO: Allow minus and divide in equation
+    
     //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
     //TODO: Dummies for keyboard
     //TODO: Only one hand for decompositions (up to 4)
     //TODO: Only scond hand for decompositions with dummies(up to 4)
+    //TODO: Object counting - sometime more smaller then less bigger. So also size games.
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
+    
     //TODO: Fill textBoxes According To Keyboard
     //TODO: decide on button text on the keys...
     //TODO: Learn manage TODOS
-    //TODO:InitializeLogicalKeyboardsUI Obselete
+    //TODO: Timers for checking the exercise and timers for moving to the next
     //TODO: A Button that animates equation into PPW scheme for help
     //TODO: equation with one more entry
 
