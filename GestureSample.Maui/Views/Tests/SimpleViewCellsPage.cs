@@ -67,6 +67,9 @@ namespace GestureSample.Views.Tests
 
             if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards && newExercise)
             {
+                keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).bitArrayQuestion2);
+                keyboardTask2.IsVisible = !GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation);
+                lblAction.Text = ((BitArrayGamePlay)_gamePlay).CurrentOperation.ToString();
                 keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).bitArrayQuestion);
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands && newExercise)
@@ -177,7 +180,7 @@ namespace GestureSample.Views.Tests
             {
                 GenerateTexts();
                 vsl.Add(txtSum);
-                vsl.Add(new HorizontalStackLayout { txtAddend1, txtAddend2 });
+                vsl.Add(new HorizontalStackLayout { txtAddend1, lblAction, txtAddend2 });
             }
 
             if (!_isKeyboard ||
@@ -200,9 +203,21 @@ namespace GestureSample.Views.Tests
             if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
             {
                 _gamePlay = new BitArrayGamePlay(this, _config);
+                keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
+                keyboardTask2.WidthRequest = TASK_WIDTH;
+                keyboardTask2.HeightRequest = TASK_WIDTH / 2;
+                lblAction = new Label
+                {
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Start,
+                    FontSize = 18,
+                    TextColor = Colors.Black
+                };
                 keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow);
                 keyboardTask1.WidthRequest = TASK_WIDTH;
                 keyboardTask1.HeightRequest = TASK_WIDTH / 2;
+                vsl.Add(keyboardTask2);
+                vsl.Add(lblAction);
                 vsl.Add(keyboardTask1);
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -319,6 +334,7 @@ namespace GestureSample.Views.Tests
 
         private void GenerateTexts()
         {
+            bool isLblAction = _config.EnforceOperationLabel || _config.OperationList.Count > 1;
 
             txtSum = new Entry
             {
@@ -338,10 +354,20 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = TASK_WIDTH/2,
+                WidthRequest = TASK_WIDTH/2 - ((isLblAction)?10:0),
                 FontSize = 18,
                 IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
             };
+            lblAction = new Label
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                FontSize = 18,
+                TextColor = Colors.Black,
+                WidthRequest = 20,
+                IsVisible = isLblAction || !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
+            };
+            
 
             txtAddend2 = new Entry
             {
@@ -350,7 +376,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Start,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = TASK_WIDTH/2,
+                WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = 18,
                 IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
             };

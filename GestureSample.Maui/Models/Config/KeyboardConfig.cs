@@ -7,25 +7,36 @@
     //ODO: check the hand image and check if it is dosen't flip the bits of left hand
     //ODO: Design KeyboardReadOnly
     //ODO: HS second number bug fix - Couldn't find any bug
+    //ODO: Combine the Config of GamePlay to two: GameUI and Logic
+    //ODO: Show Objects in different sizes on each canvas
+    //ODOO: Make all GamePlay parameters using Config
 
-    //TODO: Combine the Config of GamePlay to two: GameUI and Logic
-    //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes.
-    //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
     //TODO: Logic questions
+    //TODO: Mixed addition and multiplication with negatives addends to 10
+    //TODO: Make Code more consistent in SimpleViewCellsPage and the PPWObjects
+    //TODO: Solve Errors
+    //TODO: Learn manage TODOS
+    //TODO: A Button that animates equation into PPW scheme for help
+    //TODO: Equation questions
+    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
+    //TODO: Dummies for keyboard
+    //TODO: Only one hand for decompositions (up to 4)
+    //TODO: Only scond hand for decompositions with dummies(up to 4)
+    //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
+    //TODO: Fill textBoxes According To Keyboard
+
+    //TODO: add recognition of pattern as Copy of the question as opposed to reorganization of the question
     //TODO: generate a configuration page using chatGPT and the config classes. By categories
 
-    //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
-    //TODO: Dummies for keyboard
-    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
-    //TODO: Only one hand for decompositions (up to 4)
-
+    //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes.
+    //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
+    
     //TODO: Make only HalfSync and small pictures on small screens
-
-    //TODO: Show Objects in different sizes
-    //TODO: add recognition of pattern as Copy of the question as opposed to reorganization of the question
+        
 
     //TODO: Multiplication reordering of multipliers(start with 1 being 2 and the other anyone, next some by three and etc.
     //TODO: Interleaving && Block && Block-withException practices
+    //TODO: TowerText and TowerKeyboard Interfaces
     //TODO: DB save
     //TODO: combination of questions on the same exercise in different modalities (first missing, second missin, third missing, addition, subtraction, addition subtraction with different addends)
     //TODO: Negative numbers interface(for Keyboard)
@@ -35,6 +46,9 @@
     //TODO: chain questions with more than 2 addends
     //TODO: Save things on screen, not one-by-one but one after another
 
+
+    //TODO: small classroom model (6 children - teacher can see how everyone of them works and progress of everyone)
+    //TODO: Another app for Tinom, golden equations etc.
 
     public enum SyncType
         {

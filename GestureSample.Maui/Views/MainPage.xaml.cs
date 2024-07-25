@@ -75,7 +75,6 @@ namespace GestureSample.Views
             new PageConfig("Number", "Multiplication", () => new ButtonXaml { BindingContext = new ViewModels.ButtonViewModel(false,true,true, true) }),
             new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(new GameConfig
     {
-        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             TextBoxesQuantity = 1
@@ -84,7 +83,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(new GameConfig
     {
-        VariableTypes = VariableTypes.ShowOnlySum,
         FromNumToNum = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -95,7 +93,6 @@ namespace GestureSample.Views
     // Uncomment and update as needed
     // new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     VariableTypes = VariableTypes.ShowOnlySum,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 1,
@@ -105,7 +102,6 @@ namespace GestureSample.Views
 
     // new PageConfig("new Keyboard", "Async one number Impose edges From Num To Num", () => new SimpleViewCellsPage(new GameConfig
     // {
-    //     VariableTypes = VariableTypes.ShowOnlySum,
     //     KeyboardConfig = new KeyboardConfig
     //     {
     //         TextBoxesQuantity = 1,
@@ -116,7 +112,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number", () => new SimpleViewCellsPage(new GameConfig
     {
-        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -126,7 +121,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
     {
-        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -137,7 +131,7 @@ namespace GestureSample.Views
     {
 
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new (){  Operation.Quantity },
+        OperationList = GameConfig.Operations.Logical,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -147,7 +141,7 @@ namespace GestureSample.Views
     {
 
         UIQuestionType = UIQuestionType.CanvasesHands,
-        OperationList = new (){  Operation.Copy },
+        OperationList = new (){  Operation.Copy, Operation.Quantity },
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -156,7 +150,6 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync one number Blind Impose edges", () => new SimpleViewCellsPage(new GameConfig
     {
-        VariableTypes = VariableTypes.ShowOnlySum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -394,7 +387,8 @@ namespace GestureSample.Views
     */
     new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(new GameConfig
     {
-        UIQuestionType = UIQuestionType.DecompositionGame
+        UIQuestionType = UIQuestionType.DecompositionGame,
+        VariableTypes = VariableTypes.OneCanBeSum
     })),
 
     // Uncomment and update as needed
@@ -414,6 +408,15 @@ namespace GestureSample.Views
         OperationList = new() { Operation.Multiplication},
         MinAddend = 2,
         MaxAddend = 9,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum
+    })),
+    new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList =GameConfig.Operations.Arithmetic,
+        MinAddend = -10,
+        MaxAddend = 10,
+        MinSum = -100,
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum
     })),

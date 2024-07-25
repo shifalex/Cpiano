@@ -1,20 +1,37 @@
 ﻿using GestureSample.Maui.Models;
 using GestureSample.Maui;
+using System.Reflection;
+using System.ComponentModel;
 
 //https://appstoreconnect.apple.com/access/integrations/api
 
-//=======ADDING NEW CONFIGURATION
-//Start with new configuration here
-//Add the new configuration to MainPage.Xaml.cs
+//=======ADDING NEW CONFIGURATION:
+//Start with new configuration here - enum if needed
+//PPWGamePlay: change the correct GamePlay - both the constructor, check and generate exercise - add function if needed or gameplay if needed
 //Add to SimpleViewCellsPage InitializeUI the UI that goes with the constructor
-//SimpleViewCellsPage: Change buttonNext and Generate exercise event handling if needed
 //SimpleViewCellsPage: change UpdateView with an "ïf" accordingly
-//PPWGamePlay: change the correct GamePlay
-//Set the configuration page
+//SimpleViewCellsPage: Change buttonNext and Generate exercise event handling if needed
+//Add the new configuration to MainPage.Xaml.cs
 
 namespace GestureSample.Maui
 {
     #region enums
+
+    public static class EnumExtensions
+    {
+        public static string ToString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
+        {
+            if (!typeof(TEnum).IsEnum)
+                throw new ArgumentException("TEnum must be an enumerated type");
+
+            FieldInfo fi = enumValue.GetType().GetField(enumValue.ToString());
+            DescriptionAttribute[] attributes = (DescriptionAttribute[])fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
+
+            return attributes.Length > 0 ? attributes[0].Description : enumValue.ToString();
+        }
+    }
+
+
     public enum UIQuestionType
     {
         //OneText,//Can be also objects.. always exists
@@ -40,29 +57,39 @@ namespace GestureSample.Maui
         PartialScreenCovering
     }
 
+
+
     public enum Operation
     {
-        Sum,
-        Multiplication,
-        Copy,
-        Quantity,
-        Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
+        [Description("+")]
+        Sum ,
+        [Description("X")]
+        Multiplication ,
+        [Description("COPY")]
+        Copy ,
+        [Description("Press same amount")]
+        Quantity ,
+        //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
         //Reorder,
-        Not,
-        And,
-        Or,
-        Neutralize
+        [Description("NOT(!)")]
+        Not ,
+        [Description("AND(&&)")]
+        And ,
+        [Description("OR(||)")]
+        Or ,
+        [Description("Neutralize")]
+        Neutralize 
 
     }
 
     public enum VariableTypes
     {
-        ShowOnlySum=0,
+        //ShowOnlySum=0,
         OneNoSum,
         TwoNoSum,
         OneCanBeSum,
         SumOnly,
-        TwoAny,
+        TwoAny
         
 
 
@@ -71,11 +98,12 @@ namespace GestureSample.Maui
 
     public class GameConfig
     {
-
-        public static List<Operation> LogicaOperations = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
-        public static List<Operation> ArithmeticOperations = new() { Operation.Multiplication, Operation.Sum };
-        public static List<Operation> BitArrayOperation = new() { Operation.Copy, Operation.Quantity, Operation.Serialize };
-        public static List<Operation> LogicalDualOperations = new() { Operation.Or, Operation.And, Operation.Neutralize };
+        public class Operations { 
+            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
+            public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum };
+            public static List<Operation> bitArray = new() { Operation.Copy, Operation.Quantity };
+            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
+        }
         // Properties with default values
         public bool IsHistory { get; set; } = false;
 
@@ -89,7 +117,7 @@ namespace GestureSample.Maui
         public List<int> addendsList = new();
         public List<int> addendsListSecond = null;
 
-
+        public bool EnforceOperationLabel { get; set; } = false;
         public bool FromNumToNum { get; set; } = false;
 
         public int SecondsToShowExercise { get; set; } = -1;

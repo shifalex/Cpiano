@@ -31,7 +31,6 @@ namespace GestureSample.Maui.Models
 
         public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(view, null)
         {
-            _numberOfVariables = VariableTypes.OneCanBeSum;
             _lblStats = lblStats;
             _pkrLevel = pkrLevel;
             /*
@@ -93,13 +92,13 @@ namespace GestureSample.Maui.Models
                     _level = 2;
                     break;
                 case 1:
-                    _minSum = 10; _maxSum = 10; _minAddend = 0;_maxAddend = 10;
+                    Config.MinSum = 10; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10;
                     break;
                 case 2:
-                    _minSum = 0; _maxSum = 20; _minAddend = 0; _maxAddend = 20;
+                    Config.MinSum = 0; Config.MaxSum = 20; Config.MinAddend = 0; Config.MaxAddend = 20;
                     break;
                 case 3:
-                    _minSum = 0; _maxSum = 100; _minAddend = 0; _maxAddend = 100;
+                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100;
                     break;
                 case 4:
                     _status= Statement.Win;
