@@ -33,7 +33,7 @@ namespace GestureSample.Maui.Models
 
         private bool IsCorrectInput()
         {
-            if(addend1 > Config.MaxAddend || addend1 < Config.MinAddend || addend2 > Config.MaxAddend || addend2 < Config.MinAddend || Sum > Config.MaxSum || Sum < Config.MinAddend)
+            if(addend1 > Config.MaxAddend || addend1 < Config.MinAddend || addend2 > Config.MaxAddend || addend2 < Config.MinAddend || Sum > Config.MaxSum || Sum < Config.MinSum)
                 return false;
             return true;
         }
@@ -65,13 +65,8 @@ namespace GestureSample.Maui.Models
 
         public virtual bool Check(int a1, int a2, int s)
         {
-            if ((a1 > Config.MaxAddend || a1 < Config.MinAddend || a2 > Config.MaxAddend || a2 < Config.MinAddend || s > Config.MaxSum || s < Config.MinAddend))
-            {
-                _status = Statement.WrongInput;
-                _view.UpdateView();
-                return false;
-            }
-            addend1 = a1; addend2= a2; Sum = s; return Check();
+            addend1 = a1; addend2= a2; Sum = s; 
+            return Check();
         }
 
         public virtual bool Check(PianoKeyboard pianoKeyboard)
@@ -113,7 +108,6 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
-            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count())];
             _status = Statement.Neutral;
             _guessNumber = 0;
             _view.UpdateView(true);
@@ -132,10 +126,19 @@ namespace GestureSample.Maui.Models
                     _isFirstGuess = false;
                     return factors;
                 }
+                
                 factors[2] = r.Next(Config.MinSum, Config.MaxSum + 1);
                 //if (_fInsisitentOnOne) factors[2] = _lastNum;
                 factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend, factors[2]) + 1);
                 factors[1] = factors[2] - factors[0];
+                while (factors[1] < Config.MinAddend || factors[1]>Config.MaxAddend )
+                {
+                    factors[2] = r.Next(Config.MinSum, Config.MaxSum + 1);
+                    //if (_fInsisitentOnOne) factors[2] = _lastNum;
+                    factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend, factors[2]) + 1);
+                    factors[1] = factors[2] - factors[0];
+
+                }
 
                 return factors;
             }

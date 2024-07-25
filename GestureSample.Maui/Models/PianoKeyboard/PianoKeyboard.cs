@@ -46,7 +46,7 @@ namespace GestureSample.Maui.Models
             {
                 UserId = 1,
                 //TimeStamp = DateTime.Now,
-                TypeName = _gamePlay.GameType.ToString(),
+                //TypeName = _gamePlay.GameType.ToString(),
                 Addend1 = this.Addend1,
                 Addend2 = this.Addend2,
                 Sum = this.Sum, //TODO:make more elegant
