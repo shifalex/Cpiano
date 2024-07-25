@@ -9,30 +9,37 @@
     //ODO: HS second number bug fix - Couldn't find any bug
     //ODO: Combine the Config of GamePlay to two: GameUI and Logic
     //ODO: Show Objects in different sizes on each canvas
-    //ODOO: Make all GamePlay parameters using Config
-
-    //TODO: Logic questions
-    //TODO: Mixed addition and multiplication with negatives addends to 10
-    //TODO: Make Code more consistent in SimpleViewCellsPage and the PPWObjects
-    //TODO: Solve Errors
-    //TODO: Learn manage TODOS
-    //TODO: A Button that animates equation into PPW scheme for help
+    //ODO: Make all GamePlay parameters using Config
+    //ODO: Logic questions
+    //ODO: Mixed addition and multiplication with negatives addends to 10
+    //ODO: Make Code more consistent in SimpleViewCellsPage and the PPWObjects
+    //ODO: Solve Errors
+    //ODO: Neuralize fix and width 100% for keyboards
+    //TODO: Check that in decomposition game the level is changing
     //TODO: Equation questions
+
+    //TODO: GUI equation and decomposition game(= Sum width)
+    //TODO Allow minus and divide in equation
     //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
     //TODO: Dummies for keyboard
     //TODO: Only one hand for decompositions (up to 4)
     //TODO: Only scond hand for decompositions with dummies(up to 4)
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Fill textBoxes According To Keyboard
+    //TODO: decide on button text on the keys...
+    //TODO: Learn manage TODOS
+    //TODO:InitializeLogicalKeyboardsUI Obselete
+    //TODO: A Button that animates equation into PPW scheme for help
+    //TODO: equation with one more entry
 
     //TODO: add recognition of pattern as Copy of the question as opposed to reorganization of the question
     //TODO: generate a configuration page using chatGPT and the config classes. By categories
 
     //TODO: make piano keyboard as independent as possible by using GamePlay.Check(this) and moving all the functions of pattern analysis to the GamePlay classes.
     //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
-    
+
     //TODO: Make only HalfSync and small pictures on small screens
-        
+
 
     //TODO: Multiplication reordering of multipliers(start with 1 being 2 and the other anyone, next some by three and etc.
     //TODO: Interleaving && Block && Block-withException practices

@@ -29,7 +29,7 @@ namespace GestureSample.Maui.Models
 
         public int Level { get { return _level; } set { _level = value; } }
 
-        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(view, null)
+        public DecompositionGamePlay(SimpleViewCellsPage view, GameConfig config, Label lblStats, Picker pkrLevel) : base(view, config)
         {
             _lblStats = lblStats;
             _pkrLevel = pkrLevel;
@@ -71,13 +71,9 @@ namespace GestureSample.Maui.Models
             {
                 if (_level == 1) { return base.Factors; }
 
-                int[] factors = new int[3];
-                Random r = new();
                 if (Sum != addend1 + addend2)
                     _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
                 return FactorsThroughTen;
-
-
             }
         }
 

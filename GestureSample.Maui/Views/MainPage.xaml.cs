@@ -131,7 +131,17 @@ namespace GestureSample.Views
     {
 
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = GameConfig.Operations.Logical,
+        OperationList = GameConfig.Operations.BitArray,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+    new PageConfig("new Keyboard", "Logic", () => new SimpleViewCellsPage(new GameConfig
+    {
+
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = GameConfig.Operations.Logical.Concat(GameConfig.Operations.BitArray).ToList(),
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -413,6 +423,16 @@ namespace GestureSample.Views
     })),
     new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
+        OperationList =GameConfig.Operations.Arithmetic,
+        MinAddend = -10,
+        MaxAddend = 10,
+        MinSum = -100,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum
+    })),
+    new PageConfig("new Number", "Equation Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType= UIQuestionType.SimpleEquation,
         OperationList =GameConfig.Operations.Arithmetic,
         MinAddend = -10,
         MaxAddend = 10,

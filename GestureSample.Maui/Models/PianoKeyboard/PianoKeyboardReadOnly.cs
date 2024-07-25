@@ -46,7 +46,7 @@ namespace GestureSample.Maui.Models
                     this.Add(
                     btnKeys[i + keysInRow * r] = new()
                     {
-                        Text = "Button " + (i + 1 + keysInRow * r).ToString(),
+                        //Text = "Button " + (i + 1 + keysInRow * r).ToString(),
                         BackgroundColor = COLOR_FREE,
                         CommandParameter = i + 1 + keysInRow * r,
                         Margin = new Thickness(0, 5, 0, 0),

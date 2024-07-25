@@ -19,7 +19,7 @@ namespace GestureSample.Maui
 
     public static class EnumExtensions
     {
-        public static string ToString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
+        public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
         {
             if (!typeof(TEnum).IsEnum)
                 throw new ArgumentException("TEnum must be an enumerated type");
@@ -90,9 +90,6 @@ namespace GestureSample.Maui
         OneCanBeSum,
         SumOnly,
         TwoAny
-        
-
-
     }
     #endregion
 
@@ -101,17 +98,15 @@ namespace GestureSample.Maui
         public class Operations { 
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum };
-            public static List<Operation> bitArray = new() { Operation.Copy, Operation.Quantity };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }
         // Properties with default values
         public bool IsHistory { get; set; } = false;
-
         public int MinAddend { get; set; } = 0;
         public int MaxAddend { get; set; } = 5;
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
-
         public bool OnlyThrougTen = false;
 
         public List<int> addendsList = new();

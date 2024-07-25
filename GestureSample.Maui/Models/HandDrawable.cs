@@ -52,48 +52,17 @@ namespace GestureSample.Maui.Models
             for (int i = 0; i < Bits.Length; i++)
             {
                 var finger = fingerCoordinates[i];
+                float baseX = IsLeftHand ? dirtyRect.Width - finger.Base.X : finger.Base.X;
                 if (Bits[i] == 1)
                 {
-                    if (IsLeftHand)
-                    {
-                        // Mirror the finger for the left hand
-                        float mirroredBaseX = dirtyRect.Width - finger.Base.X;
-
-                        if (i == 0)
-                        {
-                            // Draw the thumb differently
-                            DrawThumb(canvas, mirroredBaseX, finger.Base.Y, fingerWidth, finger.Height,30);
-                        }
-                        else
-                        {
-                            DrawFinger(canvas, mirroredBaseX, finger.Base.Y, fingerWidth, finger.Height);
-                        }
-                    }
+                    if (i == 0)
+                        DrawThumb(canvas, baseX, finger.Base.Y, fingerWidth, finger.Height, IsLeftHand ? 30 : -30);
                     else
-                    {
-                        if (i == 0)
-                        {
-                            // Draw the thumb differently
-                            DrawThumb(canvas, finger.Base.X, finger.Base.Y, fingerWidth, finger.Height,-30);
-                        }
-                        else
-                        {
-                            DrawFinger(canvas, finger.Base.X, finger.Base.Y, fingerWidth, finger.Height);
-                        }
-                    }
+                       DrawFinger(canvas, baseX, finger.Base.Y, fingerWidth, finger.Height);
                 }
                 else
                 {
-                    // Draw folded fingers
-                    if (IsLeftHand)
-                    {
-                        float mirroredBaseX = dirtyRect.Width - finger.Base.X;
-                        DrawFoldedFinger(canvas, mirroredBaseX, finger.Base.Y, fingerWidth);
-                    }
-                    else
-                    {
-                        DrawFoldedFinger(canvas, finger.Base.X, finger.Base.Y, fingerWidth);
-                    }
+                    DrawFoldedFinger(canvas, baseX, finger.Base.Y, fingerWidth);
                 }
             }
         }

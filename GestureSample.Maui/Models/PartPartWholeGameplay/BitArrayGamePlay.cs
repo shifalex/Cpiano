@@ -1,28 +1,20 @@
 ﻿using GestureSample.Views.Tests;
-using Microsoft.Maui.Controls;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace GestureSample.Maui.Models
 {
     internal class BitArrayGamePlay : PPWGamePlay
     {
-        public bool[] bitArrayQuestion;
-        public bool[] bitArrayQuestion2 ;
-        public UIQuestionType arrayQuestionType;
+        public bool[] BitArrayQuestion { get; set; }
+        public bool[] BitArrayQuestion2 { get; set; }
+        public UIQuestionType ArrayQuestionType { get; set; }
 
-        
+
 
         public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
         {
-            arrayQuestionType = config.UIQuestionType;
-            bitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
-            bitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
-
+            ArrayQuestionType = config.UIQuestionType;
+            BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
+            BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
         }
 
         public override bool Check(PianoKeyboard pianoKeyboard)
@@ -44,7 +36,7 @@ namespace GestureSample.Maui.Models
                 Operation.Not => this.Not(bitArrayAnswer),
                 Operation.And => this.And(bitArrayAnswer),
                 Operation.Or => this.Or(bitArrayAnswer),
-                Operation.Neutralize => this.Neutralize(bitArrayAnswer),
+                Operation.Neutralize => this.Xor(bitArrayAnswer),
                 _ => false
             };
         }
@@ -52,15 +44,14 @@ namespace GestureSample.Maui.Models
         public override void GenerateExercise()
         {
             Random r = new();
-            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
-            
+            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];            
 
-            bitArrayQuestion = RandomArray();
-            bitArrayQuestion2 = RandomArray();
+            BitArrayQuestion = RandomArray();
+            BitArrayQuestion2 = RandomArray();
             while (IsResultAllZeros())
             {
-                bitArrayQuestion = RandomArray();
-                bitArrayQuestion2 = RandomArray();
+                BitArrayQuestion = RandomArray();
+                BitArrayQuestion2 = RandomArray();
             }
             _view.UpdateView(true);
             
@@ -68,23 +59,23 @@ namespace GestureSample.Maui.Models
 
          private bool IsResultAllZeros()
         {
-            bool[] wrongArray = new bool[bitArrayQuestion.Length];
+            bool[] wrongArray = new bool[BitArrayQuestion.Length];
             for (int i = 0; i < wrongArray.Length; i++)
             {
                 wrongArray[i] = false;
             }
-            return !CheckOnly(wrongArray);
+            return CheckOnly(wrongArray);
 
         }
 
-        public bool[] RandomArray()
+        protected bool[] RandomArray()
         {
-            Random random = new Random();
-            bool[] array = new bool[bitArrayQuestion.Length];
+            Random r = new();
+            bool[] array = new bool[BitArrayQuestion.Length];
 
             for (int i = 0; i < array.Length; i++)
             {
-                array[i] = random.Next(2)==1; // Generates either true or false
+                array[i] = r.Next(2)==1; // Generates either true or false
             }
             return array; 
         }
@@ -93,8 +84,8 @@ namespace GestureSample.Maui.Models
         {
             for (int i = 0; i < rightHandBits.Length; i++)
             {
-                leftHandBits[i] = bitArrayQuestion[rightHandBits.Length -1 - i]?1:0; // Generates either 0 or 1
-                rightHandBits[i] = bitArrayQuestion[rightHandBits.Length + i]?1:0; // Generates either 0 or 1
+                leftHandBits[i] = BitArrayQuestion[rightHandBits.Length -1 - i]?1:0; // Generates either 0 or 1
+                rightHandBits[i] = BitArrayQuestion[rightHandBits.Length + i]?1:0; // Generates either 0 or 1
             }
             
         }
@@ -104,43 +95,46 @@ namespace GestureSample.Maui.Models
             //TODO? Through Exceptions
             //if(bitArrayAnswer==null || bitArrayQuestion==null|| bitArrayAnswer.Length!= bitArrayQuestion.Length) return false;
             for(int i = 0; i < bitArrayAnswer.Length ; i++)
-                if(bitArrayAnswer[i]!= bitArrayQuestion[i]) return false;
+                if(bitArrayAnswer[i]!= BitArrayQuestion[i]) return false;
             return true;
         }
         public bool SumEquals(bool[] bitArrayAnswer)
         {
             int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-               { s1 += bitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
+               { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
             return s1==s2;
         }
 
         public bool Not(bool[] bitArrayAnswer)
         {
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-                if (bitArrayAnswer[i] != bitArrayQuestion[i]) return true;
-            return false;
+                if (bitArrayAnswer[i] == BitArrayQuestion[i]) return false;
+            return true;
         }
 
         public bool And(bool[] bitArrayAnswer)
         {
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-                if (bitArrayAnswer[i] != (bitArrayQuestion[i]&& bitArrayQuestion2[i])) return false;
+                if (bitArrayAnswer[i] != (BitArrayQuestion[i]&& BitArrayQuestion2[i])) return false;
             return true;
         }
 
         public bool Or(bool[] bitArrayAnswer)
         {
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-                if (bitArrayAnswer[i] != (bitArrayQuestion[i] || bitArrayQuestion2[i])) return false;
+                if (bitArrayAnswer[i] != (BitArrayQuestion[i] || BitArrayQuestion2[i])) return false;
             return true;
         }
 
-        public bool Neutralize(bool[] bitArrayAnswer)
+        public bool Xor(bool[] bitArrayAnswer)
         {
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-                if ((bitArrayAnswer[i] && bitArrayQuestion[i] && bitArrayQuestion2[i])||
-                    bitArrayAnswer[i] != (bitArrayQuestion[i] || bitArrayQuestion2[i])) 
+                if (/*(bitArrayAnswer[i] && BitArrayQuestion[i] && BitArrayQuestion2[i])||
+                    (!bitArrayAnswer[i] && BitArrayQuestion[i] && !BitArrayQuestion2[i])||
+                    (!bitArrayAnswer[i] && !BitArrayQuestion[i] && BitArrayQuestion2[i])||
+                    (bitArrayAnswer[i] && !BitArrayQuestion[i] && !BitArrayQuestion2[i]))*/
+                    bitArrayAnswer[i] != (BitArrayQuestion[i] ^ BitArrayQuestion2[i])) 
                     return false;
             return true;
         }
