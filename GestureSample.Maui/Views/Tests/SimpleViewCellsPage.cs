@@ -201,16 +201,25 @@ namespace GestureSample.Views.Tests
 
             if (_isThreeTexts)
             {
-                GenerateTexts();
+                InitTextsUI();
                 if(_config.UIQuestionType== UIQuestionType.SimpleEquation)
                 {
-                    _txtSum.WidthRequest = _txtAddend1.Width;
-                    vsl.Add(new HorizontalStackLayout { _txtAddend1, _lblAction, _txtAddend2, new Label { Text = "=" }, _txtSum });
+                    _txtSum.WidthRequest = TASK_WIDTH/2;
+                    _txtSum.BackgroundColor = Colors.White;
+                    _txtSum.FontSize = 18;
+                    vsl.Add(new HorizontalStackLayout
+                    {
+                        HorizontalOptions = LayoutOptions.Center,
+                        Children ={ _txtAddend1, _lblAction, _txtAddend2,
+                            new Label {FontSize=18, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
+                            _txtSum }
+                    }
+                        );
                 }
                 else 
                 {
-                    vsl.Add(_txtSum);
-                    vsl.Add(new HorizontalStackLayout { _txtAddend1, _lblAction, _txtAddend2 });
+                    vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
+                    vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
                 }
             }
 
@@ -218,7 +227,7 @@ namespace GestureSample.Views.Tests
                 _config.KeyboardConfig.SyncType == SyncType.None ||
                 _config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                vsl.Add(GenerateButtons());
+                vsl.Add(InitButtonsUI());
             }
 
             if (_config.IsHistory)
@@ -234,7 +243,7 @@ namespace GestureSample.Views.Tests
             if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
             {
                 _gamePlay = new BitArrayGamePlay(this, _config);
-                vsl.Add(InitializeLogicalKeyboardsUI());
+                vsl.Add(InitLogicalKeyboardsUI());
                 vsl.Padding = 0;
                 vsl.Spacing = 0;
                 vsl.HorizontalOptions = LayoutOptions.Fill;
@@ -242,7 +251,7 @@ namespace GestureSample.Views.Tests
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
                 _gamePlay = new BitArrayGamePlay(this, _config);
-                vsl.Add(InitializeCanvasComponents());
+                vsl.Add(InitCanvasComponentsUI());
 
             
             }
@@ -250,7 +259,7 @@ namespace GestureSample.Views.Tests
 
             if (_config.UIQuestionType == UIQuestionType.DecompositionGame)
             {
-                vsl.Add(InitializeDecompositionGameUI());
+                vsl.Add(InitDecompositionGameUI());
             }
 
 
@@ -272,34 +281,39 @@ namespace GestureSample.Views.Tests
 
         }
 
-        private VerticalStackLayout InitializeDecompositionGameUI()
+        private VerticalStackLayout InitDecompositionGameUI()
         {
-            VerticalStackLayout vslDecompositionDashboard = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
+            VerticalStackLayout vslDecompositionDashboard = new() {  };
 
             Label lblStats = new();
             Picker pc = new()
             {
                 Title = "Level"
             };
-            pc.Items.Add("1");
-            pc.Items.Add("2");
-            pc.Items.Add("3");
-            _gamePlay = new DecompositionGamePlay(this, _config, lblStats, pc);
+            pc.Items.Add("Level 1");
+            pc.Items.Add("Level 2");
+            pc.Items.Add("Level 3");
 
+            _gamePlay = new DecompositionGamePlay(this, _config, lblStats, pc);
+            
+            pc.SelectedIndex = 1;
+            pc.SelectedIndexChanged += ((DecompositionGamePlay)_gamePlay).SelectedIndexChanged;
+            
+            
             vslDecompositionDashboard.Add(pc);
             vslDecompositionDashboard.Add(lblStats);
 
             return vslDecompositionDashboard;
         }
 
-        [Obsolete]
-        private VerticalStackLayout InitializeLogicalKeyboardsUI()
+        
+        private VerticalStackLayout InitLogicalKeyboardsUI()
         {
             VerticalStackLayout vsl = new();
             _gamePlay = new BitArrayGamePlay(this, _config);
             _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow)
             {
-                HorizontalOptions = LayoutOptions.FillAndExpand,
+                HorizontalOptions = LayoutOptions.Fill,
                 HeightRequest = TASK_WIDTH / 2
             };
             _lblAction = new Label
@@ -311,7 +325,7 @@ namespace GestureSample.Views.Tests
             };
             _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow)
             {
-                HorizontalOptions = LayoutOptions.FillAndExpand,
+                HorizontalOptions = LayoutOptions.Fill,
                 HeightRequest = TASK_WIDTH / 2
             };
             vsl.Add(_keyboardTask2);
@@ -321,7 +335,7 @@ namespace GestureSample.Views.Tests
         }
 
 
-        private StackLayout InitializeCanvasComponents()
+        private StackLayout InitCanvasComponentsUI()
         {
             _lblAction = new Label
             {
@@ -361,9 +375,10 @@ namespace GestureSample.Views.Tests
 
         
 
-        private HorizontalStackLayout GenerateButtons()
+        private HorizontalStackLayout InitButtonsUI()
         {
-            HorizontalStackLayout hslBtns = new() { Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
+            HorizontalStackLayout hslBtns = new() {
+                 Padding = 20, Spacing = 10, HorizontalOptions = LayoutOptions.Center };
 
             _btnCheck = new()
             {
@@ -385,7 +400,7 @@ namespace GestureSample.Views.Tests
             return hslBtns;
         }
 
-        private void GenerateTexts()
+        private void InitTextsUI()
         {
             bool isLblAction = _config.EnforceOperationLabel || _config.OperationList.Count > 1;
 
