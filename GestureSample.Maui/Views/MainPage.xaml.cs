@@ -251,7 +251,7 @@ namespace GestureSample.Views
         MaxAddend=10,
         KeyboardConfig = new KeyboardConfig
         {KeysInRow = 11,
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Spatial
         }
     })),
 
@@ -284,12 +284,77 @@ namespace GestureSample.Views
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
+        MinAddend=0,
         MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
             KeysInRow=11,
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Spatial
+        }
+    })),
+     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
+    {     MinAddend=0,
+         MinSum=1,
+          MaxAddend=4,
+        MaxSum=4,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+        MinAddend=0,
+        MinSum=1,
+        MaxSum = 4,
+        MaxAddend=3,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {0,0,0,0,0 }
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition spatial more then 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+         MinAddend=0,
+        MinSum=6,
+        MaxSum=9,
+        MaxAddend=9,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {1,1,1,1,1 }
+        }
+    })),
+
+    new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5 ON", () => new SimpleViewCellsPage(new GameConfig
+    {
+         MinAddend=1,
+         MinSum=2,
+        MaxSum = 4,
+        MaxAddend=3,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {0,0,0,0,0,1 }
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition spatial more then 5 ON", () => new SimpleViewCellsPage(new GameConfig
+    {
+         MinAddend=1,
+        MinSum=7,
+        MaxSum=9,
+        MaxAddend=8,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {1,-1,-1,-1,-1, 1,1,1,1,1 }
         }
     })),
 
@@ -320,7 +385,8 @@ namespace GestureSample.Views
         IsHistory = true,
         MinAddend=1,
         MinSum=2,
-        MaxAddend=9,
+        MaxAddend=8,
+        MaxSum=9,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,

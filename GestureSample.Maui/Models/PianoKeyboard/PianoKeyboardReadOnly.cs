@@ -13,6 +13,7 @@ namespace GestureSample.Maui.Models
         protected readonly int NUMBER_OF_KEYS;
         protected readonly int FINGER_SEPERATOR = 5;
         protected readonly MR.Gestures.Button[] btnKeys;
+
         
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
@@ -22,7 +23,7 @@ namespace GestureSample.Maui.Models
         public PianoKeyboardReadOnly(int rows = 1, int keysInRow = 10) : base()
         {
 
-
+            
             NUMBER_OF_KEYS = keysInRow * rows;
             this.ColumnSpacing = 5;
             this.BackgroundColor = Colors.Black;
@@ -67,6 +68,7 @@ namespace GestureSample.Maui.Models
             {
                 btnKeys[i].BackgroundColor = (array[i])?COLOR_PRESSED: COLOR_FREE;
             }
+            SaveColors();
         }
         public void PianoInit(Color[] array)
         {
