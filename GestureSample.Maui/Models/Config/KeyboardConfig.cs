@@ -21,10 +21,20 @@
     //ODO:InitializeLogicalKeyboardsUI Obselete
     //ODO: for ios: entry only numerical? keyboard down on button press?
     //ODO: Allow minus and divide in equation
+    //ODO: why when 11 its by pattern and when not its by hand
+    //ODO: Only one hand for decompositions (up to 4)
     
-    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
+
+    //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
     //TODO: Dummies for keyboard
-    //TODO: Only one hand for decompositions (up to 4)
+    //TODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
+    //TODO: Dummies bug - COLORS opacity changes backgroungcolor and so you choose pressed or not pressed by color only maybe use colors[i]
+    //TODO: Dummies bug - on hand raise it still counts the dummies
+
+    //TODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
+    //TODO: generate the Pool list of available answers sometimes according to dummies, sometimes according to multiplication and not in the
+    //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
+    
     //TODO: Only scond hand for decompositions with dummies(up to 4)
     //TODO: Object counting - sometime more smaller then less bigger. So also size games.
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
@@ -56,18 +66,35 @@
     //TODO: a list of configuration you can go from one screen to another. These configurations can change dynamiclly.
     //TODO: chain questions with more than 2 addends
     //TODO: Save things on screen, not one-by-one but one after another
+    //TODO: Timers level and game
+    //TODO:Equation levels with goind down and up. Only Sum in +- will mean the =, only +X, only positive numbers etc.
 
-
+    //TODO: Timers for next after correct answer instead of next.imer for exercise, timer for total
+    //TODO: Win screen with stats.
+    //TODO: solveTillCorrect?
+    //TODO: 9,5,2 multiplication helper. 7, 6 jumps multiplication helper
+    //TODO: Levels configurations with HATNAYOT
     //TODO: small classroom model (6 children - teacher can see how everyone of them works and progress of everyone)
     //TODO: Another app for Trinom, golden equations etc.
+    //TODO: Bar Models game- grid with and bars you put over there
     //TODO: another app for 3D puzzels moving it with hands
     //TODO: rhythmic and "melody" patterns
+    //TODO: Cheng's game of number decomposition with multitouch
+    //TODO: Arrow and +- direction or length change on what is shown in the equation (a melody of arrow change)
+    //TODO: +- app of adding and removing pluses and minuses and changing their symbols
+    //TODO: Voice Qestion and answer interface in equations
+    //TODO: finger camera answer interface
+    //TODO:Graph Equation wirting and checking interface. g(x)=-l*|f(-k(x+m))|+n
+    //QUESTION: Why Ido is uncapble to get into the new epestemic form by himself? I need to try and make himm discover and make the discovery simple enough
 
+    //IDO got it with not pressed dummies - first with both hands. Then I told him play with one hand. He got it with all pressed dummies for 7=5+2, 7=5+0. But he couldn't make 7=6+1.
+    //Next time, maybe I should use simgle key dummies instead. It is a weird problem of artifact-finger connection that may infor us on the problems for genralization he has.
     public enum SyncType
         {
             None = 0,
-            Sync,
-            HalfSync
+            Sync=1,
+            Spatial=2,
+            HalfSync=3
         }
     public class KeyboardConfig
     {
@@ -87,5 +114,7 @@
 
         public bool KeyboardOnlyForHelp = false;
         public bool KeyboardAsAQuestion = false;
+
+        public int[] DummiesArray = null;
     }
 }

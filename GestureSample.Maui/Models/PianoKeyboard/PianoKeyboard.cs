@@ -23,13 +23,36 @@ namespace GestureSample.Maui.Models
         //TODO: Give the option to save to database the keypress and timestamp and keyboard ID and the new color(which is made when it is created. And a database to work with..
         //TODO: Make an interface
         protected readonly PPWGamePlay _gamePlay;
-        
+
+        protected readonly KeyboardConfig _pianoConfig;
 
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
 
-        
+        protected virtual void AddDummies()
+        {   
+            int[] dummiesArray = _pianoConfig.DummiesArray;
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                
+                if (_pianoConfig.DummiesArray!=null && dummiesArray.Length>i && dummiesArray[i] > -1)
+                {
+                    //btnKeys[i].Opacity = 0.5;
+                    btnKeys[i].IsEnabled = false;
+                    btnKeys[i].BackgroundColor = dummiesArray[i] == 1 ? COLOR_PRESSED : COLOR_FREE;
+                }
+                else
+                {
+                    btnKeys[i].Opacity = 1;
+                    btnKeys[i].IsEnabled = true;
+                    btnKeys[i].BackgroundColor = colors[i];
+                }
+               // btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
+               // btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
+
+            }
+        }
 
         //TODO: add constructor for 20 keys and for keyboard questions
         //public BitArray Keys;
@@ -70,10 +93,12 @@ namespace GestureSample.Maui.Models
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
             KeyboardConfig pianoConfig) : base(pianoConfig.Rows, pianoConfig.KeysInRow) {
 
-            _patterns = pianoConfig.KeysInRow > 10 || pianoConfig.ImposeEdges; _imposeEdges = pianoConfig.ImposeEdges; 
+            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges; 
+            _imposeEdges = pianoConfig.ImposeEdges; 
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
+            _pianoConfig= pianoConfig; 
             for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
 
             //_realmService = new();
@@ -84,6 +109,7 @@ namespace GestureSample.Maui.Models
                 btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
                 
             }
+            AddDummies();
 
 
         Microsoft.Maui.Controls.Button btnInit = new()
@@ -156,11 +182,6 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        public virtual void PianoInitWithDummies()
-        {
-                    
-        }
-
         public virtual void PianoInit()
         {
 
@@ -174,6 +195,7 @@ namespace GestureSample.Maui.Models
             _addend2=0;
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
+            AddDummies();
         }
 
         //Spatial
@@ -182,7 +204,7 @@ namespace GestureSample.Maui.Models
             _addend1 = 0; _addend2 = 0; bool isNowYellowStreak = false; int yellowStreaksTillNowIncluding = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
-                if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
+                if (btnKeys[i].BackgroundColor == COLOR_PRESSED || btnKeys[i].BackgroundColor == COLOR_PRESSED)
                 {
                     if (!isNowYellowStreak) { isNowYellowStreak = true; yellowStreaksTillNowIncluding++; }
                     if (yellowStreaksTillNowIncluding == 1) _addend1++;

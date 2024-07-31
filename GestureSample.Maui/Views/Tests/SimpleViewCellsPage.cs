@@ -295,7 +295,7 @@ namespace GestureSample.Views.Tests
                 _pianoKeyboard = _config.KeyboardConfig.SyncType switch
                 {
                     SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
-                    SyncType.Sync => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
+                    SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
                 grid.Add(_pianoKeyboard);
