@@ -296,8 +296,8 @@ namespace GestureSample.Views
      new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
     {     MinAddend=0,
          MinSum=1,
-          MaxAddend=4,
-        MaxSum=4,
+          MaxAddend=5,
+        MaxSum=5,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -309,7 +309,7 @@ namespace GestureSample.Views
         MinAddend=0,
         MinSum=1,
         MaxSum = 4,
-        MaxAddend=3,
+        MaxAddend=5,
         IsHistory=true,
         KeyboardConfig = new KeyboardConfig
         {
