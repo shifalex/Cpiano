@@ -38,11 +38,11 @@
     //TODO: Only scond hand for decompositions with dummies(up to 4)
     //TODO: Object counting - sometime more smaller then less bigger. So also size games.
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
+    //TODO: Timers for checking the exercise and timers for moving to the next
     
     //TODO: Fill textBoxes According To Keyboard
     //TODO: decide on button text on the keys...
     //TODO: Learn manage TODOS
-    //TODO: Timers for checking the exercise and timers for moving to the next
     //TODO: A Button that animates equation into PPW scheme for help
     //TODO: equation with one more entry
 
@@ -72,8 +72,10 @@
     //TODO: Timers for next after correct answer instead of next.imer for exercise, timer for total
     //TODO: Win screen with stats.
     //TODO: solveTillCorrect?
-    //TODO: 9,5,2 multiplication helper. 7, 6 jumps multiplication helper
+    //TODO: 9,5,2 multiplication helper. 7, 6 jumps multiplication helper. Make helper view functions
+    //TODO: MOve automatically from one win to another
     //TODO: Levels configurations with HATNAYOT
+    //TODO:Change how we understand recursion. When we remove one or when we add one.
     //TODO: small classroom model (6 children - teacher can see how everyone of them works and progress of everyone)
     //TODO: Another app for Trinom, golden equations etc.
     //TODO: Bar Models game- grid with and bars you put over there
@@ -116,5 +118,7 @@
         public bool KeyboardAsAQuestion = false;
 
         public int[] DummiesArray = null;
+
+        public bool IsArrow = false;
     }
 }

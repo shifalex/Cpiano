@@ -1,15 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace GestureSample.Maui.Models
 {
+    
+
     internal class PianoKeyboardReadOnly : MR.Gestures.Grid
     {
 
+        private int currentColumn = 0; // Keeps track of the current column of the arrow
         
+        private Grid combinedObject; // The combined object containing the number and the arrow
+
+
+
         protected readonly int NUMBER_OF_KEYS;
         protected readonly int FINGER_SEPERATOR = 5;
         protected readonly MR.Gestures.Button[] btnKeys;
@@ -20,10 +24,24 @@ namespace GestureSample.Maui.Models
         public Color[] colors;
         public int  Length => btnKeys.Length;
         protected virtual int heading_height { get; } = 5;
-        public PianoKeyboardReadOnly(int rows = 1, int keysInRow = 10) : base()
+        
+        private Microsoft.Maui.Controls.Shapes.Path CreateArrowPath(string data, Color color)
+    {
+        return new Microsoft.Maui.Controls.Shapes.Path
+        {
+            Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(data),
+            Fill = Colors.Transparent,
+            Stroke = color,
+            StrokeThickness = 2,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Center
+        };
+    }
+        public PianoKeyboardReadOnly(KeyboardConfig _config) : base()
         {
 
-            
+            int keysInRow = _config.KeysInRow;
+            int rows = _config.Rows;
             NUMBER_OF_KEYS = keysInRow * rows;
             this.ColumnSpacing = 5;
             this.BackgroundColor = Colors.Black;
@@ -32,6 +50,48 @@ namespace GestureSample.Maui.Models
 
             colors = new Color[NUMBER_OF_KEYS];
 
+            if (_config.IsArrow)
+            {
+                this.RowDefinitions.Add(new RowDefinition() { Height = GridLength.Auto });
+                combinedObject = new Grid
+                {
+                    RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = GridLength.Auto }
+                },
+                    ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star }
+                }
+                };
+                //combinedObject.BackgroundColor= Colors.White;
+
+                // Create the number label
+                Label numberLabel = new Label
+                {
+                    Text = "1",
+                    TextColor = Colors.Red,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center
+                };
+
+                // Create the arrow
+                Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath("M 20,50 L 20,10 L 140,10 L 130,0 M 140,10 L 130,20", Colors.Red);
+
+                // Add the number and the arrow to the combined object grid
+                combinedObject.Add(numberLabel, 0, 0);
+                Grid.SetColumnSpan(numberLabel, 2);
+                combinedObject.Add(arrow, 0, 1);
+                Grid.SetColumnSpan(arrow, 2);
+
+                // Add the combined object to the main grid
+                this.Add(combinedObject, currentColumn, 1);
+                Grid.SetColumnSpan(combinedObject, 4);
+            }
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
             btnKeys = new MR.Gestures.Button[NUMBER_OF_KEYS];
             for (int i = 0; i < keysInRow + (handSeperator < keysInRow ? 1 : 0); i++)
@@ -53,7 +113,7 @@ namespace GestureSample.Maui.Models
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 
                         //UpCommand =  new Command<MR.Gestures.DownUpEventArgs>(OnUp), 
-                    }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows - r
+                    }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows - r+(_config.IsArrow? 1:0)
                     );
                 }
             }
