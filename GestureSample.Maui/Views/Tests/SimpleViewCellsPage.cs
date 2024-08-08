@@ -353,7 +353,7 @@ namespace GestureSample.Views.Tests
         {
             VerticalStackLayout vsl = new();
             _gamePlay = new BitArrayGamePlay(this, _config);
-            _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow)
+            _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
                 HeightRequest = TASK_WIDTH / 2
@@ -365,7 +365,7 @@ namespace GestureSample.Views.Tests
                 FontSize = 18,
                 TextColor = Colors.Black
             };
-            _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig.Rows, _config.KeyboardConfig.KeysInRow)
+            _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
                 HeightRequest = TASK_WIDTH / 2

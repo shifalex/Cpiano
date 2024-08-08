@@ -91,7 +91,7 @@ namespace GestureSample.Maui.Models
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
-            KeyboardConfig pianoConfig) : base(pianoConfig.Rows, pianoConfig.KeysInRow) {
+            KeyboardConfig pianoConfig) : base(pianoConfig) {
 
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges; 
             _imposeEdges = pianoConfig.ImposeEdges; 
