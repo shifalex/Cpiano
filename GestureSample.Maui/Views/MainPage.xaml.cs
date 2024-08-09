@@ -243,7 +243,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             SyncType = SyncType.Sync,
             TextBoxesQuantity = 2
         }
-    })),
+    })),*/
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -278,7 +278,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     //     }
     // })),
 
-    new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
+   /* new PageConfig("new Keyboard", "Sync decomposition not required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
         MaxAddend=10,
         KeyboardConfig = new KeyboardConfig

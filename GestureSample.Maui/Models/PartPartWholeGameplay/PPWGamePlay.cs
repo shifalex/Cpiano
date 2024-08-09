@@ -10,7 +10,7 @@ namespace GestureSample.Maui.Models
         public static readonly int NAN = -1111;
         public int addend1;
         public int addend2;
-        public int Sum;
+        public virtual int Sum { get; set; }
                 
         public Operation CurrentOperation { get; set; }
 

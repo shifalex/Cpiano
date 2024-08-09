@@ -130,7 +130,7 @@ namespace GestureSample.Maui
 
         public int SecondsTillHideExercise { get; set; } = -1;
         public int SecondsTillAllowInput { get; set; } = -1;
-        public int SecondsTillNextExercise { get; set; } = 3;
+        public int SecondsTillNextExercise { get; set; } = 2;
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
         public List<Operation> OperationList = new (){ Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
