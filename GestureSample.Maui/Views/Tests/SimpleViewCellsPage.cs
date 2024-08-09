@@ -113,7 +113,7 @@ namespace GestureSample.Views.Tests
                     Direction dir = r.Next(0,2)==0?Direction.Right:Direction.Left;
                     int aboveIndex = r.Next(1, 10);
                     _pianoKeyboard.AddArrow(dir, aboveIndex/*, _gamePlay.Sum*/);
-                    ((BitArrayGamePlay)_gamePlay).GenerateSequenceArrayQuestion(dir==Direction.Left?(aboveIndex+ 1 - _gamePlay.Sum)%10:aboveIndex - 1, _gamePlay.Sum);
+                    ((BitArrayGamePlay)_gamePlay).GenerateSequenceArrayQuestion(dir==Direction.Left?(aboveIndex+ 1 - _gamePlay.Sum+10)%10:aboveIndex - 1, _gamePlay.Sum);
                 }
                 if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
                 if (_isKeyboard && !_config.FromNumToNum)
