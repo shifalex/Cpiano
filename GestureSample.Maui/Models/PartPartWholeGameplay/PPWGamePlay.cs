@@ -69,9 +69,11 @@ namespace GestureSample.Maui.Models
             return Check();
         }
 
-        public virtual bool Check(PianoKeyboard pianoKeyboard)
+        public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         { 
-            return Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
+            bool b= Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
+            await Task.Delay(Config.SecondsTillNextExercise*1000);
+            return b;
         }
 
         public virtual void GenerateExercise()

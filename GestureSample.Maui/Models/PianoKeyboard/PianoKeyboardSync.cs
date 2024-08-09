@@ -11,10 +11,11 @@ namespace GestureSample.Maui.Models
     {
         protected IDispatcherTimer timer;
         protected int _seconds_pressed = 0;
-        protected virtual int SECONDS_TO_ANSWER { get; } = 3;
+        protected virtual int SECONDS_TO_ANSWER { get; }
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
         {
+            SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer;
             TimerInit();
             timer.Start();
         }
@@ -49,8 +50,8 @@ namespace GestureSample.Maui.Models
         {
             timer.Stop();
             IsEnabled = false;
-            bool isCorrect = _gamePlay.Check(this);
-            await Task.Delay(3000);
+            bool isCorrect = await _gamePlay.CheckAsync(this);
+            
             if (isCorrect)
             {
                 _gamePlay.GenerateExercise();

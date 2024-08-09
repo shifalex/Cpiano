@@ -6,6 +6,7 @@ namespace GestureSample.Views.Tests
 
     public class SimpleViewCellsPage : ContentPage
     {
+        private readonly GameConfig _config;
         
         private bool _isKeyboard { get { return _config.KeyboardConfig != null; } }
         private bool _isThreeTexts { get 
@@ -44,11 +45,84 @@ namespace GestureSample.Views.Tests
         private Command _cmdNext = null;
         private Command _cmdCheck = null;
         private HorizontalStackLayout _hzlEquation;
-        VerticalStackLayout _vsl;
+        //VerticalStackLayout _vsl;
+
+        private int arrowAbovebutton = -1;
+        private int arrowAboveNumber = -1;
+        private Direction Direction = Direction.Right;
 
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
         #region view updating
+        public async void UpdateView(bool newExercise = false)
+        {
+            _lblStatement.Text = _gamePlay.Status;
+
+            if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
+            if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
+            if (_isThreeTexts)
+            {
+                _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
+                _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
+                _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
+            }           
+
+            if (newExercise)
+            {
+                List<Task> tasks = new ();
+                if (_isThreeTexts)
+                {
+                    EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
+                    EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
+                    EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
+                    
+                }
+                if (_config.UIQuestionType == UIQuestionType.SimpleEquation) 
+                    if( Operation.Divide  == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
+                         OrderEntries(_hzlEquation, _txtSum, _txtAddend1);
+                    else
+                        OrderEntries(_hzlEquation, _txtAddend1, _txtSum);
+                if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
+                {
+                    _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
+                    _keyboardTask2.IsVisible = GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation);
+                    _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                }
+                if (_config.UIQuestionType == UIQuestionType.CanvasesHands )
+                {
+                    leftHandCanvas.IsVisible = true; rightHandCanvas.IsVisible = true;
+                    ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
+                    leftHandCanvas.Invalidate();
+                    rightHandCanvas.Invalidate();
+                    if (_config.SecondsTillHideExercise > 0)
+                    {
+                        tasks.Add(HideGraphicsView(leftHandCanvas, _config.SecondsTillHideExercise));
+                        tasks.Add(HideGraphicsView(rightHandCanvas, _config.SecondsTillHideExercise));
+                    }
+                }
+
+                if(_config.KeyboardConfig!=null&&_config.KeyboardConfig.IsArrow)
+                {
+                    _pianoKeyboard.RemoveArrows();
+                    Random r = new();
+                    Direction dir = r.Next(0,1)==0?Direction.Right:Direction.Left;
+                    int aboveIndex = r.Next(1, 10);
+                    _pianoKeyboard.AddArrow(dir, aboveIndex);
+                }
+                if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
+                if (_isKeyboard && !_config.FromNumToNum)
+                {
+                    _pianoKeyboard.PianoInit();
+                    if (_config.SecondsTillAllowInput > 0)
+                    {
+                        tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
+                    }
+                }
+                if(tasks.Count > 0) await Task.WhenAll(tasks);
+            }
+            
+        }
+        
         private static void EntryEnabled(Entry ent, bool enabled)
         {
             ent.IsEnabled = enabled;
@@ -79,51 +153,22 @@ namespace GestureSample.Views.Tests
             _hzlEquation.Children.Insert(index2, entFirst);
             _hzlEquation.Children.Insert(index1, entSecond);
         }
-        public void UpdateView(bool newExercise = false)
+        
+
+        public static async Task HideGraphicsView(GraphicsView obj, int seconds)
         {
-            _lblStatement.Text = _gamePlay.Status;
-
-            if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
-            if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
-            if (_isThreeTexts)
-            {
-                _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
-                _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
-                _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
-            }           
-
-            if (newExercise)
-            {
-                if (_isThreeTexts)
-                {
-                    EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
-                    EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
-                    EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
-                    
-                }
-                if (_config.UIQuestionType == UIQuestionType.SimpleEquation) 
-                    if( Operation.Divide  == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
-                         OrderEntries(_hzlEquation, _txtSum, _txtAddend1);
-                    else
-                        OrderEntries(_hzlEquation, _txtAddend1, _txtSum);
-                if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
-                {
-                    _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
-                    _keyboardTask2.IsVisible = GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation);
-                    _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                }
-                if (_config.UIQuestionType == UIQuestionType.CanvasesHands )
-                {
-                    ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
-                    leftHandCanvas.Invalidate();
-                    rightHandCanvas.Invalidate();
-                }
-
-                if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
-                if (_isKeyboard && !_config.FromNumToNum ) _pianoKeyboard.PianoInit();
-            }
             
+            await Task.Delay(seconds*1000); // Simulate a 2-second operation
+            obj.IsVisible = false;
         }
+
+        public static async Task DisableTemporeryKeyboard(Grid pianoKeyboard, int seconds)
+        {
+            pianoKeyboard.IsEnabled = false;
+            await Task.Delay(seconds * 1000);
+            pianoKeyboard.IsEnabled = true;
+        }
+
 
         private static string GenerateHistoryString(List<PPWObject> ppwHistoryArray)
         {
@@ -136,7 +181,6 @@ namespace GestureSample.Views.Tests
 
         #endregion
 
-        private readonly GameConfig _config;
 
         public SimpleViewCellsPage(GameConfig config)
         {
@@ -155,17 +199,20 @@ namespace GestureSample.Views.Tests
             _cmdNext = new Command(GenerateNextExercise);
         }
 
-        private void CheckGamePlay()
+        private async void CheckGamePlay()
         {
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                _pianoKeyboard.IsEnabled = !_gamePlay.Check(_pianoKeyboard);
+                _pianoKeyboard.IsEnabled = !await _gamePlay.CheckAsync(_pianoKeyboard);
             }
             else
             {
                 try
                 {
-                    _gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text));
+                    if (_gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text))) {
+                        await Task.Delay(3000);
+                        GenerateNextExercise();
+                    };
                 }
                 catch
                 {

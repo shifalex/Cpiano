@@ -95,6 +95,15 @@ namespace GestureSample.Maui
         SumOnly,
         TwoAny
     }
+
+    public enum Direction
+    {
+        Up,
+        Down,
+        Left,
+        Right
+    }
+
     #endregion
 
     public class GameConfig
@@ -119,13 +128,16 @@ namespace GestureSample.Maui
         public bool EnforceOperationLabel { get; set; } = false;
         public bool FromNumToNum { get; set; } = false;
 
-        public int SecondsToShowExercise { get; set; } = -1;
-
+        public int SecondsTillHideExercise { get; set; } = -1;
+        public int SecondsTillAllowInput { get; set; } = -1;
+        public int SecondsTillNextExercise { get; set; } = 3;
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
         public List<Operation> OperationList = new (){ Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
         // Nested configuration with defaults
         public KeyboardConfig KeyboardConfig { get; set; } = null;
+
+        
     }
 
     
