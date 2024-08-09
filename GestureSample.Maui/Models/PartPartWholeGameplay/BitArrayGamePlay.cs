@@ -8,6 +8,14 @@ namespace GestureSample.Maui.Models
         public bool[] BitArrayQuestion2 { get; set; }
         public UIQuestionType ArrayQuestionType { get; set; }
 
+        public override int Sum { get {
+                int s1 = 0;
+                for (int i = 0; i < BitArrayQuestion.Length; i++)
+                { s1 += BitArrayQuestion[i] ? 1 : 0; }
+                if (s1 == 0) s1 = 1;
+                return s1;
+            }  }
+
 
 
         public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
@@ -22,6 +30,7 @@ namespace GestureSample.Maui.Models
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result?Statement.True:Statement.False;
             _view.UpdateView();
+            await Task.Delay(Config.SecondsTillNextExercise * 1000);
             return result;
         }
 
@@ -39,6 +48,19 @@ namespace GestureSample.Maui.Models
                 Operation.Neutralize => this.Xor(bitArrayAnswer),
                 _ => false
             };
+        }
+
+        public void GenerateSequenceArrayQuestion(int from, int length)
+        {
+            Console.WriteLine("from:{0} length: {1}", from, length);
+            CurrentOperation = Operation.Copy;
+            for(int i=0; i<BitArrayQuestion.Length; i++)
+                BitArrayQuestion[i] = false;
+
+            for (int i = 0; i < length; i++) 
+                BitArrayQuestion[(from+i)%BitArrayQuestion.Length] = true;
+            
+            
         }
 
         public override void GenerateExercise()

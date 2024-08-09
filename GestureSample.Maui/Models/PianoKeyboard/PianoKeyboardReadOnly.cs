@@ -24,7 +24,7 @@ namespace GestureSample.Maui.Models
         public int  Length => btnKeys.Length;
         protected virtual int heading_height { get; } = 5;
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int column=1)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row=1)
         {
             Grid Arrow = new()
             {
@@ -35,7 +35,7 @@ namespace GestureSample.Maui.Models
                 },
                 ColumnDefinitions =
                 {
-                    new ColumnDefinition { Width = GridLength.Star },
+                    //new ColumnDefinition { Width = GridLength.Star },
                     new ColumnDefinition { Width = GridLength.Star }
                 }
             };
@@ -47,7 +47,7 @@ namespace GestureSample.Maui.Models
             Label numberLabel = new ()
             {
                 Text = numberAbove.ToString(),
-                TextColor = Colors.Red,
+                TextColor = Colors.White,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 IsVisible = numberAbove>-1
@@ -55,10 +55,11 @@ namespace GestureSample.Maui.Models
             };
 
             // Create the arrow
-            Microsoft.Maui.Controls.Shapes.Path arrow = (direction == Direction.Right)?CreateArrowPath("M 20,50 L 20,10 L 140,10 L 130,0 M 140,10 L 130,20", Colors.White):
-               CreateArrowPath("M 140,50 L 140,10 L 20,10 L 30,0 M 20,10 L 30,20", Colors.White);
+            Microsoft.Maui.Controls.Shapes.Path arrow = (direction == Direction.Right)?
+                CreateArrowPath("M 30,50 L 30,10 L 140,10 L 130,0 M 140,10 L 130,20", Colors.White):
+                CreateArrowPath("M 130,50 L 130,10 L 20,10 L 30,0 M 20,10 L 30,20", Colors.White);
 
-            int colSpan= (aboveKeyNumber + 1) switch
+            int colSpan= aboveKeyNumber switch
             {
                 5 => 3,
                 10 => 1,
@@ -66,12 +67,12 @@ namespace GestureSample.Maui.Models
             };
             // Add the number and the arrow to the combined object grid
             Arrow.Add(numberLabel, 0, 0);
-            Grid.SetColumnSpan(numberLabel, colSpan);
+            //Grid.SetColumnSpan(numberLabel, 2);
             Arrow.Add(arrow, 0, 1);
-            Grid.SetColumnSpan(arrow, colSpan);
+            //Grid.SetColumnSpan(arrow, 2);
 
             // Add the combined object to the main grid
-            this.Add(Arrow, (FINGER_SEPERATOR >= 0 && aboveKeyNumber >= FINGER_SEPERATOR) ? aboveKeyNumber : aboveKeyNumber-1, column);
+            this.Add(Arrow, (FINGER_SEPERATOR >= 0 && aboveKeyNumber > FINGER_SEPERATOR) ? aboveKeyNumber : aboveKeyNumber-1, row);
 
             Grid.SetColumnSpan(Arrow, colSpan);
 

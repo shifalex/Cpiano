@@ -47,9 +47,6 @@ namespace GestureSample.Views.Tests
         private HorizontalStackLayout _hzlEquation;
         //VerticalStackLayout _vsl;
 
-        private int arrowAbovebutton = -1;
-        private int arrowAboveNumber = -1;
-        private Direction Direction = Direction.Right;
 
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
@@ -57,6 +54,7 @@ namespace GestureSample.Views.Tests
         public async void UpdateView(bool newExercise = false)
         {
             _lblStatement.Text = _gamePlay.Status;
+            List<Task> tasks = new ();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
@@ -65,11 +63,24 @@ namespace GestureSample.Views.Tests
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
-            }           
+            }
+            if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
+            {
+                leftHandCanvas.IsVisible = true; rightHandCanvas.IsVisible = true;
+                if (_config.SecondsTillHideExercise > 0)
+                {
+                    tasks.Add(HideGraphicsView(leftHandCanvas, _config.SecondsTillHideExercise));
+                    tasks.Add(HideGraphicsView(rightHandCanvas, _config.SecondsTillHideExercise));
+                }
+            }
+
+            if (_config.SecondsTillAllowInput > 0)
+            {
+                tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
+            }
 
             if (newExercise)
             {
-                List<Task> tasks = new ();
                 if (_isThreeTexts)
                 {
                     EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
@@ -90,33 +101,24 @@ namespace GestureSample.Views.Tests
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands )
                 {
-                    leftHandCanvas.IsVisible = true; rightHandCanvas.IsVisible = true;
                     ((BitArrayGamePlay)_gamePlay).BitArrayforHands(((HandDrawable)leftHandCanvas.Drawable).Bits, ((HandDrawable)rightHandCanvas.Drawable).Bits);
                     leftHandCanvas.Invalidate();
                     rightHandCanvas.Invalidate();
-                    if (_config.SecondsTillHideExercise > 0)
-                    {
-                        tasks.Add(HideGraphicsView(leftHandCanvas, _config.SecondsTillHideExercise));
-                        tasks.Add(HideGraphicsView(rightHandCanvas, _config.SecondsTillHideExercise));
-                    }
                 }
 
                 if(_config.KeyboardConfig!=null&&_config.KeyboardConfig.IsArrow)
                 {
                     _pianoKeyboard.RemoveArrows();
                     Random r = new();
-                    Direction dir = r.Next(0,1)==0?Direction.Right:Direction.Left;
+                    Direction dir = r.Next(0,2)==0?Direction.Right:Direction.Left;
                     int aboveIndex = r.Next(1, 10);
-                    _pianoKeyboard.AddArrow(dir, aboveIndex);
+                    _pianoKeyboard.AddArrow(dir, aboveIndex/*, _gamePlay.Sum*/);
+                    ((BitArrayGamePlay)_gamePlay).GenerateSequenceArrayQuestion(dir==Direction.Left?(aboveIndex+ 1 - _gamePlay.Sum)%10:aboveIndex - 1, _gamePlay.Sum);
                 }
                 if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
                 if (_isKeyboard && !_config.FromNumToNum)
                 {
                     _pianoKeyboard.PianoInit();
-                    if (_config.SecondsTillAllowInput > 0)
-                    {
-                        tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
-                    }
                 }
                 if(tasks.Count > 0) await Task.WhenAll(tasks);
             }
@@ -133,7 +135,7 @@ namespace GestureSample.Views.Tests
         private void OrderEntries(HorizontalStackLayout layout, Entry entFirst, Entry entSecond)
         {
             int index1 = -1, index2 = -1;
-            HorizontalStackLayout layout2;
+            //HorizontalStackLayout layout2;
             for (int i= 0; i< layout.Children.Count; i++)
             {
                 if(layout.Children[i] == entFirst ) index1 = i;
@@ -195,6 +197,8 @@ namespace GestureSample.Views.Tests
         private void InitializeGamePlay()
         {
             _gamePlay = new PPWGamePlay(this, _config);
+            if (_config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow)
+                _gamePlay = new BitArrayGamePlay(this, _config);
             _cmdCheck = new Command(CheckGamePlay);
             _cmdNext = new Command(GenerateNextExercise);
         }
@@ -210,7 +214,7 @@ namespace GestureSample.Views.Tests
                 try
                 {
                     if (_gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text))) {
-                        await Task.Delay(3000);
+                        await Task.Delay(_config.SecondsTillNextExercise);
                         GenerateNextExercise();
                     };
                 }
