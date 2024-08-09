@@ -24,7 +24,7 @@
     //ODO: why when 11 its by pattern and when not its by hand
     //ODO: Only one hand for decompositions (up to 4)
     
-
+    //TODO: Make arrow a BitArray Gameplay instead of usual!!
     //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
     //TODO: Dummies for keyboard
     //TODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
@@ -114,11 +114,16 @@
 
         public int AddendsNum { get; set; } = 2;
 
-        public bool KeyboardOnlyForHelp = false;
-        public bool KeyboardAsAQuestion = false;
+        public bool KeyboardOnlyForHelp { get; set; } = false;
+        public bool KeyboardAsAQuestion { get; set; } = false;
+
+        public int SecondsPressingToAnswer { get; set; } = 3;
 
         public int[] DummiesArray = null;
+        public int LeftAddendIndex { get; set; } = 0;
 
-        public bool IsArrow = false;
+        public bool IsArrow { get; set; } = false;
+
+
     }
 }

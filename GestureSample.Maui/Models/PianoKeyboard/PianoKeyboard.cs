@@ -216,7 +216,7 @@ namespace GestureSample.Maui.Models
             }
             if (yellowStreaksTillNowIncluding == 1 /*one addend is 0 - which one? if most keys in the left - Addend2, if most keys in the right - Addend1*/)
             {
-                for (int i = 0; i < NUMBER_OF_KEYS; i++)
+                for (int i = _pianoConfig.LeftAddendIndex; i < NUMBER_OF_KEYS; i++)
                     if (btnKeys[i].BackgroundColor == COLOR_PRESSED && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_FREE)
                         break;
                     else if (btnKeys[i].BackgroundColor == COLOR_FREE && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_PRESSED)

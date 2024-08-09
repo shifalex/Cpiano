@@ -17,7 +17,7 @@ namespace GestureSample.Maui.Models
             BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
         }
 
-        public override bool Check(PianoKeyboard pianoKeyboard)
+        public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result?Statement.True:Statement.False;
