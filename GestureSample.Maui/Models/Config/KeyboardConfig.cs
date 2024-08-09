@@ -23,8 +23,10 @@
     //ODO: Allow minus and divide in equation
     //ODO: why when 11 its by pattern and when not its by hand
     //ODO: Only one hand for decompositions (up to 4)
+    //ODO: Make arrow a BitArray Gameplay instead of usual!!
     
-    //TODO: Make arrow a BitArray Gameplay instead of usual!!
+    //TODO: Make arrow numbers look nice
+    //TODO: Make 2 lines only arrows interface - left arrow to top line, right arrow to bottom line
     //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
     //TODO: Dummies for keyboard
     //TODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
