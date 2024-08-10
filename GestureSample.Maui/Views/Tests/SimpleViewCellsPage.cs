@@ -45,6 +45,8 @@ namespace GestureSample.Views.Tests
         private Command _cmdNext = null;
         private Command _cmdCheck = null;
         private HorizontalStackLayout _hzlEquation;
+
+        private int _nextArrowAboveNumber = 1;
         //VerticalStackLayout _vsl;
 
 
@@ -108,12 +110,42 @@ namespace GestureSample.Views.Tests
 
                 if(_config.KeyboardConfig!=null&&_config.KeyboardConfig.IsArrow)
                 {
+                    Random r = new(); Direction dir = Direction.Right; int aboveNumber= _nextArrowAboveNumber;
+                        dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                    if (_config.QuestionOrder == QuestionOrder.Random)
+                    {
+                        aboveNumber = r.Next(1, 20);
+                        if (aboveNumber > 10) { aboveNumber = 10; }
+                    }
+
+                    if (_config.QuestionOrder == QuestionOrder.CyclicalRight ||
+                        (_config.QuestionOrder == QuestionOrder.FromLeft && aboveNumber == 1))
+                    {
+                        dir =  Direction.Right ;
+                    }
+                    if (_config.QuestionOrder == QuestionOrder.CyclicalLeft)
+                    {
+                        dir = Direction.Left;
+                    }
+                    if (_config.QuestionOrder == QuestionOrder.FromLeft && _nextArrowAboveNumber != 1)
+                    {
+                        _nextArrowAboveNumber = 1;
+                    }
+                    else if (dir == Direction.Right)
+                    {
+                        _nextArrowAboveNumber = (aboveNumber + _gamePlay.Sum + 10)%10;
+                        
+                    }
+                    else if (dir == Direction.Left) 
+                    {
+                        _nextArrowAboveNumber = (aboveNumber - _gamePlay.Sum + 10) % 10;
+                    }
+                    if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = 10; }
+
                     _pianoKeyboard.RemoveArrows();
-                    Random r = new();
-                    Direction dir = r.Next(0,2)==0?Direction.Right:Direction.Left;
-                    int aboveIndex = r.Next(1, 10);
-                    _pianoKeyboard.AddArrow(dir, aboveIndex/*, _gamePlay.Sum*/);
-                    ((BitArrayGamePlay)_gamePlay).GenerateSequenceArrayQuestion(dir==Direction.Left?(aboveIndex+ 1 - _gamePlay.Sum+10)%10:aboveIndex - 1, _gamePlay.Sum);
+                    _pianoKeyboard.AddArrow(dir, aboveNumber, _gamePlay.Sum);
+                    if (aboveNumber == 10) { _pianoKeyboard.AddArrow(dir, 0/*, _gamePlay.Sum*/); }
+                    ((BitArrayGamePlay)_gamePlay).GenerateSequenceArrayQuestion((dir==Direction.Left?aboveNumber+ 1 - _gamePlay.Sum+10:aboveNumber - 1)%10, _gamePlay.Sum);
                 }
                 if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
                 if (_isKeyboard && !_config.FromNumToNum)
@@ -251,7 +283,7 @@ namespace GestureSample.Views.Tests
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(_isKeyboard ? 40 : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(_isKeyboard ? (_config.UIQuestionType==UIQuestionType.OnlyKeyboard?80:40) : 1, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
@@ -505,7 +537,8 @@ namespace GestureSample.Views.Tests
                 BackgroundColor = Colors.Yellow,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH,
-                FontSize = 32
+                FontSize = 32,
+                IsVisible = _config.UIQuestionType!=UIQuestionType.OnlyKeyboard
             };
 
             _txtAddend1 = new Entry

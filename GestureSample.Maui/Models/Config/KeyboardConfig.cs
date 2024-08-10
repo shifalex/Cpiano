@@ -107,6 +107,7 @@
         public SyncType SyncType { get; set; } = 0;
         public int TextBoxesQuantity { get; set; } = 0;
         public int Rows { get; set; } = 1;
+        public bool ShowNumbersOnKeys { get; set; } = false;
 
         public int KeysInRow { get; set; } = 10;
         public bool ImposeEdges { get; set; } = false;

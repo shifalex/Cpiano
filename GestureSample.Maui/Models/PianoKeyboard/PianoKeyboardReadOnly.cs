@@ -31,7 +31,7 @@ namespace GestureSample.Maui.Models
                 RowDefinitions =
                 {
                     new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto }
+                    new RowDefinition { Height = 30 }
                 },
                 ColumnDefinitions =
                 {
@@ -39,9 +39,9 @@ namespace GestureSample.Maui.Models
                     new ColumnDefinition { Width = GridLength.Star }
                 }
             };
-            
-            //Random r = new();
-            //currentColumn = r.Next(keysInRow - 1);
+
+            double columnWidth = btnKeys[0].Width;
+            if(columnWidth==-1) columnWidth = 100;
 
             // Create the number label
             Label numberLabel = new ()
@@ -54,17 +54,44 @@ namespace GestureSample.Maui.Models
                 
             };
 
+            double arrowStart, arrowEnd, arrowEdgeX;
+            if (direction == Direction.Right) {
+                 arrowStart = columnWidth / 2;
+                 arrowEnd = columnWidth / 2 + columnWidth + 10;
+                 arrowEdgeX =  arrowEnd - 10;
+            }
+            else
+            {
+                 arrowStart = columnWidth / 2 + columnWidth + 10;
+                 arrowEnd = columnWidth / 2;
+                 arrowEdgeX = arrowEnd + 10;
+            }
+            if (aboveKeyNumber == 0) {
+                if (direction == Direction.Right)
+                {
+                    arrowStart = -10;
+                    arrowEnd = columnWidth / 2 + 5;
+                    arrowEdgeX = (direction == Direction.Right) ? arrowEnd - 10 : arrowEnd + 10;
+                }
+                else
+                {
+                    arrowStart = columnWidth / 2 + 5;
+                    arrowEnd = -10;
+                    arrowEdgeX = (direction == Direction.Right) ? arrowEnd - 10 : arrowEnd + 10;
+                }
+            }
             // Create the arrow
-            Microsoft.Maui.Controls.Shapes.Path arrow = (direction == Direction.Right)?
-                CreateArrowPath("M 30,50 L 30,10 L 140,10 L 130,0 M 140,10 L 130,20", Colors.White):
-                CreateArrowPath("M 130,50 L 130,10 L 20,10 L 30,0 M 20,10 L 30,20", Colors.White);
+            Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(String.Format("M {0},30 L {0},10 L {1},10 L {2},0 M {1},10 L {2},20", arrowStart, arrowEnd, arrowEdgeX), Colors.White);
+
+            
 
             int colSpan= aboveKeyNumber switch
             {
                 5 => 3,
-                10 => 1,
+                10 or 0=> 1,
                 _ => 2
             };
+            if(aboveKeyNumber==0)aboveKeyNumber = 1;
             // Add the number and the arrow to the combined object grid
             Arrow.Add(numberLabel, 0, 0);
             //Grid.SetColumnSpan(numberLabel, 2);
@@ -82,6 +109,7 @@ namespace GestureSample.Maui.Models
         public void RemoveArrows() { 
             if(Arrow1!=null) this.Remove(Arrow1);
             if (Arrow2 != null) this.Remove(Arrow2);
+            Arrow1 = null;Arrow2 = null;
 }
 
 
@@ -131,7 +159,8 @@ namespace GestureSample.Maui.Models
                     this.Add(
                     btnKeys[i + keysInRow * r] = new()
                     {
-                        //Text = "Button " + (i + 1 + keysInRow * r).ToString(),
+                        Text = (_config.ShowNumbersOnKeys)?(i + 1 + keysInRow * r).ToString():"",
+                        TextColor=Colors.Black,
                         BackgroundColor = COLOR_FREE,
                         CommandParameter = i + 1 + keysInRow * r,
                         Margin = new Thickness(0, 5, 0, 0),
