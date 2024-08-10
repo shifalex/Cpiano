@@ -138,7 +138,7 @@ namespace GestureSample.Views.Tests
                     }
                     else if (dir == Direction.Left) 
                     {
-                        _nextArrowAboveNumber = (aboveNumber - _gamePlay.Sum + 10) % 10;
+                        _nextArrowAboveNumber = (aboveNumber - _gamePlay.Sum + 10-2) % 10;
                     }
                     if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = 10; }
 
