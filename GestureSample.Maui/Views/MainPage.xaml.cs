@@ -12,10 +12,11 @@ namespace GestureSample.Views
 			//new PageConfig(null, "ContentPage", () => new ContentPageXaml { BindingContext = new ContentPageXaml() }),
 			//new PageConfig(null, "Layouts", null),
 			new PageConfig(null, "new Keyboard", null),
-            new PageConfig(null, "new Number", null),
+            new PageConfig(null, "Arrow", null),
             new PageConfig(null, "Bits", null),
-            new PageConfig(null, "Keyboard", null),
-            new PageConfig(null, "Number", null),
+            new PageConfig(null, "new Number", null),
+            //new PageConfig(null, "Keyboard", null),
+            //new PageConfig(null, "Number", null),
 
             new PageConfig(null, "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
 			//new PageConfig(null, "Cells", null),
@@ -147,15 +148,114 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         }
     })),
 
-    new PageConfig("new Keyboard", "Arrow Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Arrow", "Arrow Sync one number With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
-
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Arrow", "Arrow Sync one number ", () => new SimpleViewCellsPage(new GameConfig
+    {
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
             IsArrow = true
         }
     })),
+
+    new PageConfig("Arrow", "Cyclical Right With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalRight,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Arrow", "Cyclical Right", () => new SimpleViewCellsPage(new GameConfig
+    {
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalRight,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Arrow", "Cyclical Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Arrow", "Cyclical Left", () => new SimpleViewCellsPage(new GameConfig
+    {
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Arrow", "Cyclical Mixed With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalMixed,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Arrow", "Cyclical Mixed", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalMixed,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Arrow", "From Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Arrow", "From Left", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
+
+
+
+
 
     new PageConfig("Bits", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
