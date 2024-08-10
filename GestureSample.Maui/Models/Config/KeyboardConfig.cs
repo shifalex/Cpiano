@@ -24,9 +24,16 @@
     //ODO: why when 11 its by pattern and when not its by hand
     //ODO: Only one hand for decompositions (up to 4)
     //ODO: Make arrow a BitArray Gameplay instead of usual!!
-    
     //TODO: Make arrow numbers look nice
+
+    //TODO: Move Arrow logic to GamePlay
+    //TODO: Arrow Go Back To left
+    //TODO: Arrow till 10 back and forth
+    //TODO: Arrow from left without minuses - not allow bigger left the prev right
     //TODO: Make 2 lines only arrows interface - left arrow to top line, right arrow to bottom line
+    //TODO: splitter for bigger number decomposition
+    //TODO: ARRow levels
+    //TODO: faster time restriction on choosing the numbers!
     //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
     //TODO: Dummies for keyboard
     //TODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
@@ -120,7 +127,7 @@
         public bool KeyboardOnlyForHelp { get; set; } = false;
         public bool KeyboardAsAQuestion { get; set; } = false;
 
-        public int SecondsPressingToAnswer { get; set; } = 3;
+        public int SecondsPressingToAnswer { get; set; } = 2;
 
         public int[] DummiesArray = null;
         public int LeftAddendIndex { get; set; } = 0;

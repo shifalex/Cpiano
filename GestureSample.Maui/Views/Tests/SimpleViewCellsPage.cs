@@ -47,6 +47,7 @@ namespace GestureSample.Views.Tests
         private HorizontalStackLayout _hzlEquation;
 
         private int _nextArrowAboveNumber = 1;
+        private Direction _prevDir = Direction.Left;
         //VerticalStackLayout _vsl;
 
 
@@ -114,7 +115,7 @@ namespace GestureSample.Views.Tests
                         dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
                     if (_config.QuestionOrder == QuestionOrder.Random)
                     {
-                        aboveNumber = r.Next(1, 20);
+                        aboveNumber = r.Next(1, 11);
                         if (aboveNumber > 10) { aboveNumber = 10; }
                     }
 
@@ -127,20 +128,17 @@ namespace GestureSample.Views.Tests
                     {
                         dir = Direction.Left;
                     }
-                    if (_config.QuestionOrder == QuestionOrder.FromLeft && _nextArrowAboveNumber != 1)
-                    {
-                        _nextArrowAboveNumber = 1;
-                    }
-                    else if (dir == Direction.Right)
-                    {
-                        _nextArrowAboveNumber = (aboveNumber + _gamePlay.Sum + 10)%10;
-                        
-                    }
-                    else if (dir == Direction.Left) 
-                    {
-                        _nextArrowAboveNumber = (aboveNumber - _gamePlay.Sum + 10-2) % 10;
-                    }
+
+                    if (dir == Direction.Left && _prevDir== Direction.Right)
+                        aboveNumber = (aboveNumber + 8) % 10;
+                    if (dir == Direction.Right && _prevDir == Direction.Left)
+                        aboveNumber = (aboveNumber + 2) % 10;
+                    if (aboveNumber == 0) { aboveNumber = 10; }
+                    _prevDir = dir;
+                    _nextArrowAboveNumber = ((dir == Direction.Right?aboveNumber + _gamePlay.Sum: aboveNumber - _gamePlay.Sum) + 10)%10;                        
                     if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = 10; }
+                    if (_config.QuestionOrder == QuestionOrder.FromLeft && _nextArrowAboveNumber != 1) { _nextArrowAboveNumber = 1; }
+                    
 
                     _pianoKeyboard.RemoveArrows();
                     _pianoKeyboard.AddArrow(dir, aboveNumber, _gamePlay.Sum);
