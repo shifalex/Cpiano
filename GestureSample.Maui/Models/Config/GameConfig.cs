@@ -112,7 +112,8 @@ namespace GestureSample.Maui
         CyclicalRight,
         CyclicalMixed,
         FromLeft,
-        BackAndForth
+        BackAndForth,
+        ToLeft
     }
 
     #endregion
@@ -135,6 +136,9 @@ namespace GestureSample.Maui
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
         public bool OnlyThrougTen = false;
+
+        public bool isHelpEntries = false;
+        public bool isOnlySequence = true;
 
         public List<int> addendsList = new();
         public List<int> addendsListSecond = null;

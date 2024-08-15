@@ -252,6 +252,16 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
+    new PageConfig("Arrow", "To Left", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.ToLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
 
 
 
@@ -574,6 +584,12 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             SyncType= SyncType.Sync,
             KeyboardOnlyForHelp = true
         }
+    })),
+
+    new PageConfig("new Number", "Till 100 with Helping TextBoxes", () => new SimpleViewCellsPage(new GameConfig
+    {
+        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=true,
+        OnlyThrougTen = true
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
