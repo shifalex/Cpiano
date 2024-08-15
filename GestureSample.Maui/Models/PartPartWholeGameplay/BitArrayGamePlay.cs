@@ -4,6 +4,84 @@ namespace GestureSample.Maui.Models
 {
     internal class BitArrayGamePlay : PPWGamePlay
     {
+        private int _nextArrowAboveNumber = 1;
+        private Direction _prevDir = Direction.Left;
+        public Direction dir = Direction.Right; 
+        public int aboveNumber;
+        public int length;
+        public List<int> triads = new();
+
+
+        private void GenerateArrowExercise()
+        {
+            int[] specialAboves = { 1, 5, 6, 10, 3 };
+            Random r = new();
+            
+            if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)];
+            length = r.Next(1, 10);
+            dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+
+            if (new List<QuestionOrder> { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }.Contains( Config.QuestionOrder ))
+            {
+                aboveNumber = _nextArrowAboveNumber;
+                if (Config.QuestionOrder == QuestionOrder.CyclicalRight) dir = Direction.Right;
+                if (Config.QuestionOrder == QuestionOrder.CyclicalLeft)  dir = Direction.Left;
+
+                if (dir == Direction.Left && _prevDir == Direction.Right)
+                    aboveNumber = (aboveNumber + 9) % 10;
+                if (dir == Direction.Right && _prevDir == Direction.Left)
+                    aboveNumber = (aboveNumber + 1) % 10;
+                if (aboveNumber == 0) { aboveNumber = 10; }
+
+                _prevDir = dir;
+                _nextArrowAboveNumber = ((dir == Direction.Right ? (aboveNumber + length) : (aboveNumber - length)) + 10) % 10;
+                if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = 10; }
+            }
+
+            if (Config.QuestionOrder == QuestionOrder.FromLeft || Config.QuestionOrder == QuestionOrder.ToLeft)
+            {
+                bool isFirst = false;
+                if (triads.Count == 0)
+                {
+                    addend1 = r.Next(1, 10);
+                    addend2 = r.Next(1, 10);
+                    int sum = addend1 + addend2;
+                    triads.Add(0); triads.Add(addend1); triads.Add(addend2); triads.Add(sum % 10);
+                    isFirst = true;
+                }
+                if (Config.QuestionOrder == QuestionOrder.FromLeft)
+                {
+                    dir = Direction.Right;
+                    BitArrayQuestion = triads.Count == 2 ? GenerateSequenceArrayQuestion(0, triads[1]) : GenerateSequenceArrayQuestion(triads[0], triads[1]);
+                    aboveNumber = triads.Count == 2 ? 1 : triads[0] + 1;
+                    length = triads[1];
+                    triads.RemoveAt(0); if (triads.Count == 1) { triads.RemoveAt(0); }
+                }
+                if (Config.QuestionOrder == QuestionOrder.ToLeft)
+                {
+                    if (addend1 + addend2 == 10) isFirst = false;
+                    dir = isFirst ? Direction.Right : Direction.Left;
+                    BitArrayQuestion = isFirst ? GenerateSequenceArrayQuestion(0, triads[triads.Count - 1]) : GenerateSequenceArrayQuestion((triads[triads.Count - 1] - triads[triads.Count - 2]+10) % 10, triads[triads.Count - 2]);
+                    aboveNumber = isFirst ? 1 : triads[triads.Count - 1];
+                    length = isFirst ? triads[triads.Count - 1] : triads[triads.Count - 2];
+                    if (!isFirst) triads.RemoveAt(triads.Count - 1);
+                    if (triads.Count == 1) { 
+                        triads.RemoveAt(0);
+                    }
+                    if (triads.Count == 3) { triads.RemoveAt(2); triads.Add(addend1);
+                        triads.RemoveAt(0);
+                    }
+                    isFirst = false;
+                }
+                if (length == 0) length = 10;
+                if (aboveNumber == 0) aboveNumber = 10;
+
+            }
+            else
+                BitArrayQuestion = GenerateSequenceArrayQuestion((dir == Direction.Left ? (aboveNumber  - length + 10): aboveNumber - 1) % 10, length);
+             Console.WriteLine("above number:{0}", aboveNumber);
+        }
+
         public bool[] BitArrayQuestion { get; set; }
         public bool[] BitArrayQuestion2 { get; set; }
         public UIQuestionType ArrayQuestionType { get; set; }
@@ -50,16 +128,19 @@ namespace GestureSample.Maui.Models
             };
         }
 
-        public void GenerateSequenceArrayQuestion(int from, int length)
+        public bool[] GenerateSequenceArrayQuestion(int from, int length)
         {
+            bool[] bitArrayQuestion = new bool[BitArrayQuestion.Length];
             Console.WriteLine("from:{0} length: {1}", from, length);
-            CurrentOperation = Operation.Copy;
-            for(int i=0; i<BitArrayQuestion.Length; i++)
-                BitArrayQuestion[i] = false;
+            //CurrentOperation = Operation.Copy;
+            for(int i=0; i<bitArrayQuestion.Length; i++)
+                bitArrayQuestion[i] = false;
 
             for (int i = 0; i < length; i++) 
-                BitArrayQuestion[(from+i)%BitArrayQuestion.Length] = true;
-            
+                bitArrayQuestion[(from+i)%bitArrayQuestion.Length] = true;
+
+            //addend1 = from; addend2 = length; Sum= addend1+ addend2;
+            return bitArrayQuestion;
             
         }
 
@@ -67,13 +148,21 @@ namespace GestureSample.Maui.Models
         {
             Random r = new();
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];            
-
-            BitArrayQuestion = RandomArray();
-            BitArrayQuestion2 = RandomArray();
-            while (IsResultAllZeros())
+            if(Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
-                BitArrayQuestion = RandomArray();
-                BitArrayQuestion2 = RandomArray();
+                CurrentOperation = Operation.Copy;
+                GenerateArrowExercise();
+            }
+            else
+            {
+                BitArrayQuestion  = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(r.Next(0,10), r.Next(1,10)): RandomArray();
+                BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(r.Next(0, 10), r.Next(1, 10)) : RandomArray();
+                while (IsResultAllZeros())
+                {
+                    BitArrayQuestion = RandomArray();
+                    BitArrayQuestion2 = RandomArray();
+                }
+
             }
             _view.UpdateView(true);
             

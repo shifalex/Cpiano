@@ -25,14 +25,14 @@
     //ODO: Only one hand for decompositions (up to 4)
     //ODO: Make arrow a BitArray Gameplay instead of usual!!
     //ODO: Make arrow numbers look nice
+    //ODO: Move Arrow logic to GamePlay
+    //ODO: Arrow Go Back To left
+    //ODO: Arrow from left without minuses - not allow bigger left the prev right
+    //ODO: splitter for bigger number decomposition
 
-
-    //TODO: Move Arrow logic to GamePlay
-    //TODO: Arrow Go Back To left
+    //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
     //TODO: Arrow till 10 back and forth
-    //TODO: Arrow from left without minuses - not allow bigger left the prev right
     //TODO: Make 2 lines only arrows interface - left arrow to top line, right arrow to bottom line
-    //TODO: splitter for bigger number decomposition
     //TODO: ARRow levels
     //TODO: faster time restriction on choosing the numbers!
     //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
@@ -44,13 +44,13 @@
     //TODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
     //TODO: generate the Pool list of available answers sometimes according to dummies, sometimes according to multiplication and not in the
     //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
-    
+
     //TODO: Only scond hand for decompositions with dummies(up to 4)
     //TODO: Object counting - sometime more smaller then less bigger. So also size games.
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Timers for checking the exercise and timers for moving to the next
-    
-    //TODO: an abacus finger game - showing numbers, adding substracting
+
+    //TODO: an abacus finger game - showing numbers, adding substracting - with mediation - pushing 1st finger right will make all left turn on
     //TODO: Fill textBoxes According To Keyboard
     //TODO: decide on button text on the keys...
     //TODO: Learn manage TODOS
