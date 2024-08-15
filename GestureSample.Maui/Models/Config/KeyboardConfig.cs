@@ -24,7 +24,8 @@
     //ODO: why when 11 its by pattern and when not its by hand
     //ODO: Only one hand for decompositions (up to 4)
     //ODO: Make arrow a BitArray Gameplay instead of usual!!
-    //TODO: Make arrow numbers look nice
+    //ODO: Make arrow numbers look nice
+
 
     //TODO: Move Arrow logic to GamePlay
     //TODO: Arrow Go Back To left
@@ -49,6 +50,7 @@
     //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Timers for checking the exercise and timers for moving to the next
     
+    //TODO: an abacus finger game - showing numbers, adding substracting
     //TODO: Fill textBoxes According To Keyboard
     //TODO: decide on button text on the keys...
     //TODO: Learn manage TODOS
@@ -62,7 +64,7 @@
     //Make it impose patterns on press by using the pattern list of patterns: RHfirst, LHfirst, RTL, LTR, EDGES, SEQUENCE, DIVIDEdSequenceBy1, DividedSequenceOnce,PseudoSymetrical, HSSequence, Other
 
     //TODO: Make only HalfSync and small pictures on small screens
-
+    //TODO: Multiplication HistoryGame
 
     //TODO: Multiplication reordering of multipliers(start with 1 being 2 and the other anyone, next some by three and etc.
     //TODO: Interleaving && Block && Block-withException practices
@@ -77,7 +79,7 @@
     //TODO: Save things on screen, not one-by-one but one after another
     //TODO: Timers level and game
     //TODO:Equation levels with goind down and up. Only Sum in +- will mean the =, only +X, only positive numbers etc.
-
+    //TODO: heptic feedback
     //TODO: Timers for next after correct answer instead of next.imer for exercise, timer for total
     //TODO: Win screen with stats.
     //TODO: solveTillCorrect?

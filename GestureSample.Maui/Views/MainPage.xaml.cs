@@ -82,7 +82,7 @@ namespace GestureSample.Views
             TextBoxesQuantity = 1,
             SecondsPressingToAnswer=1
         }
-    })),
+    })),*/
 
             new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -99,17 +99,17 @@ namespace GestureSample.Views
         {
             TextBoxesQuantity = 1
         }
-    })),*/
+    })),
 
     // Uncomment and update as needed
-    // new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
-    // {
-    //     KeyboardConfig = new KeyboardConfig
-    //     {
-    //         TextBoxesQuantity = 1,
-    //         ImposeEdges = true
-    //     }
-    // })),
+     new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
+     {
+         KeyboardConfig = new KeyboardConfig
+         {
+             TextBoxesQuantity = 1,
+             ImposeEdges = true
+         }
+     })),
 
     // new PageConfig("new Keyboard", "Async one number Impose edges From Num To Num", () => new SimpleViewCellsPage(new GameConfig
     // {
@@ -441,10 +441,12 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Keyboard", "Sync decomposition spatial more then 5", () => new SimpleViewCellsPage(new GameConfig
     {
-         MinAddend=0,
+         MinAddend=5,
+        MaxAddend=9,
         MinSum=6,
         MaxSum=9,
-        MaxAddend=9,
+        MinAddend2 = 0,
+        MaxAddend2 = 4,
         IsHistory=true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -562,6 +564,16 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     {
         MaxAddend=10,
         IsHistory = true
+    })),
+
+    new PageConfig("new Number", "Till 20 with sync keyboard help", () => new SimpleViewCellsPage(new GameConfig
+    {
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            SyncType= SyncType.Sync,
+            KeyboardOnlyForHelp = true
+        }
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig

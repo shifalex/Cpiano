@@ -69,7 +69,8 @@ namespace GestureSample.Maui.Models
 
                 if (Sum != addend1 + addend2)
                     _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
-                return FactorsThroughTen;
+                return base.Factors;
+                //return FactorsThroughTen;
             }
         }
         private bool _levelChangedByUser = false;
@@ -95,15 +96,18 @@ namespace GestureSample.Maui.Models
                     _level = 2;
                     break;
                 case 1:
-                    Config.MinSum = 0; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10;
+                    Config.MinSum = 0; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10; Config.OnlyThrougTen = false; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 2:
-                    Config.MinSum = 0; Config.MaxSum = 20; Config.MinAddend = 0; Config.MaxAddend = 20;
+                    Config.MinSum = 0; Config.MaxSum = 20; Config.MinAddend = 0; Config.MaxAddend = 20; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 3:
-                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100;
+                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = 1; Config.MaxAddend2 = 9;
                     break;
                 case 4:
+                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
+                    break;
+                case 5:
                     _status= Statement.Win;
                     _level = 2;
                     break;
@@ -115,6 +119,7 @@ namespace GestureSample.Maui.Models
                 
             string selectedItem = _pkrLevel.Items[_pkrLevel.SelectedIndex];
             Console.WriteLine("Selected Item", $"You selected: {selectedItem}", "OK");
+            base.GeneratePossibleTriadsSet();
         }
 
     }
