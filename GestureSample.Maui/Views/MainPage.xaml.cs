@@ -576,6 +576,12 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         }
     })),
 
+    new PageConfig("new Number", "Till 100 with Helping TextBoxes", () => new SimpleViewCellsPage(new GameConfig
+    {
+        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=true,
+        OnlyThrougTen = true
+    })),
+
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,

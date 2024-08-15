@@ -136,6 +136,9 @@ namespace GestureSample.Maui
         public int MaxSum { get; set; } = 10;
         public bool OnlyThrougTen = false;
 
+        public bool isHelpEntries = false;
+        
+
         public List<int> addendsList = new();
         public List<int> addendsListSecond = null;
 
