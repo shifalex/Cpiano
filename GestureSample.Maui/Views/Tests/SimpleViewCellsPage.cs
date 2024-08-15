@@ -416,6 +416,7 @@ namespace GestureSample.Views.Tests
             pc.Items.Add("Level 1");
             pc.Items.Add("Level 2");
             pc.Items.Add("Level 3");
+            pc.Items.Add("Level 4");
 
             _gamePlay = new DecompositionGamePlay(this, _config, lblStats, pc);
             

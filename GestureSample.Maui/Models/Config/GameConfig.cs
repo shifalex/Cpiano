@@ -127,8 +127,11 @@ namespace GestureSample.Maui
         }
         // Properties with default values
         public bool IsHistory { get; set; } = false;
+        public bool IsHistorySymetrical { get; set; } = false;
         public int MinAddend { get; set; } = 0;
         public int MaxAddend { get; set; } = 5;
+        public int MinAddend2 { get; set; } = PPWGamePlay.NAN;
+        public int MaxAddend2 { get; set; } = PPWGamePlay.NAN;
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
         public bool OnlyThrougTen = false;
