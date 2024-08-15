@@ -34,6 +34,7 @@ namespace GestureSample.Views.Tests
         private Entry _txtAddend2;
         private Entry _txtSum;
         private Label _lblAction;
+        private Entry[] txt;
         //private  Entry txtResult;
         private PianoKeyboardReadOnly _keyboardTask1;
         private PianoKeyboardReadOnly _keyboardTask2;
@@ -89,8 +90,11 @@ namespace GestureSample.Views.Tests
                     EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
                     EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
                     EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
-                    
                 }
+                if(_config.isHelpEntries)
+                    for (int i = 0; i < txt.Length; i++)
+                        txt[i].Text = "";
+                
                 if (_config.UIQuestionType == UIQuestionType.SimpleEquation) 
                     if( Operation.Divide  == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
                          OrderEntries(_hzlEquation, _txtSum, _txtAddend1);
@@ -322,9 +326,28 @@ namespace GestureSample.Views.Tests
                     vsl.Add(_hzlEquation);
                 }
                 else 
-                {
+                { 
+                    txt = new Entry[6];
+                    for (int i = 0; i < txt.Length; i++)
+                    {
+                        txt[i] = new Entry
+                        {
+                            HorizontalOptions = LayoutOptions.Center,
+                            HorizontalTextAlignment = TextAlignment.Start,
+                            BackgroundColor = Colors.White,
+                            TextColor = Colors.Black,
+                            WidthRequest = TASK_WIDTH / 4,
+                            FontSize = 18,
+                            IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
+                        };
+                        txt[i].Keyboard = Keyboard.Numeric;
+                    }
+                    if (_config.isHelpEntries)
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });                    
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
+                    if(_config.isHelpEntries)
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
                 }
             }
 
