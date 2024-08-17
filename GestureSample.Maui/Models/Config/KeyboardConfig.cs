@@ -30,6 +30,9 @@
     //ODO: Arrow from left without minuses - not allow bigger left the prev right
     //ODO: splitter for bigger number decomposition
 
+    //TODO: onlyToTen, OnlyThroughTen in bitArray
+    //TODO: less time on arrow mission
+    //TODO: Mediation till questions of several steps
     //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
     //TODO: Arrow till 10 back and forth
     //TODO: Make 2 lines only arrows interface - left arrow to top line, right arrow to bottom line
