@@ -14,10 +14,10 @@ namespace GestureSample.Maui.Models
 
         private void GenerateArrowExercise()
         {
-            int[] specialAboves = { 1, 5, 6, 10, 3 };
-            Random r = new();
             
-            if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)];
+            Random r = new();
+            //int[] specialAboves = { 1, 5, 6, 10, 3 };
+            //if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)];
             length = r.Next(1, 10);
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
 
