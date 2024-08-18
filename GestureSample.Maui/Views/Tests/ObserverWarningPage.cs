@@ -9,25 +9,26 @@ public class ObserverWarningPage : ContentPage
     public ObserverWarningPage()
     {
         Grid g;
-		Content = new ScrollView()
-		{
-			Orientation = ScrollOrientation.Vertical,
-			Content = g = new Grid()
-		};
+        Content = new ScrollView()
+        {
+            Orientation = ScrollOrientation.Vertical,
+            Content = g = new Grid()
+        };
 
-		for (int i = 0; i < 10; i++)
-		{
-			g.Children.Add(
-				new MR.Gestures.Border()
-				{
-					Content = new Label() {
-						Text = "Test " + i,
-						VerticalOptions = LayoutOptions.Fill,
-						HorizontalOptions = LayoutOptions.Fill,
-					},
-					Margin = new Thickness(0, 20 * i, 0, 0),
-				}
-			);
-		}
-	}
+        for (int i = 0; i < 10; i++)
+        {
+            g.Children.Add(
+                new MR.Gestures.Border()
+                {
+                    Content = new Label()
+                    {
+                        Text = "Test " + i,
+                        VerticalOptions = LayoutOptions.Fill,
+                        HorizontalOptions = LayoutOptions.Fill,
+                    },
+                    Margin = new Thickness(0, 20 * i, 0, 0),
+                }
+            );
+        }
+    }
 }

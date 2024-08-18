@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class AbsoluteLayoutXaml
-	{
-		public AbsoluteLayoutXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class AbsoluteLayoutXaml
+    {
+        public AbsoluteLayoutXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

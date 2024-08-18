@@ -1,10 +1,10 @@
 ﻿namespace GestureSample.Views.Tests
 {
-	public partial class DraggableItemsOnTabbedPage
-	{
-		public DraggableItemsOnTabbedPage()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class DraggableItemsOnTabbedPage
+    {
+        public DraggableItemsOnTabbedPage()
+        {
+            InitializeComponent();
+        }
+    }
 }

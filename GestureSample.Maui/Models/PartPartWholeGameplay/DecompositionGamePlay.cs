@@ -1,33 +1,29 @@
 ﻿using GestureSample.Views.Tests;
-using Microsoft.Maui.Controls;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Models
 {
     internal class DecompositionGamePlay : PPWGamePlay
     {
-        private int _level=2; 
-        private int _streakCorrect = 0; 
+        private int _level = 2;
+        private int _streakCorrect = 0;
         private int _streakWrong = 0;
         private readonly int CORRECT_TO_LEVEL_UP = 20, WRONG_TO_LEVEL_DOWN = 5;
-        
+
         private Label _lblStats;
         private Picker _pkrLevel;
 
 
         public string StatsString
         {
-            get { return string.Format("Correct in this Level:{0} (reach {1} to level up)\nWrong in a row: {2} (reach {3} and you level down)", 
-                _streakCorrect,CORRECT_TO_LEVEL_UP,
-                _streakWrong,WRONG_TO_LEVEL_DOWN); 
+            get
+            {
+                return string.Format("Correct in this Level:{0} (reach {1} to level up)\nWrong in a row: {2} (reach {3} and you level down)",
+                _streakCorrect, CORRECT_TO_LEVEL_UP,
+                _streakWrong, WRONG_TO_LEVEL_DOWN);
             }
         }
 
-       
+
 
         public DecompositionGamePlay(SimpleViewCellsPage view, GameConfig config, Label lblStats, Picker pkrLevel) : base(view, config)
         {
@@ -44,16 +40,16 @@ namespace GestureSample.Maui.Models
         {
             bool check = base.Check();
             if (check) { _streakCorrect++; } else { _streakWrong++; }
-            
-                       
-            if(_streakWrong >= WRONG_TO_LEVEL_DOWN)
+
+
+            if (_streakWrong >= WRONG_TO_LEVEL_DOWN)
             {
-                _level--; 
+                _level--;
                 UpdateLevelStats();
             }
             else if (_streakCorrect >= CORRECT_TO_LEVEL_UP)
             {
-                _level++; 
+                _level++;
                 UpdateLevelStats();
             }
 
@@ -76,7 +72,7 @@ namespace GestureSample.Maui.Models
         private bool _levelChangedByUser = false;
         public void SelectedIndexChanged(object sender, EventArgs e)
         {
-            _level = _pkrLevel.SelectedIndex+1;
+            _level = _pkrLevel.SelectedIndex + 1;
             _levelChangedByUser = true;
             _streakCorrect = 0; _streakWrong = 0;
             UpdateLevelStats();
@@ -92,7 +88,7 @@ namespace GestureSample.Maui.Models
             switch (_level)
             {
                 case 0:
-                    _status = Statement.Lose; 
+                    _status = Statement.Lose;
                     _level = 2;
                     break;
                 case 1:
@@ -108,7 +104,7 @@ namespace GestureSample.Maui.Models
                     Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 5:
-                    _status= Statement.Win;
+                    _status = Statement.Win;
                     _level = 2;
                     break;
                 default: _level = 2; break;
@@ -116,7 +112,7 @@ namespace GestureSample.Maui.Models
 
             if (!_levelChangedByUser)
                 _pkrLevel.SelectedIndex = _level - 1;
-                
+
             string selectedItem = _pkrLevel.Items[_pkrLevel.SelectedIndex];
             Console.WriteLine("Selected Item", $"You selected: {selectedItem}", "OK");
             base.GeneratePossibleTriadsSet();

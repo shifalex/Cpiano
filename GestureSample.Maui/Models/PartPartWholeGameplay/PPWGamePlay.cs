@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using GestureSample.Views.Tests;
-using MvvmCross.Binding.Extensions;
-using Realms;
+﻿using GestureSample.Views.Tests;
 
 namespace GestureSample.Maui.Models
 {
@@ -12,7 +9,7 @@ namespace GestureSample.Maui.Models
         public int addend1;
         public int addend2;
         public virtual int Sum { get; set; }
-                
+
         public Operation CurrentOperation { get; set; }
 
         private int _guessNumber = 0;
@@ -21,14 +18,14 @@ namespace GestureSample.Maui.Models
         protected string _status = Statement.Neutral;
         public string Status { get => _status; }
 
-         private bool _isFirstGuess = true;
+        private bool _isFirstGuess = true;
 
         protected readonly SimpleViewCellsPage _view;
 
         public GameConfig Config;
         public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
         {
-             _view = view; Config = config;
+            _view = view; Config = config;
             CurrentOperation = Config.OperationList[0];
             GeneratePossibleTriadsSet();
         }
@@ -56,7 +53,7 @@ namespace GestureSample.Maui.Models
                     Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
                     _ => Statement.True
                 };
-                if (Config.IsHistory && _status==Statement.True)
+                if (Config.IsHistory && _status == Statement.True)
                 {
                     if (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
                                 (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any()))
@@ -77,7 +74,7 @@ namespace GestureSample.Maui.Models
         }
 
         private void RemoveItemToHistory(int addend1, int addend2, int sum)
-        {            
+        {
             if (PossibleTriads.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any())
                 PossibleTriads.Remove(PossibleTriads.Where(item => item.Sum == Sum && item.Addend1 == addend1).ToList()[0]);
             //else { Console.WriteLine("{0} {1}= {2}", addend1, addend2, Sum); }
@@ -88,19 +85,19 @@ namespace GestureSample.Maui.Models
                     PossibleTriads.Remove(PossibleTriads.Where(item => item.Sum == Sum && item.Addend2 == addend1).ToList()[0]);
 
                 AllHistory.Add(new PPWObject(addend2, addend1, Sum));
-            }            
+            }
         }
 
         public virtual bool Check(int a1, int a2, int s)
         {
-            addend1 = a1; addend2= a2; Sum = s; 
+            addend1 = a1; addend2 = a2; Sum = s;
             return Check();
         }
 
         public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
-        { 
-            bool b= Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
-            await Task.Delay(Config.SecondsTillNextExercise*1000);
+        {
+            bool b = Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
+            await Task.Delay(Config.SecondsTillNextExercise * 1000);
             return b;
         }
 
@@ -109,20 +106,21 @@ namespace GestureSample.Maui.Models
             Random r = new();
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
-            int[] factors= Factors;
-            if (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) 
-               factors = FactorsMultiplication;//TODO: Make a list for multiplication triads
+            int[] factors = Factors;
+            if (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
+                factors = FactorsMultiplication;//TODO: Make a list for multiplication triads
             //else if (Config.OnlyThrougTen)
             //    factors = FactorsThroughTen;
 
-            Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0],CurrentOperation.ToDString(),factors[1],factors[2]);
+            Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0], CurrentOperation.ToDString(), factors[1], factors[2]);
             int n = (Config.VariableTypes == VariableTypes.OneCanBeSum || Config.VariableTypes == VariableTypes.TwoAny) ? r.Next(3) : r.Next(2);
-            switch (Config.VariableTypes)   {
+            switch (Config.VariableTypes)
+            {
                 case VariableTypes.OneCanBeSum:
                 case VariableTypes.OneNoSum:
-                    factors[n] = NAN;  break;
+                    factors[n] = NAN; break;
                 case VariableTypes.SumOnly:
-                    factors[2] = NAN;  break;
+                    factors[2] = NAN; break;
                 case VariableTypes.TwoNoSum:
                     factors[0] = NAN; factors[1] = NAN; break;
                 case VariableTypes.TwoAny:
@@ -135,7 +133,7 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
-            
+
             _status = Statement.Neutral;
             _guessNumber = 0;
             _view.UpdateView(true);
@@ -146,16 +144,16 @@ namespace GestureSample.Maui.Models
             get
             {
                 int[] factors = new int[3];
-                
+
                 if (_isFirstGuess && !Config.OnlyThrougTen)
                 {
                     factors[0] = 2; factors[1] = 3; factors[2] = 5;
                     _isFirstGuess = false;
                     addend1 = 2; addend2 = 3; Sum = 5;
-                    if(IsCorrectInput())
-                    return factors;
+                    if (IsCorrectInput())
+                        return factors;
                 }
-                                
+
                 Random r = new();
                 int currentTriadIndex = r.Next(PossibleTriads.Count);
                 factors[2] = PossibleTriads[currentTriadIndex].Sum;//r.Next(Config.MinSum, Config.MaxSum + 1);
@@ -180,28 +178,28 @@ namespace GestureSample.Maui.Models
             }
         }
 
-       /* protected int[] FactorsThroughTen
-        {
-            get
-            {
-                int[] factors = new int[3];
-                Random r = new();
+        /* protected int[] FactorsThroughTen
+         {
+             get
+             {
+                 int[] factors = new int[3];
+                 Random r = new();
 
-                factors[2] = r.Next(Math.Max(Config.MinAddend, Config.MinSum), Config.MaxSum);
-                while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(Config.MinAddend, Config.MinSum), Config.MaxSum);
-                if (factors[2] % 10 == 0) factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend + 1, factors[2]));
-                else
-                {
-                    int tens = r.Next(Math.Max(Config.MinAddend / 10, 0), factors[2] / 10 - 1);
-                    int ones = r.Next(factors[2] % 10 + 1, 10);
-                    factors[0] = tens * 10 + ones;
-                }
-                factors[1] = factors[2] - factors[0];
+                 factors[2] = r.Next(Math.Max(Config.MinAddend, Config.MinSum), Config.MaxSum);
+                 while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(Config.MinAddend, Config.MinSum), Config.MaxSum);
+                 if (factors[2] % 10 == 0) factors[0] = r.Next(Config.MinAddend, Math.Min(Config.MaxAddend + 1, factors[2]));
+                 else
+                 {
+                     int tens = r.Next(Math.Max(Config.MinAddend / 10, 0), factors[2] / 10 - 1);
+                     int ones = r.Next(factors[2] % 10 + 1, 10);
+                     factors[0] = tens * 10 + ones;
+                 }
+                 factors[1] = factors[2] - factors[0];
 
-                return factors;
-            }
-        }
-*/
+                 return factors;
+             }
+         }
+ */
         private int[] FactorsMultiplication
         {
             get
@@ -227,15 +225,15 @@ namespace GestureSample.Maui.Models
         public void GeneratePossibleTriadsSet()
         {
             PossibleTriads.Clear();
-            int minAddend = Config.MinAddend, maxAddend= Config.MaxAddend, minSum = Config.MinSum, maxSum = Config.MaxSum;
-            int minAddend2 = Config.MinAddend2 == NAN ? minAddend : Config.MinAddend2; 
-            int maxAddend2 = Config.MaxAddend2 == NAN ? maxAddend: Config.MaxAddend2;
+            int minAddend = Config.MinAddend, maxAddend = Config.MaxAddend, minSum = Config.MinSum, maxSum = Config.MaxSum;
+            int minAddend2 = Config.MinAddend2 == NAN ? minAddend : Config.MinAddend2;
+            int maxAddend2 = Config.MaxAddend2 == NAN ? maxAddend : Config.MaxAddend2;
             bool isSymetrical = Config.IsHistorySymetrical;
-            
-            for (int i= minAddend; i<=maxAddend; i++)
+
+            for (int i = minAddend; i <= maxAddend; i++)
                 for (int j = minAddend2; j <= (isSymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
                 {
-                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)? i * j : (i + j);
+                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? i * j : (i + j);
                     if (sum >= minSum && sum <= maxSum)
                         if (!Config.OnlyThrougTen)
                         {
@@ -247,25 +245,25 @@ namespace GestureSample.Maui.Models
                 }
         }
 
-/*
-        private List<int> _impossibleSums = new();
-        private int GenerateNewAddend(int newSum)
-        {
-            ArrayList possibleAddends = new();
-            for (int i = Math.Max(Config.MinAddend, newSum - Config.MaxAddend); i <= Math.Min(Config.MaxAddend, newSum - Config.MinAddend); i++)
-            {
-                bool isExist = false;
-                foreach (PPWObject ppw in AllHistory)
-                    if (ppw.Sum == newSum && ppw.Addend1 == i) isExist = true;
-                if (!isExist)
-                    possibleAddends.Add(i);
-            }
-            if (possibleAddends.Count > 0) { Random r = new(); return (int)possibleAddends[r.Next(possibleAddends.Count)]; }
+        /*
+                private List<int> _impossibleSums = new();
+                private int GenerateNewAddend(int newSum)
+                {
+                    ArrayList possibleAddends = new();
+                    for (int i = Math.Max(Config.MinAddend, newSum - Config.MaxAddend); i <= Math.Min(Config.MaxAddend, newSum - Config.MinAddend); i++)
+                    {
+                        bool isExist = false;
+                        foreach (PPWObject ppw in AllHistory)
+                            if (ppw.Sum == newSum && ppw.Addend1 == i) isExist = true;
+                        if (!isExist)
+                            possibleAddends.Add(i);
+                    }
+                    if (possibleAddends.Count > 0) { Random r = new(); return (int)possibleAddends[r.Next(possibleAddends.Count)]; }
 
-            if (!_impossibleSums.Contains(newSum)) _impossibleSums.Add(newSum);
-            return NAN;
-        }*/
-                
+                    if (!_impossibleSums.Contains(newSum)) _impossibleSums.Add(newSum);
+                    return NAN;
+                }*/
+
         #endregion
     }
 }

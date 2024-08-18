@@ -1,14 +1,13 @@
-﻿using Microsoft.Maui.Graphics;
-using Microsoft.Maui.Controls.Shapes;
+﻿using Microsoft.Maui.Controls.Shapes;
 
 namespace GestureSample.Maui.Models
 {
-    
+
 
     internal class PianoKeyboardReadOnly : MR.Gestures.Grid
     {
 
-       
+
         public Grid Arrow1; // The combined object containing the number and the arrow
         public Grid Arrow2;
 
@@ -17,14 +16,14 @@ namespace GestureSample.Maui.Models
         protected readonly int FINGER_SEPERATOR = 5;
         protected readonly MR.Gestures.Button[] btnKeys;
 
-        
+
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
         public Color[] colors;
-        public int  Length => btnKeys.Length;
+        public int Length => btnKeys.Length;
         protected virtual int heading_height { get; } = 5;
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row=1)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1)
         {
             Grid Arrow = new()
             {
@@ -41,17 +40,17 @@ namespace GestureSample.Maui.Models
             };
 
             double columnWidth = btnKeys[0].Width;
-            if(columnWidth==-1) columnWidth = 100;
+            if (columnWidth == -1) columnWidth = 100;
 
             // Create the number label
-            Label numberLabel = new ()
+            Label numberLabel = new()
             {
                 Text = numberAbove.ToString(),
                 TextColor = Colors.White,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
-                IsVisible = numberAbove>-1
-                
+                IsVisible = numberAbove > -1
+
             };
 
             int colSpan;
@@ -80,63 +79,48 @@ namespace GestureSample.Maui.Models
                     _ => 2
                 };
             }
-            /*if (aboveKeyNumber == 0) {
-                if (direction == Direction.Right)
-                {
-                    arrowStart = -10;
-                    arrowEnd = columnWidth / 2 + 5;
-                    arrowEdgeX = (direction == Direction.Right) ? arrowEnd - 10 : arrowEnd + 10;
-                }
-                else
-                {
-                    arrowStart = columnWidth / 2 + 5;
-                    arrowEnd = -10;
-                    arrowEdgeX = (direction == Direction.Right) ? arrowEnd - 10 : arrowEnd + 10;
-                }
-            }*/
             // Create the arrow
             Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(String.Format("M {0},30 L {0},10 L {1},10 L {2},0 M {1},10 L {2},20", arrowStart, arrowEnd, arrowEdgeX), Colors.White);
 
-            
+
 
             //if(aboveKeyNumber==0)aboveKeyNumber = 1;
             // Add the number and the arrow to the combined object grid
             Arrow.Add(numberLabel, 0, 0);
-            //Grid.SetColumnSpan(numberLabel, 2);
             Arrow.Add(arrow, 0, 1);
-            //Grid.SetColumnSpan(arrow, 2);
 
-            // Add the combined object to the main grid
-            int column = aboveKeyNumber-1;
-            if(direction==Direction.Left) column--;
+            // Add the combined object to the main grid in the correct column
+            int column = aboveKeyNumber - 1;
+            if (direction == Direction.Left) column--;
             if (FINGER_SEPERATOR >= 0 && aboveKeyNumber > FINGER_SEPERATOR) column++;
             if (column == -1) column = 0;
             this.Add(Arrow, column, row);
 
             Grid.SetColumnSpan(Arrow, colSpan);
 
-            if (Arrow1 == null) Arrow1 = Arrow; else Arrow2= Arrow;
+            if (Arrow1 == null) Arrow1 = Arrow; else Arrow2 = Arrow;
         }
 
-        public void RemoveArrows() { 
-            if(Arrow1!=null) this.Remove(Arrow1);
+        public void RemoveArrows()
+        {
+            if (Arrow1 != null) this.Remove(Arrow1);
             if (Arrow2 != null) this.Remove(Arrow2);
-            Arrow1 = null;Arrow2 = null;
-}
+            Arrow1 = null; Arrow2 = null;
+        }
 
 
         private Microsoft.Maui.Controls.Shapes.Path CreateArrowPath(string data, Color color)
-    {
-        return new Microsoft.Maui.Controls.Shapes.Path
         {
-            Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(data),
-            Fill = Colors.Transparent,
-            Stroke = color,
-            StrokeThickness = 2,
-            HorizontalOptions = LayoutOptions.Fill,
-            VerticalOptions = LayoutOptions.Center
-        };
-    }
+            return new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(data),
+                Fill = Colors.Transparent,
+                Stroke = color,
+                StrokeThickness = 2,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Center
+            };
+        }
         public PianoKeyboardReadOnly(KeyboardConfig _config) : base()
         {
 
@@ -153,7 +137,7 @@ namespace GestureSample.Maui.Models
             if (_config.IsArrow)
             {
                 this.RowDefinitions.Add(new RowDefinition() { Height = GridLength.Auto });
-                
+
 
             }
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
@@ -171,14 +155,14 @@ namespace GestureSample.Maui.Models
                     this.Add(
                     btnKeys[i + keysInRow * r] = new()
                     {
-                        Text = (_config.ShowNumbersOnKeys)?(i + 1 + keysInRow * r).ToString():"",
-                        TextColor=Colors.Black,
+                        Text = (_config.ShowNumbersOnKeys) ? (i + 1 + keysInRow * r).ToString() : "",
+                        TextColor = Colors.Black,
                         BackgroundColor = COLOR_FREE,
                         CommandParameter = i + 1 + keysInRow * r,
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 
                         //UpCommand =  new Command<MR.Gestures.DownUpEventArgs>(OnUp), 
-                    }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows - r+(_config.IsArrow? 1:0)
+                    }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows - r + (_config.IsArrow ? 1 : 0)
                     );
                 }
             }
@@ -189,9 +173,9 @@ namespace GestureSample.Maui.Models
         /// <param name="array">Must be the size of the piano buttons</param>
         public void PianoInit(Boolean[] array)
         {
-            for(int i = 0;  i < btnKeys.Length;i++)
+            for (int i = 0; i < btnKeys.Length; i++)
             {
-                btnKeys[i].BackgroundColor = (array[i])?COLOR_PRESSED: COLOR_FREE;
+                btnKeys[i].BackgroundColor = (array[i]) ? COLOR_PRESSED : COLOR_FREE;
             }
             SaveColors();
         }
@@ -209,7 +193,7 @@ namespace GestureSample.Maui.Models
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
-                btnKeys[i].BackgroundColor = (r.Next(2)==1) ? COLOR_PRESSED : COLOR_FREE;
+                btnKeys[i].BackgroundColor = (r.Next(2) == 1) ? COLOR_PRESSED : COLOR_FREE;
             }
             SaveColors();
         }
@@ -222,11 +206,16 @@ namespace GestureSample.Maui.Models
             return bitArray;
         }
 
-        public virtual int Sum {  get {
+        public virtual int Sum
+        {
+            get
+            {
                 int sum = 0;
                 for (int i = 0; i < btnKeys.Length; i++)
                     sum += btnKeys[i].BackgroundColor == COLOR_PRESSED ? 1 : 0;
-                return sum; } }
+                return sum;
+            }
+        }
 
         protected void SaveColors()
         {

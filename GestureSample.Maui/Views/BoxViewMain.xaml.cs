@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GestureSample.Views
+﻿namespace GestureSample.Views
 {
-	public partial class BoxViewMain
-	{
-		public BoxViewMain()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class BoxViewMain
+    {
+        public BoxViewMain()
+        {
+            InitializeComponent();
+        }
+    }
 }

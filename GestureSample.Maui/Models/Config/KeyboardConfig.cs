@@ -30,7 +30,7 @@
     //ODO: Arrow from left without minuses - not allow bigger left the prev right
     //ODO: splitter for bigger number decomposition
 
-    
+
     //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
     //TODO: onlyToTen, OnlyThroughTen in bitArray
     //TODO: less time on arrow mission
@@ -107,12 +107,12 @@
     //IDO got it with not pressed dummies - first with both hands. Then I told him play with one hand. He got it with all pressed dummies for 7=5+2, 7=5+0. But he couldn't make 7=6+1.
     //Next time, maybe I should use simgle key dummies instead. It is a weird problem of artifact-finger connection that may infor us on the problems for genralization he has.
     public enum SyncType
-        {
-            None = 0,
-            Sync=1,
-            Spatial=2,
-            HalfSync=3
-        }
+    {
+        None = 0,
+        Sync = 1,
+        Spatial = 2,
+        HalfSync = 3
+    }
     public class KeyboardConfig
     {
 

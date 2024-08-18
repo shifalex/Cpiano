@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class SwitchXaml
-	{
-		public SwitchXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class SwitchXaml
+    {
+        public SwitchXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

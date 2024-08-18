@@ -9,10 +9,14 @@
         public const string WrongInput = "Wrong Input";
         public const string New = "Find NEW combination";
         public const string Selecting = "SELECTING...";
-        public static string Win { get
+        public static string Win
+        {
+            get
             {
                 Application.Current.MainPage.DisplayAlert("Win", "You Won!!", "OK");
-                return "YOU WON!!!"; } }
+                return "YOU WON!!!";
+            }
+        }
         public static string Lose
         {
             get
