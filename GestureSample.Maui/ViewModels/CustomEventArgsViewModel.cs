@@ -1,6 +1,5 @@
-using System.Text;
-
 using MR.Gestures;
+using System.Text;
 
 namespace GestureSample.ViewModels
 {

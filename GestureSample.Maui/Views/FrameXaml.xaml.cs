@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class FrameXaml
-	{
-		public FrameXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class FrameXaml
+    {
+        public FrameXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

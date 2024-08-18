@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GestureSample.Views.Tests
+﻿namespace GestureSample.Views.Tests
 {
-	public partial class BottomTabbedPageXaml
-	{
-		public BottomTabbedPageXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class BottomTabbedPageXaml
+    {
+        public BottomTabbedPageXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

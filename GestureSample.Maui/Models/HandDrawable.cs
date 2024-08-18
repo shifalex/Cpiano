@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-//TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones
+﻿//TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones
 
 namespace GestureSample.Maui.Models
 {
@@ -18,7 +12,7 @@ namespace GestureSample.Maui.Models
             IsLeftHand = isLeftHand;
         }
 
-        public void Draw(ICanvas canvas, RectF dirtyRect) 
+        public void Draw(ICanvas canvas, RectF dirtyRect)
         {
             canvas.StrokeColor = Colors.Black;
             canvas.StrokeSize = 3;
@@ -34,7 +28,7 @@ namespace GestureSample.Maui.Models
             float palmY = fingerHeight;
 
             // Draw palm
-            RectF palmRect = new RectF(dirtyRect.X + ((IsLeftHand)?3:(dirtyRect.Width - handWidth-3) ), palmY, handWidth, palmHeight);
+            RectF palmRect = new RectF(dirtyRect.X + ((IsLeftHand) ? 3 : (dirtyRect.Width - handWidth - 3)), palmY, handWidth, palmHeight);
             canvas.FillRoundedRectangle(palmRect, 0, 0, 30, 30); // Top corners not rounded, bottom corners rounded
             canvas.DrawRoundedRectangle(palmRect, 0, 0, 30, 30);
 
@@ -58,7 +52,7 @@ namespace GestureSample.Maui.Models
                     if (i == 0)
                         DrawThumb(canvas, baseX, finger.Base.Y, fingerWidth, finger.Height, IsLeftHand ? 30 : -30);
                     else
-                       DrawFinger(canvas, baseX, finger.Base.Y, fingerWidth, finger.Height);
+                        DrawFinger(canvas, baseX, finger.Base.Y, fingerWidth, finger.Height);
                 }
                 else
                 {
@@ -90,7 +84,7 @@ namespace GestureSample.Maui.Models
             PathF path = new();
             path.MoveTo(baseX - width / 2, baseY);
             path.LineTo(baseX + width / 2, baseY);
-            path.LineTo(baseX, baseY + width*2);
+            path.LineTo(baseX, baseY + width * 2);
             path.Close();
             canvas.FillPath(path);
             canvas.DrawPath(path);

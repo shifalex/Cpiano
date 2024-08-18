@@ -1,11 +1,10 @@
 ﻿using GestureSample.Maui;
-using GestureSample.Maui.Models;
 using GestureSample.Views.Tests;
 
 namespace GestureSample.Views
 {
     public partial class MainPage
-	{
+    {
         private PageConfig[] AllPages = new PageConfig[]
         {
 			// main page
@@ -604,7 +603,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
-        
+
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
 
         KeyboardConfig = new KeyboardConfig
@@ -708,62 +707,62 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         };
 
 
-		#region MainPage code
+        #region MainPage code
 
-		public MainPage(string title, IEnumerable<PageConfig> contents)
-		{
-			Title = title;
-			contents ??= AllPages.Where(pc => pc.Parent == null);
-			BindingContext = contents;
+        public MainPage(string title, IEnumerable<PageConfig> contents)
+        {
+            Title = title;
+            contents ??= AllPages.Where(pc => pc.Parent == null);
+            BindingContext = contents;
 
-			InitializeComponent();
-		}
+            InitializeComponent();
+        }
 
-		private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)
-		{
-			var item = (PageConfig)e.Item;
+        private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)
+        {
+            var item = (PageConfig)e.Item;
 
-			try
-			{
-				if (item.PageConstructor != null)
-				{
-					// a sample page
-					var page = item.PageConstructor.Invoke();
-					await App.MainNavigation.PushAsync(page);
-				}
-				else
-				{
-					// a menu page
-					var subpage = item.Title;
-					var contents = AllPages.Where(pc => pc.Parent == subpage);
-					var page = new MainPage(subpage, contents);
-					await App.MainNavigation.PushAsync(page);
-				}
-			}
-			catch(Exception ex)
+            try
+            {
+                if (item.PageConstructor != null)
+                {
+                    // a sample page
+                    var page = item.PageConstructor.Invoke();
+                    await App.MainNavigation.PushAsync(page);
+                }
+                else
+                {
+                    // a menu page
+                    var subpage = item.Title;
+                    var contents = AllPages.Where(pc => pc.Parent == subpage);
+                    var page = new MainPage(subpage, contents);
+                    await App.MainNavigation.PushAsync(page);
+                }
+            }
+            catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);
             }
-		}
+        }
 
-		#endregion
+        #endregion
 
-		#region class PageConfig
+        #region class PageConfig
 
-		public class PageConfig
-		{
-			public string Parent { get; }
-			public string Title { get; }
-			public Func<Page> PageConstructor { get; }
+        public class PageConfig
+        {
+            public string Parent { get; }
+            public string Title { get; }
+            public Func<Page> PageConstructor { get; }
 
-			public PageConfig(string parent, string title, Func<Page> pageConstructor)
-			{
-				Parent = parent;
-				Title = title;
-				PageConstructor = pageConstructor;
-			}
-		}
+            public PageConfig(string parent, string title, Func<Page> pageConstructor)
+            {
+                Parent = parent;
+                Title = title;
+                PageConstructor = pageConstructor;
+            }
+        }
 
-		#endregion class PageConfig
-	}
+        #endregion class PageConfig
+    }
 }

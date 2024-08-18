@@ -1,10 +1,10 @@
 ﻿namespace GestureSample.Views
 {
-	public partial class TableViewXaml
-	{
-		public TableViewXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class TableViewXaml
+    {
+        public TableViewXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

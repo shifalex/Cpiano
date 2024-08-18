@@ -4,13 +4,13 @@ namespace GestureSample.Maui;
 
 public partial class App : Application
 {
-	public static NavigationPage MainNavigation;
+    public static NavigationPage MainNavigation;
 
-	public App()
-	{
-		InitializeComponent();
+    public App()
+    {
+        InitializeComponent();
 
-		var mainPage = new MainPage("Control Categories", null);
-		MainPage = MainNavigation = new NavigationPage(mainPage);
-	}
+        var mainPage = new MainPage("Control Categories", null);
+        MainPage = MainNavigation = new NavigationPage(mainPage);
+    }
 }

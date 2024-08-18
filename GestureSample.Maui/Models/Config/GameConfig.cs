@@ -1,7 +1,6 @@
 ﻿using GestureSample.Maui.Models;
-using GestureSample.Maui;
-using System.Reflection;
 using System.ComponentModel;
+using System.Reflection;
 
 //https://appstoreconnect.apple.com/access/integrations/api
 
@@ -63,27 +62,27 @@ namespace GestureSample.Maui
     public enum Operation
     {
         [Description("+")]
-        Sum ,
+        Sum,
         [Description("X")]
-        Multiplication ,
+        Multiplication,
         [Description(":")]
         Divide,
         [Description("-")]
         Minus,
         [Description("COPY")]
-        Copy ,
+        Copy,
         [Description("Press same amount")]
-        Quantity ,
+        Quantity,
         //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
         //Reorder,
         [Description("NOT(!)")]
-        Not ,
+        Not,
         [Description("AND(&&)")]
-        And ,
+        And,
         [Description("OR(||)")]
-        Or ,
+        Or,
         [Description("Neutralize")]
-        Neutralize 
+        Neutralize
 
     }
 
@@ -120,7 +119,8 @@ namespace GestureSample.Maui
 
     public class GameConfig
     {
-        public class Operations {
+        public class Operations
+        {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
             public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
@@ -150,14 +150,14 @@ namespace GestureSample.Maui
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
-        public QuestionOrder QuestionOrder {get; set;} = QuestionOrder.Random;
-        public List<Operation> OperationList = new (){ Operation.Sum };
+        public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
+        public List<Operation> OperationList = new() { Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
         // Nested configuration with defaults
         public KeyboardConfig KeyboardConfig { get; set; } = null;
 
-        
+
     }
 
-    
+
 }
