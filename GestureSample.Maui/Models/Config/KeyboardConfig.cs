@@ -29,8 +29,24 @@
     //ODO: Arrow Go Back To left
     //ODO: Arrow from left without minuses - not allow bigger left the prev right
     //ODO: splitter for bigger number decomposition
+    //ODO: Dummies for keyboard
+    //ODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
+    //ODO: Dummies bug - COLORS opacity changes backgroungcolor and so you choose pressed or not pressed by color only maybe use colors[i]
+    //ODO: Dummies bug - on hand raise it still counts the dummies
+    //ODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
 
-
+    //TODO: Rounded ordinal arrow from the center
+    //TODO: Move Cardinal arrows to the edges
+    //TODO: Ordinal with a loophole - show once to the left, once to the right, from and to the same places
+    //TODO: Oridinal Plus starts from the 10(0)
+    //TODO: Impose edges - 2 ordinal arrows
+    //TODO: Pattern for numbers
+    //TODO: One Button - lights several number: 1-2-4, 5-1-1-1-1
+    //TODO: One button - smbolizes 1-2-4, 5-1-1-1-1, 10-10-10-10-50, 10-10-10-10-50--5-1-1-1-1, 1-2-4-8-16-32--64-128-256-512
+    //TODO: Addition and subtraction Abbacus??
+    //TODO: Division from triad using the keyboard as an answer
+    //TODO: Blinking keyboard for logic
+    //TODO: appearing help of several steps to solve the adding through ten 
     //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
     //TODO: onlyToTen, OnlyThroughTen in bitArray
     //TODO: less time on arrow mission
@@ -40,22 +56,18 @@
     //TODO: ARRow levels
     //TODO: faster time restriction on choosing the numbers!
     //TODO: MinMax= [MinAddend MaxAddend MinSum MaxSum]
-    //TODO: Dummies for keyboard
-    //TODO: Dummies bug - History - it may show 6 six times lathough dummies have 5 checked - show 6 only 2 times( 6 &0)Half History bug, Especially with Dummies
-    //TODO: Dummies bug - COLORS opacity changes backgroungcolor and so you choose pressed or not pressed by color only maybe use colors[i]
-    //TODO: Dummies bug - on hand raise it still counts the dummies
+    //TODO: Fill textBoxes According To Keyboard - HalfSync and Spatial
+    //TODO: Make game of filling the symmetry - with the source
+    //TODO: Generate a configuration page for choosing the game properties
 
-    //TODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
     //TODO: generate the Pool list of available answers sometimes according to dummies, sometimes according to multiplication and not in the
     //TODO: Missing objects task - hide some finger behind a curtain an press only on the missing ones. Hide after several seconds (Maybe One Side Maybe two)
 
     //TODO: Only scond hand for decompositions with dummies(up to 4)
     //TODO: Object counting - sometime more smaller then less bigger. So also size games.
-    //TODO: Arrows for keyboard (First one arrow, then 2 arrows)
     //TODO: Timers for checking the exercise and timers for moving to the next
 
     //TODO: an abacus finger game - showing numbers, adding substracting - with mediation - pushing 1st finger right will make all left turn on
-    //TODO: Fill textBoxes According To Keyboard
     //TODO: decide on button text on the keys...
     //TODO: Learn manage TODOS
     //TODO: A Button that animates equation into PPW scheme for help

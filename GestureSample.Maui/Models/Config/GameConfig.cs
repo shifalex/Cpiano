@@ -136,7 +136,7 @@ namespace GestureSample.Maui
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
         public bool OnlyThrougTen = false;
-
+        public bool OnlyToTen = false;
         public bool isHelpEntries = false;
         public bool isOnlySequence = true;
 

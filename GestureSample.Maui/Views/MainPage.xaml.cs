@@ -263,8 +263,18 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
 
 
+    new PageConfig("Bits", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
 
-
+        UIQuestionType = UIQuestionType.CanvasesHands,
+        OperationList = new (){  Operation.Copy, Operation.Quantity },
+        SecondsTillHideExercise = 2,
+        SecondsTillAllowInput = 4,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
 
     new PageConfig("Bits", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -281,18 +291,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = GameConfig.Operations.Logical.Concat(GameConfig.Operations.BitArray).ToList(),
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync
-        }
-    })),
-    new PageConfig("Bits", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
-    {
-
-        UIQuestionType = UIQuestionType.CanvasesHands,
-        OperationList = new (){  Operation.Copy, Operation.Quantity },
-        SecondsTillHideExercise = 2,
-        SecondsTillAllowInput = 4,
+        OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync

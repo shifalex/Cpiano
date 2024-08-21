@@ -72,6 +72,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+		<PackageReference Include="DevExpress.Data" Version="24.1.5" />
 		<PackageReference Include="Microsoft.Maui.Graphics.Skia" Version="7.0.101" />
 		<PackageReference Include="MongoDB.Bson" Version="2.26.0" />
 		<PackageReference Include="MongoDB.Driver" Version="2.26.0" />

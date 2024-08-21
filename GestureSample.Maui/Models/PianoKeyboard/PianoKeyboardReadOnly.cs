@@ -34,7 +34,6 @@ namespace GestureSample.Maui.Models
                 },
                 ColumnDefinitions =
                 {
-                    //new ColumnDefinition { Width = GridLength.Star },
                     new ColumnDefinition { Width = GridLength.Star }
                 }
             };
@@ -93,6 +92,7 @@ namespace GestureSample.Maui.Models
             int column = aboveKeyNumber - 1;
             if (direction == Direction.Left) column--;
             if (FINGER_SEPERATOR >= 0 && aboveKeyNumber > FINGER_SEPERATOR) column++;
+            if (direction == Direction.Left && aboveKeyNumber==6) column--;//Because of ColSpan 3
             if (column == -1) column = 0;
             this.Add(Arrow, column, row);
 
@@ -162,7 +162,9 @@ namespace GestureSample.Maui.Models
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 
                         //UpCommand =  new Command<MR.Gestures.DownUpEventArgs>(OnUp), 
-                    }, (i < handSeperator) ? i : i + 1,/*r+1*/ rows - r + (_config.IsArrow ? 1 : 0)
+                    }, (i < handSeperator) ? i : i + 1,
+                        //r+1 
+                        rows - r + (_config.IsArrow ? 1 : 0)
                     );
                 }
             }
