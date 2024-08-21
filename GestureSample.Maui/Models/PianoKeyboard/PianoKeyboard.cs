@@ -1,8 +1,9 @@
-﻿using MR.Gestures;
+﻿using DevExpress.Data.Utils;
+using MR.Gestures;
 
 namespace GestureSample.Maui.Models
 {
-    internal class PianoKeyboard : PianoKeyboardReadOnly
+    internal class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
     {
 
 
@@ -98,6 +99,8 @@ B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
+                //var wEHD= new WeakEventHandler<MR.Gestures.DownUpEventArgs>(OnDown);
+                //var wEHU = new WeakEventHandler<MR.Gestures.DownUpEventArgs>(OnUp);
                 btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
                 btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
 
@@ -183,7 +186,6 @@ B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
 
         public virtual void PianoInit()
         {
-
             IsEnabled = true;
 
             for (int i = 0; i < btnKeys.Length; i++)
@@ -199,11 +201,13 @@ B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
 
         public void Dispose()
         {
-            for (int i = 0; i < btnKeys.Length; i++)
+            /*for (int i = 0; i < btnKeys.Length; i++)
             {
                 btnKeys[i].DownCommand = null;
                 btnKeys[i].UpCommand = null;
-            }
+                btnKeys[i] = null;
+            }*/
+
         }
 
         //Spatial

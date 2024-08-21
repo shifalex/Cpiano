@@ -578,5 +578,11 @@ namespace GestureSample.Views.Tests
             _txtSum.Keyboard = Keyboard.Numeric;
 
         }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            //_pianoKeyboard?.Dispose();
+        }
     }
 }
