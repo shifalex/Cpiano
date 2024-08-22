@@ -42,12 +42,16 @@
     //TODO: Impose edges - 2 ordinal arrows
     //TODO: Pattern for numbers
     //TODO: One Button - lights several number: 1-2-4, 5-1-1-1-1
-    //TODO: One button - smbolizes 1-2-4, 5-1-1-1-1, 10-10-10-10-50, 10-10-10-10-50--5-1-1-1-1, 1-2-4-8-16-32--64-128-256-512
+    //TODO: One button - smbolizes 1-2-4, 5-1-1-1-1, 10-10-10-10-50, 10-10-10-10-50--5-1-1-1-1, 1-2-4-8-16-32--64-128-256-512, 1-2-2-4-10-20-20-40-100-200
     //TODO: Addition and subtraction Abbacus??
     //TODO: Division from triad using the keyboard as an answer
     //TODO: Blinking keyboard for logic
     //TODO: appearing help of several steps to solve the adding through ten 
+    //TODO: From Keyboard To triad - through ten in 2 different ways
+
     //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
+     //TODO: ARROW DRAWING - First draw buttons
+    //TODO: ARROW DRAWING - solve orientation switch arrow bug
     //TODO: onlyToTen, OnlyThroughTen in bitArray
     //TODO: less time on arrow mission
     //TODO: Mediation till questions of several steps
@@ -102,6 +106,7 @@
     //TODO: 9,5,2 multiplication helper. 7, 6 jumps multiplication helper. Make helper view functions
     //TODO: MOve automatically from one win to another
     //TODO: Levels configurations with HATNAYOT
+    //TODO: Prediction models for using the app using AI
     //TODO:Change how we understand recursion. When we remove one or when we add one.
     //TODO: small classroom model (6 children - teacher can see how everyone of them works and progress of everyone)
     //TODO: Another app for Trinom, golden equations etc.
@@ -124,6 +129,11 @@
         Sync = 1,
         Spatial = 2,
         HalfSync = 3
+    }
+    public enum ArrowType
+    {
+        Straight,
+        Rounded
     }
     public class KeyboardConfig
     {
@@ -151,7 +161,10 @@
         public int LeftAddendIndex { get; set; } = 0;
 
         public bool IsArrow { get; set; } = false;
+        public ArrowType ArrowType { get; set; } = ArrowType.Straight;
 
+        public int[] WeightsArray = null;
+        public List<List<int>> DependancyArray = null;
 
     }
 }

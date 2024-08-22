@@ -147,7 +147,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         }
     })),
 
-    new PageConfig("Arrow", "Arrow Sync one number With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    /*new PageConfig("Arrow", "Arrow Sync one number With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         KeyboardConfig = new KeyboardConfig
@@ -156,7 +156,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true,
             ShowNumbersOnKeys = true
         }
-    })),
+    })),*/
     new PageConfig("Arrow", "Arrow Sync one number ", () => new SimpleViewCellsPage(new GameConfig
     {
          UIQuestionType=UIQuestionType.OnlyKeyboard,
@@ -166,8 +166,20 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
+    new PageConfig("Arrow", "Arrow Sync one number Ordinal With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    {
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true,
+            ArrowType=ArrowType.Rounded,
+            SecondsPressingToAnswer=1
+        }
+    })),
 
-    new PageConfig("Arrow", "Cyclical Right With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    /*new PageConfig("Arrow", "Cyclical Right With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalRight,
@@ -177,7 +189,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true,
             ShowNumbersOnKeys = true
         }
-    })),
+    })),*/
     new PageConfig("Arrow", "Cyclical Right", () => new SimpleViewCellsPage(new GameConfig
     {
          UIQuestionType=UIQuestionType.OnlyKeyboard,
@@ -188,7 +200,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
-    new PageConfig("Arrow", "Cyclical Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    /*new PageConfig("Arrow", "Cyclical Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalLeft,
@@ -198,7 +210,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true,
             ShowNumbersOnKeys = true
         }
-    })),
+    })),*/
     new PageConfig("Arrow", "Cyclical Left", () => new SimpleViewCellsPage(new GameConfig
     {
          UIQuestionType=UIQuestionType.OnlyKeyboard,
@@ -209,7 +221,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
-    new PageConfig("Arrow", "Cyclical Mixed With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    /*new PageConfig("Arrow", "Cyclical Mixed With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalMixed,
@@ -219,7 +231,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true,
             ShowNumbersOnKeys = true
         }
-    })),
+    })),*/
     new PageConfig("Arrow", "Cyclical Mixed", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
@@ -230,7 +242,20 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
-    new PageConfig("Arrow", "From Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Arrow", "Cyclical Mixed Ordinal", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.CyclicalMixed,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true,
+            ArrowType=ArrowType.Rounded,
+            SecondsPressingToAnswer=1
+        }
+    })),
+    /*new PageConfig("Arrow", "From Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.FromLeft,
@@ -240,7 +265,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true,
             ShowNumbersOnKeys = true
         }
-    })),
+    })),*/
     new PageConfig("Arrow", "From Left", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType=UIQuestionType.OnlyKeyboard,
@@ -261,7 +286,31 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             IsArrow = true
         }
     })),
-
+    new PageConfig("Arrow", "From Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true,
+            ArrowType=ArrowType.Rounded
+        }
+    })),
+    new PageConfig("Arrow", "To Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
+    {
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.ToLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            ShowNumbersOnKeys = true,
+            ArrowType=ArrowType.Rounded,
+            SecondsPressingToAnswer=1
+        } 
+    })),
 
     new PageConfig("Bits", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -646,7 +695,20 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MinAddend = 2,
         MaxAddend = 9,
         MaxSum=100,
-        VariableTypes = VariableTypes.OneCanBeSum
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        numberOfTasksToWin=60
+    })),
+    new PageConfig("new Number", "Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Multiplication},
+         MinAddend = -10,
+        MaxAddend = 10,
+        MinSum = -100,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        numberOfTasksToWin=60
     })),
     new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -675,7 +737,8 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MaxAddend = 10,
         MinSum = -100,
         MaxSum=100,
-        VariableTypes = VariableTypes.OneCanBeSum
+        VariableTypes = VariableTypes.OneCanBeSum,
+        numberOfTasksToWin=20
     })),
 
 			// Cells

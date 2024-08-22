@@ -58,7 +58,9 @@ namespace GestureSample.Views.Tests
         public async void UpdateView(bool newExercise = false)
         {
             _lblStatement.Text = _gamePlay.Status;
-            List<Task> tasks = new();
+            TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
+            if (_config.numberOfTasksToWin > -1) _lblStatement.Text = string.Format("{0}. {1} Remaining", ts.ToString("mm:ss"),  _config.numberOfTasksToWin-_gamePlay._tasksMade);
+            List <Task> tasks = new();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
@@ -67,6 +69,7 @@ namespace GestureSample.Views.Tests
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
+                
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -90,6 +93,10 @@ namespace GestureSample.Views.Tests
                     EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
                     EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
                     EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
+
+                    if(_gamePlay.Sum == PPWGamePlay.NAN) _txtSum.Focus();
+                    else if(_gamePlay.addend1 == PPWGamePlay.NAN) _txtAddend1.Focus();
+                    else _txtAddend2.Focus();
                 }
                 if (_config.isHelpEntries)
                     for (int i = 0; i < txt.Length; i++)
@@ -257,7 +264,7 @@ namespace GestureSample.Views.Tests
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(_isKeyboard ? (_config.UIQuestionType==UIQuestionType.OnlyKeyboard?80:40) : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(_isKeyboard ? (_config.UIQuestionType==UIQuestionType.OnlyKeyboard?240:40) : 1, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
