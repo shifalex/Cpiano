@@ -20,6 +20,11 @@ namespace GestureSample.Maui.Models
 
         private bool _isFirstGuess = true;
 
+        protected int _currentTriadIndex = 0;
+
+        public int _tasksMade = 0;
+        public DateTime StartTime = DateTime.Now;
+
         protected readonly SimpleViewCellsPage _view;
 
         public GameConfig Config;
@@ -27,6 +32,7 @@ namespace GestureSample.Maui.Models
         {
             _view = view; Config = config;
             CurrentOperation = Config.OperationList[0];
+
             GeneratePossibleTriadsSet();
         }
 
@@ -53,6 +59,13 @@ namespace GestureSample.Maui.Models
                     Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
                     _ => Statement.True
                 };
+                if (_status == Statement.True) _tasksMade++;
+                if (Config.numberOfTasksToWin == _tasksMade )
+                {
+                    _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
+                    _tasksMade = 0;
+                    StartTime = DateTime.Now;
+                }
                 if (Config.IsHistory && _status == Statement.True)
                 {
                     if (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
@@ -62,9 +75,10 @@ namespace GestureSample.Maui.Models
                         RemoveItemToHistory(addend1, addend2, Sum);
                     if (PossibleTriads.Count == 0)
                     {
-                        _status = Statement.Win;
+                        _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
                         GeneratePossibleTriadsSet();
                         AllHistory.Clear(); Config.VariableTypes = (Config.VariableTypes == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
+                        StartTime = DateTime.Now;
 
                     }
                 }
@@ -104,11 +118,11 @@ namespace GestureSample.Maui.Models
         public virtual void GenerateExercise()
         {
             Random r = new();
-            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+            if (_currentTriadIndex ==0 || _currentTriadIndex>= Config.RepeatingTimesOfTriad - 1)
+                CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
-            int[] factors = Factors;
-            if (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
-                factors = FactorsMultiplication;//TODO: Make a list for multiplication triads
+            int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)? FactorsMultiplication : Factors;
+            //TODO: Make a list for multiplication triads
             //else if (Config.OnlyThrougTen)
             //    factors = FactorsThroughTen;
 
@@ -144,7 +158,22 @@ namespace GestureSample.Maui.Models
             get
             {
                 int[] factors = new int[3];
-
+                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
+                {
+                    _currentTriadIndex = 0;
+                }
+                if (_currentTriadIndex == 0)
+                {
+                    _currentTriadIndex++;
+                }
+                else { 
+                    factors[2] = this.Sum;
+                    factors[0] = this.addend1;
+                    factors[1] = this.addend2;
+                    _currentTriadIndex++;
+                    return factors;
+                }   
+                
                 if (_isFirstGuess && !Config.OnlyThrougTen)
                 {
                     factors[0] = 2; factors[1] = 3; factors[2] = 5;
@@ -205,6 +234,22 @@ namespace GestureSample.Maui.Models
             get
             {
                 int[] factors = new int[3];
+                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
+                {
+                    _currentTriadIndex = 0;
+                }
+                if (_currentTriadIndex == 0)
+                {
+                    _currentTriadIndex++;
+                }
+                else
+                {
+                    factors[2] = this.Sum;
+                    factors[0] = this.addend1;
+                    factors[1] = this.addend2;
+                    _currentTriadIndex++;
+                    return factors;
+                }
                 Random r = new();
 
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);

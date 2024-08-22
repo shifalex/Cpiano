@@ -14,7 +14,9 @@ namespace GestureSample.Maui.Models
 
         private void GenerateArrowExercise()
         {
+            int fromIndex =0, lengthIndexes =1;
             int keys = BitArrayQuestion.Length;
+            bool isOrdinal = Config.KeyboardConfig.ArrowType == ArrowType.Rounded;
             Random r = new();
             //int[] specialAboves = { 1, 5, 6, 10, 3 };
             //if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)]; else
@@ -29,9 +31,9 @@ namespace GestureSample.Maui.Models
                 if (Config.QuestionOrder == QuestionOrder.CyclicalLeft) dir = Direction.Left;
 
                 if (dir == Direction.Left && _prevDir == Direction.Right)
-                    aboveNumber = (aboveNumber + keys - 1) % keys;
+                    aboveNumber = (aboveNumber + keys +(isOrdinal ? 0 :-1)) % keys;
                 if (dir == Direction.Right && _prevDir == Direction.Left)
-                    aboveNumber = (aboveNumber + 1) % keys;
+                    aboveNumber = (aboveNumber + (isOrdinal ? 0 : 1)) % keys;
                 if (aboveNumber == 0) { aboveNumber = keys; }
 
                 _prevDir = dir;
@@ -54,7 +56,9 @@ namespace GestureSample.Maui.Models
                 if (Config.QuestionOrder == QuestionOrder.FromLeft)
                 {
                     dir = Direction.Right;
-                    BitArrayQuestion = triads.Count == 2 ? GenerateSequenceArrayQuestion(0, triads[1]) : GenerateSequenceArrayQuestion(triads[0], triads[1]);
+                    fromIndex = triads.Count == 2 ? 0 : triads[0]; 
+                    lengthIndexes = triads[1];
+                    //BitArrayQuestion = triads.Count == 2 ? GenerateSequenceArrayQuestion(0, triads[1]) : GenerateSequenceArrayQuestion(triads[0], triads[1]);
                     aboveNumber = triads.Count == 2 ? 1 : triads[0] + 1;
                     length = triads[1];
                     triads.RemoveAt(0); if (triads.Count == 1) { triads.RemoveAt(0); }
@@ -63,7 +67,9 @@ namespace GestureSample.Maui.Models
                 {
                     if (addend1 + addend2 == keys) isFirst = false;
                     dir = isFirst ? Direction.Right : Direction.Left;
-                    BitArrayQuestion = isFirst ? GenerateSequenceArrayQuestion(0, triads[^1]) : GenerateSequenceArrayQuestion((triads[^1] - triads[^2] + keys) % keys, triads[^2]);
+                    fromIndex = isFirst ? 0 : ((triads[^1] - triads[^2] + keys) % keys);
+                    lengthIndexes = isFirst ? triads[^1] : triads[^2];
+                    //BitArrayQuestion = isFirst ? GenerateSequenceArrayQuestion(0, triads[^1]) : GenerateSequenceArrayQuestion((triads[^1] - triads[^2] + keys) % keys, triads[^2]);
                     aboveNumber = isFirst ? 1 : triads[^1];
                     length = isFirst ? triads[^1] : triads[^2];
                     if (!isFirst) triads.RemoveAt(triads.Count - 1);
@@ -82,7 +88,17 @@ namespace GestureSample.Maui.Models
 
             }
             else
-                BitArrayQuestion = GenerateSequenceArrayQuestion((dir == Direction.Left ? (aboveNumber - length + keys) : aboveNumber - 1) % keys, length);
+            {
+                fromIndex = (dir == Direction.Left ? (aboveNumber - length + keys) : (aboveNumber) - 1) % keys;
+                lengthIndexes = length;
+                //BitArrayQuestion = GenerateSequenceArrayQuestion((dir == Direction.Left ? (aboveNumber - length + keys) : (aboveNumber) - 1) % keys, length);
+            }
+                
+
+            if(Config.KeyboardConfig.ArrowType==ArrowType.Rounded)
+                BitArrayQuestion = GenerateSequenceArrayQuestion(((dir == Direction.Left ? (aboveNumber - lengthIndexes + keys) : (aboveNumber+ lengthIndexes)) - 1) % keys, 1);
+            else
+                BitArrayQuestion = GenerateSequenceArrayQuestion(fromIndex, lengthIndexes);
             Console.WriteLine("above number:{0}", aboveNumber);
         }
 

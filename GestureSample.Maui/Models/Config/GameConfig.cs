@@ -149,6 +149,10 @@ namespace GestureSample.Maui
         public int SecondsTillHideExercise { get; set; } = -1;
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
+        public int RepeatingTimesOfTriad { get; set; } = 1;
+
+        public int numberOfTasksToWin = -1;
+
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
         public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
         public List<Operation> OperationList = new() { Operation.Sum };
