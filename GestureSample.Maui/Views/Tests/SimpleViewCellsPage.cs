@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui;
 using GestureSample.Maui.Models;
+using Microsoft.Maui.Platform;
 
 namespace GestureSample.Views.Tests
 {
@@ -59,7 +60,7 @@ namespace GestureSample.Views.Tests
         {
             _lblStatement.Text = _gamePlay.Status;
             TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
-            if (_config.numberOfTasksToWin > -1) _lblStatement.Text = string.Format("{0}. {1} Remaining", ts.ToString("mm:ss"),  _config.numberOfTasksToWin-_gamePlay._tasksMade);
+            if (_config.numberOfTasksToWin > -1 && _gamePlay.Status==Statement.Neutral) _lblStatement.Text = string.Format("{0}. {1} Remaining", ts.ToFormattedString("mm:ss"),  _config.numberOfTasksToWin-_gamePlay._tasksMade);
             List <Task> tasks = new();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
