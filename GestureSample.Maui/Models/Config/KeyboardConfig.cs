@@ -35,6 +35,7 @@
     //ODO: Dummies bug - on hand raise it still counts the dummies
     //ODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
 
+    //TODO: Fix equation +X sometimes there is a disonance
     //TODO: Rounded ordinal arrow from the center
     //TODO: Move Cardinal arrows to the edges
     //TODO: Ordinal with a loophole - show once to the left, once to the right, from and to the same places
@@ -50,7 +51,7 @@
     //TODO: From Keyboard To triad - through ten in 2 different ways
 
     //TODO: FIX Xamarin.PreBuilt.iOS[1405:810074] Warning: observer object was not disposed manually with Dispose()
-     //TODO: ARROW DRAWING - First draw buttons
+    //TODO: ARROW DRAWING - First draw buttons
     //TODO: ARROW DRAWING - solve orientation switch arrow bug
     //TODO: onlyToTen, OnlyThroughTen in bitArray
     //TODO: less time on arrow mission

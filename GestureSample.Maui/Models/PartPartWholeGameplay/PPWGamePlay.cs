@@ -23,6 +23,7 @@ namespace GestureSample.Maui.Models
         protected int _currentTriadIndex = 0;
 
         public int _tasksMade = 0;
+        public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
 
         protected readonly SimpleViewCellsPage _view;
@@ -60,9 +61,18 @@ namespace GestureSample.Maui.Models
                     _ => Statement.True
                 };
                 if (_status == Statement.True) _tasksMade++;
-                if (Config.numberOfTasksToWin == _tasksMade )
+                if (_status == Statement.False) _losesMade++;
+                if (Config.NumberOfTasksToWin == _tasksMade )
                 {
                     _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
+                    _losesMade = 0;
+                    _tasksMade = 0;
+                    StartTime = DateTime.Now;
+                }
+                if (Config.NumberOfMistakesToLose == _losesMade)
+                {
+                    _status = Statement.Lose;
+                    _losesMade = 0;
                     _tasksMade = 0;
                     StartTime = DateTime.Now;
                 }

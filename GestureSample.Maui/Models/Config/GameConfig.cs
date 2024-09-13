@@ -151,7 +151,8 @@ namespace GestureSample.Maui
         public int SecondsTillNextExercise { get; set; } = 2;
         public int RepeatingTimesOfTriad { get; set; } = 1;
 
-        public int numberOfTasksToWin = -1;
+        public int NumberOfTasksToWin { get; set; } = -1;
+        public int NumberOfMistakesToLose { get; set; } = -1;
 
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
         public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
