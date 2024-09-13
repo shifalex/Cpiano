@@ -19,7 +19,7 @@
         }
         public static string Win2(TimeSpan ts)
         {
-            Application.Current.MainPage.DisplayAlert("Win", "You Won!!/n"+ts.ToString("mm:ss"), "OK");
+            Application.Current.MainPage.DisplayAlert("Win", "You Won!!\n"+ts.ToString(), "OK");
             return "YOU WON!!!";
         }
 

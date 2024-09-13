@@ -697,7 +697,9 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 3,
-        numberOfTasksToWin=60
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5,
+        EnforceOperationLabel=true
     })),
     new PageConfig("new Number", "Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -708,7 +710,9 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 3,
-        numberOfTasksToWin=60
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5,
+        EnforceOperationLabel=true
     })),
     new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -738,7 +742,8 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MinSum = -100,
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum,
-        numberOfTasksToWin=20
+        NumberOfTasksToWin=20,
+        NumberOfMistakesToLose=5
     })),
 
 			// Cells
