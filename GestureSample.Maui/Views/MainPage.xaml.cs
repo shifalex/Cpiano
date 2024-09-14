@@ -694,13 +694,36 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 9,
-        MaxSum=100,
+        MaxSum=20,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 3,
         NumberOfTasksToWin=60,
         NumberOfMistakesToLose=5
     })),
 
+    new PageConfig("new Number", "Addition till 200 Game", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 198,
+        MaxSum=200,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
+    new PageConfig("new Number", "Addition for 180 Game", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 178,
+        MinSum = 180,
+        MaxSum=180,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
     new PageConfig("new Number", "Multiplication Game", () => new SimpleViewCellsPage(new GameConfig
     {
         OperationList = new() { Operation.Multiplication},
@@ -720,6 +743,20 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MaxAddend = 10,
         MinSum = -100,
         MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5,
+        EnforceOperationLabel=true
+    })),
+    new PageConfig("new Number", "Multiplication till 50*10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Multiplication},
+         MinAddend = 2,
+        MaxAddend = 11,
+        MaxAddend2 = 50,
+        MinSum = 4,
+        MaxSum=500,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 3,
         NumberOfTasksToWin=60,
