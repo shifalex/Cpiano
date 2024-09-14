@@ -272,7 +272,7 @@ namespace GestureSample.Maui.Models
                 }
 
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
-                factors[1] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
 
                 return factors;
