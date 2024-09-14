@@ -60,20 +60,22 @@ namespace GestureSample.Views.Tests
         #region view updating
         public async void UpdateView(bool newExercise = false)
         {
-            _lblStatement.Text = _gamePlay.Status;
+            string text = _gamePlay.Status;
             TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
             {
-                _lblStatement.Text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), _config.NumberOfTasksToWin - _gamePlay._tasksMade);
+                text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), _config.NumberOfTasksToWin - _gamePlay._tasksMade);
                 if(_config.NumberOfMistakesToLose >-1 && _gamePlay._losesMade > 0)
                 {
-                    _lblStatement.Text += string.Format("{0} Mistakes left", _config.NumberOfMistakesToLose - _gamePlay._losesMade);
+                    text += string.Format("{0} Mistakes left", _config.NumberOfMistakesToLose - _gamePlay._losesMade);
                 }
             }
             else if (_config.NumberOfTasksToWin > -1)
             {
-                _lblStatement.Text += "\n\n";
+                text += string.Format("\n{0} Remaining\n{1}  Mistakes left", _config.NumberOfTasksToWin - _gamePlay._tasksMade, _config.NumberOfMistakesToLose - _gamePlay._losesMade);
             }
+            _lblStatement.Text = text;
+
             List <Task> tasks = new();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
@@ -83,7 +85,8 @@ namespace GestureSample.Views.Tests
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
-                //_hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
+                if (OperatingSystem.IsIOS())
+                    _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
                 
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -413,9 +416,9 @@ namespace GestureSample.Views.Tests
 
         private HorizontalStackLayout InitEquationUI()
         {
-            _txtAddend1.WidthRequest = TASK_WIDTH / 4;
-            _txtAddend2.WidthRequest = TASK_WIDTH / 4;
-            _txtSum.WidthRequest = TASK_WIDTH / 4;
+            _txtAddend1.WidthRequest = TASK_WIDTH / 2;
+            _txtAddend2.WidthRequest = TASK_WIDTH / 2;
+            _txtSum.WidthRequest = TASK_WIDTH / 2;
             _txtSum.BackgroundColor = Colors.White;
             _txtSum.FontSize = 18;
             HorizontalStackLayout hzlEquation = new HorizontalStackLayout
@@ -551,6 +554,10 @@ namespace GestureSample.Views.Tests
             if (_config.NumberOfMistakesToLose < 0)
             {   hslBtns.Add(_btnCheck);
                 hslBtns.Add(_btnNext);
+            }
+            if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
+            {  
+                hslBtns.Add(_btnCheck);
             }
 
             return hslBtns;

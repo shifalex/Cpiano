@@ -167,6 +167,7 @@ namespace GestureSample.Maui.Models
         {
             get
             {
+                Random r = new();
                 int[] factors = new int[3];
                 if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
                 {
@@ -180,6 +181,10 @@ namespace GestureSample.Maui.Models
                     factors[2] = this.Sum;
                     factors[0] = this.addend1;
                     factors[1] = this.addend2;
+                    if(r.Next(2)==1) {
+                        factors[0] = this.addend2;
+                        factors[1] = this.addend1;
+                    }
                     _currentTriadIndex++;
                     return factors;
                 }   
@@ -193,7 +198,6 @@ namespace GestureSample.Maui.Models
                         return factors;
                 }
 
-                Random r = new();
                 int currentTriadIndex = r.Next(PossibleTriads.Count);
                 factors[2] = PossibleTriads[currentTriadIndex].Sum;//r.Next(Config.MinSum, Config.MaxSum + 1);
                 factors[0] = PossibleTriads[currentTriadIndex].Addend1;//GenerateNewAddend(factors[2]);
@@ -243,6 +247,7 @@ namespace GestureSample.Maui.Models
         {
             get
             {
+                Random r = new();
                 int[] factors = new int[3];
                 if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
                 {
@@ -257,10 +262,14 @@ namespace GestureSample.Maui.Models
                     factors[2] = this.Sum;
                     factors[0] = this.addend1;
                     factors[1] = this.addend2;
+                    if (r.Next(2) == 1)
+                    {
+                        factors[0] = this.addend2;
+                        factors[1] = this.addend1;
+                    }
                     _currentTriadIndex++;
                     return factors;
                 }
-                Random r = new();
 
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
                 factors[1] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
