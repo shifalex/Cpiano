@@ -64,19 +64,16 @@ namespace GestureSample.Views.Tests
             TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
             {
-                text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2));
+                _lblStatement.Text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), _config.NumberOfTasksToWin - _gamePlay._tasksMade);
                 if(_config.NumberOfMistakesToLose >-1 && _gamePlay._losesMade > 0)
                 {
-                    text += string.Format("{0} Mistakes left", (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
+                    _lblStatement.Text += string.Format("{0} Mistakes left", _config.NumberOfMistakesToLose - _gamePlay._losesMade);
                 }
                 text += "\n";
             }
             else if (_config.NumberOfTasksToWin > -1)
             {
-                text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2), 
-                    (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
-
-                text += "\n";
+                _lblStatement.Text += "\n\n";
             }
             _lblStatement.Text = text;
 
