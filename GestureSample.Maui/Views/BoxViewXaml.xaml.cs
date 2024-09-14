@@ -4,12 +4,12 @@ using MR.Gestures;
 
 namespace GestureSample.Views
 {
-	public partial class BoxViewXaml
-	{
-		public BoxViewXaml()
-		{
-			InitializeComponent();
-		}
+    public partial class BoxViewXaml
+    {
+        public BoxViewXaml()
+        {
+            InitializeComponent();
+        }
 
 
         void Red_Down(object sender, DownUpEventArgs e) => AddText("BoxViewXaml.Red_Down method called with " + e.TriggeringTouches.Length + " fingers");
@@ -49,8 +49,8 @@ namespace GestureSample.Views
         void Red_ScrollWheelChanged(object sender, ScrollWheelEventArgs e) => AddText("BoxViewXaml.Red_ScrollWheelChanged method called");
 
         void AddText(string text)
-		{
-			((TextOnlyViewModel)BindingContext).AddText(text);
-		}
-	}
+        {
+            ((TextOnlyViewModel)BindingContext).AddText(text);
+        }
+    }
 }

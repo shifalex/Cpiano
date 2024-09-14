@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class GridXaml
-	{
-		public GridXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class GridXaml
+    {
+        public GridXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

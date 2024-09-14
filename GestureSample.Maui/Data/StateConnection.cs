@@ -1,14 +1,6 @@
-﻿using GestureSample.Maui.Models;
-
-using SQLite;
-using SQLitePCL;
-using System;
-using System.IO;
-using System.Threading.Tasks;
+﻿using SQLite;
 //using Microsoft.Data.Sqlite;
 //using Microsoft.EntityFrameworkCore.Sqlite;
-using System.Data.Common;
-using Microsoft.Maui.Controls.PlatformConfiguration;
 using System.Net.Http.Headers;
 
 namespace GestureSample.Maui.Data
@@ -72,7 +64,7 @@ namespace GestureSample.Maui.Data
                     client.DefaultRequestHeaders.Accept.Clear();
                     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                    
+
                     var uri = new Uri("https://mathopiano.herokuapp.com/upload");
 
                     using (var form = new MultipartFormDataContent())

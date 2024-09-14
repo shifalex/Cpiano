@@ -1,44 +1,35 @@
 ﻿using GestureSample.Views.Tests;
-using Microsoft.Maui.Controls;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Models
 {
     internal class DecompositionGamePlay : PPWGamePlay
     {
-        private int _level=2; 
-        private int _streakCorrect = 0; 
+        private int _level = 2;
+        private int _streakCorrect = 0;
         private int _streakWrong = 0;
         private readonly int CORRECT_TO_LEVEL_UP = 20, WRONG_TO_LEVEL_DOWN = 5;
-        
+
         private Label _lblStats;
         private Picker _pkrLevel;
 
 
         public string StatsString
         {
-            get { return string.Format("Correct in this Level:{0} (reach {1} to level up)\nWrong in a row: {2} (reach {3} and you level down)", 
-                _streakCorrect,CORRECT_TO_LEVEL_UP,
-                _streakWrong,WRONG_TO_LEVEL_DOWN); 
+            get
+            {
+                return string.Format("Correct in this Level:{0} (reach {1} to level up)\nWrong in a row: {2} (reach {3} and you level down)",
+                _streakCorrect, CORRECT_TO_LEVEL_UP,
+                _streakWrong, WRONG_TO_LEVEL_DOWN);
             }
         }
 
-        public int Level { get { return _level; } set { _level = value; } }
 
-        public DecompositionGamePlay(SimpleViewCellsPage view, Label lblStats, Picker pkrLevel) : base(GameType.DecompositionGame, view, null)
+
+        public DecompositionGamePlay(SimpleViewCellsPage view, GameConfig config, Label lblStats, Picker pkrLevel) : base(view, config)
         {
-            _numberOfVariables = VariableTypes.OneCanBeSum;
             _lblStats = lblStats;
             _pkrLevel = pkrLevel;
-            /*
-            _lblStats.BindingContext = this;
-            _lblStats.SetBinding(Label.TextProperty, nameof(StatsString));*/
             _pkrLevel.BindingContext = this;
-            _pkrLevel.SetBinding(Picker.SelectedItemProperty, nameof(Level));
 
             _lblStats.Text = StatsString;
 
@@ -49,16 +40,16 @@ namespace GestureSample.Maui.Models
         {
             bool check = base.Check();
             if (check) { _streakCorrect++; } else { _streakWrong++; }
-            
-                       
-            if(_streakWrong >= WRONG_TO_LEVEL_DOWN)
+
+
+            if (_streakWrong >= WRONG_TO_LEVEL_DOWN)
             {
-                _level--; 
+                _level--;
                 UpdateLevelStats();
             }
             else if (_streakCorrect >= CORRECT_TO_LEVEL_UP)
             {
-                _level++; 
+                _level++;
                 UpdateLevelStats();
             }
 
@@ -66,27 +57,28 @@ namespace GestureSample.Maui.Models
             return check;
         }
 
-        protected override int[] GenerateFactors()
+        protected override int[] Factors
         {
-            if(_level==1) { return base.GenerateFactors(); }
-
-            int[] factors = new int[3];
-            Random r = new();
-            if (Sum != addend1 + addend2) 
-                _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
-            factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
-            while (factors[2] % 10 == 9 || factors[2] / 10 == 0) factors[2] = r.Next(Math.Max(_minAddend, _minSum), _maxSum);
-            if (factors[2] % 10 == 0) factors[0] = r.Next(_minAddend, Math.Min(_maxAddend + 1, factors[2]));
-            else
+            get
             {
-               int tens = r.Next(Math.Max(_minAddend / 10, 0), factors[2] / 10 - 1);
-               int ones = r.Next(factors[2] % 10 + 1, 10);
-               factors[0] = tens * 10 + ones;
-            }
-            factors[1] = factors[2] - factors[0];
-            
+                if (_level == 1) { return base.Factors; }
 
-            return factors;
+                if (Sum != addend1 + addend2)
+                    _streakWrong++;//you moved next without solving. TODO: what happens if it downs your level?
+                return base.Factors;
+                //return FactorsThroughTen;
+            }
+        }
+        private bool _levelChangedByUser = false;
+        public void SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _level = _pkrLevel.SelectedIndex + 1;
+            _levelChangedByUser = true;
+            _streakCorrect = 0; _streakWrong = 0;
+            UpdateLevelStats();
+            _levelChangedByUser = false;
+            GenerateExercise();
+
         }
 
         private void UpdateLevelStats()
@@ -96,26 +88,34 @@ namespace GestureSample.Maui.Models
             switch (_level)
             {
                 case 0:
-                    _status = Statement.Lose; 
+                    _status = Statement.Lose;
                     _level = 2;
                     break;
                 case 1:
-                    _minSum = 10; _maxSum = 10; _minAddend = 0;_maxAddend = 10;
+                    Config.MinSum = 0; Config.MaxSum = 10; Config.MinAddend = 0; Config.MaxAddend = 10; Config.OnlyThrougTen = false; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 2:
-                    _minSum = 0; _maxSum = 20; _minAddend = 0; _maxAddend = 20;
+                    Config.MinSum = 0; Config.MaxSum = 20; Config.MinAddend = 0; Config.MaxAddend = 20; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 3:
-                    _minSum = 0; _maxSum = 100; _minAddend = 0; _maxAddend = 100;
+                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = 1; Config.MaxAddend2 = 9;
                     break;
                 case 4:
-                    _status= Statement.Win;
+                    Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
+                    break;
+                case 5:
+                    _status = Statement.Win;
                     _level = 2;
                     break;
                 default: _level = 2; break;
             }
 
-            _pkrLevel.SelectedItem = Level;
+            if (!_levelChangedByUser)
+                _pkrLevel.SelectedIndex = _level - 1;
+
+            string selectedItem = _pkrLevel.Items[_pkrLevel.SelectedIndex];
+            Console.WriteLine("Selected Item", $"You selected: {selectedItem}", "OK");
+            base.GeneratePossibleTriadsSet();
         }
 
     }

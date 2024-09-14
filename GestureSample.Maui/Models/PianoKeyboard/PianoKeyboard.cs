@@ -1,18 +1,11 @@
-﻿using Microsoft.Maui;
+﻿using DevExpress.Data.Utils;
 using MR.Gestures;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Models
 {
-    internal class PianoKeyboard: PianoKeyboardReadOnly
+    internal class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
     {
-        
+
 
         protected override int heading_height { get; } = 55;
 
@@ -23,20 +16,43 @@ namespace GestureSample.Maui.Models
         //TODO: Give the option to save to database the keypress and timestamp and keyboard ID and the new color(which is made when it is created. And a database to work with..
         //TODO: Make an interface
         protected readonly PPWGamePlay _gamePlay;
-        
+
+        protected readonly KeyboardConfig _pianoConfig;
 
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
 
-        
+        protected virtual void AddDummies()
+        {
+            int[] dummiesArray = _pianoConfig.DummiesArray;
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+
+                if (_pianoConfig.DummiesArray != null && dummiesArray.Length > i && dummiesArray[i] > -1)
+                {
+                    //btnKeys[i].Opacity = 0.5;
+                    btnKeys[i].IsEnabled = false;
+                    btnKeys[i].BackgroundColor = dummiesArray[i] == 1 ? COLOR_PRESSED : COLOR_FREE;
+                }
+                else
+                {
+                    btnKeys[i].Opacity = 1;
+                    btnKeys[i].IsEnabled = true;
+                    btnKeys[i].BackgroundColor = colors[i];
+                }
+                // btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
+                // btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
+
+            }
+        }
 
         //TODO: add constructor for 20 keys and for keyboard questions
         //public BitArray Keys;
 
         public int Addend1 { get => _addend1; }
         public int Addend2 { get => _addend2; }
-        public int Sum { get => _addend1+_addend2; }
+        public override int Sum { get => _addend1 + _addend2; }
 
         //private readonly Data.RealmService _realmService;
 
@@ -46,51 +62,63 @@ namespace GestureSample.Maui.Models
             {
                 UserId = 1,
                 //TimeStamp = DateTime.Now,
-                TypeName = _gamePlay.GameType.ToString(),
+                //TypeName = _gamePlay.GameType.ToString(),
                 Addend1 = this.Addend1,
                 Addend2 = this.Addend2,
                 Sum = this.Sum, //TODO:make more elegant
-                                /*
-                B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
-                B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ,
-                B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ,
-                B4 = btnKeys[3].BackgroundColor == COLOR_PRESSED,
-                B5 = btnKeys[4].BackgroundColor == COLOR_PRESSED,
-                B6 = btnKeys[5].BackgroundColor == COLOR_PRESSED,
-                B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED,
-                B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED,
-                B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED,
-                B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
-                */
-            } ; 
-            await Data.StateConnection.Instance.SaveStateAsync(s);
+                /*
+B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
+B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ,
+B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ,
+B4 = btnKeys[3].BackgroundColor == COLOR_PRESSED,
+B5 = btnKeys[4].BackgroundColor == COLOR_PRESSED,
+B6 = btnKeys[5].BackgroundColor == COLOR_PRESSED,
+B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED,
+B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED,
+B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED,
+B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
+*/
+            };
+            //await Data.StateConnection.Instance.SaveStateAsync(s);
             //await _realmService.AddStateAsync(s);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
-            KeyboardConfig pianoConfig) : base(pianoConfig.Rows, pianoConfig.KeysInRow) {
+            KeyboardConfig pianoConfig) : base(pianoConfig)
+        {
 
-            _patterns = pianoConfig.KeysInRow > 10 || pianoConfig.ImposeEdges; _imposeEdges = pianoConfig.ImposeEdges; 
+            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges;
+            _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
             _lblTimer = lblTimer;
+            _pianoConfig = pianoConfig;
             for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
 
             //_realmService = new();
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
+                //var wEHD= new WeakEventHandler<MR.Gestures.DownUpEventArgs>(OnDown);
+                //var wEHU = new WeakEventHandler<MR.Gestures.DownUpEventArgs>(OnUp);
                 btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
                 btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
-                
+
             }
+            AddDummies();
 
 
-        Microsoft.Maui.Controls.Button btnInit = new()
+            Microsoft.Maui.Controls.Button btnInit = new()
             {
                 Text = "Reset",
-                Command = new Command(() => { 
-                    PianoInit(); 
+                Command = new Command(() =>
+                {
+                    PianoInit();
+                    for (int i = 0; i < btnKeys.Length; i++)
+                    {
+                        btnKeys[i].DownCommand = null;
+                        btnKeys[i].UpCommand = null;
+                    }
                     for (int i = 0; i < btnKeys.Length; i++)
                     {
                         btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
@@ -105,7 +133,7 @@ namespace GestureSample.Maui.Models
 
             if (textBoxesQuantity > 0)
             {
-                Microsoft.Maui.Controls.Entry[] a_array= new Microsoft.Maui.Controls.Entry[3];
+                Microsoft.Maui.Controls.Entry[] a_array = new Microsoft.Maui.Controls.Entry[3];
                 for (int i = 0; i < a_array.Length; i++)
                 {
                     a_array[i] = new()
@@ -121,17 +149,17 @@ namespace GestureSample.Maui.Models
                         BindingContext = this
                     };
                 }
-                a_array[0].IsVisible = textBoxesQuantity >= 2; a_array[0].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend1)); 
+                a_array[0].IsVisible = textBoxesQuantity >= 2; a_array[0].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend1));
                 a_array[1].IsVisible = textBoxesQuantity >= 2; a_array[1].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend2));
                 a_array[2].IsVisible = textBoxesQuantity == 1 || textBoxesQuantity == 3;
                 a_array[2].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Sum));
 
                 Microsoft.Maui.Controls.HorizontalStackLayout hzl = new()
                 {
-                    a_array[0], 
-                    new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity >= 2 }, 
+                    a_array[0],
+                    new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity >= 2 },
                     a_array[2],
-                    new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity == 3 }, 
+                    new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity == 3 },
                     a_array[1]
                 };
                 hzl.HorizontalOptions = LayoutOptions.Center;
@@ -140,7 +168,7 @@ namespace GestureSample.Maui.Models
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
-                g.Add(hzl,1); g.Add(btnInit,0);
+                g.Add(hzl, 1); g.Add(btnInit, 0);
                 this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
                 g.HorizontalOptions = LayoutOptions.Fill;
                 this.Add(g, 0);
@@ -156,24 +184,30 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        public virtual void PianoInitWithDummies()
-        {
-                    
-        }
-
         public virtual void PianoInit()
         {
-
             IsEnabled = true;
 
-            for(int i=0; i < btnKeys.Length; i++)
+            for (int i = 0; i < btnKeys.Length; i++)
             {
                 btnKeys[i].BackgroundColor = COLOR_FREE;
             }
             _addend1 = 0;
-            _addend2=0;
+            _addend2 = 0;
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
+            AddDummies();
+        }
+
+        public void Dispose()
+        {
+            /*for (int i = 0; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].DownCommand = null;
+                btnKeys[i].UpCommand = null;
+                btnKeys[i] = null;
+            }*/
+
         }
 
         //Spatial
@@ -182,7 +216,7 @@ namespace GestureSample.Maui.Models
             _addend1 = 0; _addend2 = 0; bool isNowYellowStreak = false; int yellowStreaksTillNowIncluding = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
-                if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
+                if (btnKeys[i].BackgroundColor == COLOR_PRESSED || btnKeys[i].BackgroundColor == COLOR_PRESSED)
                 {
                     if (!isNowYellowStreak) { isNowYellowStreak = true; yellowStreaksTillNowIncluding++; }
                     if (yellowStreaksTillNowIncluding == 1) _addend1++;
@@ -194,10 +228,10 @@ namespace GestureSample.Maui.Models
             }
             if (yellowStreaksTillNowIncluding == 1 /*one addend is 0 - which one? if most keys in the left - Addend2, if most keys in the right - Addend1*/)
             {
-                for (int i = 0; i < NUMBER_OF_KEYS; i++)
-                    if (btnKeys[i].BackgroundColor == COLOR_PRESSED && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_FREE)
+                for (int i = _pianoConfig.LeftAddendIndex; i < NUMBER_OF_KEYS; i++)
+                    if (btnKeys[i].BackgroundColor == COLOR_PRESSED && btnKeys[NUMBER_OF_KEYS - 1 - i + _pianoConfig.LeftAddendIndex].BackgroundColor == COLOR_FREE)
                         break;
-                    else if (btnKeys[i].BackgroundColor == COLOR_FREE && btnKeys[NUMBER_OF_KEYS - 1 - i].BackgroundColor == COLOR_PRESSED)
+                    else if (btnKeys[i].BackgroundColor == COLOR_FREE && btnKeys[NUMBER_OF_KEYS - 1 - i + _pianoConfig.LeftAddendIndex].BackgroundColor == COLOR_PRESSED)
                     {
                         _addend2 = _addend1; _addend1 = 0;
                         break;
@@ -220,7 +254,8 @@ namespace GestureSample.Maui.Models
                     }
             }
         }
-        protected virtual bool InnerKeyDown (MR.Gestures.Button sender) {
+        protected virtual bool InnerKeyDown(MR.Gestures.Button sender)
+        {
             sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
             return false;
         }
@@ -244,15 +279,16 @@ namespace GestureSample.Maui.Models
         {
             OnKey(e, true);
         }
-        private void OnUp(MR.Gestures.DownUpEventArgs e){
+        private void OnUp(MR.Gestures.DownUpEventArgs e)
+        {
             OnKey(e, false);
         }
-        private void OnKey (MR.Gestures.DownUpEventArgs e, bool isDown)
+        private void OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
 
-            if ((isDown?InnerKeyDown(sender):InnerKeyUp(sender)) && _patterns)
+            if ((isDown ? InnerKeyDown(sender) : InnerKeyUp(sender)) && _patterns)
                 setAddendsByPattern();
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));

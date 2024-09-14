@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class EntryXaml
-	{
-		public EntryXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class EntryXaml
+    {
+        public EntryXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

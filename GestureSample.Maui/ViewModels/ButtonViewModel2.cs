@@ -1,12 +1,5 @@
 ﻿//using Sentry;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Collections;
-using GestureSample.Maui.ViewModels;
 
 namespace GestureSample.ViewModels
 {
@@ -358,5 +351,5 @@ namespace GestureSample.ViewModels
         }
     }
 }
-    
+
 

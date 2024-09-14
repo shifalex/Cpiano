@@ -1,8 +1,4 @@
-﻿
-//using Foundation;
-using MR.Gestures;
-using System.Windows.Input;
-
+﻿//using Foundation;
 namespace GestureSample.Views
 {
     public partial class ContentPageXaml : MR.Gestures.ContentPage
@@ -15,8 +11,8 @@ namespace GestureSample.Views
         private int _addend1 = 0;
         private int _addend2 = 0;
         //private int _sum = 0;
-        
-        
+
+
         private bool _waiting_check = false;
         private bool _isTimerWorking = false;
         private IDispatcherTimer timer;
@@ -66,18 +62,19 @@ namespace GestureSample.Views
 
 
             Content = grid;
-            
+
 
             //InitializeComponent();
 
-            
+
         }
 
         private void TimerInit()
         {
             timer = Application.Current.Dispatcher.CreateTimer();
             timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += (s, e) => {
+            timer.Tick += (s, e) =>
+            {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
 
@@ -140,8 +137,9 @@ namespace GestureSample.Views
                     _addend2--;
                 else
                     _addend1--;
-                if (_addend1 == 0 && _addend2 == 0) { 
-                    _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; timer.Stop(); 
+                if (_addend1 == 0 && _addend2 == 0)
+                {
+                    _isTimerWorking = false; _waiting_check = false; _seconds_pressed = 0; timer.Stop();
                     //NotifyPropertyChanged(nameof(TrueStatement)); 
                 }
 
@@ -150,7 +148,7 @@ namespace GestureSample.Views
             {
 
                 if (Convert.ToInt32(sender.CommandParameter) > 4)
-                    _addend2= (sender.BackgroundColor != Colors.Yellow)? _addend2 - 1 : _addend2 + 1;
+                    _addend2 = (sender.BackgroundColor != Colors.Yellow) ? _addend2 - 1 : _addend2 + 1;
                 else
                     _addend1 = (sender.BackgroundColor != Colors.Yellow) ? _addend1 - 1 : _addend1 + 1;
             }
