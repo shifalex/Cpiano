@@ -689,7 +689,19 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     //     }
     // })),
 
-    new PageConfig("new Number", "Multiplication", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("new Number", "Addition Game", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=100,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
+
+    new PageConfig("new Number", "Multiplication Game", () => new SimpleViewCellsPage(new GameConfig
     {
         OperationList = new() { Operation.Multiplication},
         MinAddend = 2,
@@ -701,7 +713,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         NumberOfMistakesToLose=5,
         EnforceOperationLabel=true
     })),
-    new PageConfig("new Number", "Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("new Number", "Multiplication Negatives Game", () => new SimpleViewCellsPage(new GameConfig
     {
         OperationList = new() { Operation.Multiplication},
          MinAddend = -10,
@@ -723,7 +735,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum
     })),
-    new PageConfig("new Number", "Equation Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("new Number", "Equation Only result Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
         UIQuestionType= UIQuestionType.SimpleEquation,
         OperationList ={  Operation.Sum, Operation.Multiplication},

@@ -34,8 +34,15 @@
     //ODO: Dummies bug - COLORS opacity changes backgroungcolor and so you choose pressed or not pressed by color only maybe use colors[i]
     //ODO: Dummies bug - on hand raise it still counts the dummies
     //ODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
-
-    //TODO: Fix equation +X sometimes there is a disonance
+    //ODO: Fix equation +X sometimes there is a disonance
+    
+    //TODO: Fix ImposeEdge arrow bug
+    //TODO: Remove underline in android entry
+    /// <summary>
+    /// /TODO: database save game data and show all after game is over - game over screen
+    /// </summary>
+   // TODO: Triads repeating from 2 to 4 times randomly
+    // TODO: Triads repeating interlevingly
     //TODO: Rounded ordinal arrow from the center
     //TODO: Move Cardinal arrows to the edges
     //TODO: Ordinal with a loophole - show once to the left, once to the right, from and to the same places
