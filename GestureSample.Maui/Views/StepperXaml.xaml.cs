@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class StepperXaml
-	{
-		public StepperXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class StepperXaml
+    {
+        public StepperXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

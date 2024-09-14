@@ -1,100 +1,167 @@
 ﻿using GestureSample.Maui.Models;
-using GestureSample.Maui;
+using System.ComponentModel;
+using System.Reflection;
 
-//=======ADDING NEW CONFIGURATION
-//Start with new configuration here
-//Add the new configuration to MainPage.Xaml.cs
+//https://appstoreconnect.apple.com/access/integrations/api
+
+//=======ADDING NEW CONFIGURATION:
+//Start with new configuration here - enum if needed
+//PPWGamePlay: change the correct GamePlay - both the constructor, check and generate exercise - add function if needed or gameplay if needed
 //Add to SimpleViewCellsPage InitializeUI the UI that goes with the constructor
-//SimpleViewCellsPage: Change buttonNext and Generate exercise event handling if needed
 //SimpleViewCellsPage: change UpdateView with an "ïf" accordingly
-//PPWGamePlay: change the correct GamePlay
-//Set the configuration page
+//SimpleViewCellsPage: Change buttonNext and Generate exercise event handling if needed
+//Add the new configuration to MainPage.Xaml.cs
 
 namespace GestureSample.Maui
 {
     #region enums
+
+    public static class EnumExtensions
+    {
+        public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
+        {
+            if (!typeof(TEnum).IsEnum)
+                throw new ArgumentException("TEnum must be an enumerated type");
+
+            FieldInfo fi = enumValue.GetType().GetField(enumValue.ToString());
+            DescriptionAttribute[] attributes = (DescriptionAttribute[])fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
+
+            return attributes.Length > 0 ? attributes[0].Description : enumValue.ToString();
+        }
+    }
+
+
     public enum UIQuestionType
     {
+        OnlyKeyboard,
         //OneText,//Can be also objects.. always exists
         ThreeTexts, //Can be with following options: history, levelPicker, DirectionsText, Guess one
-        SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options
-        BitArrayQuestion, //Can be Hand or Keyboard
-        Tower, //Can be text or keys tower
-        ArrowQuestion,//May also have twoArrows. Can have or not a number on it On every exercise it is like new., Without text or with for pattern recognition
-        LogicalQuestion //2kyboards, first optional, 1 operand
-    }
-
-    public enum ArrayQuestionTypes
-    {
-        TextNumber,
-        Hand,
-        Keyboard,
-        Objects
-    }
-
-
-    public enum GameType//TODO: Difuse to "variable types" and "three texts"
-    {
-        GuessOne,
-        CompletionOneInAddition,
-        SimpleDecomposition,
+        SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options,
+        CanvasesHands,
+        CanvasesObjects,
         DecompositionGame,
-        BitArrayGame,
-        Multiplication,
-        Logic
+        //BitArrayQuestion, //Can be Hand or Keyboard
+        Tower, //Can be text or keys tower
+        ArrowOnKeyboard,//May also have twoArrows. Can have or not a number on it On every exercise it is like new., Without text or with for pattern recognition
+        LogicalKeyboards //2kyboards, second optional, 1 operand
     }
 
-    public enum BitArrayGameType
+
+    public enum Invisability
     {
+        None,
+        All,
+        OneSideOnly,
+        RightSideOnly,
+        LeftSideOnly,
+        PartialScreenCovering
+    }
+
+
+
+    public enum Operation
+    {
+        [Description("+")]
+        Sum,
+        [Description("X")]
+        Multiplication,
+        [Description(":")]
+        Divide,
+        [Description("-")]
+        Minus,
+        [Description("COPY")]
         Copy,
+        [Description("Press same amount")]
         Quantity,
-        Reorder,
-        SerializeWithArrow //TODO: Try to solve the conflict that they can be both together and separate entities
+        //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
+        //Reorder,
+        [Description("NOT(!)")]
+        Not,
+        [Description("AND(&&)")]
+        And,
+        [Description("OR(||)")]
+        Or,
+        [Description("Neutralize")]
+        Neutralize
 
     }
 
     public enum VariableTypes
     {
-        OneNoSum = 1,
+        //ShowOnlySum=0,
+        OneNoSum,
         TwoNoSum,
         OneCanBeSum,
         SumOnly,
         TwoAny
-
-
     }
+
+    public enum Direction
+    {
+        Up,
+        Down,
+        Left,
+        Right
+    }
+
+    public enum QuestionOrder
+    {
+        Random,
+        CyclicalLeft,
+        CyclicalRight,
+        CyclicalMixed,
+        FromLeft,
+        BackAndForth,
+        ToLeft
+    }
+
     #endregion
 
     public class GameConfig
     {
-
+        public class Operations
+        {
+            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
+            public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
+            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
+        }
         // Properties with default values
-        public GameType GameType { get; set; } = GameType.SimpleDecomposition;
         public bool IsHistory { get; set; } = false;
-
+        public bool IsHistorySymetrical { get; set; } = false;
         public int MinAddend { get; set; } = 0;
         public int MaxAddend { get; set; } = 5;
-        public int MinSum {  get; set; } = 1;
+        public int MinAddend2 { get; set; } = PPWGamePlay.NAN;
+        public int MaxAddend2 { get; set; } = PPWGamePlay.NAN;
+        public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
-
         public bool OnlyThrougTen = false;
+        public bool OnlyToTen = false;
+        public bool isHelpEntries = false;
+        public bool isOnlySequence = true;
 
         public List<int> addendsList = new();
-        public List<int> addendsListSecond =null;
+        public List<int> addendsListSecond = null;
 
-
+        public bool EnforceOperationLabel { get; set; } = false;
         public bool FromNumToNum { get; set; } = false;
 
+        public int SecondsTillHideExercise { get; set; } = -1;
+        public int SecondsTillAllowInput { get; set; } = -1;
+        public int SecondsTillNextExercise { get; set; } = 2;
+        public int RepeatingTimesOfTriad { get; set; } = 1;
+
+        public int numberOfTasksToWin = -1;
+
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
-
-        public ArrayQuestionTypes ArrayQuestionTypes = ArrayQuestionTypes.Keyboard;
-        public BitArrayGameType BitArrayGameType = BitArrayGameType.Quantity;
-
-
+        public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
+        public List<Operation> OperationList = new() { Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
         // Nested configuration with defaults
         public KeyboardConfig KeyboardConfig { get; set; } = null;
+
+
     }
 
-    
+
 }

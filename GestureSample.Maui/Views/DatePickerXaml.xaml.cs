@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class DatePickerXaml
-	{
-		public DatePickerXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class DatePickerXaml
+    {
+        public DatePickerXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class TimePickerXaml
-	{
-		public TimePickerXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class TimePickerXaml
+    {
+        public TimePickerXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

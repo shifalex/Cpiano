@@ -1,10 +1,10 @@
 ﻿namespace GestureSample.Views.Tests
 {
-	public partial class ScrollViewWithImages
-	{
-		public ScrollViewWithImages()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class ScrollViewWithImages
+    {
+        public ScrollViewWithImages()
+        {
+            InitializeComponent();
+        }
+    }
 }

@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class ProgressBarXaml
-	{
-		public ProgressBarXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class ProgressBarXaml
+    {
+        public ProgressBarXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }

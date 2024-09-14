@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace GestureSample.Maui.Models
+﻿namespace GestureSample.Maui.Models
 {
     internal class PianoKeyboardHalfSync : PianoKeyboardSync
     {
@@ -12,7 +6,7 @@ namespace GestureSample.Maui.Models
         private readonly Color THIRD_COLOR = Colors.Blue;
         private readonly Color REMOVE_COLOR = Colors.Red;
 
-        
+
 
         public enum KeyboardType
         {
@@ -40,7 +34,7 @@ namespace GestureSample.Maui.Models
                 Type = KeyboardType.TwoAddens;
             _withoutZero = pianoConfig.WithoutZero;
             _patterns = true;
-            
+
         }
 
         public override string SecondsToEnd
@@ -48,36 +42,37 @@ namespace GestureSample.Maui.Models
             get
             {
                 string text = "No more";
-                switch(_numbersChosen)
+                switch (_numbersChosen)
                 {
                     case 0:
                         text = "First";
                         break;
-                     case 1:
+                    case 1:
                         text = "Second";
                         break;
-                     case 2:
+                    case 2:
                         text = "Third";
                         break;
 
                 }
-                return string.Format("{0} number", text) + ((_withoutZero)?"":string.Format( ".\nTime Left: {0} seconds", SECONDS_TO_ANSWER_TOTAL - (_seconds_pressedHS)));
+                return string.Format("{0} number", text) + ((_withoutZero) ? "" : string.Format(".\nTime Left: {0} seconds", SECONDS_TO_ANSWER_TOTAL - (_seconds_pressedHS)));
             }
         }
         protected override void TimerInit()
         {
             timer = Application.Current.Dispatcher.CreateTimer();
             timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += (s, e) => {
+            timer.Tick += (s, e) =>
+            {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
 
                     _seconds_pressedHS++;
 
-                    if ((_numbersChosen<1 && _addend1 != 0) || (_numbersChosen>=1 && _addend2 != 0))
+                    if ((_numbersChosen < 1 && _addend1 != 0) || (_numbersChosen >= 1 && _addend2 != 0))
                     {
 
-                        if(!_withoutZero) _lblTimer.Text = Statement.Selecting;
+                        if (!_withoutZero) _lblTimer.Text = Statement.Selecting;
                         _seconds_pressed++;
                     }
                     else
@@ -86,7 +81,7 @@ namespace GestureSample.Maui.Models
                         _lblTimer.Text = SecondsToEnd;
                     }
 
-                    if ((_seconds_pressed >= 1 || (_seconds_pressedHS >= SECONDS_TO_ANSWER_TOTAL && !_withoutZero))  )
+                    if ((_seconds_pressed >= 1 || (_seconds_pressedHS >= SECONDS_TO_ANSWER_TOTAL && !_withoutZero)))
                     {
                         ImposeEdgesIfNeeded();
                         _seconds_pressed = 0;
@@ -95,7 +90,7 @@ namespace GestureSample.Maui.Models
                         {
                             _numbersChosen++;
                             if (Type == KeyboardType.ThreeAddensWithRemoval) { timer.Stop(); _lblTimer.Text = SecondsToEnd; }
-                                return;
+                            return;
                         }
 
                         //if (Type == KeyboardType.ThreeAddensWithRemoval) return;
@@ -129,7 +124,7 @@ namespace GestureSample.Maui.Models
             if (_imposeEdges)
             {
                 base.ImposeEdgesIfNeeded();
-                if (_withoutZero && _numbersChosen==1 &&
+                if (_withoutZero && _numbersChosen == 1 &&
                     (btnKeys[NUMBER_OF_KEYS - 1].BackgroundColor == COLOR_FREE || btnKeys[0].BackgroundColor == COLOR_FREE))
                 {
                     _addend1 = -1; _addend2 = -1;
@@ -141,7 +136,7 @@ namespace GestureSample.Maui.Models
         public override void PianoInit()
         {
             _numbersChosen = 0;
-            for (int i = 0;i< NUMBER_OF_KEYS; i++) colors[i]= COLOR_FREE;
+            for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = COLOR_FREE;
             _lblTimer.Text = SecondsToEnd;
             base.PianoInit();
         }
@@ -151,9 +146,9 @@ namespace GestureSample.Maui.Models
             _addend1 = 0; _addend2 = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
-                if (btnKeys[i].BackgroundColor ==COLOR_PRESSED)
+                if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
                     _addend1++;
-                else if (btnKeys[i].BackgroundColor == SECOND_COLOR) 
+                else if (btnKeys[i].BackgroundColor == SECOND_COLOR)
                     _addend2++;
             }
         }
@@ -171,8 +166,8 @@ namespace GestureSample.Maui.Models
             {
                 sender.BackgroundColor = REMOVE_COLOR;
                 return true;
-            }            
-            if (_numbersChosen==0)
+            }
+            if (_numbersChosen == 0)
                 sender.BackgroundColor = COLOR_PRESSED;
             else if (_numbersChosen == 1 && sender.BackgroundColor == COLOR_FREE)
                 sender.BackgroundColor = SECOND_COLOR;
@@ -185,7 +180,7 @@ namespace GestureSample.Maui.Models
             return true;
         }
 
-        
+
 
         protected override bool InnerKeyUp(MR.Gestures.Button sender)
         {
@@ -199,9 +194,10 @@ namespace GestureSample.Maui.Models
                         sender.BackgroundColor = colors[i];
                     }
                 }
-            else*/ if ((_numbersChosen ==0 && sender.BackgroundColor ==COLOR_PRESSED)
-                || (_numbersChosen == 1 && sender.BackgroundColor == SECOND_COLOR)
-                || (_numbersChosen == 2 && sender.BackgroundColor == THIRD_COLOR))
+            else*/
+            if ((_numbersChosen == 0 && sender.BackgroundColor == COLOR_PRESSED)
+         || (_numbersChosen == 1 && sender.BackgroundColor == SECOND_COLOR)
+         || (_numbersChosen == 2 && sender.BackgroundColor == THIRD_COLOR))
                 sender.BackgroundColor = COLOR_FREE;
 
 

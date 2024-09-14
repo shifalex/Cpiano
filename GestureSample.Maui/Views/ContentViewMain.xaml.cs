@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class ContentViewMain
-	{
-		public ContentViewMain()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class ContentViewMain
+    {
+        public ContentViewMain()
+        {
+            InitializeComponent();
+        }
+    }
 }

@@ -1,10 +1,5 @@
 ﻿using Realms;
 using Realms.Sync;
-using MongoDB.Bson;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using MongoDB.Driver;
 
 
 
@@ -60,12 +55,13 @@ namespace GestureSample.Maui.Data
             //InitializeRealm();
         }
 
-        private  async Task InitializeRealm()
+        private async Task InitializeRealm()
         {
-            
+
             //var credential = Credentials.Anonymous();
             try
-            {_user = await _app.LogInAsync(Credentials.EmailPassword("alex.shifrin@mail.huji.ac.il", "Aligercargogmailcom"));
+            {
+                _user = await _app.LogInAsync(Credentials.EmailPassword("alex.shifrin@mail.huji.ac.il", "Aligercargogmailcom"));
                 //_user = await _app.LogInAsync(credential);
             }
             catch (Exception ex)

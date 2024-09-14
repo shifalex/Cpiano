@@ -1,11 +1,11 @@
 ﻿
 namespace GestureSample.Views
 {
-	public partial class ImageButtonXaml
-	{
-		public ImageButtonXaml()
-		{
-			InitializeComponent();
-		}
-	}
+    public partial class ImageButtonXaml
+    {
+        public ImageButtonXaml()
+        {
+            InitializeComponent();
+        }
+    }
 }
