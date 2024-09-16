@@ -107,7 +107,6 @@ _lblStatement.Text = text;
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
-                //if (OperatingSystem.IsIOS())
                 _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
                 
             }
@@ -375,7 +374,9 @@ _lblStatement.Text = text;
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
-                    vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
+
+                    if (_config.OperationList.Contains(Operation.Multiplication))
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
@@ -611,7 +612,7 @@ _lblStatement.Text = text;
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
@@ -641,7 +642,7 @@ _lblStatement.Text = text;
                 Keyboard = Keyboard.Numeric,
 
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
