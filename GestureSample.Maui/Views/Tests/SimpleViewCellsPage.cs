@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui;
 using GestureSample.Maui.Models;
+using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Platform;
 
 namespace GestureSample.Views.Tests
@@ -53,15 +54,23 @@ namespace GestureSample.Views.Tests
         private HorizontalStackLayout _hzlEquation;
 
         //VerticalStackLayout _vsl;
-
-
-        /*private bool _btnNextEnabled = false;
-        public bool BtnNextEnabled { get => _btnNextEnabled; }*/
-        #region view updating
-        public async void UpdateView(bool newExercise = false)
+        protected IDispatcherTimer timer;
+        protected virtual void TimerInit()
         {
-            string text = _gamePlay.Status;
-            TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
+            timer = Application.Current.Dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromSeconds(1);
+            timer.Tick += (s, e) =>
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await UpdateStatement();
+                });
+            };
+        }
+        private async Task UpdateStatement()
+            {
+        string text = _gamePlay.Status;
+        TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
             {
                 text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2));
@@ -69,17 +78,26 @@ namespace GestureSample.Views.Tests
                 {
                     text += string.Format("{0} Mistakes left", (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
                 }
-                text += "\n";
+    text += "\n";
             }
             else if (_config.NumberOfTasksToWin > -1)
-            {
-                text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2),
-                    (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
+{
+    text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2),
+        (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
 
-                text += "\n";
-            }
-            _lblStatement.Text = text;
+    text += "\n";
+}
+_lblStatement.Text = text;
 
+        }
+
+        /*private bool _btnNextEnabled = false;
+        public bool BtnNextEnabled { get => _btnNextEnabled; }*/
+        #region view updating
+        public async void UpdateView(bool newExercise = false)
+        {
+            await UpdateStatement();
+            
             List <Task> tasks = new();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
@@ -89,8 +107,8 @@ namespace GestureSample.Views.Tests
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
-                if (OperatingSystem.IsIOS())
-                    _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
+                //if (OperatingSystem.IsIOS())
+                _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
                 
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -228,7 +246,11 @@ namespace GestureSample.Views.Tests
         public SimpleViewCellsPage(GameConfig config)
         {
             _config = config;
-
+            if (_config.NumberOfTasksToWin > -1)
+            {
+                TimerInit();
+                timer.Start();
+            }
             InitializeGamePlay();
             InitializeUI();
 
@@ -575,7 +597,7 @@ namespace GestureSample.Views.Tests
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH,
