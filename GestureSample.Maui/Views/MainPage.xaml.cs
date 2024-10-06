@@ -688,7 +688,17 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     //         SyncType = SyncType.Sync
     //     }
     // })),
-
+    new PageConfig("new Number", "Addition To ten Memorize Game", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
     new PageConfig("new Number", "Addition Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
         OperationList = new() { Operation.Sum},
@@ -773,7 +783,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
-        OperationList =GameConfig.Operations.Arithmetic,
+        OperationList ={  Operation.Sum, Operation.Multiplication},
         MinAddend = -10,
         MaxAddend = 10,
         MinSum = -100,

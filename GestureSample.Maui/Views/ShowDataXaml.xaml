@@ -6,19 +6,18 @@
 
     <ScrollView>
         <VerticalStackLayout>
+            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiers}" SelectedIndexChanged="OnPickerSelectedIndexChanged"  />
+            <Label x:Name="GameDetailLabel" Text="Select a game to see details."  />
             <CollectionView x:Name="StateList">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Grid ColumnDefinitions="5*,*,9*,*,*,*,*,*,*,*,*,*,*,*,*,*">
+                        <Grid ColumnDefinitions="5*,*,*,*,*,*,*,*">
                             <Label Grid.Column="0" Text="{Binding TimeStamp, StringFormat='{}{0:d/M/y hh:mm:ssffff }'}"/>
-                            <Label Grid.Column="1" Text="{Binding UserId}"/>
-                            <Label Grid.Column="2" Text="{Binding TypeName}"/>
                             <Label Grid.Column="3" Text="{Binding Sum}"/>
                             <Label Grid.Column="4" Text="{Binding addend1}"/>
-                            
+                            <Label Grid.Column="6" Text="{Binding op}"/>                            
                             <Label Grid.Column="5" Text="{Binding addend2}"/>
-
-                            <Label Grid.Column="6" Text="{Binding B1}"/>
+                            <!--<Label Grid.Column="6" Text="{Binding B1}"/>
                             <Label Grid.Column="7" Text="{Binding B2}"/>
                             <Label Grid.Column="8" Text="{Binding B3}"/>
                             <Label Grid.Column="9" Text="{Binding B4}"/>
@@ -27,7 +26,7 @@
                             <Label Grid.Column="12" Text="{Binding B7}"/>
                             <Label Grid.Column="13" Text="{Binding B8}"/>
                             <Label Grid.Column="14" Text="{Binding B9}"/>
-                            <Label Grid.Column="15" Text="{Binding B10}"/>
+                            <Label Grid.Column="15" Text="{Binding B10}"/>-->
 
 
 
