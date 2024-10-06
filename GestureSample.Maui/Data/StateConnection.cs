@@ -33,7 +33,7 @@ namespace GestureSample.Maui.Data
                 Console.WriteLine("Database created successfully.");
                 try
                 {
-                    _database.DropTableAsync<State>().Wait();
+                    //_database.DropTableAsync<State>().Wait();
                     _database.CreateTableAsync<State>().Wait();
                     _database.CreateTableAsync<Game>().Wait();
                     Console.WriteLine("Table created successfully.");
