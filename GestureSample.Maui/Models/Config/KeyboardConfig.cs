@@ -44,6 +44,7 @@
     /// //TODO: Make enteries closer to each other 
     /// TODO: save game in the middle
     /// TODO: save game's name...
+    /// //TODO: back to menu or a new game and no picker on aftergame showdataxaml
    // TODO: Triads repeating from 2 to 4 times randomly
     // TODO: Triads repeating interlevingly
     //TODO: Impose edges - 2 ordinal arrows

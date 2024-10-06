@@ -13,10 +13,10 @@
                     <DataTemplate>
                         <Grid ColumnDefinitions="5*,*,*,*,*,*,*,*">
                             <Label Grid.Column="0" Text="{Binding TimeStamp, StringFormat='{}{0:d/M/y hh:mm:ssffff }'}"/>
-                            <Label Grid.Column="3" Text="{Binding Sum}"/>
-                            <Label Grid.Column="4" Text="{Binding addend1}"/>
-                            <Label Grid.Column="6" Text="{Binding op}"/>                            
-                            <Label Grid.Column="5" Text="{Binding addend2}"/>
+                            <Label Grid.Column="1" Text="{Binding Sum}"/>
+                            <Label Grid.Column="2" Text="{Binding Addend1}"/>
+                            <Label Grid.Column="3" Text="{Binding Op}"/>                            
+                            <Label Grid.Column="4" Text="{Binding Addend2}"/>
                             <!--<Label Grid.Column="6" Text="{Binding B1}"/>
                             <Label Grid.Column="7" Text="{Binding B2}"/>
                             <Label Grid.Column="8" Text="{Binding B3}"/>
