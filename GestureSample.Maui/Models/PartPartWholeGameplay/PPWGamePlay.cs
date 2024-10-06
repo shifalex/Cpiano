@@ -1,4 +1,5 @@
-﻿using GestureSample.Views.Tests;
+﻿using GestureSample.Views;
+using GestureSample.Views.Tests;
 
 namespace GestureSample.Maui.Models
 {
@@ -6,6 +7,7 @@ namespace GestureSample.Maui.Models
     internal class PPWGamePlay
     {
         public static readonly int NAN = -1111;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public int addend1;
         public int addend2;
         public virtual int Sum { get; set; }
@@ -35,9 +37,26 @@ namespace GestureSample.Maui.Models
             CurrentOperation = Config.OperationList[0];
 
             GeneratePossibleTriadsSet();
-        }
 
-        private bool IsCorrectInput()
+            SaveState();
+        }
+        protected async void SaveState()
+        {
+            Data.State s = new()
+        {
+            //UserId = 1,
+            Id = this.Id,
+            TimeStamp = DateTime.Now,
+            Op = CurrentOperation.ToDString(),
+            Addend1 = this.addend1,
+            Addend2 = this.addend2,
+            Sum = this.Sum, //TODO:make more elegant
+        };
+        await Data.StateConnection.Instance.SaveStateAsync(s);
+        //await _realmService.AddStateAsync(s);
+    }
+
+    private bool IsCorrectInput()
         {
             int minAddend2 = Config.MinAddend2 == NAN ? Config.MinAddend : Config.MinAddend2;
             int maxAddend2 = Config.MaxAddend2 == NAN ? Config.MaxAddend : Config.MaxAddend2;
@@ -65,16 +84,18 @@ namespace GestureSample.Maui.Models
                 if (Config.NumberOfTasksToWin == _tasksMade )
                 {
                     _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
-                    _losesMade = 0;
-                    _tasksMade = 0;
-                    StartTime = DateTime.Now;
+                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    //_losesMade = 0;
+                    //_tasksMade = 0;
+                    //StartTime = DateTime.Now;
                 }
                 if (Config.NumberOfMistakesToLose == _losesMade)
                 {
                     _status = Statement.Lose;
-                    _losesMade = 0;
-                    _tasksMade = 0;
-                    StartTime = DateTime.Now;
+                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    //_losesMade = 0;
+                    //_tasksMade = 0;
+                    //StartTime = DateTime.Now;
                 }
                 if (Config.IsHistory && _status == Statement.True)
                 {
@@ -92,7 +113,9 @@ namespace GestureSample.Maui.Models
 
                     }
                 }
+                SaveState();
             }
+
             _view.UpdateView();
             return _status == Statement.True;
         }
