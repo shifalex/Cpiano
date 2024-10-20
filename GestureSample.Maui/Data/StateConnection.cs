@@ -33,8 +33,9 @@ namespace GestureSample.Maui.Data
                 Console.WriteLine("Database created successfully.");
                 try
                 {
-
+                    //_database.DropTableAsync<State>().Wait();
                     _database.CreateTableAsync<State>().Wait();
+                    _database.CreateTableAsync<Game>().Wait();
                     Console.WriteLine("Table created successfully.");
                 }
                 catch (Exception ex)
@@ -53,6 +54,16 @@ namespace GestureSample.Maui.Data
         public Task<List<State>> GetStatesAsync()
         {
             return _database.Table<State>().ToListAsync();
+        }
+
+        public Task<int> SaveGameAsync(Game state)
+        {
+            return _database.InsertAsync(state);
+        }
+
+        public Task<List<Game>> GetGamesAsync()
+        {
+            return _database.Table<Game>().ToListAsync();
         }
 
         public async Task UploadDatabaseAsync()

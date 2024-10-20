@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui;
 using GestureSample.Maui.Models;
+using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Platform;
 
 namespace GestureSample.Views.Tests
@@ -30,14 +31,16 @@ namespace GestureSample.Views.Tests
         private GraphicsView rightHandCanvas;
 
 
-        private readonly int TASK_WIDTH = 240;//TODO: if phone then make smaller and make answer keyboard only notSync
+        private readonly int TASK_WIDTH = 120;//TODO: if phone then make smaller and make answer keyboard only notSync
         private Label _lblStatement;
         private Label _lblHistory;
         private Entry _txtAddend1;
         private Entry _txtAddend2;
         private Entry _txtSum;
         private Label _lblAction;
+        private BoxView _hr;
         private Entry[] txt;
+        private Entry _lastFocused;
         //private  Entry txtResult;
         private PianoKeyboardReadOnly _keyboardTask1;
         private PianoKeyboardReadOnly _keyboardTask2;
@@ -51,16 +54,50 @@ namespace GestureSample.Views.Tests
         private HorizontalStackLayout _hzlEquation;
 
         //VerticalStackLayout _vsl;
+        protected IDispatcherTimer timer;
+        protected virtual void TimerInit()
+        {
+            timer = Application.Current.Dispatcher.CreateTimer();
+            timer.Interval = TimeSpan.FromSeconds(1);
+            timer.Tick += (s, e) =>
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await UpdateStatement();
+                });
+            };
+        }
+        private async Task UpdateStatement()
+            {
+        string text = _gamePlay.Status;
+        TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
+            if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
+            {
+                text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2));
+                if (_config.NumberOfMistakesToLose > -1 && _gamePlay._losesMade > 0)
+                {
+                    text += string.Format("{0} Mistakes left", (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
+                }
+    text += "\n";
+            }
+            else if (_config.NumberOfTasksToWin > -1)
+{
+    text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2),
+        (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
 
+    text += "\n";
+}
+_lblStatement.Text = text;
+
+        }
 
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
         #region view updating
         public async void UpdateView(bool newExercise = false)
         {
-            _lblStatement.Text = _gamePlay.Status;
-            TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
-            if (_config.numberOfTasksToWin > -1 && _gamePlay.Status==Statement.Neutral) _lblStatement.Text = string.Format("{0}. {1} Remaining", ts.ToFormattedString("mm:ss"),  _config.numberOfTasksToWin-_gamePlay._tasksMade);
+            await UpdateStatement();
+            
             List <Task> tasks = new();
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
@@ -70,6 +107,7 @@ namespace GestureSample.Views.Tests
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
+                _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
                 
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -95,9 +133,7 @@ namespace GestureSample.Views.Tests
                     EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
                     EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
 
-                    if(_gamePlay.Sum == PPWGamePlay.NAN) _txtSum.Focus();
-                    else if(_gamePlay.addend1 == PPWGamePlay.NAN) _txtAddend1.Focus();
-                    else _txtAddend2.Focus();
+                   
                 }
                 if (_config.isHelpEntries)
                     for (int i = 0; i < txt.Length; i++)
@@ -134,8 +170,17 @@ namespace GestureSample.Views.Tests
                     _pianoKeyboard.PianoInit();
                 }
                 if (tasks.Count > 0) await Task.WhenAll(tasks);
+                
             }
-
+            if (_isThreeTexts)
+            {
+                if(Statement.False == _gamePlay.Status) { 
+                    _lastFocused.Focus(); 
+                }
+                else if (_gamePlay.Sum == PPWGamePlay.NAN) { _txtSum.Focus(); _lastFocused = _txtSum; }
+                else if (_gamePlay.addend1 == PPWGamePlay.NAN) { _txtAddend1.Focus(); _lastFocused = _txtAddend1; }
+                else { _txtAddend2.Focus(); _lastFocused = _txtAddend2; }
+            }
         }
 
         private static void EntryEnabled(Entry ent, bool enabled)
@@ -200,7 +245,11 @@ namespace GestureSample.Views.Tests
         public SimpleViewCellsPage(GameConfig config)
         {
             _config = config;
-
+            if (_config.NumberOfTasksToWin > -1)
+            {
+                TimerInit();
+                timer.Start();
+            }
             InitializeGamePlay();
             InitializeUI();
 
@@ -325,6 +374,9 @@ namespace GestureSample.Views.Tests
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
+
+                    if (_config.OperationList.Contains(Operation.Multiplication))
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
@@ -391,9 +443,9 @@ namespace GestureSample.Views.Tests
 
         private HorizontalStackLayout InitEquationUI()
         {
-            _txtAddend1.WidthRequest = TASK_WIDTH / 4;
-            _txtAddend2.WidthRequest = TASK_WIDTH / 4;
-            _txtSum.WidthRequest = TASK_WIDTH / 4;
+            _txtAddend1.WidthRequest = TASK_WIDTH / 2;
+            _txtAddend2.WidthRequest = TASK_WIDTH / 2;
+            _txtSum.WidthRequest = TASK_WIDTH / 2;
             _txtSum.BackgroundColor = Colors.White;
             _txtSum.FontSize = 18;
             HorizontalStackLayout hzlEquation = new HorizontalStackLayout
@@ -525,8 +577,15 @@ namespace GestureSample.Views.Tests
                 HorizontalOptions = LayoutOptions.Center
             };
 
-            hslBtns.Add(_btnCheck);
-            hslBtns.Add(_btnNext);
+            
+            if (_config.NumberOfMistakesToLose < 0)
+            {   hslBtns.Add(_btnCheck);
+                hslBtns.Add(_btnNext);
+            }
+            if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
+            {  
+                hslBtns.Add(_btnCheck);
+            }
 
             return hslBtns;
         }
@@ -539,19 +598,21 @@ namespace GestureSample.Views.Tests
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
-                BackgroundColor = Colors.Yellow,
+                HorizontalTextAlignment = TextAlignment.Center,
+                BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH,
                 FontSize = 32,
-                IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard
+                IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard,
+               
             };
+            
 
-            _txtAddend1 = new Entry
+                _txtAddend1 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
@@ -567,14 +628,21 @@ namespace GestureSample.Views.Tests
                 WidthRequest = 20,
                 IsVisible = isLblAction
             };
-
+            _hr = new BoxView
+            {
+                HeightRequest = 2,
+                WidthRequest = TASK_WIDTH,
+                BackgroundColor = Colors.Black,
+                HorizontalOptions = LayoutOptions.Center,
+                IsVisible = false
+            };
 
             _txtAddend2 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
 
                 HorizontalOptions = LayoutOptions.Center,
-                HorizontalTextAlignment = TextAlignment.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
@@ -585,6 +653,20 @@ namespace GestureSample.Views.Tests
             _txtAddend2.Keyboard = Keyboard.Numeric;
             _txtSum.Keyboard = Keyboard.Numeric;
 
+            _lastFocused = _txtSum;
+
+            _txtSum.Completed += (sender, e) =>
+            {
+                CheckGamePlay();
+            };
+            _txtAddend1.Completed += (sender, e) =>
+            {
+                CheckGamePlay();
+            };
+            _txtAddend2.Completed += (sender, e) =>
+            {
+                CheckGamePlay();
+            };
         }
 
         protected override void OnDisappearing()
