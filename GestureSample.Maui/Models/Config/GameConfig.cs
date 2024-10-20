@@ -122,17 +122,18 @@ namespace GestureSample.Maui
         public class Operations
         {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
-            public static List<Operation> Arithmetic = new() { Operation.Multiplication, Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
+            public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
             public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }
         // Properties with default values
         public bool IsHistory { get; set; } = false;
         public bool IsHistorySymetrical { get; set; } = false;
-        public int MinAddend { get; set; } = 0;
-        public int MaxAddend { get; set; } = 5;
-        public int MinAddend2 { get; set; } = PPWGamePlay.NAN;
-        public int MaxAddend2 { get; set; } = PPWGamePlay.NAN;
+        private int minAddend = 0, maxAddend = 5, minAddend2 = 0, maxAddend2 = 5;
+        public int MinAddend { get { return minAddend; } set { minAddend = value; minAddend2 = value; } }
+        public int MaxAddend { get { return maxAddend; } set { maxAddend = value; maxAddend2 = value; } }
+        public int MinAddend2 { get { return minAddend2; } set { minAddend2 = value; } }
+        public int MaxAddend2 { get { return maxAddend2; } set { maxAddend2 = value; } }
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
         public bool OnlyThrougTen = false;
@@ -151,7 +152,8 @@ namespace GestureSample.Maui
         public int SecondsTillNextExercise { get; set; } = 2;
         public int RepeatingTimesOfTriad { get; set; } = 1;
 
-        public int numberOfTasksToWin = -1;
+        public int NumberOfTasksToWin { get; set; } = -1;
+        public int NumberOfMistakesToLose { get; set; } = -1;
 
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
         public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;

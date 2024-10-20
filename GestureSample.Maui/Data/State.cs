@@ -9,18 +9,21 @@ namespace GestureSample.Maui.Data
     public class State //: RealmObject
 
     {
-        [PrimaryKey]
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        
+        public string Id { get; set; }
         public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.Now;
         public int UserId { get; set; }
-        public string TypeName { get; set; }
         public int Sum { get; set; }
         public int Addend1 { get; set; }
         public int Addend2 { get; set; }
+
+        public string Op { get; set; } = Operation.Sum.ToString();
 
         //public Color[] KeysPressed { get; set; }
 
 
 
     }
+
+
 }

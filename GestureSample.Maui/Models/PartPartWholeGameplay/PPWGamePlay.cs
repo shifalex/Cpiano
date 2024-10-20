@@ -1,4 +1,5 @@
-﻿using GestureSample.Views.Tests;
+﻿using GestureSample.Views;
+using GestureSample.Views.Tests;
 
 namespace GestureSample.Maui.Models
 {
@@ -6,6 +7,7 @@ namespace GestureSample.Maui.Models
     internal class PPWGamePlay
     {
         public static readonly int NAN = -1111;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public int addend1;
         public int addend2;
         public virtual int Sum { get; set; }
@@ -23,6 +25,7 @@ namespace GestureSample.Maui.Models
         protected int _currentTriadIndex = 0;
 
         public int _tasksMade = 0;
+        public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
 
         protected readonly SimpleViewCellsPage _view;
@@ -34,9 +37,26 @@ namespace GestureSample.Maui.Models
             CurrentOperation = Config.OperationList[0];
 
             GeneratePossibleTriadsSet();
-        }
 
-        private bool IsCorrectInput()
+            SaveState();
+        }
+        protected async void SaveState()
+        {
+            Data.State s = new()
+        {
+            //UserId = 1,
+            Id = this.Id,
+            TimeStamp = DateTime.Now,
+            Op = CurrentOperation.ToDString(),
+            Addend1 = this.addend1,
+            Addend2 = this.addend2,
+            Sum = this.Sum, //TODO:make more elegant
+        };
+        await Data.StateConnection.Instance.SaveStateAsync(s);
+        //await _realmService.AddStateAsync(s);
+    }
+
+    private bool IsCorrectInput()
         {
             int minAddend2 = Config.MinAddend2 == NAN ? Config.MinAddend : Config.MinAddend2;
             int maxAddend2 = Config.MaxAddend2 == NAN ? Config.MaxAddend : Config.MaxAddend2;
@@ -60,11 +80,22 @@ namespace GestureSample.Maui.Models
                     _ => Statement.True
                 };
                 if (_status == Statement.True) _tasksMade++;
-                if (Config.numberOfTasksToWin == _tasksMade )
+                if (_status == Statement.False) _losesMade++;
+                if (Config.NumberOfTasksToWin == _tasksMade )
                 {
                     _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
-                    _tasksMade = 0;
-                    StartTime = DateTime.Now;
+                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    //_losesMade = 0;
+                    //_tasksMade = 0;
+                    //StartTime = DateTime.Now;
+                }
+                if (Config.NumberOfMistakesToLose == _losesMade)
+                {
+                    _status = Statement.Lose;
+                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    //_losesMade = 0;
+                    //_tasksMade = 0;
+                    //StartTime = DateTime.Now;
                 }
                 if (Config.IsHistory && _status == Statement.True)
                 {
@@ -82,7 +113,9 @@ namespace GestureSample.Maui.Models
 
                     }
                 }
+                SaveState();
             }
+
             _view.UpdateView();
             return _status == Statement.True;
         }
@@ -149,7 +182,7 @@ namespace GestureSample.Maui.Models
             Sum = factors[2];
 
             _status = Statement.Neutral;
-            _guessNumber = 0;
+            _guessNumber = 0;//???
             _view.UpdateView(true);
         }
 
@@ -157,6 +190,7 @@ namespace GestureSample.Maui.Models
         {
             get
             {
+                Random r = new();
                 int[] factors = new int[3];
                 if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
                 {
@@ -170,6 +204,10 @@ namespace GestureSample.Maui.Models
                     factors[2] = this.Sum;
                     factors[0] = this.addend1;
                     factors[1] = this.addend2;
+                    if(r.Next(2)==1) {
+                        factors[0] = this.addend2;
+                        factors[1] = this.addend1;
+                    }
                     _currentTriadIndex++;
                     return factors;
                 }   
@@ -183,7 +221,6 @@ namespace GestureSample.Maui.Models
                         return factors;
                 }
 
-                Random r = new();
                 int currentTriadIndex = r.Next(PossibleTriads.Count);
                 factors[2] = PossibleTriads[currentTriadIndex].Sum;//r.Next(Config.MinSum, Config.MaxSum + 1);
                 factors[0] = PossibleTriads[currentTriadIndex].Addend1;//GenerateNewAddend(factors[2]);
@@ -233,6 +270,7 @@ namespace GestureSample.Maui.Models
         {
             get
             {
+                Random r = new();
                 int[] factors = new int[3];
                 if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
                 {
@@ -247,13 +285,17 @@ namespace GestureSample.Maui.Models
                     factors[2] = this.Sum;
                     factors[0] = this.addend1;
                     factors[1] = this.addend2;
+                    if (r.Next(2) == 1)
+                    {
+                        factors[0] = this.addend2;
+                        factors[1] = this.addend1;
+                    }
                     _currentTriadIndex++;
                     return factors;
                 }
-                Random r = new();
 
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
-                factors[1] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
 
                 return factors;
@@ -278,7 +320,7 @@ namespace GestureSample.Maui.Models
             for (int i = minAddend; i <= maxAddend; i++)
                 for (int j = minAddend2; j <= (isSymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
                 {
-                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? i * j : (i + j);
+                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
                     if (sum >= minSum && sum <= maxSum)
                         if (!Config.OnlyThrougTen)
                         {
