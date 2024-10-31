@@ -1,5 +1,4 @@
-﻿using DevExpress.Data.Utils;
-using MR.Gestures;
+﻿using MR.Gestures;
 
 namespace GestureSample.Maui.Models
 {
