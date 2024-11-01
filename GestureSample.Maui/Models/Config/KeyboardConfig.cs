@@ -36,8 +36,8 @@
     //ODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
     //ODO: Fix equation +X sometimes there is a disonance
     //ODO: Remove underline in android entry
-    
-    
+
+
     /// <summary>
     /// /TODO: database save game data and show all after game is over - game over screen
     /// </summary>
@@ -45,15 +45,17 @@
     /// TODO: save game in the middle
     /// TODO: save game's name...
     /// //TODO: back to menu or a new game and no picker on aftergame showdataxaml
-   // TODO: Triads repeating from 2 to 4 times randomly
+    // TODO: Triads repeating from 2 to 4 times randomly
     // TODO: Triads repeating interlevingly
+    //TODO: simple to 5 games with images of objects and
+    //TODO: Proximate triads n+1/n-1/n+2/n-2 on one or n+1/n-1 both addends
     //TODO: Impose edges - 2 ordinal arrows
     //TODO: Fix ImposeEdge arrow bug
     //TODO: Rounded ordinal arrow from the center
     //TODO: Move Cardinal arrows to the edges
     //TODO: Ordinal with a loophole - show once to the left, once to the right, from and to the same places
     //TODO: Oridinal Plus starts from the 10(0)
-    
+
     //TODO: Pattern for numbers
     //TODO: One Button - lights several number: 1-2-4, 5-1-1-1-1
     //TODO: One button - smbolizes 1-2-4, 5-1-1-1-1, 10-10-10-10-50, 10-10-10-10-50--5-1-1-1-1, 1-2-4-8-16-32--64-128-256-512, 1-2-2-4-10-20-20-40-100-200
