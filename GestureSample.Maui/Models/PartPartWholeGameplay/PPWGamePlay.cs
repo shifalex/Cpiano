@@ -38,7 +38,7 @@ namespace GestureSample.Maui.Models
 
             GeneratePossibleTriadsSet();
 
-            SaveState();
+            //SaveState();
         }
         protected async void SaveState()
         {
@@ -183,6 +183,7 @@ namespace GestureSample.Maui.Models
 
             _status = Statement.Neutral;
             _guessNumber = 0;//???
+            SaveState();
             _view.UpdateView(true);
         }
 
