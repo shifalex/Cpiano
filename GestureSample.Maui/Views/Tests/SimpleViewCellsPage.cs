@@ -172,9 +172,9 @@ _lblStatement.Text = text;
                 if (tasks.Count > 0) await Task.WhenAll(tasks);
                 
             }
-            if (_isThreeTexts)
+            if (_isThreeTexts && _config.KeyboardConfig==null)
             {
-                if(Statement.False == _gamePlay.Status) { 
+                if(Statement.False == _gamePlay.Status ) { 
                     _lastFocused.Focus(); 
                 }
                 else if (_gamePlay.Sum == PPWGamePlay.NAN) { _txtSum.Focus(); _lastFocused = _txtSum; }

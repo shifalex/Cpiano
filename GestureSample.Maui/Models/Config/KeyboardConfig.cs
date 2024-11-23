@@ -36,8 +36,10 @@
     //ODO: when it is spatial recognition and when it is by hand - it should be set and not according the number of keys
     //ODO: Fix equation +X sometimes there is a disonance
     //ODO: Remove underline in android entry
+    //ODO: Solve why when I wrong with keyboard, numeric keyboard comes up
+    //ODO: play with possibilities of not removing the yellow, as long the sender is tapped 
 
-
+    //TODO: Bring back save - this time with piano keyboard.
     /// <summary>
     /// /TODO: database save game data and show all after game is over - game over screen
     /// </summary>

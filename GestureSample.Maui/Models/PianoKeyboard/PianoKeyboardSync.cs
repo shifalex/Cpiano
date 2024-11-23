@@ -60,6 +60,7 @@
 
         protected override bool InnerKeyDown(MR.Gestures.Button sender)
         {
+            if (sender.BackgroundColor == COLOR_PRESSED) return true;
             _seconds_pressed = 0;
             sender.BackgroundColor = COLOR_PRESSED;
 
@@ -73,6 +74,7 @@
 
         protected override bool InnerKeyUp(MR.Gestures.Button sender)
         {
+            if (sender.BackgroundColor == COLOR_FREE) return true;
             _seconds_pressed = 0; //OnPropertyChanged(nameof(SecondsToEnd));
             sender.BackgroundColor = COLOR_FREE;
 

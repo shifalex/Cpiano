@@ -1,4 +1,6 @@
 ﻿using SQLite;
+using System.Data.Common;
+
 //using Microsoft.Data.Sqlite;
 //using Microsoft.EntityFrameworkCore.Sqlite;
 using System.Net.Http.Headers;
@@ -35,16 +37,36 @@ namespace GestureSample.Maui.Data
                 {
                     //_database.DropTableAsync<State>().Wait();
                     _database.CreateTableAsync<State>().Wait();
+                    Console.WriteLine($"Table '{typeof(State).Name}' created successfully.");
+                }
+                catch (Exception ex) {
+                    // Drop the existing table
+                    _database.DropTableAsync<State>();
+                    Console.WriteLine($"Table '{typeof(State).Name}' dropped successfully.");
+
+                    // Recreate the table
+                    _database.CreateTableAsync<State>();
+                    Console.WriteLine($"Table '{typeof(State).Name}' created successfully.");
+                }
+            }
+            try { 
                     _database.CreateTableAsync<Game>().Wait();
-                    Console.WriteLine("Table created successfully.");
+                    Console.WriteLine($"Table '{typeof(Game).Name}' created successfully.");
                 }
                 catch (Exception ex)
                 {
+                // Drop the existing table
+                _database.DropTableAsync<Game>();
+                Console.WriteLine($"Table '{typeof(Game).Name}' dropped successfully.");
+
+                // Recreate the table
+                _database.CreateTableAsync<Game>();
+                Console.WriteLine($"Table '{typeof(Game).Name}' created successfully.");
                     // Log or handle the exception as needed
-                    Console.WriteLine($"Database initialization failed: {ex.Message}");
+                    //Console.WriteLine($"Database initialization failed: {ex.Message}");
                 }
             }
-        }
+        
 
         public Task<int> SaveStateAsync(State state)
         {
