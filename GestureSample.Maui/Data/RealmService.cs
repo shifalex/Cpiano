@@ -72,7 +72,7 @@ namespace GestureSample.Maui.Data
             _realm = await Realm.GetInstanceAsync(config);
         }
 
-        public async Task AddStateAsync(State state)
+        public async Task AddStateAsync(QuestionAnswer state)
         {
             await _realm.WriteAsync(() =>
             {
@@ -85,9 +85,9 @@ namespace GestureSample.Maui.Data
             });
         }
         /*
-        public async Task LogButtonPressAsync(string Id)
+        public async Task LogButtonPressAsync(string GameId)
         {
-            var item = _realm.Find<State>(Id);
+            var item = _realm.Find<QuestionAnswer>(GameId);
             if (item != null)
             {
                 await _realm.WriteAsync(realm =>
@@ -97,9 +97,9 @@ namespace GestureSample.Maui.Data
             }
         }*/
 
-        public IList<State> GetItems()
+        public IList<QuestionAnswer> GetItems()
         {
-            return null;// _realm.All<State>().ToList();
+            return null;// _realm.All<QuestionAnswer>().ToList();
         }
     }
 }

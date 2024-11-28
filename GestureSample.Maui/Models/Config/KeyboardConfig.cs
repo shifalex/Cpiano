@@ -38,7 +38,30 @@
     //ODO: Remove underline in android entry
     //ODO: Solve why when I wrong with keyboard, numeric keyboard comes up
     //ODO: play with possibilities of not removing the yellow, as long the sender is tapped 
+    //ODO: Dates picker to choose games from
+    //ODO: Seriazable op
+    //ODO: Game Save
+    //ODO: edit the table with question number
+    //ODO: Understand Why I always lose in show data
+    
+    //TODO: Question correct from the start/from
+    //TODO: Understand what I do with await
+    //TODO: nicer dates
+    //TODO: Game Name
+    //TODO: Game Index
+    //TODO: Grid Height & Android?
+    //TODO:Equations save(replace addend1 and sum)
+    //TODO: Allow Part-Part-Whole???
+    
+    
+    //TODO: save piano on db
+    //TODO: Local Users
+    //TODO: Save on outside db and upload to local if needed
+    //TODO: Class teacher interface
 
+    //TODO: Addition with rule on highest number
+    //TODO: Multiplication With Rule
+    //TODO: Bring back game serial number and date with wrapper and .ToString(). Add Game's Name
     //TODO: Bring back save - this time with piano keyboard.
     /// <summary>
     /// /TODO: database save game data and show all after game is over - game over screen

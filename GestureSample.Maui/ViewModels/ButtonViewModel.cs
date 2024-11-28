@@ -121,10 +121,10 @@ namespace GestureSample.ViewModels
                 }
             }
 
-            /*App.CurrentDB.Add(new State
+            /*App.CurrentDB.Add(new QuestionAnswer
             {
                 UserId = 1,
-                TimeStamp = DateTime.Now,
+                Time = DateTime.Now,
                 TypeName = _gameType,
                 Addend1 = _addend1,
                 Addend2 = _addend2,
