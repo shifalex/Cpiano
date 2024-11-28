@@ -8,10 +8,20 @@
         <VerticalStackLayout  HorizontalOptions="Center">
             <Label x:Name="GameDetailLabel" Text="Select a game to see details."  />
             <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiers}" SelectedIndexChanged="OnPickerSelectedIndexChanged"   />
+                            <Grid ColumnDefinitions="100,100,150,60,60,20,60,20,60" Padding="5" HorizontalOptions="FillAndExpand" Margin="0,10,0,0">
+                                <Label Grid.Column="0" Text="Start Time" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Time Stamp" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Label Grid.Column="2" Text="Time on Task" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+
+                                <Label Grid.Column="4" Text="Addend 1" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Label Grid.Column="6" Text="Addend 2" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Label Grid.Column="8" Text="Sum" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Grid>
             <CollectionView x:Name="StateList" Margin="0,20,0,0">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame BorderColor="Gray" CornerRadius="5" Padding="5" Margin="5" BackgroundColor="{Binding RowBackgroundColor}">
+
                             <Grid ColumnDefinitions="100,100,150,60, 60,20,60,20,60" Padding="5" HorizontalOptions="FillAndExpand" VerticalOptions="Center">
                                 <Label Grid.Column="0" Text="{Binding StartTime, StringFormat='{}{0:HH:mm:ss.ff }-'}" WidthRequest="100" HorizontalOptions="Center" VerticalOptions="Center" BackgroundColor="{Binding TimeColor}"/>
                                 <Label Grid.Column="1"  Text="{Binding TimeStamp, StringFormat='{}{0:HH:mm:ss.ff }'}" WidthRequest="100" HorizontalOptions="Center" BackgroundColor="{Binding TimeColor}" VerticalOptions="Center" />

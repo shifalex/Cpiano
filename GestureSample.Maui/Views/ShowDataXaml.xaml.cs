@@ -123,6 +123,9 @@ namespace GestureSample.Views
 
             if (states.Any())
             {
+                for (int i = 0; i < states.Count; i++)
+                    states[i].RowBackgroundColor = i % 2 == 0 ? Colors.LightGray : Colors.White;
+                    
                 StateList.ItemsSource = states;
             }
             else

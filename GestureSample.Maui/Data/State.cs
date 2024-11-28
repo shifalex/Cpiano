@@ -44,6 +44,7 @@ namespace GestureSample.Maui.Data
         public Color TimeColor { get { return TimeOnTask > TimeSpan.FromSeconds(10) ? Colors.Yellow : Colors.White; } }  
         public DateTimeOffset? StartTime { get; set; } = null;
 
+        public Color RowBackgroundColor { get; set; }
         public TimeSpan? TimeOnTask { get { if (StartTime == null) return null; return (TimeStamp - StartTime); } }
     }
 }
