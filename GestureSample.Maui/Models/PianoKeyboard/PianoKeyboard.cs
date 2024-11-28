@@ -1,4 +1,5 @@
 ﻿using MR.Gestures;
+using MvvmCross.Base;
 
 namespace GestureSample.Maui.Models
 {
@@ -196,17 +197,6 @@ B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
             AddDummies();
-        }
-
-        public void Dispose()
-        {
-            /*for (int i = 0; i < btnKeys.Length; i++)
-            {
-                btnKeys[i].DownCommand = null;
-                btnKeys[i].UpCommand = null;
-                btnKeys[i] = null;
-            }*/
-
         }
 
         //Spatial

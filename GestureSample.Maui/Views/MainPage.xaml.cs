@@ -688,6 +688,18 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     //         SyncType = SyncType.Sync
     //     }
     // })),
+     new PageConfig("new Number", "Basic Addition To ten with rules", () => new SimpleViewCellsPage(new GameConfig
+    {
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 1,
+        OnlyCloseTriad = true,
+        NumberOfTasksToWin=20,
+        NumberOfMistakesToLose=3
+    })),
     new PageConfig("new Number", "Addition To ten Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
         OperationList = new() { Operation.Sum},

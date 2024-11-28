@@ -9,7 +9,7 @@ namespace GestureSample.Maui.Data
     public class State //: RealmObject
 
     {
-        
+
         public string Id { get; set; }
         public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.Now;
         public int UserId { get; set; }
@@ -25,5 +25,25 @@ namespace GestureSample.Maui.Data
 
     }
 
+    public class ShowState : State
+    {
 
+        public ShowState(State state)
+        {
+            TimeStamp = state.TimeStamp;
+            UserId = state.UserId;
+            Sum = state.Sum;
+            Addend1 = state.Addend1;
+            Addend2 = state.Addend2;
+            Op = state.Op;
+        }
+
+        public Color Addend1Color { get; set; } = Colors.White;
+        public Color Addend2Color { get; set; } = Colors.White;
+        public Color SumColor { get; set; } = Colors.White;
+        public Color TimeColor { get { return TimeOnTask > TimeSpan.FromSeconds(10) ? Colors.Yellow : Colors.White; } }  
+        public DateTimeOffset? StartTime { get; set; } = null;
+
+        public TimeSpan? TimeOnTask { get { if (StartTime == null) return null; return (TimeStamp - StartTime); } }
+    }
 }

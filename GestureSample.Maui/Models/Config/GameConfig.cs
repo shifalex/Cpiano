@@ -151,6 +151,7 @@ namespace GestureSample.Maui
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
         public int RepeatingTimesOfTriad { get; set; } = 1;
+        public bool OnlyCloseTriad { get; set; } = false;
 
         public int NumberOfTasksToWin { get; set; } = -1;
         public int NumberOfMistakesToLose { get; set; } = -1;
