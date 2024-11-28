@@ -5,42 +5,41 @@
 				x:Class="GestureSample.Views.ShowDataXaml">
 
     <ScrollView>
-        <VerticalStackLayout>
-            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiers}" SelectedIndexChanged="OnPickerSelectedIndexChanged"  />
+        <VerticalStackLayout  HorizontalOptions="Center">
             <Label x:Name="GameDetailLabel" Text="Select a game to see details."  />
-            <CollectionView x:Name="StateList">
+            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiers}" SelectedIndexChanged="OnPickerSelectedIndexChanged"   />
+            <CollectionView x:Name="StateList" Margin="0,20,0,0">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Grid ColumnDefinitions="5*,*,*,*,*,*,*,*">
-                            <Label Grid.Column="0" Text="{Binding TimeStamp, StringFormat='{}{0:d/M/y hh:mm:ssffff }'}"/>
-                            <Label Grid.Column="1" Text="{Binding Sum}"/>
-                            <Label Grid.Column="2" Text="{Binding Addend1}"/>
-                            <Label Grid.Column="3" Text="{Binding Op}"/>                            
-                            <Label Grid.Column="4" Text="{Binding Addend2}"/>
-                            <!--<Label Grid.Column="6" Text="{Binding B1}"/>
-                            <Label Grid.Column="7" Text="{Binding B2}"/>
-                            <Label Grid.Column="8" Text="{Binding B3}"/>
-                            <Label Grid.Column="9" Text="{Binding B4}"/>
-                            <Label Grid.Column="10" Text="{Binding B5}"/>
-                            <Label Grid.Column="11" Text="{Binding B6}"/>
-                            <Label Grid.Column="12" Text="{Binding B7}"/>
-                            <Label Grid.Column="13" Text="{Binding B8}"/>
-                            <Label Grid.Column="14" Text="{Binding B9}"/>
-                            <Label Grid.Column="15" Text="{Binding B10}"/>-->
+                        <Frame BorderColor="Gray" CornerRadius="5" Padding="5" Margin="5" BackgroundColor="{Binding RowBackgroundColor}">
+                            <Grid ColumnDefinitions="100,100,150,60, 60,20,60,20,60" Padding="5" HorizontalOptions="FillAndExpand" VerticalOptions="Center">
+                                <Label Grid.Column="0" Text="{Binding StartTime, StringFormat='{}{0:HH:mm:ss.ff }-'}" WidthRequest="100" HorizontalOptions="Center" VerticalOptions="Center" BackgroundColor="{Binding TimeColor}"/>
+                                <Label Grid.Column="1"  Text="{Binding TimeStamp, StringFormat='{}{0:HH:mm:ss.ff }'}" WidthRequest="100" HorizontalOptions="Center" BackgroundColor="{Binding TimeColor}" VerticalOptions="Center" />
+                                
+                                <Frame Grid.Column="2" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding TimeColor}">
+                                    <Label Text="{Binding TimeOnTask, StringFormat='{}{0:%ss }'}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Frame>
 
+                                <Label Grid.Column="3" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                                <Frame Grid.Column="4" BorderColor="Black" CornerRadius="5" Padding="5"  BackgroundColor="{Binding Addend1Color}">
+                                    <Label Text="{Binding Addend1}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Frame>
+                                <Label Grid.Column="5" Text="{Binding Op}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Frame Grid.Column="6" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding Addend2Color}">
+                                    <Label Text="{Binding Addend2}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Frame>
+                                <Label Grid.Column="7" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
 
-
-                        </Grid>
-                        
-                        
+                                <Frame Grid.Column="8" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding SumColor}">
+                                    <Label Text="{Binding Sum}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Frame>
+                            </Grid>
+                        </Frame>
                     </DataTemplate>
-                    
-                    
                 </CollectionView.ItemTemplate>
-                
-            </CollectionView>
-            
-            
+                </CollectionView>
+
+
         </VerticalStackLayout>
         
     </ScrollView>

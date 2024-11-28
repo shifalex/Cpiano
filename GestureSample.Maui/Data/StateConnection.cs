@@ -41,12 +41,13 @@ namespace GestureSample.Maui.Data
                 }
                 catch (Exception ex) {
                     // Drop the existing table
-                    _database.DropTableAsync<State>();
+                    _database.DropTableAsync<State>().Wait();
                     Console.WriteLine($"Table '{typeof(State).Name}' dropped successfully.");
 
                     // Recreate the table
-                    _database.CreateTableAsync<State>();
+                    _database.CreateTableAsync<State>().Wait();
                     Console.WriteLine($"Table '{typeof(State).Name}' created successfully.");
+                    Console.WriteLine($"Database initialization failed: {ex.Message}");
                 }
             }
             try { 
@@ -63,7 +64,7 @@ namespace GestureSample.Maui.Data
                 _database.CreateTableAsync<Game>();
                 Console.WriteLine($"Table '{typeof(Game).Name}' created successfully.");
                     // Log or handle the exception as needed
-                    //Console.WriteLine($"Database initialization failed: {ex.Message}");
+                    Console.WriteLine($"Database initialization failed: {ex.Message}");
                 }
             }
         

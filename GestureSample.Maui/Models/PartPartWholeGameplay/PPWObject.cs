@@ -13,5 +13,18 @@
         public int Addend2 { get; set; }
         public int Sum { get; set; }
 
+        public override bool Equals(object obj)
+        {
+            if (obj is PPWObject other)
+            {
+                return Addend1==other.Addend1 && Addend2==other.Addend2 && Sum ==other.Sum;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Addend1, Addend2);
+        }
     }
 }

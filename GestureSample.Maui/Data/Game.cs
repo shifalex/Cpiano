@@ -1,6 +1,8 @@
 ﻿//using SQLite;
 //using Microsoft.Data.Sqlite;
+//using MongoDB.Bson.IO;
 using SQLite;
+using System.Text.Json;
 //using Realms;
 
 namespace GestureSample.Maui.Data
@@ -18,7 +20,17 @@ namespace GestureSample.Maui.Data
         public int Wins { get; set; }
         public int Losses { get; set; }
 
+        // Ignore GameConfig during table creation
+        [Ignore]
         public GameConfig Config { get; set; }
+
+        // Serialize GameConfig as JSON for storage
+        [Column("ConfigJson")]
+        public string ConfigJson
+        {
+            get => Config != null ? JsonSerializer.Serialize(Config) : null;
+            set => Config = value != null ? JsonSerializer.Deserialize<GameConfig>(value) : null;
+        }
 
         //public Color[] KeysPressed { get; set; }
 

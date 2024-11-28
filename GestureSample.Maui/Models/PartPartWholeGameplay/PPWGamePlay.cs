@@ -222,6 +222,38 @@ namespace GestureSample.Maui.Models
                         return factors;
                 }
 
+                if (Config.OnlyCloseTriad)
+                {
+                    int chosenClosedTriad;
+                    do
+                    {
+                        factors[2] = this.Sum;
+                        factors[0] = this.addend1;
+                        factors[1] = this.addend2;
+                        chosenClosedTriad = r.Next(5);
+                        switch (chosenClosedTriad)
+                        {
+                            case 0:
+                                factors[0]++; factors[1]--;
+                                break;
+                            case 1:
+                                factors[0]++; factors[2]++;
+                                break;
+                            case 2:
+                                factors[1]++; factors[2]++;
+                                break;
+                            case 3:
+                                factors[0]--; factors[2]--;
+                                break;
+                            case 4:
+                                factors[1]--; factors[2]--;
+                                break;
+                        }
+                    } 
+                    while (!PossibleTriads.Contains(new PPWObject(factors[0], factors[1], factors[2])));
+                    return factors;
+                }
+
                 int currentTriadIndex = r.Next(PossibleTriads.Count);
                 factors[2] = PossibleTriads[currentTriadIndex].Sum;//r.Next(Config.MinSum, Config.MaxSum + 1);
                 factors[0] = PossibleTriads[currentTriadIndex].Addend1;//GenerateNewAddend(factors[2]);
