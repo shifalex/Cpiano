@@ -1,6 +1,7 @@
 ﻿//using SQLite;
 //using Microsoft.Data.Sqlite;
 //using MongoDB.Bson.IO;
+using Microsoft.Maui.Platform;
 using SQLite;
 using System.Text.Json;
 //using Realms;
@@ -13,12 +14,20 @@ namespace GestureSample.Maui.Data
     {
         [PrimaryKey]
         public string Id { get; set; }
-        public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.Now;
-        public DateTimeOffset TimeStampEnd { get; set; } = DateTimeOffset.Now;//TODO: excgange into the last endtime of the game by calculating
-        public bool IsWin { get; set; }
-        public int UserId { get; set; }
-        public int Wins { get; set; }
-        public int Losses { get; set; }
+        public DateTime TimeStart { get; set; } = DateTime.Now;
+        public DateTime TimeEnd { get; set; } = DateTime.Now;//TODO: excgange into the last endtime of the game by calculating
+        public int FinalStatus { get; set; } = -1;
+        //public TimeSpan FinalTime { get; set; } = TimeSpan.Zero;
+        public string UserId { get; set; }
+        public int Wins { get; set; } = 0;
+        public int Losses { get; set; } = 0;
+
+        public override string ToString()
+        {
+            string status =  FinalStatus switch { 0=>"Lose", 1=>"WIN!", _ => ""};
+            string time = ((TimeSpan)(TimeEnd-TimeStart)).ToFormattedString("mm:ss");
+            return $"{ TimeStart:t} {status} {time} Minutes {Wins}/{(Wins+Losses)}";
+        }
 
         // Ignore GameConfig during table creation
         [Ignore]

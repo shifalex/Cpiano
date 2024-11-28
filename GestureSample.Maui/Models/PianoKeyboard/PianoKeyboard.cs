@@ -58,10 +58,10 @@ namespace GestureSample.Maui.Models
 
         protected async void SaveState()
         {
-            Data.State s = new()
+            Data.QuestionAnswer s = new()
             {
-                UserId = 1,
-                //TimeStamp = DateTime.Now,
+                UserId = "1",
+                //Time = DateTime.Now,
                 //TypeName = _gamePlay.GameType.ToString(),
                 Addend1 = this.Addend1,
                 Addend2 = this.Addend2,

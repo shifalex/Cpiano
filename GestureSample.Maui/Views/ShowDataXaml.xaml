@@ -3,44 +3,51 @@
 				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
 				x:Class="GestureSample.Views.ShowDataXaml">
-
-    <ScrollView>
         <VerticalStackLayout  HorizontalOptions="Center">
-            <Label x:Name="GameDetailLabel" Text="Select a game to see details."  />
-            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiers}" SelectedIndexChanged="OnPickerSelectedIndexChanged"   />
-            <CollectionView x:Name="StateList" Margin="0,20,0,0">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Frame BorderColor="Gray" CornerRadius="5" Padding="5" Margin="5" BackgroundColor="{Binding RowBackgroundColor}">
-                            <Grid ColumnDefinitions="100,100,150,60, 60,20,60,20,60" Padding="5" HorizontalOptions="FillAndExpand" VerticalOptions="Center">
-                                <Label Grid.Column="0" Text="{Binding StartTime, StringFormat='{}{0:HH:mm:ss.ff }-'}" WidthRequest="100" HorizontalOptions="Center" VerticalOptions="Center" BackgroundColor="{Binding TimeColor}"/>
+
+        <Picker x:Name="DatePicker" Title="Select a Date" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged"  />
+        <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged"  />
+        <Grid ColumnDefinitions="60,95,15,220" Padding="5" HorizontalOptions="FillAndExpand" Margin="0,0,0,0" BackgroundColor="#007ACC" >
+            <!--<Label Grid.Column="0" Text="Start Time" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Label Grid.Column="1" Text="Time Stamp" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+                                -->
+            <Label Grid.Column="0" Text="#" FontSize="Large" BackgroundColor="#007ACC" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+            <Label Grid.Column="1" Text="Seconds" FontSize="Large" BackgroundColor="#007ACC" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+
+            <Label Grid.Column="3" FontSize="Large" BackgroundColor="#007ACC" TextColor="White" Text="Question" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+        </Grid>
+
+        <CollectionView x:Name="StateList" Margin="0,0,0,0" HeightRequest="800"  >
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame BorderColor="Gray" CornerRadius="5" Padding="5" Margin="5" BackgroundColor="{Binding RowBackgroundColor}">
+
+                        <Grid ColumnDefinitions="60, 80,30, 60,20,60,20,60" Padding="5" HorizontalOptions="FillAndExpand" VerticalOptions="Center">
+                            <!--<Label Grid.Column="0" Text="{Binding StartTime, StringFormat='{}{0:HH:mm:ss.ff }-'}" WidthRequest="100" HorizontalOptions="Center" VerticalOptions="Center" BackgroundColor="{Binding TimeColor}"/>
                                 <Label Grid.Column="1"  Text="{Binding TimeStamp, StringFormat='{}{0:HH:mm:ss.ff }'}" WidthRequest="100" HorizontalOptions="Center" BackgroundColor="{Binding TimeColor}" VerticalOptions="Center" />
-                                
-                                <Frame Grid.Column="2" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding TimeColor}">
-                                    <Label Text="{Binding TimeOnTask, StringFormat='{}{0:%ss }'}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Frame>
+                                -->
+                            <Label Grid.Column="0" Text="{Binding QuestionNumber}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Frame Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding TimeColor}">
+                                <Label Text="{Binding TimeOnTask, StringFormat='{}{0:0.00 }'}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Frame>
 
-                                <Label Grid.Column="3" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                                <Frame Grid.Column="4" BorderColor="Black" CornerRadius="5" Padding="5"  BackgroundColor="{Binding Addend1Color}">
-                                    <Label Text="{Binding Addend1}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Frame>
-                                <Label Grid.Column="5" Text="{Binding Op}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                <Frame Grid.Column="6" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding Addend2Color}">
-                                    <Label Text="{Binding Addend2}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Frame>
-                                <Label Grid.Column="7" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Label Grid.Column="2" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Frame Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="5"  BackgroundColor="{Binding Addend1Color}">
+                                <Label Text="{Binding Addend1}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Frame>
+                            <Label Grid.Column="4" Text="{Binding OpDString}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Frame Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding Addend2Color}">
+                                <Label Text="{Binding Addend2}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Frame>
+                            <Label Grid.Column="6" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
 
-                                <Frame Grid.Column="8" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding SumColor}">
-                                    <Label Text="{Binding Sum}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                </Frame>
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-                </CollectionView>
-
-
-        </VerticalStackLayout>
-        
-    </ScrollView>
+                            <Frame Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="5" BackgroundColor="{Binding SumColor}">
+                                <Label Text="{Binding Sum}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Frame>
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
 </ContentPage>

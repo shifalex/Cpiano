@@ -35,18 +35,18 @@ namespace GestureSample.Maui.Data
                 Console.WriteLine("Database created successfully.");
                 try
                 {
-                    //_database.DropTableAsync<State>().Wait();
-                    _database.CreateTableAsync<State>().Wait();
-                    Console.WriteLine($"Table '{typeof(State).Name}' created successfully.");
+                    //_database.DropTableAsync<QuestionAnswer>().Wait();
+                    _database.CreateTableAsync<QuestionAnswer>().Wait();
+                    Console.WriteLine($"Table '{typeof(QuestionAnswer).Name}' created successfully.");
                 }
                 catch (Exception ex) {
                     // Drop the existing table
-                    _database.DropTableAsync<State>().Wait();
-                    Console.WriteLine($"Table '{typeof(State).Name}' dropped successfully.");
+                    _database.DropTableAsync<QuestionAnswer>().Wait();
+                    Console.WriteLine($"Table '{typeof(QuestionAnswer).Name}' dropped successfully.");
 
                     // Recreate the table
-                    _database.CreateTableAsync<State>().Wait();
-                    Console.WriteLine($"Table '{typeof(State).Name}' created successfully.");
+                    _database.CreateTableAsync<QuestionAnswer>().Wait();
+                    Console.WriteLine($"Table '{typeof(QuestionAnswer).Name}' created successfully.");
                     Console.WriteLine($"Database initialization failed: {ex.Message}");
                 }
             }
@@ -69,24 +69,56 @@ namespace GestureSample.Maui.Data
             }
         
 
-        public Task<int> SaveStateAsync(State state)
+        public Task<int> SaveStateAsync(QuestionAnswer state)
         {
             return _database.InsertAsync(state);
         }
 
-        public Task<List<State>> GetStatesAsync()
+        public Task<List<QuestionAnswer>> GetStatesAsync()
         {
-            return _database.Table<State>().ToListAsync();
+            return _database.Table<QuestionAnswer>().ToListAsync();
+        }
+        public async Task<List<QuestionAnswer>> GetStatesByQueryAsync(string GameId)
+        {
+            //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM QuestionAnswer WHERE GameId = '{0}'", GameId);
+            return await _database.Table<QuestionAnswer>().Where(state => state.GameId==GameId).ToListAsync();
+
         }
 
-        public Task<int> SaveGameAsync(Game state)
+        public Task<int> SaveGameAsync(Game game)
         {
-            return _database.InsertAsync(state);
+            return _database.InsertAsync(game);
         }
 
         public Task<List<Game>> GetGamesAsync()
         {
-            return _database.Table<Game>().ToListAsync();
+            return _database.Table<Game>().OrderBy(game => game.TimeStart).ToListAsync();
+        }
+
+        public async Task<int> UpdateGameAsync(Game game)
+        {
+            try
+            {
+                return await _database.UpdateAsync(game);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating game: {ex.Message}");
+                return 0;
+            }
+        }
+
+        public async Task<int> UpdateStateAsync(QuestionAnswer state)
+        {
+            try
+            {
+                return await _database.UpdateAsync(state);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating game: {ex.Message}");
+                return 0;
+            }
         }
 
         public async Task UploadDatabaseAsync()
@@ -130,7 +162,7 @@ namespace GestureSample.Maui.Data
 
         string _dbPath;
         private DbConnection conn;
-        public DbSet<State> States { get; set; }
+        public DbSet<QuestionAnswer> States { get; set; }
         public StateConnection(DbContextOptions<StateConnection> options) : base(options)
         { 
         }
@@ -145,16 +177,16 @@ namespace GestureSample.Maui.Data
         {
             if (conn is not null) return;
             conn= new SQLiteConnection(_dbPath);
-            conn.CreateTable<State>();
+            conn.CreateTable<QuestionAnswer>();
         }
 
-        public List<State> GetStates()
+        public List<QuestionAnswer> GetStates()
         {
             Init();
-            return conn.Table<State>().ToList();
+            return conn.Table<QuestionAnswer>().ToList();
         }
 
-        public void Add(State s)
+        public void Add(QuestionAnswer s)
         {
             Init();
             conn.Insert(s);

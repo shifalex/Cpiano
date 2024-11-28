@@ -1,4 +1,5 @@
-﻿using GestureSample.Views;
+﻿using GestureSample.Maui.Data;
+using GestureSample.Views;
 using GestureSample.Views.Tests;
 
 namespace GestureSample.Maui.Models
@@ -7,9 +8,13 @@ namespace GestureSample.Maui.Models
     internal class PPWGamePlay
     {
         public static readonly int NAN = -1111;
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string GameId { get; set; } = Guid.NewGuid().ToString();
         public int addend1;
         public int addend2;
+        QuestionAnswer qaState;
+
+        private int _questionNumber = 0;
+        private Data.Game _gameData;
         public virtual int Sum { get; set; }
 
         public Operation CurrentOperation { get; set; }
@@ -36,23 +41,34 @@ namespace GestureSample.Maui.Models
             _view = view; Config = config;
             CurrentOperation = Config.OperationList[0];
 
+             _gameData = new()
+             {
+                 UserId = "1",
+                 Id = GameId
+             };
+            Data.StateConnection.Instance.SaveGameAsync(_gameData);
+
             GeneratePossibleTriadsSet();
 
             //SaveState();
         }
-        protected async void SaveState()
+        protected async Task SaveState(int resultStatus =-1)
         {
-            Data.State s = new()
-        {
-            //UserId = 1,
-            Id = this.Id,
-            TimeStamp = DateTime.Now,
-            Op = CurrentOperation.ToDString(),
-            Addend1 = this.addend1,
-            Addend2 = this.addend2,
-            Sum = this.Sum, //TODO:make more elegant
-        };
-        await Data.StateConnection.Instance.SaveStateAsync(s);
+
+            Data.QuestionAnswer s = new()
+            {
+
+                GameId = this.GameId,
+                QuestionNumber = _questionNumber,
+                Time = DateTime.Now,
+                Op = CurrentOperation,
+                Addend1 = this.addend1,
+                Addend2 = this.addend2,
+                Sum = this.Sum, //TODO:make more elegant
+                ResultStatus = resultStatus
+            };
+            await Data.StateConnection.Instance.SaveStateAsync(s);
+            qaState = s ;
         //await _realmService.AddStateAsync(s);
     }
 
@@ -79,12 +95,27 @@ namespace GestureSample.Maui.Models
                     Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
                     _ => Statement.True
                 };
-                if (_status == Statement.True) _tasksMade++;
-                if (_status == Statement.False) _losesMade++;
-                if (Config.NumberOfTasksToWin == _tasksMade )
+                if (_status == Statement.True)
+                {
+                    _tasksMade++;
+                    SaveState(1);
+                }
+                if (_status == Statement.False)
+                {
+                    _losesMade++;
+                    SaveState(0);
+                }
+                    if (Config.NumberOfTasksToWin == _tasksMade )
                 {
                     _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
-                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    _status = Statement.Lose;
+                    _gameData.FinalStatus = 1;
+                    _gameData.TimeEnd = DateTime.Now;
+                    _gameData.Wins = _tasksMade;
+                    _gameData.Losses = _losesMade;
+                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
+                    Data.StateConnection.Instance.UpdateGameAsync(_gameData);
+                    App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
                     //_losesMade = 0;
                     //_tasksMade = 0;
                     //StartTime = DateTime.Now;
@@ -92,7 +123,13 @@ namespace GestureSample.Maui.Models
                 if (Config.NumberOfMistakesToLose == _losesMade)
                 {
                     _status = Statement.Lose;
-                    App.MainNavigation.PushAsync(new ShowDataXaml(Id));
+                    _gameData.FinalStatus = 0;
+                    _gameData.TimeEnd = DateTime.Now;
+                    _gameData.Wins = _tasksMade;
+                    _gameData.Losses = _losesMade;
+                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
+                    Data.StateConnection.Instance.UpdateGameAsync(_gameData);
+                    App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
                     //_losesMade = 0;
                     //_tasksMade = 0;
                     //StartTime = DateTime.Now;
@@ -101,7 +138,10 @@ namespace GestureSample.Maui.Models
                 {
                     if (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
                                 (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any()))
+                    {
                         _status = Statement.New;
+                        SaveState(2);
+                    }
                     else
                         RemoveItemToHistory(addend1, addend2, Sum);
                     if (PossibleTriads.Count == 0)
@@ -113,9 +153,13 @@ namespace GestureSample.Maui.Models
 
                     }
                 }
-                SaveState();
             }
 
+            _gameData.TimeEnd = DateTime.Now;
+            _gameData.Wins = _tasksMade;
+            _gameData.Losses = _losesMade;
+            //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
+            Data.StateConnection.Instance.UpdateGameAsync(_gameData);
             _view.UpdateView();
             return _status == Statement.True;
         }
@@ -183,7 +227,9 @@ namespace GestureSample.Maui.Models
 
             _status = Statement.Neutral;
             _guessNumber = 0;//???
+            _questionNumber++;
             SaveState();
+            
             _view.UpdateView(true);
         }
 

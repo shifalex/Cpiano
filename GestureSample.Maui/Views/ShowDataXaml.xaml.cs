@@ -7,41 +7,11 @@ namespace GestureSample.Views
 {
     public partial class ShowDataXaml
     {
-        private class GameItem
-        {
-            public GameItem(string id, string text, int index = 0)
-            {
-                Id = id;
-                Text = text;
-                Index = index;
-            }
-
-            public string Id { get; set; }
-            public int Index { get; set; }
-            public string Text { get; set; }
-
-            public override string ToString()
-            {
-                return $"{Index} {Text}";
-            }
-
-            public override bool Equals(object obj)
-            {
-                if (obj is GameItem other)
-                {
-                    return Id == other.Id;
-                }
-                return false;
-            }
-
-            public override int GetHashCode()
-            {
-                return Id != null ? Id.GetHashCode() : 0;
-            }
-        }
 
         //private readonly RealmService _realmService;
-        private ObservableCollection<GameItem> GameIdentifiers { get; set; } = new();
+        private ObservableCollection<DateTime> GameDates { get; set; } = new();
+        private List<Game> GameIdentifiers { get; set; } = new();
+        private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
         public ShowDataXaml(string gameId = null)
         {
             InitializeComponent();
@@ -53,65 +23,87 @@ namespace GestureSample.Views
 
         public async void ShowData(string gameId=null)
         {
-            await LoadStatesToPicker();
+
+            GameIdentifiers = await StateConnection.Instance.GetGamesAsync();
+            GameIdentifiers.Reverse();
+
+            await LoadDates();
+             LoadGames();
             if(gameId !=null)
             {
-                await LoadStatesToGrid(gameId);
+                 await LoadStatesToGrid(gameId);
             }
         }
 
-        private async Task LoadStatesToPicker()
+        private async Task LoadDates()
         {
-            //await _database.CreateTableAsync<Game>();
-            var states = await StateConnection.Instance.GetStatesAsync();
-            int i = 1;
-            foreach (var state in states)
+
+            foreach (var game in GameIdentifiers)
                 
             {
-                GameItem gameItem = new GameItem(state.Id, state.TimeStamp.ToString("dd/MM/yy HH:mm"), i);
-                if (state != null && !GameIdentifiers.Contains(gameItem))
-                {
-                    GameIdentifiers.Add(gameItem); i++;
+                    if(GameDates.Count>0 && 
+                        GameDates[GameDates.Count-1].Date.Year == game.TimeStart.Year &&
+                        GameDates[GameDates.Count - 1].Date.Month == game.TimeStart.Month &&
+                        GameDates[GameDates.Count - 1].Date.Day == game.TimeStart.Day)
+                    {
+
+                    }
+                    else
+                    {
+                        GameDates.Add(game.TimeStart.Date);
+                    }
+
                 }
+            
+            //GameDates = new ObservableCollection<DateTime>(GameDates.Reverse());
+            DatePicker.ItemsSource = GameDates;
+            if(GameDates.Count>0) {DatePicker.SelectedIndex = 0;
+               
             }
-            GameIdentifiers = new ObservableCollection<GameItem>(GameIdentifiers.Reverse());
-            GamePicker.ItemsSource = GameIdentifiers;
+
+            //GamePicker.ItemsSource = GameIdentifiers;
             
         }
 
         private async Task LoadStatesToGrid(string selectedIdentifier)
         {
-            var gameStats = await StateConnection.Instance.GetStatesAsync();
-            var gameStats2 = gameStats.Where(g => g.Id == selectedIdentifier).ToList();
-            List<ShowState> states = new List<ShowState>();
+            var gameStats = await StateConnection.Instance.GetStatesByQueryAsync(selectedIdentifier);
+            List<ShowState> states = new ();
             ShowState s_prev = null;
-            foreach (var state in gameStats2)
+            foreach (var state in gameStats)
             {
-
-                ShowState s = new ShowState(state);
-                if (s_prev == null)
-                {
-                    s_prev = s;
-                    continue;
-                }
-                if (s_prev.Sum == PPWGamePlay.NAN || s_prev.Addend1 == PPWGamePlay.NAN || s_prev.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
-                {
-                    s.StartTime = s_prev.TimeStamp;
-                    if (s_prev.Sum == PPWGamePlay.NAN) s.SumColor = Colors.LightGreen;
-                    if (s_prev.Addend1 == PPWGamePlay.NAN) s.Addend1Color = Colors.LightGreen;
-                    if (s_prev.Addend2 == PPWGamePlay.NAN) s.Addend2Color = Colors.LightGreen;
-                }
+                ShowState s = new(state);
+                Color color = Colors.LightGray;
                 if (s.Sum == PPWGamePlay.NAN || s.Addend1 == PPWGamePlay.NAN || s.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
                 {
+
+                    if (s_prev == null)//After a good answer
+                        s_prev = s;
+                    if(gameStats[gameStats.Count - 1] == state)//Last not answered
+                    {
+                        if (s.Sum == PPWGamePlay.NAN) { s.SumColor = color; s.Sum = 0; }
+                        if (s.Addend1 == PPWGamePlay.NAN) { s.Addend1Color = color; s.Addend1 = 0; }
+                        if (s.Addend2 == PPWGamePlay.NAN) { s.Addend2Color = color; s.Addend2 = 0; }
+                        states.Add(s);
+                    }
                     continue;
                 }
-                if ((s.Op == "+" && s.Addend1 + s.Addend2 != s.Sum) || (s.Op == "X" && s.Addend1 + s.Addend2 != s.Sum))
+                color = s.ResultStatus switch
                 {
-                    s.Addend1Color = (s.Addend1Color==Colors.LightGreen) ?Colors.PaleVioletRed : Colors.White;
-                    s.Addend2Color = (s.Addend2Color == Colors.LightGreen) ? Colors.PaleVioletRed : Colors.White;
-                    s.SumColor = (s.SumColor == Colors.LightGreen) ? Colors.PaleVioletRed : Colors.White;
+                    0 => Colors.PaleVioletRed,
+                    1 => Colors.LightGreen,
+                    2 => Colors.LightYellow,
+                    _ => Colors.White
+                };
+                if (s_prev.Sum == PPWGamePlay.NAN || s_prev.Addend1 == PPWGamePlay.NAN || s_prev.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
+                {
+                    s.StartTime = s_prev.Time;
+                    if (s_prev.Sum == PPWGamePlay.NAN) s.SumColor = color;
+                    if (s_prev.Addend1 == PPWGamePlay.NAN) s.Addend1Color = color;
+                    if (s_prev.Addend2 == PPWGamePlay.NAN) s.Addend2Color = color;
                 }
-                if ((s.Op == "+" && s.Addend1 + s.Addend2 == s.Sum) || (s.Op == "X" && s.Addend1 + s.Addend2 == s.Sum))
+                
+                if ((s.ResultStatus==1))
                 {
                     s_prev = null;
                 }
@@ -123,6 +115,12 @@ namespace GestureSample.Views
 
             if (states.Any())
             {
+                for (int i = 0; i < states.Count; i++)
+                {
+                    states[i].RowBackgroundColor = states[i].QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
+                    
+                }
+
                 StateList.ItemsSource = states;
             }
             else
@@ -134,14 +132,38 @@ namespace GestureSample.Views
         }
 
 
+        private async void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
+        {
+             LoadGames();
+        }
 
+        private void LoadGames()
+        {
+            if (DatePicker.SelectedIndex != -1)
+            {
+                GameIdentifiersFiltered.Clear();
+                for (int i = 0; i < GameIdentifiers.Count; i++)
+                {
+                    if (GameIdentifiers[i].TimeStart.Year == ((DateTime)DatePicker.SelectedItem).Year &&
+                        GameIdentifiers[i].TimeStart.Month == ((DateTime)DatePicker.SelectedItem).Month &&
+                        GameIdentifiers[i].TimeStart.Day == ((DateTime)DatePicker.SelectedItem).Day)
+                        GameIdentifiersFiltered.Add(GameIdentifiers[i]);
+                }
+            }
+            GamePicker.ItemsSource = GameIdentifiersFiltered;
+            if (GamePicker.Items.Count > 0)
+            {
+                GamePicker.SelectedIndex = 0;
+                //OnPickerSelectedIndexChanged(sender, e);
+            }
+        }
 
         private async void OnPickerSelectedIndexChanged(object sender, EventArgs e)
         {
             var picker = sender as Picker;
             if (picker.SelectedIndex != -1)
             {
-                await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);                
+                 await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);                
             }
             
         }
