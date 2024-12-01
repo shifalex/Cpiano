@@ -13,8 +13,10 @@ namespace GestureSample.Maui.Models
         public int addend2;
         QuestionAnswer qaState;
 
-        private int _questionNumber = 0;
-        private Data.Game _gameData;
+        protected int _questionNumber = 0;
+        protected int _questionsWrong = 0;
+        private bool _lastQuestionWrong = false;
+        protected Data.Game _gameData;
         public virtual int Sum { get; set; }
 
         public Operation CurrentOperation { get; set; }
@@ -44,7 +46,9 @@ namespace GestureSample.Maui.Models
              _gameData = new()
              {
                  UserId = "1",
-                 Id = GameId
+                 Id = GameId,
+                 GameName = config.GameName,
+                 Config = config
              };
             Data.StateConnection.Instance.SaveGameAsync(_gameData);
 
@@ -99,20 +103,26 @@ namespace GestureSample.Maui.Models
                 {
                     _tasksMade++;
                     SaveState(1);
+                    _lastQuestionWrong = false;
                 }
                 if (_status == Statement.False)
                 {
                     _losesMade++;
                     SaveState(0);
+                    if (!_lastQuestionWrong)
+                    {
+                        _questionsWrong++;
+                        _lastQuestionWrong = true;
+                    }
                 }
-                    if (Config.NumberOfTasksToWin == _tasksMade )
+                if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade)
                 {
-                    _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
-                    _status = Statement.Lose;
-                    _gameData.FinalStatus = 1;
+                    _status = (Config.NumberOfTasksToWin == _tasksMade)? Statement.Win2(DateTime.Now.Subtract(StartTime)) : Statement.Lose;
+                    //_status = Statement.Lose;
+                    _gameData.FinalStatus = (Config.NumberOfTasksToWin == _tasksMade) ? 1 : 0;
                     _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _tasksMade;
-                    _gameData.Losses = _losesMade;
+                    _gameData.Wins = _questionNumber;
+                    _gameData.Losses = _questionsWrong;
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
                     Data.StateConnection.Instance.UpdateGameAsync(_gameData);
                     App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
@@ -120,20 +130,7 @@ namespace GestureSample.Maui.Models
                     //_tasksMade = 0;
                     //StartTime = DateTime.Now;
                 }
-                if (Config.NumberOfMistakesToLose == _losesMade)
-                {
-                    _status = Statement.Lose;
-                    _gameData.FinalStatus = 0;
-                    _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _tasksMade;
-                    _gameData.Losses = _losesMade;
-                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    Data.StateConnection.Instance.UpdateGameAsync(_gameData);
-                    App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
-                    //_losesMade = 0;
-                    //_tasksMade = 0;
-                    //StartTime = DateTime.Now;
-                }
+                
                 if (Config.IsHistory && _status == Statement.True)
                 {
                     if (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||

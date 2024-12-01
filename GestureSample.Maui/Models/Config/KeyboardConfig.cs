@@ -43,24 +43,30 @@
     //ODO: Game Save
     //ODO: edit the table with question number
     //ODO: Understand Why I always lose in show data
+    //ODO: Question correct from the start/from
+    //ODO: nicer dates
+    //ODO: Game Index
+    //ODO: Game Name
+    //ODO:Equations save(replace addend1 and sum)
+    //ODO: decomposition game save check
+    //ODO: Grid Height & Android?
     
-    //TODO: Question correct from the start/from
+    //TODO: GameName length fixed
     //TODO: Understand what I do with await
-    //TODO: nicer dates
-    //TODO: Game Name
-    //TODO: Game Index
-    //TODO: Grid Height & Android?
-    //TODO:Equations save(replace addend1 and sum)
-    //TODO: Allow Part-Part-Whole???
-    
-    
+    //TODO: Back button from Gri to "New Number"
+    //TODO: COLOR of grid heading as upper color
+    //TODO: Allow Part-Part-Whole in show game results???
+    //TODO: add levels with save
+    //TODO: show statistics wrong/right per sum or through ten/not through ten/ or on the 10/10 table
+
     //TODO: save piano on db
     //TODO: Local Users
     //TODO: Save on outside db and upload to local if needed
     //TODO: Class teacher interface
 
-    //TODO: Addition with rule on highest number
+    //TODO: Addition with rule on higher number
     //TODO: Multiplication With Rule
+    //TODO: exception rules(both +1 or -1, 2 items of the previous triads in different order with third different item, sometimes right and sometimes false) 
     //TODO: Bring back game serial number and date with wrapper and .ToString(). Add Game's Name
     //TODO: Bring back save - this time with piano keyboard.
     /// <summary>
@@ -72,7 +78,7 @@
     /// //TODO: back to menu or a new game and no picker on aftergame showdataxaml
     // TODO: Triads repeating from 2 to 4 times randomly
     // TODO: Triads repeating interlevingly
-    //TODO: simple to 5 games with images of objects and
+    //TODO: simple to 5 games with images of objects and lengths
     //TODO: Proximate triads n+1/n-1/n+2/n-2 on one or n+1/n-1 both addends
     //TODO: Impose edges - 2 ordinal arrows
     //TODO: Fix ImposeEdge arrow bug
@@ -80,6 +86,8 @@
     //TODO: Move Cardinal arrows to the edges
     //TODO: Ordinal with a loophole - show once to the left, once to the right, from and to the same places
     //TODO: Oridinal Plus starts from the 10(0)
+    //TODO: add NOT to copy/quantity in the fingers game
+    //TODO: Pictorial and width adaptive triads( show objects that change colors after 5  and have completion
 
     //TODO: Pattern for numbers
     //TODO: One Button - lights several number: 1-2-4, 5-1-1-1-1

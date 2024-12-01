@@ -71,7 +71,7 @@ namespace GestureSample.Maui
         Minus,
         [Description("COPY")]
         Copy,
-        [Description("Press same amount")]
+        [Description("EQUAL")]
         Quantity,
         //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
         //Reorder,
@@ -123,9 +123,11 @@ namespace GestureSample.Maui
         {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.Not };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }
+
+        public string GameName = "";
         // Properties with default values
         public bool IsHistory { get; set; } = false;
         public bool IsHistorySymetrical { get; set; } = false;
