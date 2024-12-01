@@ -7,10 +7,20 @@ namespace GestureSample.Views
 {
     public partial class ShowDataXaml
     {
+        private class DateWraper
+        {
+            public DateTime Date { get; set; }
+            public DateWraper(DateTime d) { Date = d; }
 
+            public override string ToString()
+            {
+                return Date.ToShortDateString();
+            }
+        }
         //private readonly RealmService _realmService;
-        private ObservableCollection<DateTime> GameDates { get; set; } = new();
+        private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
+        private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
         public ShowDataXaml(string gameId = null)
         {
@@ -23,9 +33,18 @@ namespace GestureSample.Views
 
         public async void ShowData(string gameId=null)
         {
-
+           
             GameIdentifiers = await StateConnection.Instance.GetGamesAsync();
+            if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
+            for (int i = 0; i < GameIdentifiers.Count; i++) {
+                if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
+                GameIdentifiers[i].index = i+1;
+                await StateConnection.Instance.UpdateGameAsync(GameIdentifiers[i]);
+
+            }
+
             GameIdentifiers.Reverse();
+            //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
             await LoadDates();
              LoadGames();
@@ -50,7 +69,7 @@ namespace GestureSample.Views
                     }
                     else
                     {
-                        GameDates.Add(game.TimeStart.Date);
+                        GameDates.Add(new DateWraper(game.TimeStart.Date));
                     }
 
                 }
@@ -67,7 +86,12 @@ namespace GestureSample.Views
 
         private async Task LoadStatesToGrid(string selectedIdentifier)
         {
-            var gameStats = await StateConnection.Instance.GetStatesByQueryAsync(selectedIdentifier);
+            for (int i = 0; i < GameIdentifiers.Count; i++)
+               if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier)) 
+                    CurrentGame = GameIdentifiers[i];
+
+
+                var gameStats = await StateConnection.Instance.GetStatesByQueryAsync(selectedIdentifier);
             List<ShowState> states = new ();
             ShowState s_prev = null;
             foreach (var state in gameStats)
@@ -112,13 +136,17 @@ namespace GestureSample.Views
 
                 
             }
-
             if (states.Any())
             {
                 for (int i = 0; i < states.Count; i++)
                 {
                     states[i].RowBackgroundColor = states[i].QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
-                    
+                    if(states[i].Op == Maui.Operation.Divide || states[i].Op == Maui.Operation.Minus)
+                    {
+                        int oldSum = states[i].Sum; Color oldSumColor = states[i].SumColor;
+                        states[i].Sum = states[i].Addend1; states[i].SumColor = states[i].Addend1Color;
+                        states[i].Addend1 = oldSum; states[i].Addend1Color = oldSumColor;
+                    }
                 }
 
                 StateList.ItemsSource = states;
@@ -144,9 +172,9 @@ namespace GestureSample.Views
                 GameIdentifiersFiltered.Clear();
                 for (int i = 0; i < GameIdentifiers.Count; i++)
                 {
-                    if (GameIdentifiers[i].TimeStart.Year == ((DateTime)DatePicker.SelectedItem).Year &&
-                        GameIdentifiers[i].TimeStart.Month == ((DateTime)DatePicker.SelectedItem).Month &&
-                        GameIdentifiers[i].TimeStart.Day == ((DateTime)DatePicker.SelectedItem).Day)
+                    if (GameIdentifiers[i].TimeStart.Year == ((DateWraper)DatePicker.SelectedItem).Date.Year &&
+                        GameIdentifiers[i].TimeStart.Month == ((DateWraper)DatePicker.SelectedItem).Date.Month &&
+                        GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day)
                         GameIdentifiersFiltered.Add(GameIdentifiers[i]);
                 }
             }

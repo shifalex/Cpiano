@@ -85,6 +85,7 @@ namespace GestureSample.Views
 
             new PageConfig("new Keyboard", "Async one number", () => new SimpleViewCellsPage(new GameConfig
     {
+                GameName = "Async one number",
         KeyboardConfig = new KeyboardConfig
         {
             TextBoxesQuantity = 1
@@ -92,7 +93,7 @@ namespace GestureSample.Views
     })),
 
     new PageConfig("new Keyboard", "Async one number From Num to Num", () => new SimpleViewCellsPage(new GameConfig
-    {
+    {  GameName = "Async one number From Num to Num",
         FromNumToNum = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -103,6 +104,7 @@ namespace GestureSample.Views
     // Uncomment and update as needed
      new PageConfig("new Keyboard", "Async one number Impose edges", () => new SimpleViewCellsPage(new GameConfig
      {
+         GameName = "Async one number Impose edges",
          KeyboardConfig = new KeyboardConfig
          {
              TextBoxesQuantity = 1,
@@ -122,6 +124,7 @@ namespace GestureSample.Views
 
 new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync one number Quick",
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -132,6 +135,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "Sync one number", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync one number",
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -141,6 +145,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "Sync one number Blind", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync one number Blind",
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -159,6 +164,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("Arrow", "Arrow Sync one number ", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Arrow Sync one number ",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         KeyboardConfig = new KeyboardConfig
         {
@@ -168,6 +174,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Arrow", "Arrow Sync one number Ordinal With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Arrow Sync one number Ordinal With Key Numbers",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         KeyboardConfig = new KeyboardConfig
         {
@@ -192,6 +199,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("Arrow", "Cyclical Right", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Cyclical Right",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalRight,
         KeyboardConfig = new KeyboardConfig
@@ -213,6 +221,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("Arrow", "Cyclical Left", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Cyclical Left",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalLeft,
         KeyboardConfig = new KeyboardConfig
@@ -234,6 +243,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("Arrow", "Cyclical Mixed", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Cyclical Mixed",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalMixed,
         KeyboardConfig = new KeyboardConfig
@@ -244,6 +254,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Arrow", "Cyclical Mixed Ordinal", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Cyclical Mixed Ordinal",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalMixed,
         KeyboardConfig = new KeyboardConfig
@@ -268,6 +279,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("Arrow", "From Left", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "From Left",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.FromLeft,
         KeyboardConfig = new KeyboardConfig
@@ -278,6 +290,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Arrow", "To Left", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName =  "To Left",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.ToLeft,
         KeyboardConfig = new KeyboardConfig
@@ -288,6 +301,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Arrow", "From Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "From Left Ordinal",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.FromLeft,
         KeyboardConfig = new KeyboardConfig
@@ -300,6 +314,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Arrow", "To Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "To Left Ordinal",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.ToLeft,
         KeyboardConfig = new KeyboardConfig
@@ -314,7 +329,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("Bits", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
-
+        GameName = "Sync Hand To Keyboard",
         UIQuestionType = UIQuestionType.CanvasesHands,
         OperationList = new (){  Operation.Copy, Operation.Quantity },
         SecondsTillHideExercise = 2,
@@ -327,7 +342,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("Bits", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
-
+        GameName = "Sync Keyboard To Keyboard",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = GameConfig.Operations.BitArray,
         KeyboardConfig = new KeyboardConfig
@@ -337,7 +352,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("Bits", "Logic", () => new SimpleViewCellsPage(new GameConfig
     {
-
+        GameName = "Logic",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = GameConfig.Operations.Logical.Concat(GameConfig.Operations.BitArray).ToList(),
         OnlyToTen = true,
@@ -404,6 +419,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Right hand Left hand", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync decomposition required new combinations Blind Right hand Left hand",
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -472,7 +488,9 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     // })),
 
      new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
-    {     MinAddend=0,
+    {
+         GameName = "Spatial decomposition required new combinations Blind to 5",
+         MinAddend=0,
          MinSum=1,
           MaxAddend=5,
         MaxSum=5,
@@ -484,6 +502,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync decomposition dummies spatial less then 5",
         MinAddend=0,
         MinSum=1,
         MaxSum = 4,
@@ -498,6 +517,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Keyboard", "Sync decomposition spatial more then 5", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Sync decomposition spatial more then 5",
          MinAddend=5,
         MaxAddend=9,
         MinSum=6,
@@ -540,6 +560,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),*/
     new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Spatial decomposition required new combinations Blind Full",
         MinAddend=0,
         MaxAddend=9,
         MaxSum= 9,
@@ -554,6 +575,8 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
+
+        GameName = "Sync decomposition required new combinations Blind Full Impose Edges",
         MaxAddend=10,
         IsHistory = true,
         KeyboardConfig = new KeyboardConfig
@@ -576,6 +599,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName =  "HSync decomposition required new combinations",
         IsHistory = true,
         MinAddend=1,
         MinSum=2,
@@ -591,6 +615,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Keyboard", "HSync decomposition required new combinations Impose Edges", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "HSync decomposition required new combinations Impose Edges",
         IsHistory = true,
         MinAddend=1,
         MinSum=2,
@@ -605,26 +630,31 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 5)", () => new SimpleViewCellsPage(new GameConfig
         {
+        GameName = "decomposition not required new combinations(up to 5)"
         })),
 
     new PageConfig("new Number", "decomposition(up to 5)", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "decomposition(up to 5)",
         IsHistory = true
     })),
 
     new PageConfig("new Number", "decomposition not required new combinations(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "decomposition not required new combinations(up to 10)",
         MaxAddend=10
     })),
 
     new PageConfig("new Number", "decomposition(up to 10)", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "decomposition(up to 10)",
         MaxAddend=10,
         IsHistory = true
     })),
 
     new PageConfig("new Number", "Till 20 with sync keyboard help", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Till 20 with sync keyboard help",
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
         KeyboardConfig = new KeyboardConfig()
         {
@@ -635,12 +665,14 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Number", "Till 100 with Helping TextBoxes", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Till 100 with Helping TextBoxes",
         MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=true,
         OnlyThrougTen = true
     })),
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "decomposition game Through 10 With keyboard Only Yellow",
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,
         KeyboardConfig = new KeyboardConfig()
         {
@@ -651,7 +683,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
-
+        GameName = "decomposition game Through 10 With keyboard HalfSync",
         MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
 
         KeyboardConfig = new KeyboardConfig
@@ -673,6 +705,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     */
     new PageConfig("new Number", "decomposition game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "decomposition game",
         UIQuestionType = UIQuestionType.DecompositionGame,
         VariableTypes = VariableTypes.OneCanBeSum
     })),
@@ -690,6 +723,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     // })),
      new PageConfig("new Number", "Basic Addition To ten with rules", () => new SimpleViewCellsPage(new GameConfig
     {
+         GameName = "Basic Addition To ten with rules",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 9,
@@ -702,6 +736,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Addition To ten Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Addition To ten Memorize Game",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 9,
@@ -713,6 +748,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Addition Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Addition Memorize Game",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 9,
@@ -725,6 +761,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
     new PageConfig("new Number", "Addition till 200 Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Addition till 200 Game",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 198,
@@ -735,6 +772,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Addition for 180 Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Addition for 180 Game",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 178,
@@ -746,6 +784,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Addition for 90 Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Addition for 90 Game",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 88,
@@ -757,6 +796,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Multiplication Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Multiplication Memorize Game",
         OperationList = new() { Operation.Multiplication},
         MinAddend = 2,
         MaxAddend = 9,
@@ -769,6 +809,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Multiplication Negatives Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Multiplication Negatives Memorize Game",
         OperationList = new() { Operation.Multiplication},
          MinAddend = -10,
         MaxAddend = 10,
@@ -782,6 +823,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Multiplication till 50*10", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Multiplication till 50*10",
         OperationList = new() { Operation.Multiplication},
          MinAddend = 2,
         MaxAddend = 11,
@@ -795,6 +837,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName =  "Mixed Addition Multiplication Negatives",
         OperationList ={  Operation.Sum, Operation.Multiplication},
         MinAddend = -10,
         MaxAddend = 10,
@@ -804,6 +847,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Equation Only Addition Multiplication Negatives(No division or subtraction)", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Equation Only Addition Multiplication Negatives(No division or subtraction)",
         UIQuestionType= UIQuestionType.SimpleEquation,
         OperationList ={  Operation.Sum, Operation.Multiplication},
         MinAddend = -10,
@@ -814,6 +858,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
     })),
     new PageConfig("new Number", "Equations Full", () => new SimpleViewCellsPage(new GameConfig
     {
+        GameName = "Equations Full",
         UIQuestionType= UIQuestionType.SimpleEquation,
         OperationList =GameConfig.Operations.Arithmetic,
         MinAddend = -10,

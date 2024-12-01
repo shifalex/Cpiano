@@ -158,6 +158,12 @@ namespace GestureSample.Maui.Data
             }
         }
 
+        internal async Task Execute(String v)
+        {
+            await _database.ExecuteAsync(v);
+            //throw new NotImplementedException();
+        }
+
         /*
 
         string _dbPath;
