@@ -1,5 +1,7 @@
 ﻿using MR.Gestures;
 using MvvmCross.Base;
+using GestureSample.Maui.Data;
+
 
 namespace GestureSample.Maui.Models
 {
@@ -54,33 +56,20 @@ namespace GestureSample.Maui.Models
         public int Addend2 { get => _addend2; }
         public override int Sum { get => _addend1 + _addend2; }
 
+        
         //private readonly Data.RealmService _realmService;
 
-        protected async void SaveState()
+        protected async void SaveState(int eventType, int key, int row = 0)
         {
-            Data.QuestionAnswer s = new()
+            Data.KeyEvent keyEvent = new()
             {
-                UserId = "1",
-                //Time = DateTime.Now,
-                //TypeName = _gamePlay.GameType.ToString(),
-                Addend1 = this.Addend1,
-                Addend2 = this.Addend2,
-                Sum = this.Sum, //TODO:make more elegant
-                /*
-B1 = btnKeys[0].BackgroundColor== COLOR_PRESSED,
-B2 = btnKeys[1].BackgroundColor == COLOR_PRESSED ,
-B3 = btnKeys[2].BackgroundColor == COLOR_PRESSED ,
-B4 = btnKeys[3].BackgroundColor == COLOR_PRESSED,
-B5 = btnKeys[4].BackgroundColor == COLOR_PRESSED,
-B6 = btnKeys[5].BackgroundColor == COLOR_PRESSED,
-B7 = btnKeys[6].BackgroundColor == COLOR_PRESSED,
-B8 = btnKeys[7].BackgroundColor == COLOR_PRESSED,
-B9 = btnKeys[8].BackgroundColor == COLOR_PRESSED,
-B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
-*/
-            };
-            //await Data.StateConnection.Instance.SaveStateAsync(s);
-            //await _realmService.AddStateAsync(s);
+                EventTime = DateTime.Now,
+                KeyNumber = key,
+                Row = row,
+                EventType = eventType,
+                GameId= _gamePlay.GameId
+            };// = new ();
+    Data.StateConnection.Instance.SaveKeyEventAsync(keyEvent);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
@@ -282,7 +271,18 @@ B10 = btnKeys[9].BackgroundColor == COLOR_PRESSED
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
-            SaveState();
+            int keyNumber = 0;
+            int row = 0;
+            for(int j=0; j<_pianoConfig.Rows; j++)
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                    if (btnKeys[i] == sender)
+                    {
+                        keyNumber = i + 1;
+                        row = j;
+                    }
+            }
+            SaveState(isDown ? 1 : 0,keyNumber,row);
         }
     }
 }

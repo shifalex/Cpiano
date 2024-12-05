@@ -27,11 +27,13 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 
+		
+		
 		<AssemblyName>GestureSample</AssemblyName>
 	</PropertyGroup>
-
+<UsingTask TaskName="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\CodeTaskFactory\Microsoft.Build.Tasks.CodeTaskFactory.dll" />
 	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
-	  <CodesignKey>Apple Development: Created via API (6S98TQ2Q7N)</CodesignKey>
+	  <CodesignKey>Apple Development: Created via API (H6BKVF583L)</CodesignKey>
 	  <CodesignProvision>VS: WildCard Development</CodesignProvision>
 	  <ProvisioningType>automatic</ProvisioningType>
 	</PropertyGroup>
@@ -79,6 +81,18 @@
 	  <PackageReference Include="SkiaSharp.Views" Version="2.88.8" />
 	  <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.8" />
 	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Views\ShowDataXamlKeyboard.xaml.cs">
+	    <DependentUpon>ShowDataXamlKeyboard.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Update="Views\ShowDataXamlKeyboard.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	</ItemGroup>
 
 	<ItemGroup>

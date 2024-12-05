@@ -66,7 +66,24 @@ namespace GestureSample.Maui.Data
                     // Log or handle the exception as needed
                     Console.WriteLine($"Database initialization failed: {ex.Message}");
                 }
+            try
+            {
+                _database.CreateTableAsync<KeyEvent>().Wait();
+                Console.WriteLine($"Table '{typeof(KeyEvent).Name}' created successfully.");
             }
+            catch (Exception ex)
+            {
+                // Drop the existing table
+                _database.DropTableAsync<KeyEvent>();
+                Console.WriteLine($"Table '{typeof(KeyEvent).Name}' dropped successfully.");
+
+                // Recreate the table
+                _database.CreateTableAsync<KeyEvent>();
+                Console.WriteLine($"Table '{typeof(KeyEvent).Name}' created successfully.");
+                // Log or handle the exception as needed
+                Console.WriteLine($"Database initialization failed: {ex.Message}");
+            }
+        }
         
 
         public Task<int> SaveStateAsync(QuestionAnswer state)
@@ -83,6 +100,26 @@ namespace GestureSample.Maui.Data
             //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM QuestionAnswer WHERE GameId = '{0}'", GameId);
             return await _database.Table<QuestionAnswer>().Where(state => state.GameId==GameId).ToListAsync();
 
+        }
+        public Task<int> SaveKeyEventAsync(KeyEvent kevent)
+        {
+            return _database.InsertAsync(kevent);
+        }
+
+        public Task<List<KeyEvent>> GetKeyEventsAsync()
+        {
+            return _database.Table<KeyEvent>().ToListAsync();
+        }
+        public async Task<List<KeyEvent>> GetKeyEventsByQueryAsync(string GameId)
+        {
+            //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM KeyEvent WHERE GameId = '{0}'", GameId);
+            return await _database.Table<KeyEvent>().Where(state => state.GameId == GameId).ToListAsync();
+
+        }
+
+        public Task<int> SaveKeyboardQuestionAsync(KeyboardQuestion kQuestion)
+        {
+            return _database.InsertAsync(kQuestion);
         }
 
         public Task<int> SaveGameAsync(Game game)

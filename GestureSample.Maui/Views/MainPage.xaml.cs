@@ -18,6 +18,7 @@ namespace GestureSample.Views
             //new PageConfig(null, "Number", null),
 
             new PageConfig(null, "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig(null, "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }),
 			//new PageConfig(null, "Cells", null),
 			new PageConfig(null, "Tests", null),
 
