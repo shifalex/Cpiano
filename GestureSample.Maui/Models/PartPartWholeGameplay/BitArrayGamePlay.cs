@@ -100,6 +100,9 @@ namespace GestureSample.Maui.Models
             else
                 BitArrayQuestion = GenerateSequenceArrayQuestion(fromIndex, lengthIndexes);
             Console.WriteLine("above number:{0}", aboveNumber);
+
+
+
         }
 
         public bool[] BitArrayQuestion { get; set; }
@@ -197,6 +200,22 @@ namespace GestureSample.Maui.Models
                 }
 
             }
+            Data.KeyboardQuestion s = new()
+            {
+
+                GameId = this.GameId,
+                QuestionNumber = _questionNumber,
+                Time = DateTime.Now,
+                keyboard1 = BitArrayQuestion,
+                keyboard2 = BitArrayQuestion2
+            };
+            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            {
+                s.aboveNumber = aboveNumber;
+                s.length = length;
+            }
+            Data.StateConnection.Instance.SaveKeyboardQuestionAsync(s);
+
             _view.UpdateView(true);
 
         }

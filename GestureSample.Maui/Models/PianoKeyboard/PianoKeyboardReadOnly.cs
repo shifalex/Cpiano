@@ -4,7 +4,7 @@ namespace GestureSample.Maui.Models
 {
 
 
-    internal class PianoKeyboardReadOnly : MR.Gestures.Grid
+    public class PianoKeyboardReadOnly : MR.Gestures.Grid
     {
 
 
