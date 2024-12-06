@@ -174,12 +174,22 @@ _lblStatement.Text = text;
             }
             if (_isThreeTexts && _config.KeyboardConfig==null)
             {
-                if(Statement.False == _gamePlay.Status ) { 
-                    _lastFocused.Focus(); 
+                if (_gamePlay.Status == Statement.False || _gamePlay.Status == Statement.WrongInput)
+                {
+                    _lastFocused.Focus();
                 }
-                else if (_gamePlay.Sum == PPWGamePlay.NAN) { _txtSum.Focus(); _lastFocused = _txtSum; }
-                else if (_gamePlay.addend1 == PPWGamePlay.NAN) { _txtAddend1.Focus(); _lastFocused = _txtAddend1; }
-                else { _txtAddend2.Focus(); _lastFocused = _txtAddend2; }
+                else
+                {
+                    _txtAddend1.ReturnCommand = null;
+                    if (_gamePlay.Sum == PPWGamePlay.NAN) { _txtSum.Focus(); _lastFocused = _txtSum; }
+                    else if (_gamePlay.addend1 == PPWGamePlay.NAN /*&& _gamePlay.addend2 != PPWGamePlay.NAN*/) { _txtAddend1.Focus(); _lastFocused = _txtAddend1; }
+                    /*else if (_gamePlay.addend1 == PPWGamePlay.NAN && _gamePlay.addend2 == PPWGamePlay.NAN)
+                    {
+                        _txtAddend1.Focus();
+                        _txtAddend1.ReturnCommand = new Command(()=> { _txtAddend2.Focus(); });
+                    }*/
+                    else { _txtAddend2.Focus(); _lastFocused = _txtAddend2; }
+                }
             }
         }
 
@@ -277,7 +287,12 @@ _lblStatement.Text = text;
                 {
                     if (_gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
                     {
-                        await Task.Delay(_config.SecondsTillNextExercise);
+                        if (_config.NumberOfTasksToWin < 0)
+                        {
+                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
+                            await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
+                        }
                         GenerateNextExercise();
                     };
                 }
@@ -661,7 +676,10 @@ _lblStatement.Text = text;
             };
             _txtAddend1.Completed += (sender, e) =>
             {
-                CheckGamePlay();
+                if (_config.VariableTypes != VariableTypes.TwoNoSum )
+                    CheckGamePlay();
+                else
+                    _txtAddend2.Focus();
             };
             _txtAddend2.Completed += (sender, e) =>
             {

@@ -88,12 +88,11 @@ namespace GestureSample.Maui
 
     public enum VariableTypes
     {
-        //ShowOnlySum=0,
-        OneNoSum,
-        TwoNoSum,
         OneCanBeSum,
+        OneNoSum,
         SumOnly,
-        TwoAny
+        //TwoAny,
+        TwoNoSum
     }
 
     public enum Direction

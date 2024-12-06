@@ -98,31 +98,59 @@ namespace GestureSample.Maui.Models
                     //GameType.Logic => Statement.True,
                     Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
                     _ => Statement.True
-                };
-                if (_status == Statement.True)
+                };                
+                if  (Config.IsHistory && _status == Statement.True &&
+                    (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
+                    (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any()))) 
+                    _status= Statement.New;
+                    
+               if (_status == Statement.True)
                 {
                     _tasksMade++;
                     SaveState(1);
                     _lastQuestionWrong = false;
+                    if (Config.IsHistory)
+                    {
+                        RemoveItemToHistory(addend1, addend2, Sum);
+                    }
+
                 }
-                if (_status == Statement.False)
+                if (_status == Statement.False || _status == Statement.New)
                 {
                     _losesMade++;
-                    SaveState(0);
+                    SaveState(_status==Statement.New?2:0);
                     if (!_lastQuestionWrong)
                     {
                         _questionsWrong++;
                         _lastQuestionWrong = true;
                     }
                 }
-                if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade)
+                if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
                 {
-                    _status = (Config.NumberOfTasksToWin == _tasksMade)? Statement.Win2(DateTime.Now.Subtract(StartTime)) : Statement.Lose;
-                    //_status = Statement.Lose;
-                    _gameData.FinalStatus = (Config.NumberOfTasksToWin == _tasksMade) ? 1 : 0;
+                    if (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0))
+                    { 
+                        _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
+                        _gameData.FinalStatus = 1;
+                    }
+                    else
+                    {
+                        _status =  Statement.Lose;
+                        //_status = Statement.Lose;
+                        _gameData.FinalStatus =  0;
+                    }
+
                     _gameData.TimeEnd = DateTime.Now;
                     _gameData.Wins = _questionNumber;
                     _gameData.Losses = _questionsWrong;
+                    /*    if (PossibleTriads.Count == 0)
+                    {
+                    _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
+                        GeneratePossibleTriadsSet();
+                        AllHistory.Clear(); Config.VariableTypes = (Config.VariableTypes == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
+                        StartTime = DateTime.Now;
+                    
+                    }*/
+
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
                     Data.StateConnection.Instance.UpdateGameAsync(_gameData);
                     App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
@@ -131,25 +159,7 @@ namespace GestureSample.Maui.Models
                     //StartTime = DateTime.Now;
                 }
                 
-                if (Config.IsHistory && _status == Statement.True)
-                {
-                    if (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
-                                (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any()))
-                    {
-                        _status = Statement.New;
-                        SaveState(2);
-                    }
-                    else
-                        RemoveItemToHistory(addend1, addend2, Sum);
-                    if (PossibleTriads.Count == 0)
-                    {
-                        _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
-                        GeneratePossibleTriadsSet();
-                        AllHistory.Clear(); Config.VariableTypes = (Config.VariableTypes == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
-                        StartTime = DateTime.Now;
-
-                    }
-                }
+                
             }
 
             _gameData.TimeEnd = DateTime.Now;
@@ -171,8 +181,8 @@ namespace GestureSample.Maui.Models
             {
                 if (PossibleTriads.Where(item => item.Sum == Sum && item.Addend2 == addend1).Any())
                     PossibleTriads.Remove(PossibleTriads.Where(item => item.Sum == Sum && item.Addend2 == addend1).ToList()[0]);
-
-                AllHistory.Add(new PPWObject(addend2, addend1, Sum));
+                if(addend1!=addend2)
+                    AllHistory.Add(new PPWObject(addend2, addend1, Sum));
             }
         }
 
@@ -201,7 +211,7 @@ namespace GestureSample.Maui.Models
             //    factors = FactorsThroughTen;
 
             Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0], CurrentOperation.ToDString(), factors[1], factors[2]);
-            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum || Config.VariableTypes == VariableTypes.TwoAny) ? r.Next(3) : r.Next(2);
+            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum /*|| Config.VariableTypes == VariableTypes.TwoAny*/) ? r.Next(3) : r.Next(2);
             switch (Config.VariableTypes)
             {
                 case VariableTypes.OneCanBeSum:
@@ -211,7 +221,7 @@ namespace GestureSample.Maui.Models
                     factors[2] = NAN; break;
                 case VariableTypes.TwoNoSum:
                     factors[0] = NAN; factors[1] = NAN; break;
-                case VariableTypes.TwoAny:
+                //case VariableTypes.TwoAny:
                 default:
                     for (int i = 0; i < 3; i++)
                         if (i != n) factors[i] = NAN;
@@ -370,6 +380,15 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }
 
+                if (Config.IsHistory)
+                {
+                    int currentTriadIndex = r.Next(PossibleTriads.Count);
+                    factors[2] = PossibleTriads[currentTriadIndex].Sum;//r.Next(Config.MinSum, Config.MaxSum + 1);
+                    factors[0] = PossibleTriads[currentTriadIndex].Addend1;//GenerateNewAddend(factors[2]);
+                    factors[1] = PossibleTriads[currentTriadIndex].Addend2;//factors[2] - factors[0];
+                    return factors;
+                }
+
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
                 factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
@@ -391,10 +410,9 @@ namespace GestureSample.Maui.Models
             int minAddend = Config.MinAddend, maxAddend = Config.MaxAddend, minSum = Config.MinSum, maxSum = Config.MaxSum;
             int minAddend2 = Config.MinAddend2 == NAN ? minAddend : Config.MinAddend2;
             int maxAddend2 = Config.MaxAddend2 == NAN ? maxAddend : Config.MaxAddend2;
-            bool isSymetrical = Config.IsHistorySymetrical;
 
             for (int i = minAddend; i <= maxAddend; i++)
-                for (int j = minAddend2; j <= (isSymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
+                for (int j = minAddend2; j <= (Config.IsHistorySymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
                 {
                     int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
                     if (sum >= minSum && sum <= maxSum)
