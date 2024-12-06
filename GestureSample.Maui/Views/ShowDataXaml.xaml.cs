@@ -119,7 +119,7 @@ namespace GestureSample.Views
                     2 => Colors.LightYellow,
                     _ => Colors.White
                 };
-                if (s_prev.Sum == PPWGamePlay.NAN || s_prev.Addend1 == PPWGamePlay.NAN || s_prev.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
+                if (s_prev?.Sum == PPWGamePlay.NAN || s_prev?.Addend1 == PPWGamePlay.NAN || s_prev?.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
                 {
                     s.StartTime = s_prev.Time;
                     if (s_prev.Sum == PPWGamePlay.NAN) s.SumColor = color;

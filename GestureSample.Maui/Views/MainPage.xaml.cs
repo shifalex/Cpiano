@@ -808,6 +808,18 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         NumberOfMistakesToLose=5,
         EnforceOperationLabel=true
     })),
+    new PageConfig("new Number", "Multiplicators", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Multiplicators",
+        OperationList = new() { Operation.Multiplication},
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=100,
+        IsHistory=true,
+        IsHistorySymetrical=true,
+        VariableTypes = VariableTypes.TwoNoSum,
+        EnforceOperationLabel=true
+    })),
     new PageConfig("new Number", "Multiplication Negatives Memorize Game", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Multiplication Negatives Memorize Game",
