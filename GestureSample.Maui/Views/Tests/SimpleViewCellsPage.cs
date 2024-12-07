@@ -174,14 +174,16 @@ _lblStatement.Text = text;
             }
             if (_isThreeTexts && _config.KeyboardConfig==null)
             {
-                if (_gamePlay.Status == Statement.False || _gamePlay.Status == Statement.WrongInput)
+                if (_gamePlay.Status == Statement.False || _gamePlay.Status == Statement.WrongInput || _gamePlay.Status == Statement.New)
                 {
                     _lastFocused.Focus();
                 }
                 else
                 {
                     _txtAddend1.ReturnCommand = null;
-                    if (_gamePlay.Sum == PPWGamePlay.NAN) { _txtSum.Focus(); _lastFocused = _txtSum; }
+                    if (_gamePlay.Sum == PPWGamePlay.NAN) { 
+                        _txtSum.Focus(); 
+                        _lastFocused = _txtSum; }
                     else if (_gamePlay.addend1 == PPWGamePlay.NAN /*&& _gamePlay.addend2 != PPWGamePlay.NAN*/) { _txtAddend1.Focus(); _lastFocused = _txtAddend1; }
                     /*else if (_gamePlay.addend1 == PPWGamePlay.NAN && _gamePlay.addend2 == PPWGamePlay.NAN)
                     {
@@ -279,7 +281,9 @@ _lblStatement.Text = text;
         {
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                _pianoKeyboard.IsEnabled = !await _gamePlay.CheckAsync(_pianoKeyboard);
+                bool isCorrect = await _gamePlay.CheckAsync(_pianoKeyboard);
+                if(isCorrect) GenerateNextExercise();
+
             }
             else
             {
@@ -593,14 +597,14 @@ _lblStatement.Text = text;
             };
 
             
-            if (_config.NumberOfMistakesToLose < 0)
+            if (_config.NumberOfMistakesToLose < 0 && !_config.IsHistory)
             {   hslBtns.Add(_btnCheck);
                 hslBtns.Add(_btnNext);
             }
-            if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
+            /*if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
             {  
                 hslBtns.Add(_btnCheck);
-            }
+            }*/
 
             return hslBtns;
         }
