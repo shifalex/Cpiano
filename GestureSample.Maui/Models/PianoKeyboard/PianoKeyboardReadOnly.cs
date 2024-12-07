@@ -14,16 +14,122 @@ namespace GestureSample.Maui.Models
 
         protected readonly int NUMBER_OF_KEYS;
         protected readonly int FINGER_SEPERATOR = 5;
-        protected readonly MR.Gestures.Button[] btnKeys;
+        protected MR.Gestures.Button[] btnKeys;
+        public int Length => btnKeys.Length;
+        protected virtual int heading_height { get; } = 5;
 
 
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
         public Color[] colors;
-        public int Length => btnKeys.Length;
-        protected virtual int heading_height { get; } = 5;
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1)
+        public static readonly BindableProperty KeysProperty =
+        BindableProperty.Create(
+            nameof(colors),
+            typeof(bool[]),
+            typeof(PianoKeyboardReadOnly),
+            default(bool[]),
+            propertyChanged: OnKeysChanged);
+
+        public bool[] Keys
+        {
+            get => (bool[])GetValue(KeysProperty);
+            set => SetValue(KeysProperty, value);
+        }
+
+
+
+        private static void OnKeysChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            if (bindable is PianoKeyboardReadOnly control)
+            {
+                if (newValue is bool[] boolKeys)
+                    control.PianoInit(boolKeys);
+                else if (newValue is Color[] colorKeys)
+                    control.PianoInit(colorKeys);
+            }
+        }
+
+
+        public static readonly BindableProperty DirectionProperty =
+        BindableProperty.Create(
+            nameof(Direction),
+            typeof(Direction),
+            typeof(PianoKeyboardReadOnly),
+            Direction.Right, // default value can be whatever makes sense
+            propertyChanged: OnDirectionChanged);
+
+        public Direction Direction
+        {
+            get => (Direction)GetValue(DirectionProperty);
+            set => SetValue(DirectionProperty, value);
+        }
+
+        private static void OnDirectionChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            if (bindable is PianoKeyboardReadOnly control && newValue is Direction dir)
+            {
+
+                control.RemoveArrows();
+                if (control.ArrowLength != null && control.AboveNumber != null)
+                    control.AddArrow(control.Direction, (int)control.AboveNumber, (int)control.ArrowLength,1,8);
+
+            }
+        }
+
+        // 2. AboveNumber Property
+        public static readonly BindableProperty AboveNumberProperty =
+            BindableProperty.Create(
+                nameof(AboveNumber),
+                typeof(int?),
+                typeof(PianoKeyboardReadOnly),
+                default(int?), // null by default
+                propertyChanged: OnAboveNumberChanged);
+
+        public int? AboveNumber
+        {
+            get => (int?)GetValue(AboveNumberProperty);
+            set => SetValue(AboveNumberProperty, value);
+        }
+
+        private static void OnAboveNumberChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            if (bindable is PianoKeyboardReadOnly control && newValue != null && newValue is int number)
+            {
+                control.RemoveArrows();
+                if (control.ArrowLength != null && control.AboveNumber != null)
+                    control.AddArrow(control.Direction, (int)control.AboveNumber, (int)control.ArrowLength, 1, 8);
+            }
+        }
+
+
+        // 3. Length Property
+        public static readonly BindableProperty ArrowLengthProperty =
+            BindableProperty.Create(
+                nameof(ArrowLength),
+                typeof(int?),
+                typeof(PianoKeyboardReadOnly),
+                default(int?),
+                propertyChanged: OnLengthChanged);
+
+        public int? ArrowLength
+        {
+            get => (int?)GetValue(ArrowLengthProperty);
+            set => SetValue(ArrowLengthProperty, value);
+        }
+
+        private static void OnLengthChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            if (bindable is PianoKeyboardReadOnly control && newValue != null && newValue is int number)
+            {
+                control.RemoveArrows();
+                if (control.ArrowLength != null && control.AboveNumber != null)
+                    control.AddArrow(control.Direction, (int)control.AboveNumber, (int)control.ArrowLength, 1, 8);
+            }
+        }
+
+
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=100)
         {
             Grid Arrow = new()
             {
@@ -38,8 +144,14 @@ namespace GestureSample.Maui.Models
                 }
             };
 
-            double columnWidth = btnKeys[0].Width;
-            if (columnWidth == -1) columnWidth = 100;
+            var request = btnKeys[0].Measure(double.PositiveInfinity, double.PositiveInfinity);
+            //double columnWidth = request.Request.Width;
+
+            //double columnWidth = btnKeys[0].Width;
+
+
+            if (columnWidth == -1)
+                columnWidth = 10;
             //TODO: ARROW DRAWING - First draw buttons
             //TODO: ARROW DRAWING - solve orientation switch arrow bug
             // Create the number label
@@ -47,7 +159,7 @@ namespace GestureSample.Maui.Models
             {
                 Text = numberAbove.ToString(),
                 TextColor = Colors.White,
-                WidthRequest = columnWidth,
+                //WidthRequest = columnWidth,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalTextAlignment = TextAlignment.Center,
@@ -68,11 +180,11 @@ namespace GestureSample.Maui.Models
                     5 => 3,
                     _ => 2
                 };
-                numberLabel.HorizontalOptions = LayoutOptions.Start ;
+                numberLabel.HorizontalOptions = LayoutOptions.Start;
             }
             else
             {
-                arrowStart = columnWidth + (aboveKeyNumber switch { 1 => -3, 6 => 8+ columnWidth, _ => columnWidth });
+                arrowStart = columnWidth + (aboveKeyNumber switch { 1 => -3, 6 => 8 + columnWidth, _ => columnWidth });
                 arrowEnd = aboveKeyNumber == 1 ? 0 : columnWidth;
                 arrowEdgeX = arrowEnd + 10;
                 colSpan = aboveKeyNumber switch
@@ -80,7 +192,7 @@ namespace GestureSample.Maui.Models
                     1 => 1,
                     6 => 3,
                     _ => 2
-                };                
+                };
                 numberLabel.HorizontalOptions = LayoutOptions.End;
             }
             // Create the arrow
@@ -98,7 +210,7 @@ namespace GestureSample.Maui.Models
             {
                 pathData = String.Format("M {0},30 L {0},10 L {1},10 L {2},0 M {1},10 L {2},20", arrowStart, arrowEnd, arrowEdgeX);
             }
-                Console.WriteLine(pathData);
+            Console.WriteLine(pathData);
             Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(pathData, Colors.White);
 
 
@@ -111,7 +223,7 @@ namespace GestureSample.Maui.Models
             int column = aboveKeyNumber - 1;
             if (direction == Direction.Left) column--;
             if (FINGER_SEPERATOR >= 0 && aboveKeyNumber > FINGER_SEPERATOR) column++;
-            if (direction == Direction.Left && aboveKeyNumber==6) column--;//Because of ColSpan 3
+            if (direction == Direction.Left && aboveKeyNumber == 6) column--;//Because of ColSpan 3
             if (column == -1) column = 0;
             this.Add(Arrow, column, row);
 
@@ -141,12 +253,29 @@ namespace GestureSample.Maui.Models
             };
         }
         public KeyboardConfig Config;
+
+        public PianoKeyboardReadOnly() : base()
+        {
+            Config = new();
+            int keysInRow = Config.KeysInRow;
+            int rows = Config.Rows;
+            NUMBER_OF_KEYS = keysInRow * rows;
+            InitializeWithConfig(Config);
+        }
         public PianoKeyboardReadOnly(KeyboardConfig config) : base()
+        {
+
+            int keysInRow = config.KeysInRow;
+            int rows = config.Rows;
+            NUMBER_OF_KEYS = keysInRow * rows;
+            InitializeWithConfig(config);
+        }
+
+        private void InitializeWithConfig(KeyboardConfig config)
         {
             Config = config;
             int keysInRow = config.KeysInRow;
             int rows = config.Rows;
-            NUMBER_OF_KEYS = keysInRow * rows;
             this.ColumnSpacing = 5;
             this.BackgroundColor = Colors.Black;
             //this.Padding = textBoxesQuantity==0? new Thickness(0, 30, 0, 0):0;

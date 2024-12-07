@@ -67,7 +67,8 @@ namespace GestureSample.Maui.Models
                 KeyNumber = key,
                 Row = row,
                 EventType = eventType,
-                GameId= _gamePlay.GameId
+                GameId= _gamePlay.GameId,
+                QuestionNumber = _gamePlay._questionNumber
             };// = new ();
     Data.StateConnection.Instance.SaveKeyEventAsync(keyEvent);
         }
@@ -263,9 +264,10 @@ namespace GestureSample.Maui.Models
         }
         private void OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {
+            
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
-
+            Color prevColor = sender.BackgroundColor;
             if ((isDown ? InnerKeyDown(sender) : InnerKeyUp(sender)) && _patterns)
                 setAddendsByPattern();
 
@@ -282,7 +284,11 @@ namespace GestureSample.Maui.Models
                         row = j;
                     }
             }
-            SaveState(isDown ? 1 : 0,keyNumber,row);
+            if (prevColor != sender.BackgroundColor)
+            {
+                //TODO: add all the x and y of the touches on the keyboard to different db table using e.Touches[0] - will be needed for the touching patterns. Make it a seperate event of touch the grid which doesn't interfere
+                SaveState(isDown ? 1 : 0, keyNumber, row);
+            }
         }
     }
 }

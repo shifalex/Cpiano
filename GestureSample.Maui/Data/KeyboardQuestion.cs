@@ -21,8 +21,11 @@ namespace GestureSample.Maui.Data
         public int ResultStatus { get; set; } = 0;
 
 
-        public int? aboveNumber;
-        public int? length;
+        public int? aboveNumber { get; set; }
+        public int? length { get; set; }
+
+        [Ignore]
+        public Color RowBackgroundColor { get; set; } = Colors.White;
 
         //public string Op { get; set; } = Operation.Sum.ToString();
 
@@ -48,6 +51,16 @@ namespace GestureSample.Maui.Data
         {
             get => JsonSerializer.Serialize(keyboard2);
             set => keyboard2 = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+        [Ignore]
+        public Operation Op { get; set; } = Operation.Sum;
+
+        // Serialize GameConfig as JSON for storage
+        [Column("ConfigJson4")]
+        public string ConfigJson4
+        {
+            get => JsonSerializer.Serialize(Op);
+            set => Op = value != null ? JsonSerializer.Deserialize<Operation>(value) : Operation.Copy;
         }
 
         // Serialize GameConfig as JSON for storage

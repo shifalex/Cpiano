@@ -181,16 +181,23 @@ _lblStatement.Text = text;
                 else
                 {
                     _txtAddend1.ReturnCommand = null;
-                    if (_gamePlay.Sum == PPWGamePlay.NAN) { 
+                    if (_gamePlay.Sum == PPWGamePlay.NAN) {
+                        _txtSum.Loaded += (s, e) => { _txtSum.Focus(); } ;
                         _txtSum.Focus(); 
                         _lastFocused = _txtSum; }
-                    else if (_gamePlay.addend1 == PPWGamePlay.NAN /*&& _gamePlay.addend2 != PPWGamePlay.NAN*/) { _txtAddend1.Focus(); _lastFocused = _txtAddend1; }
+                    else if (_gamePlay.addend1 == PPWGamePlay.NAN /*&& _gamePlay.addend2 != PPWGamePlay.NAN*/) { 
+                        _txtAddend1.Loaded += (s, e) => { _txtAddend1.Focus(); }; 
+                        _txtAddend1.Focus(); 
+                        _lastFocused = _txtAddend1; 
+                    }
                     /*else if (_gamePlay.addend1 == PPWGamePlay.NAN && _gamePlay.addend2 == PPWGamePlay.NAN)
                     {
                         _txtAddend1.Focus();
                         _txtAddend1.ReturnCommand = new Command(()=> { _txtAddend2.Focus(); });
                     }*/
-                    else { _txtAddend2.Focus(); _lastFocused = _txtAddend2; }
+                    else {
+                        _txtAddend2.Loaded += (s, e) => { _txtAddend2.Focus(); };
+                        _txtAddend2.Focus(); _lastFocused = _txtAddend2; }
                 }
             }
         }

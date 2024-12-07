@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
+             xmlns:local="clr-namespace:GestureSample.Maui.Models"
 				x:Class="GestureSample.Views.ShowDataXamlKeyboard">
     <Grid>
         <!-- Define Row Definitions -->
@@ -27,33 +28,52 @@
             <Label Grid.Column="3" Text="Question" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
         </Grid>
 
-        <!-- CollectionView -->
-        <CollectionView x:Name="StateList" Grid.Row="2" Margin="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+        <CollectionView x:Name="Questions" ItemsSource="{Binding MainItems}" Grid.Row="2">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" >
-                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand">
-                            <Label Grid.Column="0" Text="{Binding id}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="2" >
-                                <Label Text="{Binding EventTime}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Frame>
-                            <!-- Additional Columns -->
-                            <Label Grid.Column="2" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="2" >
-                                <Label Text="{Binding EventType}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Frame>
-                            
-                            <Frame Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="2" >
-                                <Label Text="{Binding KeyNumber}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Frame>
-                            <Label Grid.Column="6" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="2" >
-                                <Label Text="{Binding Row}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Frame>
-                        </Grid>
-                    </Frame>
+                    <Grid >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition x:Name="SubGridRow" Height="{Binding SubGridHeight}" />
+                        </Grid.RowDefinitions>
+                        <HorizontalStackLayout Grid.Row="0"  Padding="20" Margin="10" >
+                            <!-- Main Item Label -->
+                            <Label Text="{Binding Question.QuestionNumber}" FontAttributes="Bold" Padding="10" />
+                            <local:PianoKeyboardReadOnly HeightRequest="150" x:Name="MyKeyboard" Keys="{Binding Question.keyboard1}" AboveNumber="{Binding Question.aboveNumber}" ArrowLength="{Binding Question.length}" Direction="{Binding Question.dir}" >
+                                
+                                
+                            </local:PianoKeyboardReadOnly>
+                            <!-- Toggle Button -->
+                            <Button Text="{Binding ButtonText}" Clicked="OnToggleSubgridClicked" />
+                        </HorizontalStackLayout>
+                        <!-- Sub-CollectionView -->
+                        <CollectionView Grid.Row="1"
+                                        x:Name="SubCollection"
+                ItemsSource="{Binding SubItems}"
+                IsVisible="{Binding IsSubCollectionVisible}"
+                HeightRequest="{Binding SubGridHeight}"
+                Margin="0,10,0,10"
+                >
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" BackgroundColor="{Binding RowBackgroundColor}" VerticalOptions="FillAndExpand">
+                                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+                                            <Label Grid.Column="0" Text="{Binding id}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                                            <Label Grid.Column="1" Text="{Binding EventTime}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                            <Label Grid.Column="2" Text="{Binding EventType}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                            <Label Grid.Column="3" Text="{Binding KeyNumber}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                            <Label Grid.Column="4" Text="{Binding Row}" HorizontalOptions="Center" VerticalOptions="Center" />
+                                        </Grid>
+                                    </Frame>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+
+
+
     </Grid>
 </ContentPage>
