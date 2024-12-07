@@ -13,7 +13,7 @@ namespace GestureSample.Maui.Models
         public int addend2;
         QuestionAnswer qaState;
 
-        protected int _questionNumber = 0;
+        public int _questionNumber = 0;
         protected int _questionsWrong = 0;
         private bool _lastQuestionWrong = false;
         protected Data.Game _gameData;

@@ -13,7 +13,10 @@ namespace GestureSample.Maui.Data
     {
         [PrimaryKey, AutoIncrement]
         public int id {  get; }
+
         public string GameId { get; set; }
+
+        public int QuestionNumber { get; set; }
         public int EventType { get; set; }
         public int KeyNumber { get; set; }
         public int Row { get; set; } = 0;

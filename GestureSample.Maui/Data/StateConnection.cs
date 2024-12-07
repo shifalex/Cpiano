@@ -68,6 +68,23 @@ namespace GestureSample.Maui.Data
                 }
             try
             {
+                _database.CreateTableAsync<KeyboardQuestion>().Wait();
+                Console.WriteLine($"Table '{typeof(KeyboardQuestion).Name}' created successfully.");
+            }
+            catch (Exception ex)
+            {
+                // Drop the existing table
+                _database.DropTableAsync<KeyboardQuestion>();
+                Console.WriteLine($"Table '{typeof(KeyboardQuestion).Name}' dropped successfully.");
+
+                // Recreate the table
+                _database.CreateTableAsync<KeyboardQuestion>();
+                Console.WriteLine($"Table '{typeof(KeyboardQuestion).Name}' created successfully.");
+                // Log or handle the exception as needed
+                Console.WriteLine($"Database initialization failed: {ex.Message}");
+            }
+            try
+            {
                 _database.CreateTableAsync<KeyEvent>().Wait();
                 Console.WriteLine($"Table '{typeof(KeyEvent).Name}' created successfully.");
             }
@@ -120,6 +137,13 @@ namespace GestureSample.Maui.Data
         public Task<int> SaveKeyboardQuestionAsync(KeyboardQuestion kQuestion)
         {
             return _database.InsertAsync(kQuestion);
+        }
+
+        public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(string GameId)
+        {
+            //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM KeyEvent WHERE GameId = '{0}'", GameId);
+            return await _database.Table<KeyboardQuestion>().Where(state => state.GameId == GameId).ToListAsync();
+
         }
 
         public Task<int> SaveGameAsync(Game game)
