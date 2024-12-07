@@ -2,6 +2,8 @@ using GestureSample.Maui.Data;
 using GestureSample.Maui.Models;
 using SQLite;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace GestureSample.Views
 {
@@ -17,7 +19,6 @@ namespace GestureSample.Views
                 return Date.ToShortDateString();
             }
         }
-        //private readonly RealmService _realmService;
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
@@ -25,32 +26,29 @@ namespace GestureSample.Views
         public ShowDataXamlKeyboard(string gameId = null)
         {
             InitializeComponent();
-            //StateList.ItemsSource = App.CurrentDB.GetStates();
-            //_realmService = new RealmService();
-            //StateList.ItemsSource = _realmService.GetItems();
             ShowData(gameId);
         }
 
-        public async void ShowData(string gameId=null)
+        public async void ShowData(string gameId = null)
         {
-           
+
             GameIdentifiers = await StateConnection.Instance.GetGamesAsync();
             if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
-            for (int i = 0; i < GameIdentifiers.Count; i++) {
-                if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
-                GameIdentifiers[i].index = i+1;
+            for (int i = 0; i < GameIdentifiers.Count; i++)
+            {
+                if (gameId != null && GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
+                GameIdentifiers[i].index = i + 1;
                 await StateConnection.Instance.UpdateGameAsync(GameIdentifiers[i]);
 
             }
 
             GameIdentifiers.Reverse();
-            //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
             await LoadDates();
-             LoadGames();
-            if(gameId !=null)
+            LoadGames();
+            if (gameId != null)
             {
-                 await LoadStatesToGrid(gameId);
+                await LoadStatesToGrid(gameId);
             }
         }
 
@@ -58,45 +56,42 @@ namespace GestureSample.Views
         {
 
             foreach (var game in GameIdentifiers)
-                
-            {
-                    if(GameDates.Count>0 && 
-                        GameDates[GameDates.Count-1].Date.Year == game.TimeStart.Year &&
-                        GameDates[GameDates.Count - 1].Date.Month == game.TimeStart.Month &&
-                        GameDates[GameDates.Count - 1].Date.Day == game.TimeStart.Day
-                        )
-                    {
 
-                    }
-                    else
-                    {
-                    if(game.Config?.KeyboardConfig != null)
-                        GameDates.Add(new DateWraper(game.TimeStart.Date));
-                    }
+            {
+                if (GameDates.Count > 0 &&
+                    GameDates[GameDates.Count - 1].Date.Year == game.TimeStart.Year &&
+                    GameDates[GameDates.Count - 1].Date.Month == game.TimeStart.Month &&
+                    GameDates[GameDates.Count - 1].Date.Day == game.TimeStart.Day
+                    )
+                {
 
                 }
-            
-            //GameDates = new ObservableCollection<DateTime>(GameDates.Reverse());
-            DatePicker.ItemsSource = GameDates;
-            if(GameDates.Count>0) {DatePicker.SelectedIndex = 0;
-               
+                else
+                {
+                    if (game.Config?.KeyboardConfig != null)
+                        GameDates.Add(new DateWraper(game.TimeStart.Date));
+                }
+
             }
 
-            //GamePicker.ItemsSource = GameIdentifiers;
-            
+            DatePicker.ItemsSource = GameDates;
+            if (GameDates.Count > 0)
+            {
+                DatePicker.SelectedIndex = 0;
+
+            }
+
         }
 
         private async Task LoadStatesToGrid(string selectedIdentifier)
         {
-            for (int i = 0; i < GameIdentifiers.Count; i++)
-               if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier)) 
-                    CurrentGame = GameIdentifiers[i];
+            /*for (int i = 0; i < GameIdentifiers.Count; i++)
+                if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier))
+                    CurrentGame = GameIdentifiers[i];*/
 
-
-                var gamePresses = await StateConnection.Instance.GetKeyEventsByQueryAsync(selectedIdentifier);
-           // List<KeyEvent> Events = new ();
-
-
+            List<KeyboardQuestion> questionList = await StateConnection.Instance.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
+            List<KeyEvent> gamePresses = await StateConnection.Instance.GetKeyEventsByQueryAsync(selectedIdentifier);
+            
             /*foreach (var state in gamePresses)
             {
                 ShowState s = new(state);
@@ -139,33 +134,34 @@ namespace GestureSample.Views
 
                 
             }*/
-            if (gamePresses.Any())
+            
+            List<MainItem> mainItems = new();
+            if (questionList.Any())
             {
-                for (int i = 0; i < gamePresses.Count; i++)
+                foreach (KeyboardQuestion q in questionList)
                 {
-                    /*gamePresses[i].RowBackgroundColor = gamePresses[i].QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
-                    if(states[i].Op == Maui.Operation.Divide || states[i].Op == Maui.Operation.Minus)
+                    q.RowBackgroundColor = q.QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
+                    mainItems.Add(new() { 
+                        Question= q,
+                        SubItems = gamePresses.Where(item => item.QuestionNumber == q.QuestionNumber).ToList()
+                    });
+                    /*if(states[i].Op == Maui.Operation.Divide || states[i].Op == Maui.Operation.Minus)
                     {
                         int oldSum = states[i].Sum; Color oldSumColor = states[i].SumColor;
                         states[i].Sum = states[i].Addend1; states[i].SumColor = states[i].Addend1Color;
                         states[i].Addend1 = oldSum; states[i].Addend1Color = oldSumColor;
                     }*/
                 }
-
-                StateList.ItemsSource = gamePresses;
+               
             }
-            else
-            {
-                StateList.ItemsSource = null;
-            }
-
-            
+            Questions.ItemsSource = mainItems;
+            //StateList.ItemsSource = gamePresses;
         }
 
 
         private async void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
         {
-             LoadGames();
+            LoadGames();
         }
 
         private void LoadGames()
@@ -177,17 +173,16 @@ namespace GestureSample.Views
                 {
                     if (GameIdentifiers[i].TimeStart.Year == ((DateWraper)DatePicker.SelectedItem).Date.Year &&
                         GameIdentifiers[i].TimeStart.Month == ((DateWraper)DatePicker.SelectedItem).Date.Month &&
-                        GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day 
+                        GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day
                             )
-                        if(GameIdentifiers[i].Config?.KeyboardConfig != null)
-                        GameIdentifiersFiltered.Add(GameIdentifiers[i]);
+                        if (GameIdentifiers[i].Config?.KeyboardConfig != null)
+                            GameIdentifiersFiltered.Add(GameIdentifiers[i]);
                 }
             }
             GamePicker.ItemsSource = GameIdentifiersFiltered;
             if (GamePicker.Items.Count > 0)
             {
                 GamePicker.SelectedIndex = 0;
-                //OnPickerSelectedIndexChanged(sender, e);
             }
         }
 
@@ -196,9 +191,78 @@ namespace GestureSample.Views
             var picker = sender as Picker;
             if (picker.SelectedIndex != -1)
             {
-                 await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);                
+                await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);
             }
-            
+
         }
+        private void OnToggleSubgridClicked(object sender, EventArgs e)
+        {
+            if (sender is Button button && button.BindingContext is MainItem item)
+            {
+                item.IsSubCollectionVisible = !item.IsSubCollectionVisible;
+
+                // Set HeightRequest manually for debugging
+                var parentLayout = (Grid)button.Parent.Parent;
+                var subCollection = parentLayout.FindByName<CollectionView>("SubCollection");
+
+                subCollection.HeightRequest = item.IsSubCollectionVisible ? 200 : 10;
+
+            }/*
+
+            if (sender is Button button && button.CommandParameter is MainItem item)
+            {
+                // Find the parent VerticalStackLayout and the SubCollection
+                var parentLayout = (VerticalStackLayout)button.Parent;
+                var subCollection = parentLayout.FindByName<CollectionView>("StateList");
+
+                // Toggle visibility
+                subCollection.IsVisible = !subCollection.IsVisible;
+
+                // Update button text
+                button.Text = subCollection.IsVisible ? "Collapse Items" : "Expand Items";
+
+                // Set the sub-collection items
+                if (subCollection.ItemsSource == null)
+                {
+                    subCollection.ItemsSource = item.SubItems;
+                }
+            }*/
+        }
+    }
+
+    public class MainItem : INotifyPropertyChanged
+    {
+        public KeyboardQuestion Question { get; set; }
+        public List<KeyEvent> SubItems { get; set; }
+
+        private bool _isSubCollectionVisible;
+        public bool IsSubCollectionVisible
+        {
+            get => _isSubCollectionVisible;
+            set
+            {
+                _isSubCollectionVisible = value;
+                SubGridHeight = value ? 200 : 10; // Adjust height based on visibility
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ButtonText)); // Notify UI to update ButtonText
+            }
+        }
+
+        private double _subGridHeight = 10; // Default collapsed height
+        public double SubGridHeight
+        {
+            get => _subGridHeight;
+            set
+            {
+                _subGridHeight = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string ButtonText => IsSubCollectionVisible ? "Collapse Items" : "Expand Items";
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null) =>
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
