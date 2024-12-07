@@ -50,19 +50,32 @@
     //ODO:Equations save(replace addend1 and sum)
     //ODO: decomposition game save check
     //ODO: Grid Height & Android?
+
     
-    //TODO: GameName length fixed
-    //TODO: Understand what I do with await
-    //TODO: Back button from Gri to "New Number"
-    //TODO: COLOR of grid heading as upper color
-    //TODO: Allow Part-Part-Whole in show game results???
-    //TODO: add levels with save
-    //TODO: show statistics wrong/right per sum or through ten/not through ten/ or on the 10/10 table
 
     //TODO: save piano on db
     //TODO: Local Users
     //TODO: Save on outside db and upload to local if needed
-    //TODO: Class teacher interface
+    //TODO: ACT-R simulator
+
+
+
+
+
+    //TODO: GameName length fixed
+    //TODO: Understand what I do with await
+    //TODO: Back button from Grid to "New Number"
+    //TODO: COLOR of grid heading as upper color
+    //TODO: Allow Part-Part-Whole in show game results???
+    //TODO: add levels with save
+    //TODO: show statistics wrong/right per sum or through ten/not through ten/ or on the 10/10 table
+    //TODO: Feedback on Wrong Input(Empty/NAN/Too big/small+blinking textBox), feedback on Lose(correct answer to last wrong question)
+    //TODO: play with check visability??
+    //TODO: consider max length for textboxes according to the max sum and min sum
+    //TODO: the first Focus on a textbox doesn't work
+
+    //TODO: Class teacher interface with links
+    //TODO: Suscription Used. Available to one year... Renew somehow
 
     //TODO: Addition with rule on higher number
     //TODO: Multiplication With Rule
