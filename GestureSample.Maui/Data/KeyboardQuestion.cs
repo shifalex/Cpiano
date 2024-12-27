@@ -27,6 +27,9 @@ namespace GestureSample.Maui.Data
         [Ignore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
 
+        [Ignore]
+        public Color RowBackgroundColor { get; set; } = Colors.White;
+
         //public string Op { get; set; } = Operation.Sum.ToString();
 
         // Ignore GameConfig during table creation
