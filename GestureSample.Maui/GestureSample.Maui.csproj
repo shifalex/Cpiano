@@ -67,7 +67,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Data\User.cs" />
 	  <Compile Remove="Models\configLoader.cs" />
 	</ItemGroup>
 

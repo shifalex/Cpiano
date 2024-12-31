@@ -1,4 +1,5 @@
 ﻿using MR.Gestures;
+using GestureSample.Maui.Data;
 
 namespace GestureSample.Maui;
 
@@ -21,8 +22,9 @@ public static class MauiProgram
             })
             //.ConfigureMRGestures("ALZ9-BPVU-XQ35-CEBG-5ZRR-URJQ-ED5U-TSY8-6THP-3GVU-JW8Z-RZGE-CQW6");        // GestureSample
             //.ConfigureMRGestures("NDTK-G7T7-QBLH-B48D-CKGP-F2NP-CV2N-B4M3-BXUR-WGQA-PLNK-BZVD-ZVCY");       // GestureSample.Maui
-            .ConfigureMRGestures();
 
+            .ConfigureMRGestures();
+        builder.Services.AddSingleton<IUserRepository, UserRepository>();
         return builder.Build();
     }
 }
