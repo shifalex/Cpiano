@@ -1,16 +1,31 @@
 ﻿using GestureSample.Views;
+using GestureSample.Maui.Data;
+using GestureSample.Maui.Views;
 
-namespace GestureSample.Maui;
-
-public partial class App : Application
+namespace GestureSample.Maui
 {
-    public static NavigationPage MainNavigation;
 
-    public App()
+    public partial class App : Application
     {
-        InitializeComponent();
+        public static NavigationPage MainNavigation;
+        private readonly IUserRepository _userRepository;
 
-        var mainPage = new MainPage("Control Categories", null);
-        MainPage = MainNavigation = new NavigationPage(mainPage);
+        public App()
+        {
+            InitializeComponent();
+
+            var mainPage = new MainPage("Control Categories", null);
+            MainPage = MainNavigation = new NavigationPage(mainPage);
+        }
+
+        public App(IUserRepository userRepository)
+        {
+            InitializeComponent();
+
+            _userRepository = userRepository;
+
+            // Wrap our initial Page in a NavigationPage
+            MainPage = new NavigationPage(new SplashPage(_userRepository));
+        }
     }
 }

@@ -9,7 +9,7 @@ namespace GestureSample.Maui.Data
     {
         private readonly Realms.Sync.App _app;
         private Realm _realm;
-        private User _user;
+        private Realms.Sync.User _user;
 
         public RealmService()
         {

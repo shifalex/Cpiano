@@ -33,7 +33,7 @@
 	</PropertyGroup>
 <UsingTask TaskName="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\CodeTaskFactory\Microsoft.Build.Tasks.CodeTaskFactory.dll" />
 	<PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
-	  <CodesignKey>Apple Development: Created via API (H6BKVF583L)</CodesignKey>
+	  <CodesignKey>Apple Development: Created via API (6S98TQ2Q7N)</CodesignKey>
 	  <CodesignProvision>VS: WildCard Development</CodesignProvision>
 	  <ProvisioningType>automatic</ProvisioningType>
 	</PropertyGroup>
@@ -67,8 +67,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Remove="Data\User.cs" />
 	  <Compile Remove="Models\configLoader.cs" />
+	  <Compile Remove="Views\SplashPagecs.xaml.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Remove="Views\SplashPagecs.xaml" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -79,7 +83,6 @@
 	  <PackageReference Include="MvvmCross" Version="9.0.0" />
 	  <PackageReference Include="Realm" Version="12.2.0" />
 	  <PackageReference Include="SkiaSharp" Version="2.88.8" />
-	  <PackageReference Include="SkiaSharp.Views" Version="2.88.8" />
 	  <PackageReference Include="SkiaSharp.Views.Maui.Controls" Version="2.88.8" />
 	  <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
@@ -91,7 +94,19 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <MauiXaml Update="Views\CreateUserPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\NewPage1.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\ShowDataXamlKeyboard.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\SplashPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\SwitchUserPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>

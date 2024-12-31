@@ -1,5 +1,10 @@
 ﻿using GestureSample.Maui;
 using GestureSample.Views.Tests;
+using GestureSample.Maui.Data;
+using GestureSample.Maui.Handlers;
+using GestureSample.Maui.Views;
+using GestureSample.Views;
+using GestureSample.Maui.Models;
 
 namespace GestureSample.Views
 {
@@ -912,6 +917,37 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
 
         #region MainPage code
+        private readonly IUserRepository _userRepo;
+        public MainPage()
+        {
+            InitializeComponent();
+            // If you want constructor injection, you can do that;
+            // for demonstration, let's just fetch from service provider:
+            _userRepo = ServiceHelper.GetService<IUserRepository>();
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+
+            var currentUserId = ActiveUserHelper.CurrentUserId;
+            if (currentUserId.HasValue)
+            {
+                var user = await _userRepo.GetUserAsync(currentUserId.Value);
+                if (user != null)
+                {
+                    //WelcomeLabel.Text = $"Welcome, {user.Name}!";
+                    return;
+                }
+            }
+
+            //WelcomeLabel.Text = "No active user found.";
+        }
+
+        private async void OnSwitchUserClicked(object sender, EventArgs e)
+        {
+            await Navigation.PushAsync(new GestureSample.Maui.Views.SwitchUserPage());
+        }
 
         public MainPage(string title, IEnumerable<PageConfig> contents)
         {
