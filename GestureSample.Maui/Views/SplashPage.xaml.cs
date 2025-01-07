@@ -1,5 +1,4 @@
 using GestureSample.Maui.Data;
-using GestureSample.Maui.Models;
 using GestureSample.Maui.Handlers;
 using GestureSample.Views;
 
