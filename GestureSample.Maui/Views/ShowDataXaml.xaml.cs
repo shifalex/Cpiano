@@ -22,24 +22,31 @@ namespace GestureSample.Views
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
+
+
+        private readonly GameRepository _gameRepository;
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly QuestionAnswerRepository _questionAnswerRepository;
         public ShowDataXaml(string gameId = null)
         {
             InitializeComponent();
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
+            _gameRepository = ServiceHelper.GetService<GameRepository>();
+            _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             ShowData(gameId);
         }
 
         public async void ShowData(string gameId=null)
         {
            
-            GameIdentifiers = await StateConnection.Instance.GetGamesAsync();
+            GameIdentifiers = await _gameRepository.GetGamesAsync();
             if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
             for (int i = 0; i < GameIdentifiers.Count; i++) {
                 if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i+1;
-                await StateConnection.Instance.UpdateGameAsync(GameIdentifiers[i]);
+                await _gameRepository.UpdateGameAsync(GameIdentifiers[i]);
 
             }
 
@@ -91,7 +98,7 @@ namespace GestureSample.Views
                     CurrentGame = GameIdentifiers[i];
 
 
-                var gameStats = await StateConnection.Instance.GetStatesByQueryAsync(selectedIdentifier);
+                var gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync(selectedIdentifier);
             List<ShowState> states = new ();
             ShowState s_prev = null;
             foreach (var state in gameStats)

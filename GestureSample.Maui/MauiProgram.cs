@@ -1,6 +1,5 @@
 ﻿using MR.Gestures;
 using GestureSample.Maui.Data;
-using GestureSample.Maui.Handlers;
 using Supabase;
 
 namespace GestureSample.Maui;
@@ -32,8 +31,13 @@ public static class MauiProgram
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA" // Replace with your Supabase API Key
         ));//Password: c!L2TkQ@8wLPt2e
 
+        builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
         builder.Services.AddSingleton<IUserRepository, UserRepository>(); var mauiApp = builder.Build();
+        builder.Services.AddTransient<QuestionAnswerRepository>();
+        builder.Services.AddTransient<KeyboardQuestionRepository>();
+        builder.Services.AddTransient<GameRepository>();
+        builder.Services.AddTransient<KeyEventRepository>();
 
         // Store the DI container (ServiceProvider)
         ServiceHelper.Services = mauiApp.Services;

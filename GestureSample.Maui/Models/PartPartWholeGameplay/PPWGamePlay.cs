@@ -38,8 +38,15 @@ namespace GestureSample.Maui.Models
         protected readonly SimpleViewCellsPage _view;
 
         public GameConfig Config;
+
+        private readonly GameRepository _gameRepository;
+        private readonly QuestionAnswerRepository _questionAnswerRepository;
+
         public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
         {
+
+            _gameRepository = ServiceHelper.GetService<GameRepository>();
+            _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _view = view; Config = config;
             CurrentOperation = Config.OperationList[0];
 
@@ -50,7 +57,7 @@ namespace GestureSample.Maui.Models
                  GameName = config.GameName,
                  Config = config
              };
-            Data.StateConnection.Instance.SaveGameAsync(_gameData);
+            _gameRepository.SaveGameAsync(_gameData);
 
             GeneratePossibleTriadsSet();
 
@@ -71,7 +78,7 @@ namespace GestureSample.Maui.Models
                 Sum = this.Sum, //TODO:make more elegant
                 ResultStatus = resultStatus
             };
-            await Data.StateConnection.Instance.SaveStateAsync(s);
+            await _questionAnswerRepository.SaveAnswerAsync(s);
             qaState = s ;
         //await _realmService.AddStateAsync(s);
     }
@@ -152,7 +159,7 @@ namespace GestureSample.Maui.Models
                     }*/
 
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    Data.StateConnection.Instance.UpdateGameAsync(_gameData);
+                    _gameRepository.UpdateGameAsync(_gameData);
                     App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
                     //_losesMade = 0;
                     //_tasksMade = 0;
@@ -166,7 +173,7 @@ namespace GestureSample.Maui.Models
             _gameData.Wins = _tasksMade;
             _gameData.Losses = _losesMade;
             //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-            Data.StateConnection.Instance.UpdateGameAsync(_gameData);
+            _gameRepository.UpdateGameAsync(_gameData);
             _view.UpdateView();
             return _status == Statement.True;
         }

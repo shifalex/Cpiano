@@ -24,6 +24,7 @@ namespace GestureSample.Maui.Models
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
+        private readonly KeyEventRepository _keyEventRepository;
 
         protected virtual void AddDummies()
         {
@@ -70,13 +71,14 @@ namespace GestureSample.Maui.Models
                 GameId= _gamePlay.GameId,
                 QuestionNumber = _gamePlay._questionNumber
             };// = new ();
-    Data.StateConnection.Instance.SaveKeyEventAsync(keyEvent);
+            await _keyEventRepository.SaveKeyEventAsync(keyEvent);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
             KeyboardConfig pianoConfig) : base(pianoConfig)
         {
 
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges;
             _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
