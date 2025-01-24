@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GestureSample.Maui.Handlers
+namespace GestureSample.Maui.Data
 {
     public static class ServiceHelper
     {

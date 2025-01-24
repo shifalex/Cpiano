@@ -19,6 +19,10 @@ namespace GestureSample.Views
                 return Date.ToShortDateString();
             }
         }
+        private readonly GameRepository _gameRepository;
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly KeyEventRepository _keyEventRepository;
+
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
@@ -27,18 +31,21 @@ namespace GestureSample.Views
         {
             InitializeComponent();
             ShowData(gameId);
+            _gameRepository = ServiceHelper.GetService<GameRepository>();
+            _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
         }
 
         public async void ShowData(string gameId = null)
         {
 
-            GameIdentifiers = await StateConnection.Instance.GetGamesAsync();
+            GameIdentifiers = await _gameRepository.GetGamesAsync();
             if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
             for (int i = 0; i < GameIdentifiers.Count; i++)
             {
                 if (gameId != null && GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i + 1;
-                await StateConnection.Instance.UpdateGameAsync(GameIdentifiers[i]);
+                await _gameRepository.UpdateGameAsync(GameIdentifiers[i]);
 
             }
 
@@ -89,8 +96,8 @@ namespace GestureSample.Views
                 if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier))
                     CurrentGame = GameIdentifiers[i];*/
 
-            List<KeyboardQuestion> questionList = await StateConnection.Instance.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
-            List<KeyEvent> gamePresses = await StateConnection.Instance.GetKeyEventsByQueryAsync(selectedIdentifier);
+            List<KeyboardQuestion> questionList = await _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
+            List<KeyEvent> gamePresses = await _keyEventRepository.GetKeyEventsByQueryAsync(selectedIdentifier);
             
             /*foreach (var state in gamePresses)
             {

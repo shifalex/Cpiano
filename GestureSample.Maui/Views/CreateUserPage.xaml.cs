@@ -45,7 +45,6 @@ namespace GestureSample.Maui.Views
             {
                 // Navigate to the MainPage and clear older pages (like SplashPage)
                 await Navigation.PopToRootAsync();
-                await Navigation.PushAsync(new MainPage());
             }
             else
             {

@@ -15,11 +15,30 @@ namespace GestureSample.Maui.Data
 
         public static StateConnection Instance => lazy.Value;
 
+
+        public SQLiteAsyncConnection Database { get; private set; }
+
         private StateConnection()
         {
             InitializeDatabase().Wait();
         }
 
+        private async Task InitializeDatabase()
+        {
+
+            var dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MathOPiano.db");
+#if WINDOWS || IOS
+                _dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MathOPiano.db");
+#endif
+            Console.WriteLine($"Database path: {_dbPath}");
+            Database = new SQLiteAsyncConnection(dbPath);
+
+            await Database.CreateTableAsync<QuestionAnswer>();
+            await Database.CreateTableAsync<KeyboardQuestion>();
+            await Database.CreateTableAsync<Game>();
+            await Database.CreateTableAsync<KeyEvent>();
+        }
+        /*
         private async Task InitializeDatabase()
         {
             if (_database == null)
@@ -102,21 +121,20 @@ namespace GestureSample.Maui.Data
             }
         }
         
-
-        public Task<int> SaveStateAsync(QuestionAnswer state)
+        */
+        
+/*
+        public async Task<int> UpdateStateAsync(QuestionAnswer state)
         {
-            return _database.InsertAsync(state);
-        }
-
-        public Task<List<QuestionAnswer>> GetStatesAsync()
-        {
-            return _database.Table<QuestionAnswer>().ToListAsync();
-        }
-        public async Task<List<QuestionAnswer>> GetStatesByQueryAsync(string GameId)
-        {
-            //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM QuestionAnswer WHERE GameId = '{0}'", GameId);
-            return await _database.Table<QuestionAnswer>().Where(state => state.GameId==GameId).ToListAsync();
-
+            try
+            {
+                return await _database.UpdateAsync(state);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating game: {ex.Message}");
+                return 0;
+            }
         }
         public Task<int> SaveKeyEventAsync(KeyEvent kevent)
         {
@@ -137,15 +155,6 @@ namespace GestureSample.Maui.Data
         public Task<int> SaveKeyboardQuestionAsync(KeyboardQuestion kQuestion)
         {
             return _database.InsertAsync(kQuestion);
-        }
-
-        public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(string GameId)
-        {
-            //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM KeyEvent WHERE GameId = '{0}'", GameId);
-            var kQuestions= _database.Table<KeyboardQuestion>();
-            var onlyRightkquestion = kQuestions.Where(state => state.GameId == GameId);
-            return await onlyRightkquestion.ToListAsync();
-
         }
 
         public Task<int> SaveGameAsync(Game game)
@@ -171,18 +180,7 @@ namespace GestureSample.Maui.Data
             }
         }
 
-        public async Task<int> UpdateStateAsync(QuestionAnswer state)
-        {
-            try
-            {
-                return await _database.UpdateAsync(state);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating game: {ex.Message}");
-                return 0;
-            }
-        }
+        
 
         public async Task UploadDatabaseAsync()
         {
@@ -225,6 +223,12 @@ namespace GestureSample.Maui.Data
         {
             await _database.ExecuteAsync(v);
             //throw new NotImplementedException();
+        }
+
+        internal async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(string selectedIdentifier)
+        {
+            return await _database.Table<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier).ToListAsync();
+            
         }
 
         /*

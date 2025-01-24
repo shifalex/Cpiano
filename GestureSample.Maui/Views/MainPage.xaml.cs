@@ -5,6 +5,7 @@ using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;
 using GestureSample.Views;
 using GestureSample.Maui.Models;
+using MongoDB.Driver.Core.Authentication;
 
 namespace GestureSample.Views
 {
@@ -26,6 +27,7 @@ namespace GestureSample.Views
             new PageConfig(null, "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }),
 			//new PageConfig(null, "Cells", null),
 			new PageConfig(null, "Tests", null),
+            new PageConfig(null, userName+"Switch User",  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
 
 			// Layouts
 			new PageConfig("Layouts", "AbsoluteLayout", () => new AbsoluteLayoutXaml { BindingContext = new ViewModels.MarksViewModel() }),
@@ -918,6 +920,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
         #region MainPage code
         private readonly IUserRepository _userRepo;
+        private static string userName = "";
         public MainPage()
         {
             InitializeComponent();
@@ -930,21 +933,35 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         {
             base.OnAppearing();
 
-            var currentUserId = ActiveUserHelper.CurrentUserId;
-            if (currentUserId.HasValue)
+            var users = await _userRepo.GetUsersAsync();
+            if (users == null || !users.Any())
             {
-                var user = await _userRepo.GetUserAsync(currentUserId.Value);
-                if (user != null)
-                {
-                    //WelcomeLabel.Text = $"Welcome, {user.Name}!";
-                    return;
-                }
+                // No users exist, navigate to SplashPage
+                await Navigation.PushAsync(new SplashPage(_userRepo));
             }
+            else
+            {
+                // Handle cases where users exist
+                var currentUserId = ActiveUserHelper.CurrentUserId;
+                if (currentUserId.HasValue)
+                {
+                    var user = await _userRepo.GetUserAsync(currentUserId.Value);
+                    if (user != null)
+                    {
+                        // Optionally display a welcome message
+                        //WelcomeLabel.Text = $"Welcome, {user.Name}!";
+                        userName = user.Name;
+                        return;
+                    }
+                }
 
-            //WelcomeLabel.Text = "No active user found.";
+                // Default message if no active user is set
+
+                userName = "No active user found.";
+            }
         }
 
-        private async void OnSwitchUserClicked(object sender, EventArgs e)
+            private async void OnSwitchUserClicked(object sender, EventArgs e)
         {
             await Navigation.PushAsync(new GestureSample.Maui.Views.SwitchUserPage());
         }
@@ -956,6 +973,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             BindingContext = contents;
 
             InitializeComponent();
+            _userRepo = ServiceHelper.GetService<IUserRepository>();
         }
 
         private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)

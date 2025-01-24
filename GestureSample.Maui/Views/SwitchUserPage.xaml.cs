@@ -6,7 +6,7 @@ using GestureSample.Maui.Models;
 namespace GestureSample.Maui.Views
 {
 
-	public partial class SwitchUserPage : ContentPage
+    public partial class SwitchUserPage : ContentPage
     {
 
         private readonly IUserRepository _userRepo;

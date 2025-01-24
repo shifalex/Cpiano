@@ -39,7 +39,7 @@ public partial class SplashPage : ContentPage
             }
 
             // Go to the main page
-            await Navigation.PushAsync(new MainPage());
+            await Navigation.PopToRootAsync();
         }
     }
 }

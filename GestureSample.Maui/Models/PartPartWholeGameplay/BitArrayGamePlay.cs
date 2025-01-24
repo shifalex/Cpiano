@@ -1,4 +1,5 @@
-﻿using GestureSample.Views.Tests;
+﻿using GestureSample.Maui.Data;
+using GestureSample.Views.Tests;
 
 namespace GestureSample.Maui.Models
 {
@@ -121,13 +122,14 @@ namespace GestureSample.Maui.Models
             }
         }
 
-
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
 
         public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
         {
             ArrayQuestionType = config.UIQuestionType;
             BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
             BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
+            _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
         }
 
         public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
@@ -214,7 +216,7 @@ namespace GestureSample.Maui.Models
                 s.aboveNumber = aboveNumber;
                 s.length = length;
             }
-            Data.StateConnection.Instance.SaveKeyboardQuestionAsync(s);
+            _keyboardQuestionRepository.SaveKeyboardQuestionAsync(s);
 
             _view.UpdateView(true);
 
