@@ -919,14 +919,14 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
 
 
         #region MainPage code
-        private readonly IUserRepository _userRepo;
+        private readonly UserRepository _userRepo;
         private static string userName = "";
         public MainPage()
         {
             InitializeComponent();
             // If you want constructor injection, you can do that;
             // for demonstration, let's just fetch from service provider:
-            _userRepo = ServiceHelper.GetService<IUserRepository>();
+            _userRepo = ServiceHelper.GetService<UserRepository>();
         }
 
         protected override async void OnAppearing()
@@ -973,7 +973,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
             BindingContext = contents;
 
             InitializeComponent();
-            _userRepo = ServiceHelper.GetService<IUserRepository>();
+            _userRepo = ServiceHelper.GetService<UserRepository>();
         }
 
         private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)

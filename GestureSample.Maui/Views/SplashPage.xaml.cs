@@ -6,9 +6,9 @@ namespace GestureSample.Maui.Views;
 
 public partial class SplashPage : ContentPage
 {
-    private readonly IUserRepository _userRepo;
+    private readonly UserRepository _userRepo;
 
-    public SplashPage(IUserRepository userRepo)
+    public SplashPage(UserRepository userRepo)
     {
         InitializeComponent();
         _userRepo = userRepo;

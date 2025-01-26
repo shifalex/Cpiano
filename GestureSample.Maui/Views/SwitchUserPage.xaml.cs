@@ -9,13 +9,13 @@ namespace GestureSample.Maui.Views
     public partial class SwitchUserPage : ContentPage
     {
 
-        private readonly IUserRepository _userRepo;
+        private readonly UserRepository _userRepo;
 
         public SwitchUserPage()
         {
             InitializeComponent();
             // Retrieve the repository if not injected
-            _userRepo = ServiceHelper.GetService<IUserRepository>();
+            _userRepo = ServiceHelper.GetService<UserRepository>();
         }
 
         protected override async void OnAppearing()

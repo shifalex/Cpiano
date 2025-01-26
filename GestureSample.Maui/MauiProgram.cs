@@ -33,7 +33,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
-        builder.Services.AddSingleton<IUserRepository, UserRepository>(); var mauiApp = builder.Build();
+        builder.Services.AddSingleton<UserRepository>(); var mauiApp = builder.Build();
         builder.Services.AddTransient<QuestionAnswerRepository>();
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
