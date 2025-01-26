@@ -9,10 +9,10 @@ namespace GestureSample.Maui.Views
 
     public partial class CreateUserPage : ContentPage
     {
-        private readonly IUserRepository _userRepo;
+        private readonly UserRepository _userRepo;
         private readonly bool _firstUser;
 
-        public CreateUserPage(IUserRepository userRepo, bool firstUser = false)
+        public CreateUserPage(UserRepository userRepo, bool firstUser = false)
         {
             InitializeComponent();
             _userRepo = userRepo;

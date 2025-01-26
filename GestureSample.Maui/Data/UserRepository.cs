@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SQLite;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,10 +7,11 @@ using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Data
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : BaseRepository<User>
     {
         private static readonly List<User> _users = new();
 
+        public UserRepository(SQLiteAsyncConnection database) : base(database) { }
         public Task<List<User>> GetUsersAsync()
         {
             // Return a copy to avoid direct list manipulation
