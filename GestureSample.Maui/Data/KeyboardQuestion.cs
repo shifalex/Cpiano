@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
 
@@ -17,7 +18,7 @@ namespace GestureSample.Maui.Data
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public string UserId { get; set; } = "1";
+        public Guid UserId { get; set; } = (Guid)ActiveUserHelper.CurrentUserId;
         public int ResultStatus { get; set; } = 0;
 
 

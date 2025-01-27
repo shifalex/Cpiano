@@ -19,7 +19,7 @@ namespace GestureSample.Maui.Data
         public DateTime TimeEnd { get; set; } = DateTime.Now;//TODO: excgange into the last endtime of the game by calculating
         public int FinalStatus { get; set; } = -1;
         //public TimeSpan FinalTime { get; set; } = TimeSpan.Zero;
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
         public int Wins { get; set; } = 0;
         public int Losses { get; set; } = 0;
         public string GameName { get; set; }

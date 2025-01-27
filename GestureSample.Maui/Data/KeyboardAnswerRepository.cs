@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Data
 {
-    internal class KeyboardAnswerRepository : BaseRepository<QuestionAnswer>
+    internal class KeyboardAnswerRepository : BaseRepository<KeyboardAnswer>
     {
-        public KeyboardAnswerRepository(SQLiteAsyncConnection database) : base(database) { }
+        public KeyboardAnswerRepository() : base() { }
     }
 }

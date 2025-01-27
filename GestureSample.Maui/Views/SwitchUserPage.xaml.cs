@@ -22,7 +22,7 @@ namespace GestureSample.Maui.Views
         {
             base.OnAppearing();
 
-            var users = await _userRepo.GetUsersAsync();
+            var users = await _userRepo.GetAllAsync();
             UsersCollectionView.ItemsSource = users;
         }
 

@@ -1,4 +1,5 @@
 using GestureSample.Maui.Data;
+using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
 using System.Collections.ObjectModel;
@@ -30,22 +31,28 @@ namespace GestureSample.Views
         public ShowDataXamlKeyboard(string gameId = null)
         {
             InitializeComponent();
-            ShowData(gameId);
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
+            ShowData(gameId);
         }
 
         public async void ShowData(string gameId = null)
         {
-
-            GameIdentifiers = await _gameRepository.GetGamesAsync();
+                GameIdentifiers = await _gameRepository.GetAllByUserAsync(ActiveUserHelper.CurrentUserId);
+                if (GameIdentifiers == null || GameIdentifiers.Count == 0)
+                {
+                    Console.WriteLine("no games played");
+                    // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
+                    await Navigation.PopAsync();
+                }
+            
             if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
             for (int i = 0; i < GameIdentifiers.Count; i++)
             {
                 if (gameId != null && GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i + 1;
-                await _gameRepository.UpdateGameAsync(GameIdentifiers[i]);
+                await _gameRepository.UpdateAsync(GameIdentifiers[i]);
 
             }
 
