@@ -4,17 +4,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Realms.Sync.MongoClient;
 
 namespace GestureSample.Maui.Data
 {
     public class BaseRepository<T> where T : new()
     {
-        protected readonly SQLiteAsyncConnection _database;
+        protected SQLiteAsyncConnection _database;
 
-        public BaseRepository(SQLiteAsyncConnection database)
+        public BaseRepository()
         {
-            _database = database;
+            _database = StateConnection.Instance.Database; 
         }
+
 
         public Task<int> SaveAsync(T entity) => _database.InsertAsync(entity);
         public Task<int> UpdateAsync(T entity) => _database.UpdateAsync(entity);

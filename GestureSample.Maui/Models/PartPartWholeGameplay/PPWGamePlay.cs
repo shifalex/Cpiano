@@ -57,7 +57,7 @@ namespace GestureSample.Maui.Models
                  GameName = config.GameName,
                  Config = config
              };
-            _gameRepository.SaveGameAsync(_gameData);
+            _gameRepository.SaveAsync(_gameData);
 
             GeneratePossibleTriadsSet();
 
@@ -78,7 +78,7 @@ namespace GestureSample.Maui.Models
                 Sum = this.Sum, //TODO:make more elegant
                 ResultStatus = resultStatus
             };
-            await _questionAnswerRepository.SaveAnswerAsync(s);
+            await _questionAnswerRepository.SaveAsync(s);
             qaState = s ;
         //await _realmService.AddStateAsync(s);
     }
@@ -159,7 +159,7 @@ namespace GestureSample.Maui.Models
                     }*/
 
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    _gameRepository.UpdateGameAsync(_gameData);
+                    _gameRepository.UpdateAsync(_gameData);
                     App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
                     //_losesMade = 0;
                     //_tasksMade = 0;
@@ -173,7 +173,7 @@ namespace GestureSample.Maui.Models
             _gameData.Wins = _tasksMade;
             _gameData.Losses = _losesMade;
             //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-            _gameRepository.UpdateGameAsync(_gameData);
+            _gameRepository.UpdateAsync(_gameData);
             _view.UpdateView();
             return _status == Statement.True;
         }

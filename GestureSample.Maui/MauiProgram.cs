@@ -26,22 +26,27 @@ public static class MauiProgram
 
             .ConfigureMRGestures();
 
-        builder.Services.AddSingleton((_) => new Supabase.Client(
+        /*builder.Services.AddSingleton((_) => new Supabase.Client(
             "https://njsspracfpbyozvandph.supabase.co", // Replace with your Supabase URL
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA" // Replace with your Supabase API Key
         ));//Password: c!L2TkQ@8wLPt2e
-
-        builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
+        */
+        // builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
+        Console.WriteLine("a");
+        builder.Services.AddSingleton<UserRepository>();
+        Console.WriteLine("b");
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
-        builder.Services.AddSingleton<UserRepository>(); var mauiApp = builder.Build();
+
         builder.Services.AddTransient<QuestionAnswerRepository>();
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
         builder.Services.AddTransient<KeyEventRepository>();
+        Console.WriteLine("c");
 
+        var mauiApp = builder.Build();
         // Store the DI container (ServiceProvider)
         ServiceHelper.Services = mauiApp.Services;
-
+        Console.WriteLine("d");
         return mauiApp;
     }
 }

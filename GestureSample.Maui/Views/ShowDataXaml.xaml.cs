@@ -41,12 +41,12 @@ namespace GestureSample.Views
         public async void ShowData(string gameId=null)
         {
            
-            GameIdentifiers = await _gameRepository.GetGamesAsync();
+            GameIdentifiers = await _gameRepository.GetAllAsync();
             if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
             for (int i = 0; i < GameIdentifiers.Count; i++) {
                 if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i+1;
-                await _gameRepository.UpdateGameAsync(GameIdentifiers[i]);
+                await _gameRepository.UpdateAsync(GameIdentifiers[i]);
 
             }
 
