@@ -38,7 +38,7 @@ namespace GestureSample.Maui.Views
                 AvatarUri = avatarUri
             };
 
-            await _userRepo.AddUserAsync(newUser);
+            await _userRepo.SaveAsync(newUser);
             ActiveUserHelper.CurrentUserId = newUser.Id;
 
             if (_firstUser)

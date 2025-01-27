@@ -7,14 +7,9 @@ using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Data
 {
-    internal class KeyboardQuestionRepository : BaseRepository<QuestionAnswer>
+    internal class KeyboardQuestionRepository : BaseRepository<KeyboardQuestion>
     {
-        public KeyboardQuestionRepository(SQLiteAsyncConnection database) : base(database) { }
-
-        public Task<int> SaveKeyboardQuestionAsync(KeyboardQuestion kQuestion)
-        {
-            return _database.InsertAsync(kQuestion);
-        }
+        public KeyboardQuestionRepository() :base() { }
 
         public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(string selectedIdentifier)
         {

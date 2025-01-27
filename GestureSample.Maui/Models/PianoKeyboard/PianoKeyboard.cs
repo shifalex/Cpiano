@@ -71,7 +71,7 @@ namespace GestureSample.Maui.Models
                 GameId= _gamePlay.GameId,
                 QuestionNumber = _gamePlay._questionNumber
             };// = new ();
-            await _keyEventRepository.SaveKeyEventAsync(keyEvent);
+            await _keyEventRepository.SaveAsync(keyEvent);
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
