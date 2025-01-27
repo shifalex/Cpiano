@@ -15,7 +15,7 @@ namespace GestureSample.Maui.Data
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
         public int Sum { get; set; }
         public int Addend1 { get; set; }
         public int Addend2 { get; set; }
@@ -61,7 +61,7 @@ namespace GestureSample.Maui.Data
         public Color Addend1Color { get; set; } = Colors.White;
         public Color Addend2Color { get; set; } = Colors.White;
         public Color SumColor { get; set; } = Colors.White;
-        public Color TimeColor { get { return TimeOnTask > 10 ? Colors.Yellow : Colors.White; } }  
+        public Color TimeColor { get { return TimeOnTask > 6 ? Colors.Yellow : Colors.White; } }  
         public DateTimeOffset? StartTime { get; set; } = null;
 
         public Color RowBackgroundColor { get; set; }

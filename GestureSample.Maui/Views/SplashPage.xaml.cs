@@ -18,7 +18,7 @@ public partial class SplashPage : ContentPage
     {
         base.OnAppearing();
 
-        var users = await _userRepo.GetUsersAsync();
+        var users = await _userRepo.GetAllAsync();
 
         if (users.Count == 0)
         {

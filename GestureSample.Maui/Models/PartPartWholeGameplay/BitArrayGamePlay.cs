@@ -216,7 +216,7 @@ namespace GestureSample.Maui.Models
                 s.aboveNumber = aboveNumber;
                 s.length = length;
             }
-            _keyboardQuestionRepository.SaveKeyboardQuestionAsync(s);
+            _keyboardQuestionRepository.SaveAsync(s);
 
             _view.UpdateView(true);
 

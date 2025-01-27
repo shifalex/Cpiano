@@ -933,7 +933,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
         {
             base.OnAppearing();
 
-            var users = await _userRepo.GetUsersAsync();
+            var users = await _userRepo.GetAllAsync();
             if (users == null || !users.Any())
             {
                 // No users exist, navigate to SplashPage
@@ -945,7 +945,7 @@ new PageConfig("new Keyboard", "Sync one number Quick", () => new SimpleViewCell
                 var currentUserId = ActiveUserHelper.CurrentUserId;
                 if (currentUserId.HasValue)
                 {
-                    var user = await _userRepo.GetUserAsync(currentUserId.Value);
+                    var user = await _userRepo.GetByIdAsync(currentUserId.Value);
                     if (user != null)
                     {
                         // Optionally display a welcome message
