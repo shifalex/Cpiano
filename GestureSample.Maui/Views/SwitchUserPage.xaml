@@ -5,7 +5,7 @@
 			 xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
              xmlns:data="clr-namespace:GestureSample.Maui.Data"
 			 x:Class="GestureSample.Maui.Views.SwitchUserPage"
-             Title="SwitchUserPage">
+             Title="Switch User">
     <VerticalStackLayout Padding="20" Spacing="20">
         <CollectionView x:Name="UsersCollectionView" 
                         SelectionMode="Single"
@@ -24,5 +24,8 @@
         </CollectionView>
 
         <Button Text="Add New User" Clicked="OnAddUserClicked"/>
+        <!--<Button Text="DAMP" Clicked="OnDampButtonClicked" />
+
+        <Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>
 </ContentPage>

@@ -8,38 +8,42 @@ public partial class SplashPage : ContentPage
 {
     private readonly UserRepository _userRepo;
 
-    public SplashPage(UserRepository userRepo)
+    public SplashPage()
     {
+        _userRepo = ServiceHelper.GetService<UserRepository>();
         InitializeComponent();
-        _userRepo = userRepo;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        var users = await _userRepo.GetAllAsync();
+        var users = await _userRepo.GetUsersAsync();
+
+
 
         if (users.Count == 0)
         {
-            // No users -> force to CreateUserPage
-            await Navigation.PushAsync(new CreateUserPage(_userRepo, firstUser: true));
+            await Navigation.PushAsync(new CreateUserPage(firstUser: true));
+            return;
         }
-        else
+        var currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+
+        if (currentUser == null)
         {
-            // We have users. Check if we have a "last active user" in Preferences
-            var lastUserId = ActiveUserHelper.CurrentUserId;
+            await ServiceHelper.GetService<CurrentUserSession>().LoadUserAsync(users[0].Id);
+            currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+            currentUser.LastLoginTime = DateTime.Now;
+            await _userRepo.UpdateAsync(currentUser);
 
-            if (lastUserId == null || !users.Any(u => u.Id == lastUserId.Value))
-            {
-                // If there's no valid active user, pick the first user or let them choose
-                // For simplicity, let's pick the first user
-                var defaultUser = users[0];
-                ActiveUserHelper.CurrentUserId = defaultUser.Id;
-            }
-
-            // Go to the main page
-            await Navigation.PopToRootAsync();
         }
+
+
+        // Go to the main page
+        
+        //await Navigation.PopToRootAsync(new MainPage("Control Categories", null));
+        await Navigation.PushAsync(new MainPage("Control Categories", null));
+        //Application.Current.MainPage = new NavigationPage();
+
     }
 }

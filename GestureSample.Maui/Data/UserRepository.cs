@@ -12,5 +12,10 @@ namespace GestureSample.Maui.Data
         
 
         public UserRepository() : base() { }
-       }
+
+        public async Task<List<User>> GetUsersAsync()
+        {
+            return await _database.Table<User>().OrderByDescending(u => u.LastLoginTime).ToListAsync();
+        }
+    }
 }

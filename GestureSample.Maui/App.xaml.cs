@@ -13,8 +13,8 @@ namespace GestureSample.Maui
         {
             InitializeComponent();
 
-            var mainPage = new MainPage("Control Categories", null);
-            MainPage = MainNavigation = new NavigationPage(mainPage);
+            //var mainPage = new MainPage("Control Categories", null);
+            MainPage = MainNavigation = new NavigationPage(new SplashPage());
         }
 
     }
