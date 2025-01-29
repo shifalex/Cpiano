@@ -36,6 +36,7 @@ public partial class SplashPage : ContentPage
                 // For simplicity, let's pick the first user
                 var defaultUser = users[0];
                 ActiveUserHelper.CurrentUserId = defaultUser.Id;
+                ActiveUserHelper.CurrentUserName = defaultUser.Name;
             }
 
             // Go to the main page

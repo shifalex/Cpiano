@@ -40,6 +40,7 @@ namespace GestureSample.Maui.Views
 
             await _userRepo.SaveAsync(newUser);
             ActiveUserHelper.CurrentUserId = newUser.Id;
+            ActiveUserHelper.CurrentUserName = newUser.Name;
 
             if (_firstUser)
             {
