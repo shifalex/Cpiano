@@ -12,10 +12,10 @@ namespace GestureSample.Maui.Views
         private readonly UserRepository _userRepo;
         private readonly bool _firstUser;
 
-        public CreateUserPage(UserRepository userRepo, bool firstUser = false)
+        public CreateUserPage(bool firstUser = false)
         {
             InitializeComponent();
-            _userRepo = userRepo;
+            _userRepo = ServiceHelper.GetService<UserRepository>();
             _firstUser = firstUser;
         }
 
@@ -39,15 +39,21 @@ namespace GestureSample.Maui.Views
             };
 
             await _userRepo.SaveAsync(newUser);
-            ActiveUserHelper.CurrentUserId = newUser.Id;
+            var currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
 
             if (_firstUser)
-            {
+            {               
+
+            // Load the active user asynchronously (this should only happen once per login).
+            await currentUserSession.LoadUserAsync(newUser.Id);
                 // Navigate to the MainPage and clear older pages (like SplashPage)
                 await Navigation.PopToRootAsync();
             }
             else
             {
+
+                currentUserSession.ActiveUser.LastLoginTime = DateTime.Now;
+                await _userRepo.UpdateAsync(currentUserSession.ActiveUser);
                 // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
                 await Navigation.PopAsync();
             }

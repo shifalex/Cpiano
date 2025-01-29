@@ -39,7 +39,7 @@ namespace GestureSample.Views
 
         public async void ShowData(string gameId = null)
         {
-                GameIdentifiers = await _gameRepository.GetAllByUserAsync(ActiveUserHelper.CurrentUserId);
+                GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
                 if (GameIdentifiers == null || GameIdentifiers.Count == 0)
                 {
                     Console.WriteLine("no games played");

@@ -51,11 +51,18 @@
     //ODO: decomposition game save check
     //ODO: Grid Height & Android?
     //ODO: Local Users
-
-    //TODO: Menu Page that is comfortable - both for small screen and for big
+    //ODO: Fix keyboard disappearing bug
+    //ODO:Back to main in Data
+    //ODO: Menu Page that is comfortable - both for small screen and for big
+    //ODO: Code Review about Users and CurrentUserId. Straight from mainPage to CreatePage(withou Splash). Change GetCurrentUser to property
+    //ODO: Back button from Grid to "New Number"
+    //ODO: split pianoKeyboard and number games
+    
+    //TODO: DUMP data button
     //TODO: Save on outside db and upload to local if needed
     //TODO: Show user name and icon in the up
-    //TODO: split pianoKeyboard and number games
+    //TODO: add feedback and timer together
+    //TODO: GMAil/device sync save
     //TODO: PainoKeyboard TilltheEnd Arrow
     //TODO: save piano on db
     //TODO: Save key event only if they make a difference
@@ -63,13 +70,21 @@
     //TODO: Admin page to search by user to search a data
     //TODO: add all the x and y of the touches on the keyboard to different db table using e.Touches[0] - will be needed for the touching patterns. Make it a seperate event of touch the grid which doesn't interfere
     //TODO: Understand what I do with await
-    //TODO: Back button from Grid to "New Number"
     //TODO: design
     //TODO: PUBLISH!
     //TODO: ACT-R simulator
     //TODO: click point places simulator
     //TODO: create a different "thinking" sign
     //TODO: Avatars
+    //TODO: make better helping text boxes through 10 design(more algined)
+    //TODO: part part whole addition/subtraction mission with the piano - with async piano mode 
+    //TODO: start from 50-50-100 in the big numbers??
+    //TODO: numbers/keyboard menu
+    //TODO: switch in mainpage when switching user
+    //TODO: options - time till yellow :/ both in multilication and addition
+    //TODO: feedback on the game to the AI regarding how was it to me? hard/easy?
+    //TODO: Random change in up and down of the text boxes
+    //TODO: User cclassroom=1, a teacher bit, creation time, local order of he user,last login time.
 
     //TODO: GameName length fixed
     //TODO: COLOR of grid heading as upper color

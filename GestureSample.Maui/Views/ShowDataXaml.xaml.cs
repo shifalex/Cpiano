@@ -26,7 +26,6 @@ namespace GestureSample.Views
 
 
         private readonly GameRepository _gameRepository;
-        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
         public ShowDataXaml(string gameId = null)
         {
@@ -34,6 +33,27 @@ namespace GestureSample.Views
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
+            //if(gameId!=null)
+            //{
+                /*MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    var navigation = Application.Current.MainPage.Navigation;
+                    Console.WriteLine(navigation.NavigationStack.Count);
+                    var currentPage = navigation.NavigationStack[navigation.NavigationStack.Count - 1];
+                    if (navigation.NavigationStack.Count > 2)
+                    {
+                        while (navigation.NavigationStack.Count > 0)
+                        {
+
+                            Console.WriteLine(navigation.NavigationStack[navigation.NavigationStack.Count - 1].Title);
+                            var previousPage = navigation.NavigationStack[navigation.NavigationStack.Count - 1];
+                            navigation.RemovePage(previousPage);
+                        }
+                        await navigation.PushAsync(currentPage);
+                    }
+                    Console.WriteLine(navigation.NavigationStack.Count);
+                });*/
+            //}
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             ShowData(gameId);
@@ -42,7 +62,7 @@ namespace GestureSample.Views
         public async void ShowData(string gameId=null)
         {
            
-            GameIdentifiers = await _gameRepository.GetAllByUserAsync(ActiveUserHelper.CurrentUserId);
+            GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
             Console.WriteLine("Loading Identifiers finished");
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
             {

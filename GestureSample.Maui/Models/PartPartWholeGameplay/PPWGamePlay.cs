@@ -53,7 +53,7 @@ namespace GestureSample.Maui.Models
 
              _gameData = new()
              {
-                 UserId = (Guid)ActiveUserHelper.CurrentUserId,
+                 UserId = (Guid)ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id,
                  Id = GameId,
                  GameName = config.GameName,
                  Config = config
@@ -161,7 +161,29 @@ namespace GestureSample.Maui.Models
 
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
                     _gameRepository.UpdateAsync(_gameData);
-                    App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
+
+
+                    MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        var navigation = Application.Current.MainPage.Navigation;
+                        Console.WriteLine(navigation.NavigationStack.Count);
+                        if (navigation.NavigationStack.Count > 2)
+                        {
+                            while (navigation.NavigationStack.Count > 2)
+                            {
+
+                                Console.WriteLine(navigation.NavigationStack[navigation.NavigationStack.Count - 2].Title);
+                                var previousPage = navigation.NavigationStack[navigation.NavigationStack.Count - 2];
+                                navigation.RemovePage(previousPage);
+                            }
+                        }
+                        Console.WriteLine(navigation.NavigationStack.Count);
+                    });
+
+                    var newPage = new ShowDataXaml(GameId);
+                    Application.Current.MainPage.Navigation.InsertPageBefore(newPage, _view);
+                    Application.Current.MainPage.Navigation.PopAsync();
+                    //App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
                     //_losesMade = 0;
                     //_tasksMade = 0;
                     //StartTime = DateTime.Now;
@@ -278,7 +300,8 @@ namespace GestureSample.Maui.Models
                 
                 if (_isFirstGuess && !Config.OnlyThrougTen)
                 {
-                    factors[0] = 2; factors[1] = 3; factors[2] = 5;
+                    if (Config.MaxSum < 100)
+                    { factors[0] = 2; factors[1] = 3; factors[2] = 5; }
                     _isFirstGuess = false;
                     addend1 = 2; addend2 = 3; Sum = 5;
                     if (IsCorrectInput())

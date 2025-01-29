@@ -77,7 +77,7 @@ namespace GestureSample.Maui.Data
         {
             string status =  FinalStatus switch { 0=>"Lose", 1=>"WIN!", _ => ""};
             string time = ((TimeSpan)(TimeEnd-TimeStart)).ToFormattedString("mm:ss");
-            string formattedGameName = (GameName ?? string.Empty);
+            string formattedGameName = (GameName?.Replace("Level ","L").Replace("Multiplication","X:") ?? string.Empty);
 
             string prefix = $"{index.ToString().PadLeft(3)} {TimeStart:t} ";
             string suffix = $"{status} {time} {(Wins-Losses)}/{Wins}".PadLeft(14);

@@ -18,7 +18,7 @@ namespace GestureSample.Maui.Data
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public Guid UserId { get; set; } = (Guid)ActiveUserHelper.CurrentUserId;
+        public Guid UserId { get; set; } = (Guid)ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
         public int ResultStatus { get; set; } = 0;
 
 

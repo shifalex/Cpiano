@@ -1,6 +1,7 @@
 ﻿using MR.Gestures;
 using GestureSample.Maui.Data;
 using Supabase;
+using GestureSample.Maui.Handlers;
 
 namespace GestureSample.Maui;
 
@@ -34,6 +35,7 @@ public static class MauiProgram
         // builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
         Console.WriteLine("a");
         builder.Services.AddSingleton<UserRepository>();
+        builder.Services.AddSingleton<CurrentUserSession>();
         Console.WriteLine("b");
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
 
