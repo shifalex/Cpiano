@@ -28,5 +28,21 @@ namespace GestureSample.Maui.Handlers
                     Preferences.Remove(CurrentUserKey);
             }
         }
+
+        public static string CurrentUserName
+        {
+            get
+            {
+                var storedId = Preferences.Get("userName", string.Empty);
+                return storedId;
+                            }
+            set
+            {
+                if (value!=null)
+                    Preferences.Set("userName", value);
+                else
+                    Preferences.Remove("userName");
+            }
+        }
     }
 }

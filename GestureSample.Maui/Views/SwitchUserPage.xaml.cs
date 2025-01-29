@@ -33,6 +33,7 @@ namespace GestureSample.Maui.Views
             {
                 // Set this as the active user
                 ActiveUserHelper.CurrentUserId = selectedUser.Id;
+                ActiveUserHelper.CurrentUserName = selectedUser.Name;
 
                 // Go back to MainPage
                 await Navigation.PopAsync();

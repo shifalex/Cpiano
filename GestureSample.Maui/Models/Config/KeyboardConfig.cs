@@ -53,23 +53,27 @@
     //ODO: Local Users
 
     //TODO: Menu Page that is comfortable - both for small screen and for big
-    //TODO: Save on outside db and upload to local if needed
+    //TODO: Back button from Grid to "New Number"
     //TODO: Show user name and icon in the up
-    //TODO: split pianoKeyboard and number games
     //TODO: PainoKeyboard TilltheEnd Arrow
+    //TODO: Save on outside db and upload to local if needed
+    //TODO: split pianoKeyboard and number games
     //TODO: save piano on db
     //TODO: Save key event only if they make a difference
     //TODO: PianoKeyboardData That Works and paints well
     //TODO: Admin page to search by user to search a data
     //TODO: add all the x and y of the touches on the keyboard to different db table using e.Touches[0] - will be needed for the touching patterns. Make it a seperate event of touch the grid which doesn't interfere
     //TODO: Understand what I do with await
-    //TODO: Back button from Grid to "New Number"
     //TODO: design
     //TODO: PUBLISH!
     //TODO: ACT-R simulator
     //TODO: click point places simulator
     //TODO: create a different "thinking" sign
     //TODO: Avatars
+    //TODO: make better helping text boxes through 10 design(more algined)
+    //TODO: start from 50-50-100 in the big numbers
+    //TODO: numbers/keyboard menu
+    //TODO: switch in mainpage when switching user
 
     //TODO: GameName length fixed
     //TODO: COLOR of grid heading as upper color
