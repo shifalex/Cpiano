@@ -70,7 +70,7 @@
     //TODO: Admin page to search by user to search a data
     //TODO: add all the x and y of the touches on the keyboard to different db table using e.Touches[0] - will be needed for the touching patterns. Make it a seperate event of touch the grid which doesn't interfere
     //TODO: Understand what I do with await
-    //TODO: design
+    //TODO: design - menu and pick avatar
     //TODO: PUBLISH!
     //TODO: ACT-R simulator
     //TODO: click point places simulator
