@@ -10,7 +10,7 @@
         <!-- If you have avatars or images, present them here -->
         <Image x:Name="SelectedAvatarImage" WidthRequest="100" HeightRequest="100" 
                HorizontalOptions="Center" VerticalOptions="Center" />
-        <Button Text="Pick Avatar (Not implemented)" />
+        <!--<Button Text="Pick Avatar (Not implemented)" />-->
 
         <Button Text="Create" Clicked="OnCreateButtonClicked" />
     </VerticalStackLayout>
