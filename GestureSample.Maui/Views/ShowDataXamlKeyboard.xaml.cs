@@ -1,4 +1,5 @@
 using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
@@ -28,7 +29,7 @@ namespace GestureSample.Views
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
-        public ShowDataXamlKeyboard(string gameId = null)
+        public ShowDataXamlKeyboard(Guid? gameId = null)
         {
             InitializeComponent();
             _gameRepository = ServiceHelper.GetService<GameRepository>();
@@ -37,7 +38,7 @@ namespace GestureSample.Views
             ShowData(gameId);
         }
 
-        public async void ShowData(string gameId = null)
+        public async void ShowData(Guid? gameId = null)
         {
                 GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
                 if (GameIdentifiers == null || GameIdentifiers.Count == 0)
@@ -62,7 +63,7 @@ namespace GestureSample.Views
             LoadGames();
             if (gameId != null)
             {
-                await LoadStatesToGrid(gameId);
+                await LoadStatesToGrid((Guid)gameId);
             }
         }
 
@@ -97,15 +98,21 @@ namespace GestureSample.Views
 
         }
 
-        private async Task LoadStatesToGrid(string selectedIdentifier)
+        private async Task LoadStatesToGrid(Guid? selectedIdentifier)
         {
             /*for (int i = 0; i < GameIdentifiers.Count; i++)
                 if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier))
                     CurrentGame = GameIdentifiers[i];*/
 
-            List<KeyboardQuestion> questionList = await _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
-            List<KeyEvent> gamePresses = await _keyEventRepository.GetKeyEventsByQueryAsync(selectedIdentifier);
-            
+            List<KeyboardQuestion> questionList =new();
+            List<KeyEvent> gamePresses = new();
+
+
+            if (selectedIdentifier != null)
+            {
+                questionList = await _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
+                gamePresses = await _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier);
+            }
             /*foreach (var state in gamePresses)
             {
                 ShowState s = new(state);
@@ -148,7 +155,7 @@ namespace GestureSample.Views
 
                 
             }*/
-            
+
             List<MainItem> mainItems = new();
             if (questionList.Any())
             {

@@ -5,11 +5,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Maui.Platform;
 using SQLite;
+using Supabase.Postgrest.Models;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SupaBase
 {
     [Table("KeyEvent")]
-    public class KeyEvent
+    public class KeyEvent : BaseModel
     {
         [PrimaryKey, AutoIncrement]
         public int id {  get; }

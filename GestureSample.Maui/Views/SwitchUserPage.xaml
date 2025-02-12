@@ -3,7 +3,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 			 xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
-             xmlns:data="clr-namespace:GestureSample.Maui.Data"
+             xmlns:data="clr-namespace:GestureSample.Maui.Data.SQLite"
 			 x:Class="GestureSample.Maui.Views.SwitchUserPage"
              Title="Switch User">
     <VerticalStackLayout Padding="20" Spacing="20">
@@ -24,8 +24,8 @@
         </CollectionView>
 
         <Button Text="Add New User" Clicked="OnAddUserClicked"/>
-        <!--<Button Text="DAMP" Clicked="OnDampButtonClicked" />
+        <Button Text="DAMP" Clicked="OnDampButtonClicked" />
 
-        <Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
+        <!--<Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>
 </ContentPage>

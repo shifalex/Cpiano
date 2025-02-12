@@ -1,4 +1,5 @@
 ﻿using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
 using GestureSample.Views;
 using GestureSample.Views.Tests;
@@ -9,7 +10,7 @@ namespace GestureSample.Maui.Models
     internal class PPWGamePlay
     {
         public static readonly int NAN = -1111;
-        public string GameId { get; set; } = Guid.NewGuid().ToString();
+        public Guid GameId { get; set; } = Guid.NewGuid();
         public int addend1;
         public int addend2;
         QuestionAnswer qaState;
@@ -17,7 +18,16 @@ namespace GestureSample.Maui.Models
         public int _questionNumber = 0;
         protected int _questionsWrong = 0;
         private bool _lastQuestionWrong = false;
+
+/* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
+Before:
         protected Data.Game _gameData;
+        public virtual int Sum { get; set; }
+After:
+        protected Game _gameData;
+        public virtual int Sum { get; set; }
+*/
+        protected Data.SQLite.Game _gameData;
         public virtual int Sum { get; set; }
 
         public Operation CurrentOperation { get; set; }
@@ -67,10 +77,10 @@ namespace GestureSample.Maui.Models
         protected async Task SaveState(int resultStatus =-1)
         {
 
-            Data.QuestionAnswer s = new()
+            QuestionAnswer s = new()
             {
 
-                GameId = this.GameId,
+                GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
                 Op = CurrentOperation,

@@ -1,4 +1,5 @@
-﻿using SQLite;
+﻿using GestureSample.Maui.Data.SQLite;
+using SQLite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,9 +12,9 @@ namespace GestureSample.Maui.Data
     {
         public KeyboardQuestionRepository() :base() { }
 
-        public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(string selectedIdentifier)
+        public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(Guid? selectedIdentifier)
         {
-            return await _database.Table<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier).ToListAsync();
+            return await _database.Table<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier.ToString()).ToListAsync();
 
         }
 

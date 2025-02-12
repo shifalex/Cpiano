@@ -57,12 +57,13 @@
     //ODO: Code Review about Users and CurrentUserId. Straight from mainPage to CreatePage(withou Splash). Change GetCurrentUser to property
     //ODO: Back button from Grid to "New Number"
     //ODO: split pianoKeyboard and number games
-    
+
     //TODO: DUMP data button
     //TODO: Save on outside db and upload to local if needed
     //TODO: Show user name and icon in the up
     //TODO: add feedback and timer together
     //TODO: GMAil/device sync save
+    //TODO: RECORD BY GAME DATA
     //TODO: PainoKeyboard TilltheEnd Arrow
     //TODO: save piano on db
     //TODO: Save key event only if they make a difference
@@ -72,6 +73,7 @@
     //TODO: Understand what I do with await
     //TODO: design - menu and pick avatar
     //TODO: PUBLISH!
+    //TODO: Graphs page
     //TODO: ACT-R simulator
     //TODO: click point places simulator
     //TODO: create a different "thinking" sign

@@ -2,27 +2,35 @@
 //using Microsoft.Data.Sqlite;
 //using MongoDB.Bson.IO;
 using Microsoft.Maui.Platform;
+using MongoDB.Driver.Core.Operations;
 using SQLite;
+using Supabase.Postgrest.Models;
 using System.Text.Json;
 //using Realms;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SQLite
 {
     [Table("Game")]
-    public class Game //: RealmObject
+    public class Game
 
     {
         [PrimaryKey]
-        public string Id { get; set; }
+        public Guid Id { get; set; }
         public int index { get; set; }
         public DateTime TimeStart { get; set; } = DateTime.Now;
         public DateTime TimeEnd { get; set; } = DateTime.Now;//TODO: excgange into the last endtime of the game by calculating
         public int FinalStatus { get; set; } = -1;
-        //public TimeSpan FinalTime { get; set; } = TimeSpan.Zero;
+
+        [Ignore]
+        public TimeSpan FinalTime { get =>  TimeEnd.Subtract(TimeStart);   }
+
+
         public Guid UserId { get; set; }
         public int Wins { get; set; } = 0;
         public int Losses { get; set; } = 0;
         public string GameName { get; set; }
+
+        public bool WasSynced { get; set; } = false;
 
         public double MeasureTextWidth(string text, double fontSize)
         {
@@ -75,12 +83,12 @@ namespace GestureSample.Maui.Data
 
         public override string ToString()
         {
-            string status =  FinalStatus switch { 0=>"Lose", 1=>"WIN!", _ => ""};
-            string time = ((TimeSpan)(TimeEnd-TimeStart)).ToFormattedString("mm:ss");
-            string formattedGameName = (GameName?.Replace("Level ","L").Replace("Multiplication","X:") ?? string.Empty);
+            string status = FinalStatus switch { 0 => "Lose", 1 => "WIN!", _ => "" };
+            string time = (TimeEnd - TimeStart).ToFormattedString("mm:ss");
+            string formattedGameName = GameName?.Replace("Level ", "L").Replace("Multiplication", "X:") ?? string.Empty;
 
             string prefix = $"{index.ToString().PadLeft(3)} {TimeStart:t} ";
-            string suffix = $"{status} {time} {(Wins-Losses)}/{Wins}".PadLeft(14);
+            string suffix = $"{status} {time} {Wins - Losses}/{Wins}".PadLeft(14);
 
             int availableCenterWidth = 17;
             if (formattedGameName.Length > availableCenterWidth)

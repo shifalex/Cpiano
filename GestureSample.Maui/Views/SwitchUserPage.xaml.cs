@@ -3,6 +3,7 @@ using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;
 using GestureSample.Maui.Models;
 using GestureSample.Views;
+using GestureSample.Maui.Data.SQLite;
 
 namespace GestureSample.Maui.Views
 {
@@ -53,7 +54,7 @@ namespace GestureSample.Maui.Views
             foreach (var user in users)
             {
                 //await _userRepo.UpdateUserAsync(user);
-                //await SupabaseService.SyncUserAsync(user); // Sync with Supabase
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(user); // Sync with Supabase
             }
             await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
         }

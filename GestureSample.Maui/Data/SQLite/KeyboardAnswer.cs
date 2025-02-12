@@ -5,8 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using SQLite;
 using System.Text.Json;
+using Supabase.Postgrest.Models;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SQLite
 {
     [Table("KeyboardAnswer")]
     public class KeyboardAnswer

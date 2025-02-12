@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
+using Supabase.Postgrest.Models;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SQLite
 {
     [Table("KeyboardQuestion")]
     public class KeyboardQuestion
@@ -18,7 +19,7 @@ namespace GestureSample.Maui.Data
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public Guid UserId { get; set; } = (Guid)ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
+        public Guid UserId { get; set; } = ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
         public int ResultStatus { get; set; } = 0;
 
 
@@ -37,7 +38,7 @@ namespace GestureSample.Maui.Data
         [Ignore]
         public bool[] keyboard2 { get; set; }
         [Ignore]
-        public Direction dir { get; set; } 
+        public Direction dir { get; set; }
 
         // Serialize GameConfig as JSON for storage
         [Column("ConfigJson")]

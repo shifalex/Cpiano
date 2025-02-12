@@ -1,4 +1,5 @@
-﻿using SQLite;
+﻿using GestureSample.Maui.Data.SQLite;
+using SQLite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,10 +12,12 @@ namespace GestureSample.Maui.Data
     {
         public QuestionAnswerRepository() { }
 
-        public async Task<List<QuestionAnswer>> GetAnswersByQueryAsync(string GameId)
+        public async Task<List<QuestionAnswer>> GetAnswersByQueryAsync(Guid GameId)
         {
+            string gID = GameId.ToString();
             //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM QuestionAnswer WHERE GameId = '{0}'", GameId);
-            return await _database.Table<QuestionAnswer>().Where(state => state.GameId == GameId).ToListAsync();
+            Console.WriteLine("gID: {0}", gID);
+            return await _database.Table<QuestionAnswer>().Where(state => state.GameId == gID).ToListAsync();
 
         }
     }
