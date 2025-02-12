@@ -1,4 +1,5 @@
 using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
@@ -27,7 +28,7 @@ namespace GestureSample.Views
 
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
-        public ShowDataXaml(string gameId = null)
+        public ShowDataXaml(Guid? gameId = null)
         {
             InitializeComponent();
             //StateList.ItemsSource = App.CurrentDB.GetStates();
@@ -59,7 +60,7 @@ namespace GestureSample.Views
             ShowData(gameId);
         }
 
-        public async void ShowData(string gameId=null)
+        public async void ShowData(Guid? gameId=null)
         {
            
             GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
@@ -119,14 +120,21 @@ namespace GestureSample.Views
             
         }
 
-        private async Task LoadStatesToGrid(string selectedIdentifier)
+        private async Task LoadStatesToGrid(Guid? selectedIdentifier)
         {
             for (int i = 0; i < GameIdentifiers.Count; i++)
                if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier)) 
                     CurrentGame = GameIdentifiers[i];
 
+            List<QuestionAnswer> gameStats = new();
+            if (selectedIdentifier != null)
+            {
+                Console.WriteLine(selectedIdentifier.ToString());
+                gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
+                Console.WriteLine("Rows: {0}",gameStats.Count);
 
-                var gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync(selectedIdentifier);
+
+            }
             List<ShowState> states = new ();
             ShowState s_prev = null;
             foreach (var state in gameStats)

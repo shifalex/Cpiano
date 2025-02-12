@@ -202,10 +202,19 @@ namespace GestureSample.Maui.Models
                 }
 
             }
+
+/* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
+Before:
             Data.KeyboardQuestion s = new()
             {
+After:
+            KeyboardQuestion s = new()
+            {
+*/
+            Data.SQLite.KeyboardQuestion s = new()
+            {
 
-                GameId = this.GameId,
+                GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
                 keyboard1 = BitArrayQuestion,

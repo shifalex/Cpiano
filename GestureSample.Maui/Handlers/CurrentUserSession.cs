@@ -1,4 +1,5 @@
 ﻿using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace GestureSample.Maui.Handlers
         public User ActiveUser { get; private set; }
 
         // An event you can use to notify subscribers when the active user changes.
-        public event EventHandler<User> ActiveUserChanged;
+        //public event EventHandler<User> ActiveUserChanged;
 
         // A reference to your repository (you might inject this via DI instead)
         private UserRepository _userRepo = ServiceHelper.GetService<UserRepository>();

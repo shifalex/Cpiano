@@ -1,3 +1,4 @@
+using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;

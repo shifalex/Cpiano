@@ -1,6 +1,8 @@
 ﻿using SQLite;
+using Supabase;
+using Supabase.Postgrest.Models;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SQLite
 {
     [Table("User")]
     public class User

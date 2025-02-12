@@ -62,13 +62,22 @@ namespace GestureSample.Maui.Models
 
         protected async void SaveState(int eventType, int key, int row = 0)
         {
+
+/* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
+Before:
             Data.KeyEvent keyEvent = new()
+            {
+After:
+            KeyEvent keyEvent = new()
+            {
+*/
+            Data.SQLite.KeyEvent keyEvent = new()
             {
                 EventTime = DateTime.Now,
                 KeyNumber = key,
                 Row = row,
                 EventType = eventType,
-                GameId= _gamePlay.GameId,
+                GameId= _gamePlay.GameId.ToString(),
                 QuestionNumber = _gamePlay._questionNumber
             };// = new ();
             await _keyEventRepository.SaveAsync(keyEvent);

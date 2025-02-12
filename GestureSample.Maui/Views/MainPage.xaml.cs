@@ -330,8 +330,8 @@ namespace GestureSample.Views
         MaxSum=20,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3
+        NumberOfTasksToWin=40,
+        NumberOfMistakesToLose=5
     })),
     new PageConfig("+ -", "Level 2.2 - Only through 10, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -344,8 +344,8 @@ namespace GestureSample.Views
         VariableTypes = VariableTypes.OneCanBeSum,
         isHelpEntries = true,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
     })),
     new PageConfig("+ -", "Level 2.3 - Only through 10", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -357,8 +357,8 @@ namespace GestureSample.Views
         OnlyThrougTen = true,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
     })),
     new PageConfig("+ -", "Level 3   - BIG+small, Only through, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -372,8 +372,8 @@ namespace GestureSample.Views
         OnlyThrougTen = true,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3,
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4,
         isHelpEntries=true
     })),
     new PageConfig("+ -", "Level 3.1 - BIG+small, Only through", () => new SimpleViewCellsPage(new GameConfig
@@ -388,8 +388,8 @@ namespace GestureSample.Views
         OnlyThrougTen = true,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
     })),
     new PageConfig("+ -", "Level 3.2 - Sum<100, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -413,7 +413,7 @@ namespace GestureSample.Views
         NumberOfTasksToWin=20,
         NumberOfMistakesToLose=3
     })),*/
-    new PageConfig("+ -", "Level 3.4 - free practice", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("+ -", "Level 3.3 - free practice", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.4",
         MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=false,
@@ -479,16 +479,16 @@ namespace GestureSample.Views
         MaxSum=100,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 1,
-        NumberOfTasksToWin=20,
-        NumberOfMistakesToLose=3,
+        NumberOfTasksToWin=40,
+        NumberOfMistakesToLose=5,
         EnforceOperationLabel=true
     })),
-    new PageConfig("X : ", "Level2   - Multiplicators(2 to 10) of Multiplication Table", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("X : ", "Level2   - Multiplicators(2 to 9) of Multiplication Table", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Multiplication - Level 2",
         OperationList = new() { Operation.Multiplication},
         MinAddend = 2,
-        MaxAddend = 10,
+        MaxAddend = 9,
         MaxSum=100,
         IsHistory=true,
         IsHistorySymetrical=true,

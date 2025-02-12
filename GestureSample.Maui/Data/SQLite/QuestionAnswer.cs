@@ -1,16 +1,17 @@
 ﻿//using SQLite;
 //using Microsoft.Data.Sqlite;
 using SQLite;
+using Supabase.Postgrest.Models;
 using System.Text.Json;
 //using Realms;
 
-namespace GestureSample.Maui.Data
+namespace GestureSample.Maui.Data.SQLite
 {
     [Table("QuestionAnswer")]
-    public class QuestionAnswer //: RealmObject
+    public class QuestionAnswer
 
     {
-        [PrimaryKey,AutoIncrement]
+        [PrimaryKey, AutoIncrement]
         public int QuestionID { get; set; }
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
@@ -32,7 +33,7 @@ namespace GestureSample.Maui.Data
         [Column("ConfigJson")]
         public string ConfigJson
         {
-            get =>  JsonSerializer.Serialize(Op);
+            get => JsonSerializer.Serialize(Op);
             set => Op = value != null ? JsonSerializer.Deserialize<Operation>(value) : Operation.Sum;
         }
 
@@ -61,7 +62,7 @@ namespace GestureSample.Maui.Data
         public Color Addend1Color { get; set; } = Colors.White;
         public Color Addend2Color { get; set; } = Colors.White;
         public Color SumColor { get; set; } = Colors.White;
-        public Color TimeColor { get { return TimeOnTask > 6 ? Colors.Yellow : Colors.White; } }  
+        public Color TimeColor { get { return TimeOnTask > 6 ? Colors.Yellow : Colors.White; } }
         public DateTimeOffset? StartTime { get; set; } = null;
 
         public Color RowBackgroundColor { get; set; }

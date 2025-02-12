@@ -1,4 +1,5 @@
-﻿using SQLite;
+﻿using GestureSample.Maui.Data.SQLite;
+using SQLite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace GestureSample.Maui.Data
             return _database.Table<Game>().OrderBy(game => game.TimeStart).ToListAsync();
         }
 
-        public new Task<List<Game>> GetAllByUserAsync(Guid? userID)
+        public Task<List<Game>> GetAllByUserAsync(Guid? userID)
         {
             if (userID == null)
             {
@@ -30,6 +31,11 @@ namespace GestureSample.Maui.Data
                 .ToListAsync();
         }
 
-
+        internal async Task UpdateAsync(List<Game> unsyncedGames)
+        {
+            //TODO: run more synchroniusly
+            //TODO: sync progress bar
+            foreach(Game g in unsyncedGames) { await _database.UpdateAsync(g); }
+        }
     }
 }
