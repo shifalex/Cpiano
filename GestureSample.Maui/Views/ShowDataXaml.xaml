@@ -60,7 +60,7 @@
         </CollectionView>
 
 
-        <Button Text="SAVE" Clicked="OnDampButtonClicked" Grid.Row="3" />
+        <Button Text="SAVE" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
     </Grid>
     
 </ContentPage>
