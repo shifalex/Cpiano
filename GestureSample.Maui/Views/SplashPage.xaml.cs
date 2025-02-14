@@ -10,13 +10,20 @@ public partial class SplashPage : ContentPage
 
     public SplashPage()
     {
+        Console.WriteLine("Splash constructing..");
         _userRepo = ServiceHelper.GetService<UserRepository>();
+
+        Console.WriteLine("User repo succeeded..");
         InitializeComponent();
+
+        Console.WriteLine("Initialize succeeded..");
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+
+        Console.WriteLine("Splash appearing");
 
         var users = await _userRepo.GetUsersAsync();
 
@@ -31,16 +38,21 @@ public partial class SplashPage : ContentPage
 
         if (currentUser == null)
         {
+            Console.WriteLine("Connecting user");
             await ServiceHelper.GetService<CurrentUserSession>().LoadUserAsync(users[0].Id);
             currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             currentUser.LastLoginTime = DateTime.Now;
+            Console.WriteLine("User Connected");
             await _userRepo.UpdateAsync(currentUser);
+
+            Console.WriteLine("User Updated");
 
         }
 
 
         // Go to the main page
-        
+
+        Console.WriteLine("Going to Main page now");
         //await Navigation.PopToRootAsync(new MainPage("Control Categories", null));
         await Navigation.PushAsync(new MainPage("Control Categories", null));
         //Application.Current.MainPage = new NavigationPage();

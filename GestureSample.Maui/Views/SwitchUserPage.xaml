@@ -25,6 +25,8 @@
 
         <Button Text="Add New User" Clicked="OnAddUserClicked"/>
 
+        <Button Text="SAVE ALL!!" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
+
         <!--<Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>
 </ContentPage>
