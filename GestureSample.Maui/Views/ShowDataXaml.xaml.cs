@@ -20,6 +20,7 @@ namespace GestureSample.Views
             }
         }
         //private readonly RealmService _realmService;
+        private bool isSaveVisible = false;
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
@@ -63,7 +64,6 @@ namespace GestureSample.Views
 
         public async void ShowData(Guid? gameId=null)
         {
-           
             GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
             Console.WriteLine("Loading Identifiers finished");
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
@@ -126,6 +126,8 @@ namespace GestureSample.Views
             for (int i = 0; i < GameIdentifiers.Count; i++)
                if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier)) 
                     CurrentGame = GameIdentifiers[i];
+            isSaveVisible = (CurrentGame!=null && !CurrentGame.WasSynced); 
+            btnSave.IsVisible = isSaveVisible;
 
             List<QuestionAnswer> gameStats = new();
             if (selectedIdentifier != null)
@@ -242,12 +244,15 @@ namespace GestureSample.Views
 
         private async void OnDampButtonClicked(object sender, EventArgs e)
         {
-            var users = await _userRepo.GetUsersAsync();
-            foreach (var user in users)
+            //var users = await _userRepo.GetUsersAsync();
+            //foreach (var user in users)
             {
                 //await _userRepo.UpdateUserAsync(user);
-                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(user); // Sync with Supabase
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser); // Sync with Supabase
             }
+            isSaveVisible = false;
+            btnSave.IsVisible = isSaveVisible;
+
             await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
         }
     }
