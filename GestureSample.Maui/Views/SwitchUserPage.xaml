@@ -24,7 +24,6 @@
         </CollectionView>
 
         <Button Text="Add New User" Clicked="OnAddUserClicked"/>
-        <Button Text="DAMP" Clicked="OnDampButtonClicked" />
 
         <!--<Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>

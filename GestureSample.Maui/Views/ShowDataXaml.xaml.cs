@@ -25,7 +25,7 @@ namespace GestureSample.Views
         private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
 
-
+        private readonly UserRepository _userRepo;
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
         public ShowDataXaml(Guid? gameId = null)
@@ -55,6 +55,7 @@ namespace GestureSample.Views
                     Console.WriteLine(navigation.NavigationStack.Count);
                 });*/
             //}
+            _userRepo = ServiceHelper.GetService<UserRepository>();
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             ShowData(gameId);
@@ -237,6 +238,17 @@ namespace GestureSample.Views
                  await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);                
             }
             
+        }
+
+        private async void OnDampButtonClicked(object sender, EventArgs e)
+        {
+            var users = await _userRepo.GetUsersAsync();
+            foreach (var user in users)
+            {
+                //await _userRepo.UpdateUserAsync(user);
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(user); // Sync with Supabase
+            }
+            await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
         }
     }
 }
