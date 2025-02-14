@@ -48,16 +48,7 @@ namespace GestureSample.Maui.Views
             await Navigation.PushAsync(new CreateUserPage(firstUser: false));
         }
 
-        private async void OnDampButtonClicked(object sender, EventArgs e)
-        {
-            var users = await _userRepo.GetUsersAsync();
-            foreach (var user in users)
-            {
-                //await _userRepo.UpdateUserAsync(user);
-                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(user); // Sync with Supabase
-            }
-            await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
-        }
+        
 
 
         private async void OnDeleteAllUsersClicked(object sender, EventArgs e)
