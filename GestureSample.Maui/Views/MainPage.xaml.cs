@@ -29,6 +29,7 @@ namespace GestureSample.Views
 
             new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
             new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }, true),
+            new PageConfig("Data", "Show Personal Record",  () => new RecordsUser { BindingContext = new ViewModels.MarksViewModel() }),
 
             // Views
 
@@ -43,6 +44,38 @@ namespace GestureSample.Views
             SecondsPressingToAnswer=1
         }
     })),
+    new PageConfig("Tutorial", "one number small async", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number small async",
+        MaxSum=5,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.None,
+            TextBoxesQuantity = 1
+        }
+    })),
+    new PageConfig("Tutorial", "From num to num", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From num to num",
+        FromNumToNum=true,
+        MaxSum=10,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.None,
+            TextBoxesQuantity = 1
+        }
+    })),
+     new PageConfig("Tutorial", "one number Small", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number",
+        MaxSum = 5,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            TextBoxesQuantity = 1
+        }
+    })),
+
 
     new PageConfig("Tutorial", "one number", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -62,8 +95,20 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
+    new PageConfig("Tutorial", "First ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "First ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=4,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true
+        }
+    })),
 
-   
     new PageConfig("Tutorial", "Arrow ", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number ",
@@ -113,6 +158,7 @@ namespace GestureSample.Views
             ShowNumbersOnKeys = true
         }
     })),*/
+    
     new PageConfig("->", "Cyclical->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Cyclical Right",

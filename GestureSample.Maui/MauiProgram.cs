@@ -18,6 +18,10 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             }).ConfigureMauiHandlers(handlers =>
             {
+#if IOS
+                // Register the custom handler for iOS so that every Entry uses it.
+                handlers.AddHandler<Microsoft.Maui.Controls.Entry, CustomEntryHandler>();
+#endif
 #if ANDROID
                     handlers.AddHandler<Microsoft.Maui.Controls.Entry, CustomEntryHandler>();
 #endif
