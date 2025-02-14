@@ -83,7 +83,7 @@ namespace GestureSample.Views
             GameIdentifiers.Reverse();
             //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
-            await LoadDates();
+            LoadDates();
              LoadGames();
             if(gameId !=null)
             {
@@ -91,7 +91,7 @@ namespace GestureSample.Views
             }
         }
 
-        private async Task LoadDates()
+        private void LoadDates()
         {
 
             foreach (var game in GameIdentifiers)
@@ -206,7 +206,7 @@ namespace GestureSample.Views
         }
 
 
-        private async void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
+        private void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
         {
              LoadGames();
         }

@@ -579,6 +579,18 @@ namespace GestureSample.Views
             _screenSize = Math.Sqrt(Math.Pow(widthInches, 2) + Math.Pow(heightInches, 2));
             if (ServiceHelper.GetService<CurrentUserSession>() == null || ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null)
                 Navigation.PushAsync(new SplashPage());
+            
+           /* if (Navigation.NavigationStack.Count ==0 &&)
+                while (Navigation.NavigationStack.Count > 2)
+                {
+
+                    Console.WriteLine(Navigation.NavigationStack[Navigation.NavigationStack.Count - 2].Title);
+                    var previousPage = Navigation.NavigationStack[Navigation.NavigationStack.Count - 2];
+                    Navigation.RemovePage(previousPage);
+                }
+            }*/
+
+
             Title = title;
             contents ??= AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
             BindingContext = contents;
@@ -586,6 +598,33 @@ namespace GestureSample.Views
             InitializeComponent();
         }
 
+        protected override bool OnBackButtonPressed()
+        {
+            // Check how many pages are in the navigation stack
+            int pageCount = Navigation.NavigationStack.Count;
+
+            //TODO: change to work without the title hack. or at least make a Main Title string
+            if (pageCount > 1 && Title!= "Control Categories")
+            {
+                // We are NOT on the root page; 
+                // use the former (default) back function:
+                return base.OnBackButtonPressed();
+            }
+            else
+            {
+                // We ARE on the root page (or there's only 1 page),
+                // so do custom logic—e.g., exit on Android/Windows:
+#if ANDROID
+        Platform.CurrentActivity?.FinishAffinity(); 
+#elif WINDOWS
+        System.Environment.Exit(0);
+#endif
+
+                // Return true to indicate we have handled it 
+                // (i.e., do NOT pop any page).
+                return true;
+            }
+        }
         private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)
         {
             var item = (PageConfig)e.Item;
