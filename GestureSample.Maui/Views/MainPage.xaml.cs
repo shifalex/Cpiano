@@ -615,6 +615,7 @@ namespace GestureSample.Views
         #region MainPage code
         private readonly UserRepository _userRepo;
         private double _screenSize;
+        private bool _hasNavigatedToSplash = false;
 
         public MainPage(string title, IEnumerable<PageConfig> contents)
         {
@@ -623,8 +624,13 @@ namespace GestureSample.Views
             double widthInches = displayInfo.Width / displayInfo.Density;
             double heightInches = displayInfo.Height / displayInfo.Density;
             _screenSize = Math.Sqrt(Math.Pow(widthInches, 2) + Math.Pow(heightInches, 2));
-            if (ServiceHelper.GetService<CurrentUserSession>() == null || ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null)
+
+            Console.WriteLine("Main Page Constructiong");
+            /*if (ServiceHelper.GetService<CurrentUserSession>() == null || ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null)
+            {
+                Console.WriteLine("Navigating to SplashPage");
                 Navigation.PushAsync(new SplashPage());
+            }*/
             
            /* if (Navigation.NavigationStack.Count ==0 &&)
                 while (Navigation.NavigationStack.Count > 2)
@@ -642,6 +648,23 @@ namespace GestureSample.Views
             BindingContext = contents;
 
             InitializeComponent();
+        }
+
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+
+            // Check if navigation to SplashPage is needed
+            if (!_hasNavigatedToSplash &&
+                (ServiceHelper.GetService<CurrentUserSession>() == null ||
+                 ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null))
+            {
+                _hasNavigatedToSplash = true;
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Navigation.PushAsync(new SplashPage());
+                });
+            }
         }
 
         protected override bool OnBackButtonPressed()
