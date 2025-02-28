@@ -13,26 +13,45 @@ namespace GestureSample.Maui
 #if IOS
         protected override MauiTextField CreatePlatformView()
         {
-            // Get the platform view from the base implementation.
             var textField = base.CreatePlatformView();
-            // Set the native keyboard to NumberPad (which doesn't include a return key by default)
+            // Set the keyboard type to NumberPad and ReturnKeyType to Done.
             textField.KeyboardType = UIKeyboardType.NumberPad;
+            textField.ReturnKeyType = UIReturnKeyType.Done;
 
-            // Create a UIToolbar to serve as an accessory view with a "Done" button.
-            UIToolbar toolbar = new UIToolbar();
-            toolbar.SizeToFit();
-
-            // Create a flexible space item so the Done button is right-aligned.
-            var flexSpace = new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace);
-            // Create a Done button that dismisses the keyboard.
-            var doneButton = new UIBarButtonItem("Done", UIBarButtonItemStyle.Done, (s, e) =>
+            // When the Return key is pressed, trigger the Completed event.
+            textField.ShouldReturn = (tf) =>
             {
-                textField.ResignFirstResponder();
-                textField.SendActionForControlEvents(UIControlEvent.EditingDidEndOnExit);
-            });
-            toolbar.SetItems(new UIBarButtonItem[] { flexSpace, doneButton }, true);
-            // Assign the toolbar as the input accessory view.
-            textField.InputAccessoryView = toolbar;
+                if (VirtualView is IEntryController entryController)
+                {
+                    entryController.SendCompleted();
+                }
+                tf.ResignFirstResponder();
+                return true;
+            };
+
+            // Only add the accessory toolbar on devices that are not iPads.
+            if (UIDevice.CurrentDevice.UserInterfaceIdiom != UIUserInterfaceIdiom.Pad)
+            {
+                UIToolbar toolbar = new UIToolbar();
+                toolbar.SizeToFit();
+
+                var flexSpace = new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace);
+                var doneButton = new UIBarButtonItem("Done", UIBarButtonItemStyle.Done, (s, e) =>
+                {
+                    if (VirtualView is IEntryController entryController)
+                    {
+                        entryController.SendCompleted();
+                    }
+                    textField.ResignFirstResponder();
+                });
+                toolbar.SetItems(new UIBarButtonItem[] { flexSpace, doneButton }, true);
+                textField.InputAccessoryView = toolbar;
+            }
+            else
+            {
+                // On iPad, no accessory toolbar is needed.
+                textField.InputAccessoryView = null;
+            }
 
             return textField;
         }
