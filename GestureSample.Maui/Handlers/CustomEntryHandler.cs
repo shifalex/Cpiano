@@ -4,54 +4,55 @@ using Microsoft.Maui.Platform;
 #endif
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.Controls.Handlers.Compatibility;
-using Microsoft.Maui.Platform;
 
 namespace GestureSample.Maui
 {
     public class CustomEntryHandler : EntryHandler
     {
 #if IOS
+private bool _hasSentCompleted = false;
         protected override MauiTextField CreatePlatformView()
         {
             var textField = base.CreatePlatformView();
-            // Set the keyboard type to NumberPad and ReturnKeyType to Done.
-            textField.KeyboardType = UIKeyboardType.NumberPad;
-            textField.ReturnKeyType = UIReturnKeyType.Done;
-
-            // When the Return key is pressed, trigger the Completed event.
-            textField.ShouldReturn = (tf) =>
+            
+           if (UIDevice.CurrentDevice.UserInterfaceIdiom != UIUserInterfaceIdiom.Pad)
+    {
+        textField.KeyboardType = UIKeyboardType.NumberPad;
+        textField.ReturnKeyType = UIReturnKeyType.Done;
+        
+        textField.ShouldReturn = (tf) =>
+        {
+            if (!_hasSentCompleted && VirtualView is IEntryController entryController)
             {
-                if (VirtualView is IEntryController entryController)
-                {
-                    entryController.SendCompleted();
-                }
-                tf.ResignFirstResponder();
-                return true;
-            };
-
-            // Only add the accessory toolbar on devices that are not iPads.
-            if (UIDevice.CurrentDevice.UserInterfaceIdiom != UIUserInterfaceIdiom.Pad)
-            {
-                UIToolbar toolbar = new UIToolbar();
-                toolbar.SizeToFit();
-
-                var flexSpace = new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace);
-                var doneButton = new UIBarButtonItem("Done", UIBarButtonItemStyle.Done, (s, e) =>
-                {
-                    if (VirtualView is IEntryController entryController)
-                    {
-                        entryController.SendCompleted();
-                    }
-                    textField.ResignFirstResponder();
-                });
-                toolbar.SetItems(new UIBarButtonItem[] { flexSpace, doneButton }, true);
-                textField.InputAccessoryView = toolbar;
+                _hasSentCompleted = true;
+                entryController.SendCompleted();
             }
-            else
+            tf.ResignFirstResponder();
+            return true;
+        };
+
+        UIToolbar toolbar = new UIToolbar();
+        toolbar.SizeToFit();
+
+        var flexSpace = new UIBarButtonItem(UIBarButtonSystemItem.FlexibleSpace);
+        var doneButton = new UIBarButtonItem("Done", UIBarButtonItemStyle.Done, (s, e) =>
+        {
+            if (!_hasSentCompleted && VirtualView is IEntryController entryController)
             {
-                // On iPad, no accessory toolbar is needed.
-                textField.InputAccessoryView = null;
+                _hasSentCompleted = true;
+                entryController.SendCompleted();
             }
+            textField.ResignFirstResponder();
+        });
+        toolbar.SetItems(new UIBarButtonItem[] { flexSpace, doneButton }, true);
+        textField.InputAccessoryView = toolbar;
+    }
+
+    // Reset flag when focus is lost, so that subsequent completions can occur.
+    textField.EditingDidEnd += (s, e) =>
+    {
+        _hasSentCompleted = false;
+    };
 
             return textField;
         }

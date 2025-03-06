@@ -64,6 +64,8 @@
     //TODO: add feedback and timer together
     //TODO: GMAil/device sync save
     //TODO: RECORD BY GAME DATA
+    //TODO: Decide whats parralar(db, showing the message) and what serial and make it this way
+    //TODO: progress bar and save button unvalaible while saving data
     //TODO: PainoKeyboard TilltheEnd Arrow
     //TODO: save piano on db
     //TODO: Save key event only if they make a difference
@@ -102,6 +104,7 @@
     //TODO: Class teacher interface with links
     //TODO: Suscription Used. Available to one year... Renew somehow
 
+    //TODO: Multilevel game. with conditions to apply to level and move to and from
     //TODO: Addition with rule on higher number
     //TODO: Multiplication With Rule
     //TODO: exception rules(both +1 or -1, 2 items of the previous triads in different order with third different item, sometimes right and sometimes false) 
