@@ -23,7 +23,7 @@ namespace GestureSample.Views
             new PageConfig(null, "&& ||", null, true),
             new PageConfig(null, "Data", null),
 
-            new PageConfig(null, string.Format("Switch User({0})",ServiceHelper.GetService<CurrentUserSession>().ActiveUser==null?"":ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name),  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig(null, string.Format("Switch User({0})",ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name),  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
 
             new PageConfig(null, "Tutorial", null, true),
 
@@ -619,28 +619,29 @@ namespace GestureSample.Views
 
         public MainPage(string title, IEnumerable<PageConfig> contents)
         {
+
             _userRepo = ServiceHelper.GetService<UserRepository>();
             var displayInfo = DeviceDisplay.MainDisplayInfo;
             double widthInches = displayInfo.Width / displayInfo.Density;
             double heightInches = displayInfo.Height / displayInfo.Density;
             _screenSize = Math.Sqrt(Math.Pow(widthInches, 2) + Math.Pow(heightInches, 2));
 
-            Console.WriteLine("Main Page Constructiong");
+            Console.WriteLine("Main Page Constructiong"+ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
             /*if (ServiceHelper.GetService<CurrentUserSession>() == null || ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null)
             {
                 Console.WriteLine("Navigating to SplashPage");
                 Navigation.PushAsync(new SplashPage());
             }*/
-            
-           /* if (Navigation.NavigationStack.Count ==0 &&)
-                while (Navigation.NavigationStack.Count > 2)
-                {
 
-                    Console.WriteLine(Navigation.NavigationStack[Navigation.NavigationStack.Count - 2].Title);
-                    var previousPage = Navigation.NavigationStack[Navigation.NavigationStack.Count - 2];
-                    Navigation.RemovePage(previousPage);
-                }
-            }*/
+            /* if (Navigation.NavigationStack.Count ==0 &&)
+                 while (Navigation.NavigationStack.Count > 2)
+                 {
+
+                     Console.WriteLine(Navigation.NavigationStack[Navigation.NavigationStack.Count - 2].Title);
+                     var previousPage = Navigation.NavigationStack[Navigation.NavigationStack.Count - 2];
+                     Navigation.RemovePage(previousPage);
+                 }
+             }*/
 
 
             Title = title;
@@ -654,17 +655,19 @@ namespace GestureSample.Views
         {
             base.OnAppearing();
 
+
             // Check if navigation to SplashPage is needed
             if (!_hasNavigatedToSplash &&
                 (ServiceHelper.GetService<CurrentUserSession>() == null ||
                  ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null))
             {
                 _hasNavigatedToSplash = true;
-                MainThread.BeginInvokeOnMainThread(async () =>
+                await MainThread.InvokeOnMainThreadAsync(async () =>
                 {
                     await Navigation.PushAsync(new SplashPage());
                 });
             }
+            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name);
         }
 
         protected override bool OnBackButtonPressed()

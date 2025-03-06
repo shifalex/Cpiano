@@ -2,7 +2,9 @@
 using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
 using GestureSample.Views;
+using GestureSample.Maui.Views;
 using GestureSample.Views.Tests;
+using Microsoft.Maui.Controls;
 
 namespace GestureSample.Maui.Models
 {
@@ -103,10 +105,14 @@ After:
             return true;
         }
 
-        public virtual bool Check()
+        public virtual async Task<bool> CheckAsync()
         {
             if (!IsCorrectInput())
+            {
                 _status = Statement.WrongInput;
+                await _view.UpdateView();
+                return false;
+            }
             else
             {
                 _guessNumber++;
@@ -116,16 +122,16 @@ After:
                     //GameType.Logic => Statement.True,
                     Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
                     _ => Statement.True
-                };                
-                if  (Config.IsHistory && _status == Statement.True &&
+                };
+                if (Config.IsHistory && _status == Statement.True &&
                     (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
-                    (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any()))) 
-                    _status= Statement.New;
-                    
-               if (_status == Statement.True)
+                    (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any())))
+                    _status = Statement.New;
+
+                if (_status == Statement.True)
                 {
                     _tasksMade++;
-                    SaveState(1);
+                    await SaveState(1);
                     _lastQuestionWrong = false;
                     if (Config.IsHistory)
                     {
@@ -136,7 +142,7 @@ After:
                 if (_status == Statement.False || _status == Statement.New)
                 {
                     _losesMade++;
-                    SaveState(_status==Statement.New?2:0);
+                    await SaveState(_status == Statement.New ? 2 : 0);
                     if (!_lastQuestionWrong)
                     {
                         _questionsWrong++;
@@ -146,15 +152,15 @@ After:
                 if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
                 {
                     if (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0))
-                    { 
-                        _status = Statement.Win2(DateTime.Now.Subtract(StartTime));
+                    {
+                        _status = await Statement.Win(DateTime.Now.Subtract(StartTime));
                         _gameData.FinalStatus = 1;
                     }
                     else
                     {
-                        _status =  Statement.Lose;
+                        _status = await Statement.Lose();
                         //_status = Statement.Lose;
-                        _gameData.FinalStatus =  0;
+                        _gameData.FinalStatus = 0;
                     }
 
                     _gameData.TimeEnd = DateTime.Now;
@@ -170,45 +176,53 @@ After:
                     }*/
 
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    _gameRepository.UpdateAsync(_gameData);
+                    await _gameRepository.UpdateAsync(_gameData);
 
-
-                    MainThread.InvokeOnMainThreadAsync(async () =>
-                    {
-                        var navigation = Application.Current.MainPage.Navigation;
-                        Console.WriteLine(navigation.NavigationStack.Count);
-                        if (navigation.NavigationStack.Count > 2)
-                        {
-                            while (navigation.NavigationStack.Count > 2)
-                            {
-
-                                Console.WriteLine(navigation.NavigationStack[navigation.NavigationStack.Count - 2].Title);
-                                var previousPage = navigation.NavigationStack[navigation.NavigationStack.Count - 2];
-                                navigation.RemovePage(previousPage);
-                            }
-                        }
-                        Console.WriteLine(navigation.NavigationStack.Count);
-                    });
-
-                    var newPage = new ShowDataXaml(GameId);
-                    Application.Current.MainPage.Navigation.InsertPageBefore(newPage, _view);
-                    Application.Current.MainPage.Navigation.PopAsync();
-                    //App.MainNavigation.PushAsync(new ShowDataXaml(GameId));
-                    //_losesMade = 0;
-                    //_tasksMade = 0;
-                    //StartTime = DateTime.Now;
+                    var navigation = Application.Current.MainPage.Navigation;
+                
+                // Remove any extra pages if needed
+               /* while (navigation.NavigationStack.Count > 2)
+                {
+                    // Remove the second-to-last page until only two remain
+                    navigation.RemovePage(navigation.NavigationStack[navigation.NavigationStack.Count - 2]);
                 }
                 
-                
+                    // Insert the new page before the current one (_view)
+                    var newPage = new ShowDataXaml(GameId);
+                    navigation.InsertPageBefore(newPage, _view);
+                    //await navigation.PushAsync(newPage);*/
+
+                    try
+                    {
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            Console.WriteLine("trying to move to ShowDataXaml");
+                            var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
+                            Application.Current.MainPage = newMainPage;
+                            await newMainPage.Navigation.PushAsync(new ShowDataXaml(GameId));
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Navigation error: " + ex.Message);
+                    }
+                }
+                else
+                {
+                    _gameData.TimeEnd = DateTime.Now;
+                    _gameData.Wins = _tasksMade;
+                    _gameData.Losses = _losesMade;
+                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
+                    Console.WriteLine("1" + _status);
+                    await _gameRepository.UpdateAsync(_gameData);
+                    Console.WriteLine("2" + _status);
+                    await _view.UpdateView();
+                   
+                }
+                    Console.WriteLine("3" + _status);
+                    return _status == Statement.True;
             }
 
-            _gameData.TimeEnd = DateTime.Now;
-            _gameData.Wins = _tasksMade;
-            _gameData.Losses = _losesMade;
-            //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-            _gameRepository.UpdateAsync(_gameData);
-            _view.UpdateView();
-            return _status == Statement.True;
         }
 
         private void RemoveItemToHistory(int addend1, int addend2, int sum)
@@ -226,15 +240,15 @@ After:
             }
         }
 
-        public virtual bool Check(int a1, int a2, int s)
+        public virtual async Task<bool> Check(int a1, int a2, int s)
         {
             addend1 = a1; addend2 = a2; Sum = s;
-            return Check();
+            return await CheckAsync();
         }
 
         public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
-            bool b = Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
+            bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
             pianoKeyboard.IsEnabled = false;
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
             pianoKeyboard.IsEnabled = true;
