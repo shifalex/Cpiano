@@ -204,7 +204,7 @@ _lblStatement.Text = text;
         private async Task ForceFocusAsync(Entry entry, int delayMilliseconds = 50)
         {
             // Ensure we're on the UI thread
-            MainThread.InvokeOnMainThreadAsync(() =>
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 if (entry.IsFocused)
                 {
@@ -215,7 +215,7 @@ _lblStatement.Text = text;
             // Wait for the unfocus to register
             await Task.Delay(delayMilliseconds);
 
-            MainThread.InvokeOnMainThreadAsync(() =>
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 entry.Focus();
             });
@@ -316,13 +316,13 @@ _lblStatement.Text = text;
                 {
                     if (await _gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
                     {
-                        if (_config.NumberOfTasksToWin < 0)
+                        if (_config.NumberOfTasksToWin < 0)//TODO: Check if ok to remove or change condition
                         {
                             _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
                             await Task.Delay(_config.SecondsTillNextExercise * 1000);
                             _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
                         }
-                        GenerateNextExercise();
+                        if (!_gamePlay.GameOver) GenerateNextExercise();
                     };
                 }
                 catch
@@ -358,7 +358,7 @@ _lblStatement.Text = text;
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(_isKeyboard ? (_config.UIQuestionType==UIQuestionType.OnlyKeyboard?240:40) : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(_isKeyboard ? ((_config.UIQuestionType==UIQuestionType.OnlyKeyboard|| !_config.KeyboardConfig.KeyboardOnlyForHelp) ?240:40) : 1, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {

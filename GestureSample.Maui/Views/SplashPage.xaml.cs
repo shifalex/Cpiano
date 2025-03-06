@@ -54,8 +54,8 @@ public partial class SplashPage : ContentPage
 
         Console.WriteLine("Going to Main page now");
         //await Navigation.PopToRootAsync(new MainPage("Control Categories", null));
-        await Navigation.PushAsync(new MainPage("Control Categories", null));
-        //Application.Current.MainPage = new NavigationPage();
+        //await Navigation.PushAsync(new MainPage("Control Categories", null));
+        Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
 
     }
 }
