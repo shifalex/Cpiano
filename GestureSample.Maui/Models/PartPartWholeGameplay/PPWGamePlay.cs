@@ -15,20 +15,13 @@ namespace GestureSample.Maui.Models
         public Guid GameId { get; set; } = Guid.NewGuid();
         public int addend1;
         public int addend2;
+        public bool GameOver { get; set; }= false;
         QuestionAnswer qaState;
 
         public int _questionNumber = 0;
         protected int _questionsWrong = 0;
         private bool _lastQuestionWrong = false;
 
-/* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
-Before:
-        protected Data.Game _gameData;
-        public virtual int Sum { get; set; }
-After:
-        protected Game _gameData;
-        public virtual int Sum { get; set; }
-*/
         protected Data.SQLite.Game _gameData;
         public virtual int Sum { get; set; }
 
@@ -93,7 +86,6 @@ After:
             };
             await _questionAnswerRepository.SaveAsync(s);
             qaState = s ;
-        //await _realmService.AddStateAsync(s);
     }
 
     private bool IsCorrectInput()
@@ -151,21 +143,11 @@ After:
                 }
                 if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
                 {
-                    if (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0))
-                    {
-                        _status = await Statement.Win(DateTime.Now.Subtract(StartTime));
-                        _gameData.FinalStatus = 1;
-                    }
-                    else
-                    {
-                        _status = await Statement.Lose();
-                        //_status = Statement.Lose;
-                        _gameData.FinalStatus = 0;
-                    }
-
+                    _gameData.FinalStatus = (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0)) ? 1 : 0;
                     _gameData.TimeEnd = DateTime.Now;
                     _gameData.Wins = _questionNumber;
                     _gameData.Losses = _questionsWrong;
+                    GameOver = true;
                     /*    if (PossibleTriads.Count == 0)
                     {
                     _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
@@ -174,38 +156,26 @@ After:
                         StartTime = DateTime.Now;
                     
                     }*/
-
-                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
                     await _gameRepository.UpdateAsync(_gameData);
 
-                    var navigation = Application.Current.MainPage.Navigation;
-                
-                // Remove any extra pages if needed
-               /* while (navigation.NavigationStack.Count > 2)
-                {
-                    // Remove the second-to-last page until only two remain
-                    navigation.RemovePage(navigation.NavigationStack[navigation.NavigationStack.Count - 2]);
-                }
-                
-                    // Insert the new page before the current one (_view)
-                    var newPage = new ShowDataXaml(GameId);
-                    navigation.InsertPageBefore(newPage, _view);
-                    //await navigation.PushAsync(newPage);*/
+                    var winLoseTask = MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        if (_gameData.FinalStatus == 0)
+                            await Statement.Lose();
+                        else
+                            await Statement.Win(DateTime.Now.Subtract(StartTime));
+                    });
 
-                    try
+                    var navigationTask = MainThread.InvokeOnMainThreadAsync(async () =>
                     {
-                        await MainThread.InvokeOnMainThreadAsync(async () =>
-                        {
-                            Console.WriteLine("trying to move to ShowDataXaml");
-                            var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
-                            Application.Current.MainPage = newMainPage;
-                            await newMainPage.Navigation.PushAsync(new ShowDataXaml(GameId));
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Navigation error: " + ex.Message);
-                    }
+                        Console.WriteLine("trying to move to ShowDataXaml");
+                        var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
+                        Application.Current.MainPage = newMainPage;
+                        await newMainPage.Navigation.PushAsync(new ShowDataXaml(GameId));
+                    });
+
+                    // Start both concurrently and await both to finish
+                    await Task.WhenAll(winLoseTask, navigationTask);
                 }
                 else
                 {
@@ -213,14 +183,10 @@ After:
                     _gameData.Wins = _tasksMade;
                     _gameData.Losses = _losesMade;
                     //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    Console.WriteLine("1" + _status);
                     await _gameRepository.UpdateAsync(_gameData);
-                    Console.WriteLine("2" + _status);
                     await _view.UpdateView();
-                   
                 }
-                    Console.WriteLine("3" + _status);
-                    return _status == Statement.True;
+                return _status == Statement.True;
             }
 
         }

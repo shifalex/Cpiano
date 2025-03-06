@@ -19,11 +19,27 @@ namespace GestureSample.Maui.Models
             int keys = BitArrayQuestion.Length;
             bool isOrdinal = Config.KeyboardConfig.ArrowType == ArrowType.Rounded;
             Random r = new();
+            dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
             //int[] specialAboves = { 1, 5, 6, 10, 3 };
             //if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)]; else
-            aboveNumber = r.Next(1, keys + 1);
-            length = r.Next(1, keys);
-            dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+            if (Config.MaxSum >= keys)
+            {
+                aboveNumber = r.Next(1, keys + 1);
+                length = r.Next(1, keys);
+            }
+            else
+            {
+                int[] factors = Factors;
+                aboveNumber = Math.Max( factors[0], factors[1]);
+                length = Math.Min(factors[0], factors[1]);
+                if (aboveNumber == 0) aboveNumber = 1;
+                if(length == 0) length = 1;
+                if(dir== Direction.Left)
+                {
+                    aboveNumber = aboveNumber + length;
+                }
+
+            }
 
             if (new QuestionOrder[] { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }.Contains(Config.QuestionOrder))
             {
@@ -136,7 +152,7 @@ namespace GestureSample.Maui.Models
         {
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
-            _view.UpdateView();
+            await _view.UpdateView();
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
             return result;
         }

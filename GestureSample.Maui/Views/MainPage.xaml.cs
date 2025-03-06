@@ -34,16 +34,8 @@ namespace GestureSample.Views
             // Views
 
             #region Tutorial
-            new PageConfig("Tutorial", "one number Quick", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "one number Quick",
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            TextBoxesQuantity = 1,
-            SecondsPressingToAnswer=1
-        }
-    })),
+            
+  
     new PageConfig("Tutorial", "one number small async", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number small async",
@@ -72,6 +64,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
             TextBoxesQuantity = 1
         }
     })),
@@ -83,6 +76,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+
             TextBoxesQuantity = 1
         }
     })),
@@ -101,10 +95,12 @@ namespace GestureSample.Views
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.BackAndForth,
         MaxAddend=4,
+        MaxSum=9,
         OnlyToTen=true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
             IsArrow = true
         }
     })),
