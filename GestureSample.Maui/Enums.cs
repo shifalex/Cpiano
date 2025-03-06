@@ -11,27 +11,17 @@ namespace GestureSample.Maui
         public const string WrongInput = "Wrong Input";
         public const string New = "Find NEW combination";
         public const string Selecting = "SELECTING...";
-        public static string Win
+        public static async Task<string> Win(TimeSpan? ts = null)
         {
-            get
-            {
-                Application.Current.MainPage.DisplayAlert("Win", "🎉😊🏅", "OK");
+            
+                await Application.Current.MainPage.DisplayAlert("Win", "🎉😊🏅"+(ts==null?"":("\n" + ((TimeSpan)ts).ToFormattedString("mm: ss"))), "OK");
                 return "🎉😊🏅";
-            }
         }
-        public static string Win2(TimeSpan ts)
+        public static async Task<string> Lose()
         {
-            Application.Current.MainPage.DisplayAlert("Win", "🎉😊🏅\n" + ts.ToFormattedString("mm:ss"), "OK");
-            return "🎉😊🏅";
-        }
-
-        public static string Lose
-        {
-            get
-            {
-                Application.Current.MainPage.DisplayAlert("Lose", "🤷", "OK");
+                await Application.Current.MainPage.DisplayAlert("Lose", "🤷", "OK");
                 return "🤷";
-            }
+            
         }
 
     }

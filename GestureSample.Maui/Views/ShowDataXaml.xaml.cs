@@ -64,6 +64,7 @@ namespace GestureSample.Views
 
         public async void ShowData(Guid? gameId=null)
         {
+            Console.WriteLine(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name);
             GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
             Console.WriteLine("Loading Identifiers finished");
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
@@ -89,6 +90,7 @@ namespace GestureSample.Views
             {
                  await LoadStatesToGrid(gameId);
             }
+            Console.WriteLine(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name);
         }
 
         private void LoadDates()
