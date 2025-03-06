@@ -36,9 +36,9 @@ namespace GestureSample.Maui.Models
             UpdateLevelStats();
         }
 
-        public override bool Check()
+        public override async Task<bool> CheckAsync()
         {
-            bool check = base.Check();
+            bool check = await base.CheckAsync();
             if (check) { _streakCorrect++; } else { _streakWrong++; }
 
 
@@ -88,7 +88,7 @@ namespace GestureSample.Maui.Models
             switch (_level)
             {
                 case 0:
-                    _status = Statement.Lose;
+                    //_status = Statement.Lose;
                     _level = 2;
                     break;
                 case 1:
@@ -104,7 +104,7 @@ namespace GestureSample.Maui.Models
                     Config.MinSum = 0; Config.MaxSum = 100; Config.MinAddend = 0; Config.MaxAddend = 100; Config.OnlyThrougTen = true; Config.MinAddend2 = NAN; Config.MaxAddend2 = NAN;
                     break;
                 case 5:
-                    _status = Statement.Win;
+                    //_status = Statement.Win;
                     _level = 2;
                     break;
                 default: _level = 2; break;

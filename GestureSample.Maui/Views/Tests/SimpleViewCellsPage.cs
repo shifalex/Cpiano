@@ -94,8 +94,9 @@ _lblStatement.Text = text;
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
         #region view updating
-        public async void UpdateView(bool newExercise = false)
+        public async Task UpdateView(bool newExercise = false)
         {
+               
             await UpdateStatement();
             
             List <Task> tasks = new();
@@ -200,7 +201,7 @@ _lblStatement.Text = text;
                 }
             }
         }
-        private async Task ForceFocusAsync(Entry entry, int delayMilliseconds = 100)
+        private async Task ForceFocusAsync(Entry entry, int delayMilliseconds = 50)
         {
             // Ensure we're on the UI thread
             MainThread.InvokeOnMainThreadAsync(() =>
@@ -313,7 +314,7 @@ _lblStatement.Text = text;
             {
                 try
                 {
-                    if (_gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
+                    if (await _gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
                     {
                         if (_config.NumberOfTasksToWin < 0)
                         {
