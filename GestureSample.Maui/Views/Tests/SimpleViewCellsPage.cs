@@ -352,13 +352,13 @@ _lblStatement.Text = text;
 
         private void InitializeUI()
         {
-
+            bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType!=SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             Grid grid = new()
             {
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(_isKeyboard ? ((_config.UIQuestionType==UIQuestionType.OnlyKeyboard|| !_config.KeyboardConfig.KeyboardOnlyForHelp) ?240:40) : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(_isKeyboard ? (isPianoHigh?240:40) : 1, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
