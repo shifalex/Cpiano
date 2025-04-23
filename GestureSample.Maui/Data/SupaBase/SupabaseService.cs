@@ -30,6 +30,23 @@ namespace GestureSample.Maui.Data.SupaBase
 
         #endregion
 
+        public static async Task<List<User>> GetUsersOfUser(SQLite.User user)
+        {
+            try
+            {
+                var users = await _supabase
+    .Functions
+    .Invoke<List<User>>("select-users-by-classroom", user.Id.ToString());
+                return users;
+            }
+            catch (Exception ex)
+            {
+                LogError("Error in GetUsersOfUser", ex);
+                throw;
+            }
+        }
+
+
         /// <summary>
         /// Syncs all data related to the current user.
         /// 

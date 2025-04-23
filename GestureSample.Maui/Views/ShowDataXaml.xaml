@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8" ?>
-    
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
@@ -19,6 +18,9 @@
 
         <!-- Pickers -->
         <StackLayout Orientation="Vertical" Grid.Row="0" Padding="10,10,10,0">
+            <!-- User selection -->
+            <Picker x:Name="UserPicker" Title="Select a User" ItemsSource="{Binding Users}" SelectedIndexChanged="OnUserPickerSelectedIndexChanged" FontFamily="Courier New" IsVisible="{Binding IsUsersPickerVisible}"/>
+            <!-- Date selection -->
             <Picker x:Name="DatePicker" Title="Select a Date" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged" FontFamily="Courier New"/>
             <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged" FontFamily="Courier New"/>
         </StackLayout>
