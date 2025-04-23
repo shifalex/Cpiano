@@ -13,5 +13,6 @@ namespace GestureSample.Maui.Data.SQLite
         public string AvatarUri { get; set; } // could be a URL or a local file path
 
         public DateTime LastLoginTime { get; set; } // New property
+        public bool IsTeacher { get; set; } = false;
     }
 }

@@ -14,6 +14,8 @@ namespace GestureSample.Maui.Data.SupaBase
         public string AvatarUri { get; set; } // could be a URL or a local file path
         
         [Column("lastLogin")]
-        public DateTime LastLoginTime { get; set; } // New property
+        public DateTime LastLoginTime { get; set; } 
+        [Column("isTeacher")]
+        public bool IsTeacher { get; set; } 
     }
 }

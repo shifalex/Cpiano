@@ -18,5 +18,6 @@ namespace GestureSample.Maui.Data
         {
             return await _database.Table<User>().OrderByDescending(u => u.LastLoginTime).ToListAsync();
         }
+
     }
 }

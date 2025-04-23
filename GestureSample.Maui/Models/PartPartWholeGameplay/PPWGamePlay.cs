@@ -171,7 +171,7 @@ namespace GestureSample.Maui.Models
                         Console.WriteLine("trying to move to ShowDataXaml");
                         var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
                         Application.Current.MainPage = newMainPage;
-                        await newMainPage.Navigation.PushAsync(new ShowDataXaml(GameId));
+                        await newMainPage.Navigation.PushAsync(new ShowDataXaml(false, GameId));
                     });
 
                     // Start both concurrently and await both to finish
