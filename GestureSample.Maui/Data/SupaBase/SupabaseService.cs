@@ -6,16 +6,30 @@ using SupabaseClient = Supabase.Client;
 using Supabase.Postgrest.Models;
 using SQLite = GestureSample.Maui.Data.SQLite;
 using SupaBase = GestureSample.Maui.Data.SupaBase;
+using Microsoft.IdentityModel.Tokens;
+using static GestureSample.Maui.Data.GameRepository;
+using System.ComponentModel;
+using System.Reflection;
+using EnumsNET;
 
 namespace GestureSample.Maui.Data.SupaBase
 {
     public static class SupabaseService
     {
-        private static readonly SupabaseClient _supabase = new(
-            "https://njsspracfpbyozvandph.supabase.co",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA"
-        );
+        
+        private static readonly string _supabaseUrl = "https://njsspracfpbyozvandph.supabase.co";
+        private static readonly string _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA";
+        private static readonly string _supabaseUserName = "alex.shifrin@mail.huji.ac.il";
+        private static readonly string _supabasePassword = "34U_2iGtnq4fA6a";
 
+private static readonly SupabaseClient _supabase = new(
+           _supabaseUrl,
+            _supabaseKey
+        );
+        // In-memory storage of the current session's JWT
+        private static string? _currentJwt;
+
+       
         #region Logging Helpers
 
         private static void LogInfo(string message)
@@ -30,13 +44,77 @@ namespace GestureSample.Maui.Data.SupaBase
 
         #endregion
 
+        /// <summary>
+        /// Signs in a user with email and password, storing the JWT in the client session.
+        /// </summary>
+        /// <param name="email">User's email.</param>
+        /// <param name="password">User's password.</param>
+        /// <exception cref="Exception">Thrown if sign-in fails.</exception>
+        public static async Task SignInWithPasswordAsync(string email, string password)
+        {
+            // SignIn returns a Session where session.User is null if credentials are invalid
+            var session = await _supabase.Auth.SignIn(email, password);
+            if (session?.User == null)
+                throw new Exception("Sign in failed: invalid credentials");
+            else
+            {
+                _currentJwt = _supabase.Auth.CurrentSession?.AccessToken;
+                LogInfo($"Supabase JWT: {_currentJwt}");
+            }
+        }
+
+        /// <summary>
+        /// Signs out the current user, clearing the session.
+        /// </summary>
+        public static async Task SignOutAsync()
+        {
+            await _supabase.Auth.SignOut();
+        }
+
+        /// <summary>
+        /// Indicates whether a user is currently signed in.
+        /// </summary>
+        public static bool IsSignedIn => _supabase.Auth.CurrentSession != null;
+
+        /// <summary>
+        /// Retrieves the current session's access token (JWT), or null if not signed in.
+        /// </summary>
+        public static string? AccessToken => _supabase.Auth.CurrentSession?.AccessToken;
+
+
         public static async Task<List<User>> GetUsersOfUser(SQLite.User user)
         {
             try
             {
-                var users = await _supabase
-    .Functions
-    .Invoke<List<User>>("select-users-by-classroom", user.Id.ToString());
+
+
+                //if (!user.IsTeacher) return null;
+
+
+
+                /* await SignInWithPasswordAsync(_supabaseUserName, _supabasePassword);
+                 if (string.IsNullOrEmpty(_currentJwt))
+                     throw new InvalidOperationException("User not signed in.");
+
+                 if (string.IsNullOrEmpty(_supabase.Auth.CurrentSession?.AccessToken))
+                     throw new InvalidOperationException("User not signed in.");
+                 var options = new Supabase.Functions.Client.InvokeFunctionOptions
+                 {
+                     Headers = new Dictionary<string, string>
+         {
+             { "Authorization", $"Bearer {_currentJwt}" }
+         }
+                 };*/
+
+                var parameters = new Dictionary<string, object>
+{
+    { "user_id", user.Id } // Replace userId with the actual UUID value
+};
+
+                var users = await _supabase.Rpc<List<User>>("get_users_by_classroom", parameters);
+                //var users = response.Model;
+
+                //var users = await _supabase.Functions.Invoke<List<User>>("select-users-by-classroom", options: options);
                 return users;
             }
             catch (Exception ex)
@@ -46,6 +124,77 @@ namespace GestureSample.Maui.Data.SupaBase
             }
         }
 
+        public static async Task<List<SQLite.Game>> GetAllByUserAsync(Guid? userID)
+        {
+            if (userID == null)
+            {
+                return new List<SQLite.Game>();
+            }
+
+            //string userIdString = userID.Value.ToString("D"); // Use the "D" format for consistent GUID string representation
+            var result = await _supabase
+        .From<Game>()
+                .Where(game => game.UserId == (Guid)userID)
+        .Get();
+
+            return result.Models.Select(game => ConvertFrom<SupaBase.Game,SQLite.Game>(game))
+                           .OrderBy(game => game.TimeStart)
+                .ToList();
+        }
+        public static async Task<List<SQLite.Game>> GetRecordsByGameNamesAsync(Guid? userID, string gameName)
+        {
+           
+            var result = await _supabase
+        .From<Game>()
+        .Where(g => g.UserId == userID && g.FinalStatus==1)
+        .Get();
+
+            return result.Models.Select(game => ConvertFrom<SupaBase.Game, SQLite.Game>(game))
+                .OrderBy(game => game.TimeEnd.Subtract(game.TimeStart)).Take<SQLite.Game>(20).ToList();
+        }
+
+        public static async Task<List<string>> GetDistinctGameNamesAsync(Guid? userID)
+        {
+            if(userID == null)
+            {
+                return new List<string>();
+            }
+            // SELECT DISTINCT with an alias matching the property name in your class
+            var result = await _supabase
+        .From<Game>()
+        .Where(g => g.UserId == userID)
+        .Get();
+
+            // Extract distinct game names
+            return result.Models
+                .Select(g => g.GameName)
+                .Where(name => !string.IsNullOrWhiteSpace(name)).
+                OrderBy(g => g)
+                .Distinct()
+                .ToList();
+
+        }
+
+        public static async Task<List<SQLite.QuestionAnswer>> GetAnswersByQueryAsync(Guid GameId)
+        {
+            var result = await _supabase.From<QuestionAnswer>().Where(state => state.GameId == GameId).Get();
+            return result.Models.Select(QA => ConvertFrom<SupaBase.QuestionAnswer, SQLite.QuestionAnswer>(QA)).ToList();
+        }
+
+        public static async Task<List<SQLite.KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(Guid? selectedIdentifier)
+        {
+            var result = await _supabase.From<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier.ToString()).Get();
+
+            LogInfo("Retrived states");
+            return result.Models.Select(q => ConvertFrom<SupaBase.KeyboardQuestion, SQLite.KeyboardQuestion>(q)).ToList();
+            
+        }
+
+        public static async Task<List<SQLite.KeyEvent>> GetKeyEventsByQueryAsync(Guid GameId)
+        {
+            var result = await _supabase.From<KeyEvent>().Where(state => state.GameId == GameId.ToString()).Get();
+            return result.Models.Select(keyEvent => ConvertFrom<SupaBase.KeyEvent, SQLite.KeyEvent>(keyEvent)).ToList(); 
+        }
 
         /// <summary>
         /// Syncs all data related to the current user.
@@ -401,6 +550,7 @@ namespace GestureSample.Maui.Data.SupaBase
         public static TSource ConvertFrom<TTarget, TSource>(TTarget target)
     where TSource : new()
         {
+            //LogInfo("Converting..");
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
 
@@ -410,6 +560,10 @@ namespace GestureSample.Maui.Data.SupaBase
 
             foreach (var targetProp in targetProps)
             {
+                //LogInfo($"Converting {targetProp}");
+                // Skip QuestionID (auto incremented field not present in Supabase)
+                //if (targetProp.Name.Equals("QuestionID", StringComparison.OrdinalIgnoreCase))
+                //    continue;
                 // Look for a readable source property with the same name
                 var sourceProp = sourceProps.FirstOrDefault(sp =>
                     sp.Name.Equals(targetProp.Name, StringComparison.InvariantCultureIgnoreCase) &&
@@ -419,14 +573,31 @@ namespace GestureSample.Maui.Data.SupaBase
                     var value = targetProp.GetValue(target);
                     if (value != null && sourceProp.PropertyType != targetProp.PropertyType)
                     {
-                        // Optionally add custom type conversion logic here.
                         try
                         {
-                            value = System.Convert.ChangeType(value, sourceProp.PropertyType);
+                            if (sourceProp.PropertyType == typeof(Guid) && value is string s)
+                            {
+                                value = Guid.Parse(s);
+                            }
+                            else if (sourceProp.PropertyType == typeof(string) && value is Guid g)
+                            {
+                                value = g.ToString();
+                            }
+                            // Handle string -> enum
+                            else if (sourceProp.PropertyType.IsEnum && value is string enumString)
+                            {
+                                //LogInfo($"Converting {targetProp.Name} from string {value} to enum");
+                                value = EnumsNET.Enums.Parse<Operation>(enumString, true, EnumsNET.EnumFormat.Name);
+                            }
+                            else
+                            {
+                                value = System.Convert.ChangeType(value, sourceProp.PropertyType);
+                            }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            value = Guid.Parse((string)value);//TODO: Change this ugliness. Somehow change the QuestionAnswer column to Guid.. or work with string and Guid
+                            LogError($"Failed to convert property '{targetProp.Name}' from {targetProp.PropertyType} to {sourceProp.PropertyType}", ex);
+                            //throw new InvalidCastException($"Failed to convert property '{targetProp.Name}' from {targetProp.PropertyType} to {sourceProp.PropertyType}", ex);
                         }
                     }
                     sourceProp.SetValue(source, value);
@@ -434,6 +605,7 @@ namespace GestureSample.Maui.Data.SupaBase
             }
             return source;
         }
+
 
         #region Additional Filtering Helpers
         // Customize these methods to apply any extra filtering rules.

@@ -1,5 +1,5 @@
-using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
+using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using System.Data;
@@ -31,8 +31,8 @@ namespace GestureSample.Views
         private readonly UserRepository _userRepo;
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
-        private bool IsUsersPickerVisible { get; set; } = false;
         private Maui.Data.SQLite.User _currentUser;
+        private bool _isTeacher = false;
 
         public ShowDataXaml(bool forTeacher=false, Guid? gameId = null)
         {
@@ -65,11 +65,12 @@ namespace GestureSample.Views
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
-            if (gameId == null && forTeacher && _currentUser.Name == "Alex")
+            UserPicker.IsVisible = false;
+            if ( gameId == null /*&& forTeacher*/ && ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name == "Alex")
             {
-
-                IsUsersPickerVisible = true;
-                LoadClassroomUsers();
+                _isTeacher = true;
+                isSaveVisible = false;
+                LoadClassroomUsers(); 
             }
             else
                 ShowData(gameId);
@@ -80,7 +81,7 @@ namespace GestureSample.Views
         {
             try
             {
-
+                UserPicker.IsVisible = true;
                 // This will call your edge function via the Supabase client
                 List<Maui.Data.SupaBase.User> users = await Maui.Data.SupaBase.SupabaseService.GetUsersOfUser(_currentUser);
 
@@ -99,9 +100,24 @@ namespace GestureSample.Views
                 // Populate the Picker
                 UserPicker.Items.Clear();
                 foreach (var u in users)
-                    UserPicker.Items.Add(u.Name);
-
+                { 
+                    if(u.Id == _currentUser.Id) 
+                        UserPicker.Items.Insert(0, u.Name);
+                    else
+                        UserPicker.Items.Add(u.Name);
+                }
                 UserPicker.IsVisible = users.Count > 0;
+                if (UserPicker.Items.Count > 0)
+                {
+                    UserPicker.SelectedIndex = 0;
+                    //OnPickerSelectedIndexChanged(sender, e);
+                }
+                else
+                {
+                    UserPicker.IsVisible = false;
+                }
+                ShowData(null);
+
             }
             catch (Exception ex)
             {
@@ -110,38 +126,11 @@ namespace GestureSample.Views
             }
         }
 
-        private DataTable ConvertUsersToDataTable(List<Maui.Data.SupaBase.User> users)
-        {
-            DataTable dt = new DataTable();
-            dt.Columns.Add("Id", typeof(string));
-            dt.Columns.Add("Name", typeof(string));
-            dt.Columns.Add("AvatarUri", typeof(string));
-
-            foreach (Maui.Data.SupaBase.User user in users)
-            {
-                DataRow row = dt.NewRow();
-                row["Id"] = user.Id.ToString();
-                row["Name"] = user.Name;
-                row["AvatarUri"] = user.AvatarUri;
-                dt.Rows.Add(row);
-            }
-            return dt;
-        }
-
-        private void PopulatePicker(DataTable dataTable)
-        {
-            UserPicker.Items.Clear();
-            foreach (DataRow row in dataTable.Rows)
-            {
-                // Assuming your edge function returns a "Name" column.
-                UserPicker.Items.Add(row["Name"].ToString());
-            }
-        }
-    
         public async void ShowData(Guid? gameId=null)
         {
             Console.WriteLine(_currentUser.Name);
-            GameIdentifiers = await _gameRepository.GetAllByUserAsync(_currentUser.Id);
+            GameIdentifiers = await (_isTeacher? Maui.Data.SupaBase.SupabaseService.GetAllByUserAsync(_currentUser.Id) // SupabaseService.GetGamesOfUser(_currentUser)
+                : _gameRepository.GetAllByUserAsync(_currentUser.Id));
             Console.WriteLine("Loading Identifiers finished");
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
             {
@@ -210,8 +199,10 @@ namespace GestureSample.Views
             List<QuestionAnswer> gameStats = new();
             if (selectedIdentifier != null)
             {
-                Console.WriteLine(selectedIdentifier.ToString());
-                gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
+                Console.WriteLine(selectedIdentifier.ToString()+" {0}", (Guid)selectedIdentifier);
+                //gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
+                gameStats = await (_isTeacher ? Maui.Data.SupaBase.SupabaseService.GetAnswersByQueryAsync((Guid)selectedIdentifier) // SupabaseService.GetGamesOfUser(_currentUser)
+                : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier));
                 Console.WriteLine("Rows: {0}",gameStats.Count);
 
 
@@ -322,7 +313,26 @@ namespace GestureSample.Views
 
         private  void OnUserPickerSelectedIndexChanged(object sender, EventArgs e)
         {
+            if(UserPicker.SelectedIndex != -1)
+            {
+               //GamePicker.Items.Clear();
+                GameDates.Clear(); 
+                //DatePicker.Items.Clear();
+                GameIdentifiers.Clear();
+                GameIdentifiersFiltered.Clear();
 
+                if (UserPicker.SelectedIndex == 0)
+                {
+                    _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                    ShowData(null);
+                    return;
+                }
+                var selectedUser = _usersDataTable.Rows[UserPicker.SelectedIndex-1];
+                Guid userId = Guid.Parse(selectedUser["Id"].ToString());
+                _currentUser = new Maui.Data.SQLite.User { Id = userId, Name = selectedUser["Name"].ToString() };
+                ShowData(null);
+            }
+            _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
         }
 
         private async void OnDampButtonClicked(object sender, EventArgs e)
