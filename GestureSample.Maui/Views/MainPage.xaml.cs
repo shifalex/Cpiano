@@ -27,6 +27,232 @@ namespace GestureSample.Views
 
             new PageConfig(null, "Tutorial", null, true),
 
+            //OLD MENU
+            //
+            //
+            new PageConfig(null, "new Keyboard", null),
+            new PageConfig(null, "new Number", null),
+            new PageConfig(null, "Bits", null),
+
+            new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+         GameName = "Spatial decomposition required new combinations Blind to 5",
+         MinAddend=0,
+         MinSum=1,
+          MaxAddend=5,
+        MaxSum=5,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sync decomposition dummies spatial less then 5",
+        MinAddend=0,
+        MinSum=1,
+        MaxSum = 4,
+        MaxAddend=5,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {0,0,0,0,0 },
+            LeftAddendIndex=5
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition spatial more then 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sync decomposition spatial more then 5",
+         MinAddend=5,
+        MaxAddend=9,
+        MinSum=6,
+        MaxSum=9,
+        MinAddend2 = 0,
+        MaxAddend2 = 4,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {1,1,1,1,1 }
+        }
+    })),
+     new PageConfig("new Keyboard", "HSync decomposition required new combinations", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName =  "HSync decomposition required new combinations",
+        IsHistory = true,
+        MinAddend=1,
+        MinSum=2,
+        MaxAddend=8,
+        MaxSum=9,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            WithoutZero=true
+
+        }
+    })),
+
+    new PageConfig("new Keyboard", "HSync decomposition required new combinations Impose Edges", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "HSync decomposition required new combinations Impose Edges",
+        IsHistory = true,
+        MinAddend=1,
+        MinSum=2,
+        MaxAddend=9,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            WithoutZero=true,
+            ImposeEdges = true
+        }
+    })),
+    new PageConfig("new Number", "decomposition game Till 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Through 10 With keyboard HalfSync",
+        MaxAddend=9, MaxSum=10, VariableTypes= VariableTypes.OneCanBeSum,
+
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            AddendsNum = 3,
+            AllowRemoval = true,
+            KeyboardOnlyForHelp = true
+        }
+    })),
+     new PageConfig("new Number", "Till 20 with sync keyboard help", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Till 20 with sync keyboard help",
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            SyncType= SyncType.Sync,
+            KeyboardOnlyForHelp = true
+        }
+    })),
+      new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Through 10 With keyboard Only Yellow",
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            Rows = 2,
+            KeyboardOnlyForHelp = true
+        }
+    })),
+
+    new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Through 10 With keyboard HalfSync",
+        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
+
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,
+            Rows=2,
+            AddendsNum = 3,
+            AllowRemoval = true,
+            KeyboardOnlyForHelp = true
+        }
+    })),
+
+    /*new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5 ON", () => new SimpleViewCellsPage(new GameConfig
+    {
+         MinAddend=1,
+         MinSum=2,
+        MaxSum = 4,
+        MaxAddend=3,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {0,0,0,0,0,1 }
+        }
+    })),
+    new PageConfig("new Keyboard", "Sync decomposition spatial more then 5 ON", () => new SimpleViewCellsPage(new GameConfig
+    {
+         MinAddend=1,
+        MinSum=7,
+        MaxSum=9,
+        MaxAddend=8,
+        IsHistory=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Spatial,
+            DummiesArray = new[] {1,-1,-1,-1,-1, 1,1,1,1,1 }
+        }
+    })),*/
+    new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind Full", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Spatial decomposition required new combinations Blind Full",
+        MinAddend=0,
+        MaxAddend=9,
+        MaxSum= 9,
+        MinSum=1,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeysInRow=10,
+            SyncType = SyncType.Spatial
+        }
+    })),
+
+    new PageConfig("new Keyboard", "Sync decomposition required new combinations Blind Full Impose Edges", () => new SimpleViewCellsPage(new GameConfig
+    {
+
+        GameName = "Sync decomposition required new combinations Blind Full Impose Edges",
+        MaxAddend=9,
+        MaxSum=9,
+        IsHistory = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeysInRow=10,
+            SyncType = SyncType.Sync,
+            ImposeEdges = true
+        }
+    })),
+
+
+
+            new PageConfig("Bits", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sync Hand To Keyboard",
+        UIQuestionType = UIQuestionType.CanvasesHands,
+        OperationList = new (){  Operation.Copy, Operation.Quantity },
+        SecondsTillHideExercise = 2,
+        SecondsTillAllowInput = 4,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+    new PageConfig("Bits", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sync Keyboard To Keyboard",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = GameConfig.Operations.BitArray,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+    new PageConfig("Bits", "Logic", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Logic",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = GameConfig.Operations.Logical.Concat(GameConfig.Operations.BitArray).ToList(),
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
+
+
+
             new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
             new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }, true),
@@ -56,6 +282,26 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.None,
             TextBoxesQuantity = 1
+        }
+    })),
+    new PageConfig("Tutorial", "From num to num blind", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From num to num",
+        FromNumToNum=true,
+        MaxSum=10,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.None
+        }
+    })),
+    new PageConfig("Tutorial", "From num to num HSync FAST", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From num to num",
+        FromNumToNum=true,
+        MaxSum=10,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.HalfSync,SecondsPressingToAnswer = -1
         }
     })),
      new PageConfig("Tutorial", "one number Small", () => new SimpleViewCellsPage(new GameConfig
@@ -102,6 +348,21 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer  = 5,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Tutorial", "Edges ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Edges ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        //QuestionOrder = QuestionOrder.BackAndForth,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true,
+            SecondsPressingToAnswer  = 2,
             IsArrow = true
         }
     })),
@@ -208,7 +469,8 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            SecondsPressingToAnswer=3
         }
     })),
     new PageConfig("->", "Cyclical Mixed Ordinal", () => new SimpleViewCellsPage(new GameConfig
@@ -223,6 +485,54 @@ namespace GestureSample.Views
             ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
             SecondsPressingToAnswer=1
+        }
+    })),
+    new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Cyclical Mixed",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11,
+        MaxSum=20,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = 2
+        }
+    })),
+    new PageConfig("->", "<-Only through-> FAST", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Cyclical Mixed",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11,
+        MaxSum=20,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = -2
+        }
+    })),
+    new PageConfig("->", "<-Only through-> FURIOUS", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Cyclical Mixed",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11,
+        MaxSum=20,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = -2
         }
     })),
     /*new PageConfig("->", "From Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig

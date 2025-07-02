@@ -165,6 +165,10 @@ _lblStatement.Text = text;
                     //if (aboveNumber == 10) { _pianoKeyboard.AddArrow(dir, 0/*, _gamePlay.Sum*/); }
 
                 }
+                if (_isKeyboard && _config.FromNumToNum)
+                {
+                    _pianoKeyboard.initColors = _pianoKeyboard.ToBitArray();
+                }
                 if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
                 if (_isKeyboard && !_config.FromNumToNum)
                 {
@@ -281,6 +285,7 @@ _lblStatement.Text = text;
 
         public SimpleViewCellsPage(GameConfig config)
         {
+            Title = config.GameName;
             _config = config;
             if (_config.NumberOfTasksToWin > -1)
             {
@@ -353,12 +358,14 @@ _lblStatement.Text = text;
         private void InitializeUI()
         {
             bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType!=SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
+            int pianoHeight = _isKeyboard ? (isPianoHigh ? 100 : 60) : 1;
+            if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 200;
             Grid grid = new()
             {
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = new GridLength(_isKeyboard ? (isPianoHigh?240:40) : 1, GridUnitType.Star) }
+                new RowDefinition { Height = new GridLength(pianoHeight, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
@@ -381,6 +388,7 @@ _lblStatement.Text = text;
                 TextColor = Colors.Black,
                 Text = Statement.Neutral
             };
+            
             VerticalStackLayout vsl = new()
         {
             _lblStatement

@@ -1,6 +1,7 @@
 ﻿using MR.Gestures;
 using MvvmCross.Base;
 using GestureSample.Maui.Data;
+using Microsoft.Maui.Layouts;
 
 
 namespace GestureSample.Maui.Models
@@ -9,7 +10,8 @@ namespace GestureSample.Maui.Models
     {
 
 
-        protected override int heading_height { get; } = 55;
+        protected override int heading_height { get; set; } = 55;
+        public bool[] initColors ;
 
         protected int _addend1 = 0;
         protected int _addend2 = 0;
@@ -18,6 +20,7 @@ namespace GestureSample.Maui.Models
         //TODO: Give the option to save to database the keypress and timestamp and keyboard ID and the new color(which is made when it is created. And a database to work with..
         //TODO: Make an interface
         protected readonly PPWGamePlay _gamePlay;
+
 
         protected readonly KeyboardConfig _pianoConfig;
 
@@ -86,7 +89,6 @@ After:
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
             KeyboardConfig pianoConfig) : base(pianoConfig)
         {
-
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges;
             _imposeEdges = pianoConfig.ImposeEdges;
@@ -109,9 +111,21 @@ After:
             AddDummies();
 
 
+            // Add an image to your Resources/Images folder, e.g., "reset.png" (ensure Build Action: MauiImage)
+
+            initColors = new bool[btnKeys.Length];
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                initColors[i] = false;// btnKeys[i].BackgroundColor = COLOR_FREE;
+            }
+
             Microsoft.Maui.Controls.Button btnInit = new()
             {
-                Text = "Reset",
+                ImageSource = "reset.png", // Use your professional icon here
+                BackgroundColor = Colors.Transparent,
+                Padding = new Thickness(8),
+                WidthRequest = 20,
+                HeightRequest = 20,
                 Command = new Command(() =>
                 {
                     PianoInit();
@@ -124,12 +138,10 @@ After:
                     {
                         btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
                         btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
-
                     }
                 }),
                 HorizontalOptions = LayoutOptions.Start,
-                WidthRequest = 80,
-                HeightRequest = 16
+               
             };
 
             if (textBoxesQuantity > 0)
@@ -165,7 +177,7 @@ After:
                 };
                 hzl.HorizontalOptions = LayoutOptions.Center;
                 Microsoft.Maui.Controls.Grid g = new();
-                g.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(55) });
+                g.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
@@ -176,25 +188,83 @@ After:
             }
             else
             {
+                /*
                 Microsoft.Maui.Controls.HorizontalStackLayout hzl = new()
                 {
                     btnInit
                 };
                 this.SetColumnSpan(hzl, pianoConfig.KeysInRow + 1);
                 this.Add(hzl, 0);
+                // 1. phantom row
+                this.RowDefinitions.Insert(
+    0,
+    new RowDefinition { Height = new GridLength(1, GridUnitType.Absolute) } // ABSOLUTE 0 px
+);
+
+                // 2. add reset button
+                //btnInit.Margin = new Thickness(12);   // visible padding
+                btnInit.TranslationY = 20;     // pull into visible area
+                btnInit.ZIndex = 99;
+                Microsoft.Maui.Controls.Grid.SetRow(btnInit, 0);
+                Microsoft.Maui.Controls.Grid.SetColumnSpan(btnInit, _pianoConfig.KeysInRow + 1);
+                //Microsoft.Maui.Controls.Grid.SetZIndex(btnInit, 99);
+                this.Children.Add(btnInit);
+
+                // 3. allow overflow
+                this.IsClippedToBounds = false;
+
+
+                btnInit.WidthRequest = 40;
+                btnInit.HeightRequest = 40;
+                btnInit.ZIndex = 100;     // paint above everything
+                */
+                // ── 2. create an overlay layer ----------------------------------
+                var overlay = new Microsoft.Maui.Controls.AbsoluteLayout
+                {
+                    InputTransparent = true      // taps go through, except on btnInit
+                };
+
+                // place the button in the overlay, top-left corner
+                Microsoft.Maui.Controls.AbsoluteLayout.SetLayoutBounds(btnInit, new Rect(0, 0, 20, 20));
+                Microsoft.Maui.Controls.AbsoluteLayout.SetLayoutFlags(btnInit, AbsoluteLayoutFlags.PositionProportional);
+                //btnInit.TranslationX = 12;       // visual padding
+                //btnInit.TranslationY = 12;
+                btnInit.InputTransparent = false; // button itself must receive taps
+                overlay.Children.Add(btnInit);
+
+                // ── 3. pin the overlay on top of the whole keyboard grid --------
+                Children.Add(overlay);               // “this” is the grid you inherit
+
+                Microsoft.Maui.Controls.Grid.SetRow(overlay, 0);        // any existing cell is fine
+                Microsoft.Maui.Controls.Grid.SetColumn(overlay, 0);
+                Microsoft.Maui.Controls.Grid.SetRowSpan(overlay, RowDefinitions.Count);
+                Microsoft.Maui.Controls.Grid.SetColumnSpan(overlay, ColumnDefinitions.Count);
+
+                // the grid must allow children to spill out (needed only once)
+                IsClippedToBounds = false;
+
+
             }
         }
 
         public virtual void PianoInit()
         {
             IsEnabled = true;
+            _addend1 = 0;
+            _addend2 = 0;
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
-                btnKeys[i].BackgroundColor = COLOR_FREE;
+                btnKeys[i].BackgroundColor = initColors[i]?COLOR_PRESSED:COLOR_FREE;
+                if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
+                {
+                    if (i > btnKeys.Length/2)
+                        _addend2++;
+                    else
+                        _addend1++;
+                }
             }
-            _addend1 = 0;
-            _addend2 = 0;
+            if (_patterns) setAddendsByPattern();
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
             AddDummies();
