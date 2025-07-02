@@ -20,24 +20,31 @@ namespace GestureSample.Maui.Models
             bool isOrdinal = Config.KeyboardConfig.ArrowType == ArrowType.Rounded;
             Random r = new();
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
-            //int[] specialAboves = { 1, 5, 6, 10, 3 };
-            //if(true) aboveNumber = specialAboves[r.Next(specialAboves.Length)]; else
-            if (Config.MaxSum >= keys)
+            int[] specialAboves = { 1, 5, 6, 10 };
+            if (Config != null && Config.KeyboardConfig != null && Config.KeyboardConfig.ImposeEdges)
+            {
+                aboveNumber = specialAboves[r.Next(specialAboves.Length)];
+                length = r.Next(1, keys);
+                length = (aboveNumber ==5 || aboveNumber == 6)?length% 6 : length % keys;
+                
+                dir = (aboveNumber == 5 || aboveNumber == 10) ? Direction.Left : Direction.Right;
+            }
+            else
+            /*if (Config.MaxSum >= keys)
             {
                 aboveNumber = r.Next(1, keys + 1);
                 length = r.Next(1, keys);
             }
-            else
+            else*/
             {
                 int[] factors = Factors;
-                aboveNumber = Math.Max( factors[0], factors[1]);
-                length = Math.Min(factors[0], factors[1]);
-                if (aboveNumber == 0) aboveNumber = 1;
-                if(length == 0) length = 1;
-                if(dir== Direction.Left)
-                {
-                    aboveNumber = aboveNumber + length;
-                }
+                //aboveNumber = Math.Max( factors[0], factors[1])% keys;
+                //length = Math.Min(factors[0], factors[1])% keys;
+                //if (aboveNumber == 0) aboveNumber = 1;
+
+                aboveNumber = factors[0] % keys; length = factors[1] % keys;
+                if (length == 0) length = 1;
+                aboveNumber = (dir == Direction.Left) ? (aboveNumber + length) % keys : aboveNumber;
 
             }
 

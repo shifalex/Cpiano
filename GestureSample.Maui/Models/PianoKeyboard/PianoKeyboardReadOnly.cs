@@ -16,7 +16,7 @@ namespace GestureSample.Maui.Models
         protected readonly int FINGER_SEPERATOR = 5;
         protected MR.Gestures.Button[] btnKeys;
         public int Length => btnKeys.Length;
-        protected virtual int heading_height { get; } = 5;
+        protected virtual int heading_height { get; set; } = 5;
 
 
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
@@ -129,7 +129,7 @@ namespace GestureSample.Maui.Models
         }
 
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=100)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=102)
         {
             Grid Arrow = new()
             {
@@ -151,7 +151,7 @@ namespace GestureSample.Maui.Models
 
 
             if (columnWidth == -1)
-                columnWidth = 10;
+                columnWidth = 13;
             //TODO: ARROW DRAWING - First draw buttons
             //TODO: ARROW DRAWING - solve orientation switch arrow bug
             // Create the number label
@@ -159,10 +159,14 @@ namespace GestureSample.Maui.Models
             {
                 Text = numberAbove.ToString(),
                 TextColor = Colors.White,
+                FontSize = 25,
                 //WidthRequest = columnWidth,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalTextAlignment = TextAlignment.Center,
+                FontAttributes = Microsoft.Maui.Controls.FontAttributes.Bold,
+                FontFamily = DeviceInfo.Platform == DevicePlatform.iOS ? "HelveticaNeue-Bold" : null, // Use iOS system bold font
+
                 IsVisible = numberAbove > -1
 
             };
@@ -172,28 +176,29 @@ namespace GestureSample.Maui.Models
             if (direction == Direction.Right)
             {
                 arrowStart = 0;
-                arrowEnd = arrowStart + columnWidth;// - (aboveKeyNumber == 10 ? columnWidth / 2 + 10 : 0) + 10;
-                arrowEdgeX = arrowEnd - 10;
                 colSpan = aboveKeyNumber switch
                 {
                     10 => 1,
                     5 => 3,
                     _ => 2
                 };
-                numberLabel.HorizontalOptions = LayoutOptions.Start;
+                arrowEnd = arrowStart + columnWidth * Math.Min(colSpan,2);// - (aboveKeyNumber == 10 ? columnWidth / 2 + 10 : 0) + 10;
+                if (colSpan == 3) arrowEnd += 9;
+                arrowEdgeX = arrowEnd - 10;
+                //numberLabel.HorizontalOptions = LayoutOptions.Start;
             }
             else
-            {
-                arrowStart = columnWidth + (aboveKeyNumber switch { 1 => -3, 6 => 8 + columnWidth, _ => columnWidth });
-                arrowEnd = aboveKeyNumber == 1 ? 0 : columnWidth;
-                arrowEdgeX = arrowEnd + 10;
-                colSpan = aboveKeyNumber switch
+            {colSpan = aboveKeyNumber switch
                 {
                     1 => 1,
                     6 => 3,
                     _ => 2
                 };
-                numberLabel.HorizontalOptions = LayoutOptions.End;
+                arrowStart = columnWidth + (aboveKeyNumber switch { 1 => -3, 6 => 9 + columnWidth, _ => columnWidth });
+                
+                arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
+                arrowEdgeX = arrowEnd + 10;
+                //numberLabel.HorizontalOptions = LayoutOptions.End;
             }
             // Create the arrow
             string pathData;
@@ -208,7 +213,7 @@ namespace GestureSample.Maui.Models
             }
             else
             {
-                pathData = String.Format("M {0},30 L {0},10 L {1},10 L {2},0 M {1},10 L {2},20", arrowStart, arrowEnd, arrowEdgeX);
+                pathData = String.Format("M {0},50 L {0},15 L {1},15 L {2},2 M {1},15 L {2},28", arrowStart, arrowEnd, arrowEdgeX);
             }
             Console.WriteLine(pathData);
             Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(pathData, Colors.White);
@@ -247,7 +252,7 @@ namespace GestureSample.Maui.Models
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(data),
                 Fill = Colors.Transparent,
                 Stroke = color,
-                StrokeThickness = 2,
+                StrokeThickness = 6,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center
             };
@@ -283,11 +288,10 @@ namespace GestureSample.Maui.Models
 
             colors = new Color[NUMBER_OF_KEYS];
 
-            if (config.IsArrow || config.ImposeEdges)
+            if (config.IsArrow /*|| config.ImposeEdges*/)
             {
-                this.RowDefinitions.Add(new RowDefinition() { Height = GridLength.Auto });
-
-
+                this.RowDefinitions.Add(new RowDefinition() { Height =GridLength.Auto });
+                heading_height = 55;
             }
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
             btnKeys = new MR.Gestures.Button[NUMBER_OF_KEYS];
