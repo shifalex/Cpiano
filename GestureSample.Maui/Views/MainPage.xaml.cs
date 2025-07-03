@@ -351,6 +351,38 @@ namespace GestureSample.Views
             IsArrow = true
         }
     })),
+    new PageConfig("Tutorial", "One hand practice ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "One hand practice ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        //QuestionOrder = QuestionOrder.BackAndForth,
+        MaxSum=10,
+        MaxAddend=5,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true,
+            SecondsPressingToAnswer  = 2,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Tutorial", "Edges -> long arrow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Edges ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        //QuestionOrder = QuestionOrder.BackAndForth,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true,
+            SecondsPressingToAnswer  = 2,
+            IsArrow = true,
+            IsArrowLengthDynamic = true
+        }
+    })),
     new PageConfig("Tutorial", "Edges ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Edges ->",
@@ -358,6 +390,37 @@ namespace GestureSample.Views
         //QuestionOrder = QuestionOrder.BackAndForth,
         MaxSum=10,
         OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true,
+            SecondsPressingToAnswer  = 2,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Tutorial", "Two hands practice ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Two hands practice ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        //QuestionOrder = QuestionOrder.BackAndForth,
+        MaxSum=15,
+        MinAddend2 = 6,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            ImposeEdges = true,
+            SecondsPressingToAnswer  = 2,
+            IsArrow = true,
+            IsArrowLengthDynamic = true
+        }
+    })),
+    new PageConfig("Tutorial", "Two hands practice ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Two hands practice ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        //QuestionOrder = QuestionOrder.BackAndForth,
+        MaxSum=15,
+        MinAddend2 = 6,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,

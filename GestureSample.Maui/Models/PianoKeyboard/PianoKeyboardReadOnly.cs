@@ -50,6 +50,26 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        public static readonly BindableProperty IsArrowByLengthProperty =
+        BindableProperty.Create(
+            nameof(IsArrowByLength),
+            typeof(bool),
+            typeof(PianoKeyboardReadOnly),
+            default(bool));
+
+        public bool IsArrowByLength
+        {
+            get => (bool)GetValue(IsArrowByLengthProperty);
+            set => SetValue(IsArrowByLengthProperty, value);
+        }
+
+
+
+        private static void OnIsArrowByLengthChanged(BindableObject bindable, object oldValue, object newValue)
+        {
+            
+        }
+
 
         public static readonly BindableProperty DirectionProperty =
         BindableProperty.Create(
@@ -129,7 +149,7 @@ namespace GestureSample.Maui.Models
         }
 
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=102)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=102, int columnspan=2)
         {
             Grid Arrow = new()
             {
@@ -173,28 +193,79 @@ namespace GestureSample.Maui.Models
 
             int colSpan;
             double arrowStart, arrowEnd, arrowEdgeX;
+            bool toAddSeperator = false;
             if (direction == Direction.Right)
             {
                 arrowStart = 0;
                 colSpan = aboveKeyNumber switch
                 {
                     10 => 1,
-                    5 => 3,
                     _ => 2
                 };
-                arrowEnd = arrowStart + columnWidth * Math.Min(colSpan,2);// - (aboveKeyNumber == 10 ? columnWidth / 2 + 10 : 0) + 10;
-                if (colSpan == 3) arrowEnd += 9;
+                arrowEnd = 0;// arrowStart + columnWidth * Math.Min(colSpan, 2);// - (aboveKeyNumber == 10 ? columnWidth / 2 + 10 : 0) + 10;
+                if (aboveKeyNumber == 5) { toAddSeperator = true; } // Because of ColSpan 3
+                if (IsArrowByLength)
+                {
+                    if (numberAbove > 0)
+                    {
+                        colSpan = numberAbove;
+                        arrowEnd = 0;
+                        if (aboveKeyNumber + numberAbove > 10)
+                        {
+                            colSpan = 10 - aboveKeyNumber + 1;
+                            int secondArrowColSpan = aboveKeyNumber + numberAbove - 10;
+                            secondArrowColSpan = (secondArrowColSpan>5)? secondArrowColSpan+1 : secondArrowColSpan;
+                            AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan);
+                        }
+                        if (aboveKeyNumber < 6 && aboveKeyNumber + numberAbove > 5)
+                        {
+                            toAddSeperator = true;
+                            
+                        }
+                        
+                    }
+                    else { 
+                    }
+                 }
+                arrowEnd += arrowStart + columnWidth * colSpan+(toAddSeperator?9:0);
+
                 arrowEdgeX = arrowEnd - 10;
                 //numberLabel.HorizontalOptions = LayoutOptions.Start;
             }
             else
-            {colSpan = aboveKeyNumber switch
+            {
+                arrowStart = 0;
+                colSpan = aboveKeyNumber switch
                 {
                     1 => 1,
-                    6 => 3,
                     _ => 2
                 };
-                arrowStart = columnWidth + (aboveKeyNumber switch { 1 => -3, 6 => 9 + columnWidth, _ => columnWidth });
+                if (aboveKeyNumber == 6) toAddSeperator = true;
+                if (aboveKeyNumber == 1) arrowStart = -3;  
+                if (IsArrowByLength)
+                {
+                    if (numberAbove > 0)
+                    {
+                        colSpan = numberAbove;
+                        arrowEnd = 0;
+                        if (aboveKeyNumber - numberAbove < 0)
+                        {
+                            colSpan = aboveKeyNumber + 1;
+                            int secondArrowColSpan = numberAbove-aboveKeyNumber;
+                            secondArrowColSpan = (secondArrowColSpan > 5) ? secondArrowColSpan + 1 : secondArrowColSpan;
+                            AddArrow(Direction.Left, 10, -1, 1, columnWidth, secondArrowColSpan);
+                        }
+                        if (aboveKeyNumber > 6 && aboveKeyNumber - numberAbove < 5)
+                        {
+                            toAddSeperator = true;
+                        }
+                    }
+                    else
+                    {
+                    }
+                }
+                arrowStart += colSpan*columnWidth + (toAddSeperator ? 9 : 0); ;
+                
                 
                 arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
                 arrowEdgeX = arrowEnd + 10;
@@ -225,10 +296,9 @@ namespace GestureSample.Maui.Models
             Arrow.Add(arrow, 0, 1);
 
             // Add the combined object to the main grid in the correct column
+            if (toAddSeperator) colSpan++;
             int column = aboveKeyNumber - 1;
-            if (direction == Direction.Left) column--;
-            if (FINGER_SEPERATOR >= 0 && aboveKeyNumber > FINGER_SEPERATOR) column++;
-            if (direction == Direction.Left && aboveKeyNumber == 6) column--;//Because of ColSpan 3
+            if (direction == Direction.Left) column=column+1 - colSpan;
             if (column == -1) column = 0;
             this.Add(Arrow, column, row);
 
@@ -290,6 +360,7 @@ namespace GestureSample.Maui.Models
 
             if (config.IsArrow /*|| config.ImposeEdges*/)
             {
+                IsArrowByLength = config.IsArrowLengthDynamic??false;
                 this.RowDefinitions.Add(new RowDefinition() { Height =GridLength.Auto });
                 heading_height = 55;
             }

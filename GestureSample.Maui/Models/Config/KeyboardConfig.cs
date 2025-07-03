@@ -129,6 +129,8 @@
     //TODO: Oridinal Plus starts from the 10(0)
     //TODO: add NOT to copy/quantity in the fingers game
     //TODO: Pictorial and width adaptive triads( show objects that change colors after 5  and have completion
+    //TODO: add record and migration in Configs
+    //TODO: splti config to different cofigs UI, GamePlay, GameParameters, Arrow
 
     //TODO: Pattern for numbers
     //TODO: One Button - lights several number: 1-2-4, 5-1-1-1-1
@@ -252,6 +254,7 @@
 
         public bool IsArrow { get; set; } = false;
         public ArrowType ArrowType { get; set; } = ArrowType.Straight;
+        public bool? IsArrowLengthDynamic { get; set; } = false;
 
         public int[] WeightsArray = null;
         public List<List<int>> DependancyArray = null;
