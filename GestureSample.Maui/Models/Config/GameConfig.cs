@@ -12,13 +12,38 @@ using System.Reflection;
 //SimpleViewCellsPage: Change buttonNext and Generate exercise event handling if needed
 //Add the new configuration to MainPage.Xaml.cs
 
+// ✅ GameConfig is a record (immutable, value-based equality)
+// 🧠 When adding a new property:
+//   - Make it `init;` or readonly
+//   - Use default (`= ...`) or nullable (e.g., int?)
+//   - Avoid breaking old JSON: missing fields are OK
+//   - Use `with { ... }` to clone+modify
+//   - If needed, bump `Version` and migrate old configs
+/* FOR CHATGPT:
+ I’m about to evolve a config record in C#.
+
+Please remind me:
+- how to add a field safely without breaking old JSON
+- when to use init;
+- when to migrate versions
+- how to test this safely
+
+(And whether record or class is better.)*/
+
 namespace GestureSample.Maui
 {
     #region enums
 
     public static class EnumExtensions
     {
-        public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
+        /*public static GameConfig MigrateFromV1(GameConfig old)
+        {
+            return old with
+            {
+                MaxSecondsPerQuestion = old.MaxSecondsPerQuestion ?? 999
+            };
+        }*/
+public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct, IConvertible
         {
             if (!typeof(TEnum).IsEnum)
                 throw new ArgumentException("TEnum must be an enumerated type");
