@@ -123,11 +123,14 @@ After:
             {
                 ImageSource = "reset.png", // Use your professional icon here
                 BackgroundColor = Colors.Transparent,
-                Padding = new Thickness(8),
-                WidthRequest = 20,
-                HeightRequest = 20,
+                Padding = new Thickness(2),
+                WidthRequest = 40,
+                HeightRequest = 40,
+                ZIndex = 100, // Ensure it appears above other elements
                 Command = new Command(() =>
                 {
+                    // Reset the keyboard state
+                    Console.WriteLine("Resetting Piano Keyboard...");
                     PianoInit();
                     for (int i = 0; i < btnKeys.Length; i++)
                     {
@@ -140,7 +143,8 @@ After:
                         btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
                     }
                 }),
-                HorizontalOptions = LayoutOptions.Start,
+                HorizontalOptions = LayoutOptions.Start
+                
                
             };
 

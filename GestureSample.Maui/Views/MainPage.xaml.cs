@@ -336,13 +336,13 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
-    new PageConfig("Tutorial", "First ->", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Tutorial", "First -> Long", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "First ->",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.BackAndForth,
-        MaxAddend=4,
-        MaxSum=9,
+        MaxAddend=5,
+        MaxSum=10,
         OnlyToTen=true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -351,20 +351,52 @@ namespace GestureSample.Views
             IsArrow = true
         }
     })),
-    new PageConfig("Tutorial", "One hand practice ->", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Tutorial", "First ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "First ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=5,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Tutorial", "Till 10 ->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Till 10 ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=9,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
+            IsArrow = true
+        }
+    })),
+    new PageConfig("Tutorial", "One hand practice Edges ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "One hand practice ->",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         //QuestionOrder = QuestionOrder.BackAndForth,
         MaxSum=10,
-        MaxAddend=5,
+        MaxAddend=5, MaxAddend2=5,
+        MinAddend=0, MinAddend2=1,
         OnlyToTen=true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
             SecondsPressingToAnswer  = 2,
-            IsArrow = true
+            IsArrow = true,
+            IsArrowLengthDynamic = true
         }
     })),
     new PageConfig("Tutorial", "Edges -> long arrow", () => new SimpleViewCellsPage(new GameConfig
@@ -550,9 +582,25 @@ namespace GestureSample.Views
             SecondsPressingToAnswer=1
         }
     })),
+    new PageConfig("->", "<-Only through-> EASY", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "<-Only through-> EASY",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11, MinAddend=5, MinAddend2 =1, MaxAddend2=9,
+        MaxSum=15,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = 2
+        }
+    })),
     new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Cyclical Mixed",
+        GameName = "<-Only through->",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.Random,
         OnlyThrougTen = true,

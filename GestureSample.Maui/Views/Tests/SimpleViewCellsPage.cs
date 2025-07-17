@@ -161,6 +161,7 @@ _lblStatement.Text = text;
                 if (_config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow)
                 {
                     _pianoKeyboard.RemoveArrows();
+                    Console.WriteLine("aboveNumver: {0}, length: {1}", ((BitArrayGamePlay)_gamePlay).aboveNumber, ((BitArrayGamePlay)_gamePlay).length);
                     _pianoKeyboard.AddArrow(((BitArrayGamePlay)_gamePlay).dir, ((BitArrayGamePlay)_gamePlay).aboveNumber, ((BitArrayGamePlay)_gamePlay).length);
                     //if (aboveNumber == 10) { _pianoKeyboard.AddArrow(dir, 0/*, _gamePlay.Sum*/); }
 

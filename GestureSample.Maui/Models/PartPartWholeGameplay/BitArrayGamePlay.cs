@@ -25,7 +25,8 @@ namespace GestureSample.Maui.Models
             {
                 aboveNumber = specialAboves[r.Next(specialAboves.Length)];
                 length = r.Next(1, keys);
-                length = (aboveNumber ==5 || aboveNumber == 6)?length% 6 : length % keys;
+                length = (aboveNumber ==5 || aboveNumber == 6)?length% 5 : length % keys;
+                length++;
                 
                 dir = (aboveNumber == 5 || aboveNumber == 10) ? Direction.Left : Direction.Right;
             }
@@ -43,8 +44,9 @@ namespace GestureSample.Maui.Models
                 //if (aboveNumber == 0) aboveNumber = 1;
 
                 aboveNumber = factors[0] % keys; length = factors[1] % keys;
-                if (length == 0) length = 1;
-                aboveNumber = (dir == Direction.Left) ? (aboveNumber + length) % keys : aboveNumber;
+                if (length == 0) {length = 1; Console.WriteLine("{3}->{4}: {0} {1} {2}", factors[0], factors[1], factors[2], aboveNumber, length);}
+                aboveNumber = (dir == Direction.Left) ? (aboveNumber + length) % keys : aboveNumber+1;
+                Console.WriteLine("{3}->{4}: {0} {1} {2}", factors[0], factors[1], factors[2], aboveNumber, length);
 
             }
 
