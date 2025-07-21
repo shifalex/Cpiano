@@ -222,8 +222,12 @@ After:
                 btnInit.HeightRequest = 40;
                 btnInit.ZIndex = 100;     // paint above everything
                 */
+
+                Console.WriteLine("Heading height for btnInit: " + heading_height);
+                Microsoft.Maui.Controls.Grid g = new();
+                g.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
                 // ── 2. create an overlay layer ----------------------------------
-                var overlay = new Microsoft.Maui.Controls.AbsoluteLayout
+                /*var overlay = new Microsoft.Maui.Controls.AbsoluteLayout
                 {
                     InputTransparent = true      // taps go through, except on btnInit
                 };
@@ -245,8 +249,11 @@ After:
                 Microsoft.Maui.Controls.Grid.SetColumnSpan(overlay, ColumnDefinitions.Count);
 
                 // the grid must allow children to spill out (needed only once)
-                IsClippedToBounds = false;
-
+                IsClippedToBounds = false;*/
+                g.Add(btnInit, 0);
+                this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
+                g.HorizontalOptions = LayoutOptions.Fill;
+                this.Add(g, 0);
 
             }
         }

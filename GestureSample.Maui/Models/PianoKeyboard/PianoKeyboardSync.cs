@@ -33,13 +33,13 @@
                     if (SECONDS_TO_ANSWER == 0) { _lblTimer.Text = Statement.Neutral; return; }
                 
                     _seconds_pressed = (_addend1 == 0 && _addend2 == 0) ? 0 : (_seconds_pressed + 1);
+                    _lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
                     _lblTimer.Text = SecondsToEnd;// (_addend1 == 0 && _addend2 == 0) ? Statement.Neutral : SecondsToEnd;
 
                     // Removed the problematic line as 'Stroke' is not a valid property for Label.  
                     // Instead, you can use other properties like BorderColor or BackgroundColor if applicable.  
 
                     //_lblTimer.BackgroundColor = (_seconds_pressed >= SECONDS_TO_ANSWER || (_addend1 == 0 && _addend2 == 0)) ? Colors.Transparent : Colors.Red;
-                    _lblTimer.FontSize = (_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
 
                     if (_seconds_pressed >= SECONDS_TO_ANSWER)
                     {
