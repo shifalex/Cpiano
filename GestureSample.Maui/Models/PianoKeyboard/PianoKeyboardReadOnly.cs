@@ -1,4 +1,5 @@
 ﻿using Microsoft.Maui.Controls.Shapes;
+using MongoDB.Bson;
 
 namespace GestureSample.Maui.Models
 {
@@ -149,9 +150,12 @@ namespace GestureSample.Maui.Models
         }
 
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=103, int columnspan=2)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=106, int columnspan=2)
         {
-            double seperator_width = 15;
+            Console.WriteLine("Adding arrow: {0} {1} {2} {3}", direction, aboveKeyNumber, numberAbove, row);
+            double seperator_width = 16;
+            double arrow_reduction = 13;
+             double border_width = 5;
             Grid Arrow = new()
             {
                 RowDefinitions =
@@ -230,9 +234,9 @@ namespace GestureSample.Maui.Models
                     else { 
                     }
                  }
-                arrowEnd += arrowStart + columnWidth * colSpan+(toAddSeperator? seperator_width : 0);
+                arrowEnd += arrowStart + columnWidth * colSpan+(toAddSeperator? seperator_width : 0) -border_width- arrow_reduction ;
 
-                arrowEdgeX = arrowEnd - 10;
+                arrowEdgeX = arrowEnd - arrow_reduction;
                 //numberLabel.HorizontalOptions = LayoutOptions.Start;
             }
             else
@@ -244,14 +248,13 @@ namespace GestureSample.Maui.Models
                     _ => 2
                 };
                 if (aboveKeyNumber == 6) toAddSeperator = true;
-                if (aboveKeyNumber == 1) arrowStart = -3;  
+                //if (aboveKeyNumber == 1) arrowStart = -3;  
                 if (IsArrowByLength)
                 {
                     toAddSeperator = false;
                     if (numberAbove > 0)
                     {
                         colSpan = numberAbove;
-                        arrowEnd = 0;
                         if (aboveKeyNumber - numberAbove < 0)
                         {
                             colSpan = aboveKeyNumber + 1;
@@ -268,11 +271,12 @@ namespace GestureSample.Maui.Models
                     {
                     }
                 }
-                arrowStart += colSpan*columnWidth + (toAddSeperator ? seperator_width : 0); ;
+                arrowStart += colSpan * columnWidth + (toAddSeperator ? seperator_width : 0)- border_width; 
                 
                 
                 arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
-                arrowEdgeX = arrowEnd + 10;
+                arrowEnd += arrow_reduction;
+                arrowEdgeX = arrowEnd + arrow_reduction;
                 //numberLabel.HorizontalOptions = LayoutOptions.End;
             }
             // Create the arrow
@@ -289,6 +293,7 @@ namespace GestureSample.Maui.Models
             else
             {
                 pathData = String.Format("M {0},50 L {0},15 L {1},15 L {2},2 M {1},15 L {2},28", arrowStart, arrowEnd, arrowEdgeX);
+                Console.WriteLine("Arrow path data: " + pathData + "colspan {0}", colSpan);
             }
             Console.WriteLine(pathData);
             Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(pathData, Colors.White);
@@ -301,10 +306,14 @@ namespace GestureSample.Maui.Models
 
             // Add the combined object to the main grid in the correct column
             int column = aboveKeyNumber - 1;
+
             if (toAddSeperator) { colSpan++; }
+            
+            //Console.WriteLine("Adding arrow at column {0} colSpan {2}", column, row, colSpan);
             if (direction == Direction.Left) column=column+1 - colSpan;
-            if (column == -1 || (FINGER_SEPERATOR>0 && column>FINGER_SEPERATOR-1 && direction == Direction.Right)) column++;
-            if (column == -1 || (FINGER_SEPERATOR > 0 && aboveKeyNumber > FINGER_SEPERATOR && direction == Direction.Left)) column++;
+            //TODO: is the column==-1 check needed?
+            if (column == -1 || (FINGER_SEPERATOR>0 && ((column>FINGER_SEPERATOR-1 && direction == Direction.Right) || (aboveKeyNumber > FINGER_SEPERATOR && direction == Direction.Left)))) column++;
+            //Console.WriteLine("Adding arrow (2) at column {0} colSpan {2}", column, row, colSpan);
             this.Add(Arrow, column, row);
 
             Grid.SetColumnSpan(Arrow, colSpan);
@@ -366,7 +375,8 @@ namespace GestureSample.Maui.Models
             if (config.IsArrow /*|| config.ImposeEdges*/)
             {
                 IsArrowByLength = config.IsArrowLengthDynamic??false;
-                heading_height = 55;
+                heading_height = 20;
+                Console.WriteLine("Heading height: " + heading_height);
             }
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
             if (config.IsArrow /*|| config.ImposeEdges*/)
@@ -389,7 +399,7 @@ namespace GestureSample.Maui.Models
                     {
                         Text = (config.ShowNumbersOnKeys) ? (i + 1 + keysInRow * r).ToString() : "",
                         TextColor = Colors.Black,
-                        BackgroundColor = COLOR_FREE,
+                        BackgroundColor = COLOR_FREE,  
                         CommandParameter = i + 1 + keysInRow * r,
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 

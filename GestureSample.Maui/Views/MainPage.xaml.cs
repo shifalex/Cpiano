@@ -394,7 +394,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
-            SecondsPressingToAnswer  = 2,
+            SecondsPressingToAnswer  = 4,
             IsArrow = true,
             IsArrowLengthDynamic = true
         }
@@ -410,7 +410,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
-            SecondsPressingToAnswer  = 2,
+            SecondsPressingToAnswer  = 4,
             IsArrow = true,
             IsArrowLengthDynamic = true
         }
