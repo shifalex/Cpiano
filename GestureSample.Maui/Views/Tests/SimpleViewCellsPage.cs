@@ -18,12 +18,25 @@ namespace GestureSample.Views.Tests
                 return _config.UIQuestionType switch
                 {
                     UIQuestionType.ThreeTexts => true,
+                    UIQuestionType.OneText => true,
                     UIQuestionType.SimpleEquation => true,
                     UIQuestionType.DecompositionGame => true,
                     _ => false
                 };
             }
         }
+        public new bool IsEnabled
+        {
+            get => _pianoKeyboard?.IsEnabled ?? true;
+            set
+            {
+                   if(_pianoKeyboard!=null) _pianoKeyboard.IsEnabled = value;
+                if (_btnNext != null)
+                    _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
+                
+            }
+        }
+
         private PianoKeyboard _pianoKeyboard = null;
         private PPWGamePlay _gamePlay;
 
@@ -101,7 +114,7 @@ _lblStatement.Text = text;
             
             List <Task> tasks = new();
 
-            if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0;
+            if (_btnNext != null)  _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; 
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
             if (_isThreeTexts)
             {
@@ -123,6 +136,7 @@ _lblStatement.Text = text;
 
             if (_config.SecondsTillAllowInput > 0)
             {
+                if (_btnNext != null) { _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; Console.WriteLine(" _gamePlay.GuessNumber: {0}", _gamePlay.GuessNumber); }
                 tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
             }
 
@@ -130,9 +144,9 @@ _lblStatement.Text = text;
             {
                 if (_isThreeTexts)
                 {
-                    EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN);
-                    EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN);
-                    EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN);
+                    EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+                    EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+                    EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
 
                    
                 }
@@ -310,6 +324,7 @@ _lblStatement.Text = text;
 
         private async void CheckGamePlay()
         {
+            if (_btnNext != null) _btnNext.IsEnabled = false;
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
                 bool isCorrect = await _gamePlay.CheckAsync(_pianoKeyboard);
@@ -324,7 +339,7 @@ _lblStatement.Text = text;
                     {
                         if (_config.NumberOfTasksToWin < 0)//TODO: Check if ok to remove or change condition
                         {
-                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
+                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false; 
                             await Task.Delay(_config.SecondsTillNextExercise * 1000);
                             _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
                         }
@@ -670,8 +685,8 @@ _lblStatement.Text = text;
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = 18,
-                IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
-            };
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
+                };
             _lblAction = new Label
             {
                 FontSize = 18,
@@ -700,7 +715,7 @@ _lblStatement.Text = text;
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = 18,
-                IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
             };
             _txtAddend1.Keyboard = Keyboard.Numeric;
             _txtAddend2.Keyboard = Keyboard.Numeric;

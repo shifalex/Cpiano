@@ -42,6 +42,7 @@ namespace GestureSample.Views
           MaxAddend=5,
         MaxSum=5,
         IsHistory = true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Spatial
@@ -55,6 +56,7 @@ namespace GestureSample.Views
         MaxSum = 4,
         MaxAddend=5,
         IsHistory=true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Spatial,
@@ -72,6 +74,7 @@ namespace GestureSample.Views
         MinAddend2 = 0,
         MaxAddend2 = 4,
         IsHistory=true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Spatial,
@@ -86,6 +89,7 @@ namespace GestureSample.Views
         MinSum=2,
         MaxAddend=8,
         MaxSum=9,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,
@@ -101,6 +105,7 @@ namespace GestureSample.Views
         MinAddend=1,
         MinSum=2,
         MaxAddend=9,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,
@@ -108,7 +113,7 @@ namespace GestureSample.Views
             ImposeEdges = true
         }
     })),
-    new PageConfig("new Number", "decomposition game Till 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
+   /* new PageConfig("new Number", "decomposition game Till 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Through 10 With keyboard HalfSync",
         MaxAddend=9, MaxSum=10, VariableTypes= VariableTypes.OneCanBeSum,
@@ -130,11 +135,67 @@ namespace GestureSample.Views
             SyncType= SyncType.Sync,
             KeyboardOnlyForHelp = true
         }
+
+    })),*/
+    new PageConfig("new Number", "decomposition game Till 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Till 10 With keyboard Only Yellow",
+        MinAddend = 1, MaxAddend=9, MaxSum=10, VariableTypes= VariableTypes.OneCanBeSum,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            KeyboardOnlyForHelp = true
+        }
+    })),
+     new PageConfig("new Number", "From PPW to keyboard", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From PPW to keyboard",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.OneNoSum, UIQuestionType=UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            ImposeEdges =true
+        }
+    }){
+     
+     }),
+
+     new PageConfig("new Number", "From Keyboard to PPW SYNC", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From Keyboard to PPW SYNC",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.TwoNoSum, UIQuestionType=UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            ImposeEdges =true,
+            SyncType= SyncType.Sync
+        }
+    }){
+
+     }),
+     new PageConfig("new Number", "From PPW to keyboard SYNC", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From PPW to keyboard SYNC",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.OneNoSum, UIQuestionType=UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            ImposeEdges =true,
+            SyncType= SyncType.Sync
+        }
+    }){
+
+     }),
+     new PageConfig("new Number", "decomposition game Till 20 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Till 20 With keyboard Only Yellow",
+        MinAddend = 1,MaxAddend=19, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            Rows = 2,
+            KeyboardOnlyForHelp = true
+        }
     })),
       new PageConfig("new Number", "decomposition game Through 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Through 10 With keyboard Only Yellow",
-        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,
+        MinAddend = 1,MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen= true,
         KeyboardConfig = new KeyboardConfig()
         {
             Rows = 2,
@@ -145,7 +206,7 @@ namespace GestureSample.Views
     new PageConfig("new Number", "decomposition game Through 10 With keyboard HalfSync", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Through 10 With keyboard HalfSync",
-        MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
+        MinAddend = 1, MaxAddend=20, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, OnlyThrougTen=true,
 
         KeyboardConfig = new KeyboardConfig
         {
@@ -164,6 +225,7 @@ namespace GestureSample.Views
         MaxSum = 4,
         MaxAddend=3,
         IsHistory=true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Spatial,
@@ -177,6 +239,7 @@ namespace GestureSample.Views
         MaxSum=9,
         MaxAddend=8,
         IsHistory=true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Spatial,
@@ -191,6 +254,7 @@ namespace GestureSample.Views
         MaxSum= 9,
         MinSum=1,
         IsHistory = true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             KeysInRow=10,
@@ -205,6 +269,7 @@ namespace GestureSample.Views
         MaxAddend=9,
         MaxSum=9,
         IsHistory = true,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             KeysInRow=10,
@@ -267,6 +332,7 @@ namespace GestureSample.Views
     {
         GameName = "one number small async",
         MaxSum=5,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.None,
@@ -278,6 +344,7 @@ namespace GestureSample.Views
         GameName = "From num to num",
         FromNumToNum=true,
         MaxSum=10,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.None,
@@ -289,6 +356,7 @@ namespace GestureSample.Views
         GameName = "From num to num",
         FromNumToNum=true,
         MaxSum=10,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.None
@@ -299,6 +367,7 @@ namespace GestureSample.Views
         GameName = "From num to num",
         FromNumToNum=true,
         MaxSum=10,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.HalfSync,SecondsPressingToAnswer = -1
@@ -308,6 +377,7 @@ namespace GestureSample.Views
     {
         GameName = "one number",
         MaxSum = 5,
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -320,6 +390,7 @@ namespace GestureSample.Views
     new PageConfig("Tutorial", "one number", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number",
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -331,6 +402,7 @@ namespace GestureSample.Views
     new PageConfig("Tutorial", "one number Blind", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number Blind",
+        UIQuestionType = UIQuestionType.OneText,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
@@ -426,7 +498,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
-            SecondsPressingToAnswer  = 2,
+            SecondsPressingToAnswer  = 4,
             IsArrow = true
         }
     })),
@@ -441,7 +513,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
-            SecondsPressingToAnswer  = 2,
+            SecondsPressingToAnswer  = 4,
             IsArrow = true,
             IsArrowLengthDynamic = true
         }
@@ -457,7 +529,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             ImposeEdges = true,
-            SecondsPressingToAnswer  = 2,
+            SecondsPressingToAnswer  = 4,
             IsArrow = true
         }
     })),
@@ -595,7 +667,7 @@ namespace GestureSample.Views
 
             SyncType = SyncType.Sync,
             IsArrow = true,
-            SecondsPressingToAnswer = 2
+            SecondsPressingToAnswer = 4
         }
     })),
     new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
@@ -627,7 +699,7 @@ namespace GestureSample.Views
 
             SyncType = SyncType.Sync,
             IsArrow = true,
-            SecondsPressingToAnswer = -2
+            SecondsPressingToAnswer = -4
         }
     })),
     new PageConfig("->", "<-Only through-> FURIOUS", () => new SimpleViewCellsPage(new GameConfig

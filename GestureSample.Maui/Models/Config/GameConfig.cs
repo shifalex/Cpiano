@@ -59,7 +59,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
     public enum UIQuestionType
     {
         OnlyKeyboard,
-        //OneText,//Can be also objects.. always exists
+        OneText,//Can be also objects.. always exists
         ThreeTexts, //Can be with following options: history, levelPicker, DirectionsText, Guess one
         SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options,
         CanvasesHands,
@@ -183,6 +183,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int NumberOfMistakesToLose { get; set; } = -1;
 
         public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
+        
         public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
         public List<Operation> OperationList = new() { Operation.Sum };
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
