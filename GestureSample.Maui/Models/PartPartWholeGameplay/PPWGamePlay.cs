@@ -215,9 +215,9 @@ namespace GestureSample.Maui.Models
         public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
             bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
-            pianoKeyboard.IsEnabled = false;
+            _view.IsEnabled = false;
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
-            pianoKeyboard.IsEnabled = true;
+             _view.IsEnabled = true;
             return b;
         }
 
