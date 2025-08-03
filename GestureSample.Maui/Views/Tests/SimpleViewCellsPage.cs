@@ -30,10 +30,14 @@ namespace GestureSample.Views.Tests
             get => _pianoKeyboard?.IsEnabled ?? true;
             set
             {
-                   if(_pianoKeyboard!=null) _pianoKeyboard.IsEnabled = value;
-                if (_btnNext != null)
+                if(_pianoKeyboard!=null) _pianoKeyboard.IsEnabled = value;
+                if (_btnNext != null && _btnCheck!=null && _btnCheck.IsVisible)
+                {
                     _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
-                
+                    _btnCheck.IsEnabled = value;
+                    if (value) _lblStatement.Text = Statement.Neutral;
+                }
+
             }
         }
 
@@ -339,12 +343,17 @@ _lblStatement.Text = text;
                     {
                         if (_config.NumberOfTasksToWin < 0)//TODO: Check if ok to remove or change condition
                         {
-                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false; 
+                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
                             await Task.Delay(_config.SecondsTillNextExercise * 1000);
-                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
+                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true; 
                         }
                         if (!_gamePlay.GameOver) GenerateNextExercise();
-                    };
+                    }
+                    else
+                    {
+                        Console.WriteLine("Wrong answer");
+                        await Task.Delay(_config.SecondsTillNextExercise * 1000); 
+                    }
                 }
                 catch
                 {

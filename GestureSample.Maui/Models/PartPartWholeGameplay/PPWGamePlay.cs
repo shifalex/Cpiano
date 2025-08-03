@@ -218,6 +218,7 @@ namespace GestureSample.Maui.Models
             _view.IsEnabled = false;
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
              _view.IsEnabled = true;
+            Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
             return b;
         }
 
