@@ -211,18 +211,21 @@ namespace GestureSample.Maui.Models
                 if (aboveKeyNumber == 5) { toAddSeperator = true; } // Because of ColSpan 3
                 if (IsArrowByLength)
                 {
-                    Console.WriteLine("",aboveKeyNumber, numberAbove);
+                    colSpan = numberAbove;
+                    Console.WriteLine("{0} {1}",aboveKeyNumber, numberAbove);
                     toAddSeperator = false;
+                    arrowEnd = 0;
                     if (numberAbove > 0)
                     {
-                        colSpan = numberAbove;
-                        arrowEnd = 0;
-                        if (aboveKeyNumber + numberAbove > 10+1)
+                        
+                        if (aboveKeyNumber + numberAbove >= 10)
                         {
                             colSpan = 10 - aboveKeyNumber + 1;
                             int secondArrowColSpan = aboveKeyNumber + numberAbove - 10-1;
                             secondArrowColSpan = (secondArrowColSpan>FINGER_SEPERATOR)? secondArrowColSpan+1 : secondArrowColSpan;
+                            Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
                             AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan);
+                            arrowEnd += 3*arrow_reduction;
                         }
                         if (aboveKeyNumber < 6 && aboveKeyNumber + numberAbove > 6)
                         {
@@ -231,7 +234,15 @@ namespace GestureSample.Maui.Models
                         }
                         
                     }
-                    else { 
+                    else {
+                        if (columnspan != 2)//TODO: better if "it is first arrow
+                      
+                        {
+                            colSpan = columnspan;
+                            Console.WriteLine("Colspan second arrow: {0}", colSpan);
+                            arrowStart -= 2*border_width;
+                            arrowEnd += 2*border_width;
+                        }
                     }
                  }
                 arrowEnd += arrowStart + columnWidth * colSpan+(toAddSeperator? seperator_width : 0) -border_width- arrow_reduction ;
@@ -248,6 +259,8 @@ namespace GestureSample.Maui.Models
                     _ => 2
                 };
                 if (aboveKeyNumber == 6) toAddSeperator = true;
+
+                arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
                 //if (aboveKeyNumber == 1) arrowStart = -3;  
                 if (IsArrowByLength)
                 {
@@ -257,10 +270,13 @@ namespace GestureSample.Maui.Models
                         colSpan = numberAbove;
                         if (aboveKeyNumber - numberAbove < 0)
                         {
-                            colSpan = aboveKeyNumber + 1;
+                            colSpan = aboveKeyNumber; if (colSpan > 5) toAddSeperator = true;
                             int secondArrowColSpan = numberAbove-aboveKeyNumber;
+
                             secondArrowColSpan = (secondArrowColSpan > 5) ? secondArrowColSpan + 1 : secondArrowColSpan;
+                            Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
                             AddArrow(Direction.Left, 10, -1, 1, columnWidth, secondArrowColSpan);
+                            arrowEnd -= 3 * arrow_reduction;
                         }
                         if (aboveKeyNumber > 6 && aboveKeyNumber - numberAbove < 5)
                         {
@@ -269,12 +285,20 @@ namespace GestureSample.Maui.Models
                     }
                     else
                     {
+                        if (columnspan != 2)//TODO: better if "it is first arrow
+
+                        {
+                            colSpan = columnspan; if(colSpan>5) toAddSeperator = true;
+                            Console.WriteLine("Colspan second arrow: {0}", colSpan);
+                            arrowStart += 2*border_width;
+                            arrowEnd -= 2*border_width;
+
+                        }
                     }
                 }
                 arrowStart += colSpan * columnWidth + (toAddSeperator ? seperator_width : 0)- border_width; 
                 
                 
-                arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
                 arrowEnd += arrow_reduction;
                 arrowEdgeX = arrowEnd + arrow_reduction;
                 //numberLabel.HorizontalOptions = LayoutOptions.End;
@@ -293,7 +317,7 @@ namespace GestureSample.Maui.Models
             else
             {
                 pathData = String.Format("M {0},50 L {0},15 L {1},15 L {2},2 M {1},15 L {2},28", arrowStart, arrowEnd, arrowEdgeX);
-                Console.WriteLine("Arrow path data: " + pathData + "colspan {0}", colSpan);
+                Console.WriteLine("Arrow path data: " + pathData + " colspan {0}", colSpan);
             }
             Console.WriteLine(pathData);
             Microsoft.Maui.Controls.Shapes.Path arrow = CreateArrowPath(pathData, Colors.White);
