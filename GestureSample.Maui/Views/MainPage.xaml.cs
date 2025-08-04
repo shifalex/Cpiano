@@ -654,6 +654,24 @@ namespace GestureSample.Views
             SecondsPressingToAnswer=1
         }
     })),
+
+    new PageConfig("->", "<-Only through-> EASY LONG", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "<-Only through-> EASY LONG",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11, MinAddend=5, MinAddend2 =1, MaxAddend2=9,
+        MaxSum=15,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = 4,
+            IsArrowLengthDynamic = true
+        }
+    })),
     new PageConfig("->", "<-Only through-> EASY", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "<-Only through-> EASY",
@@ -668,6 +686,23 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
             IsArrow = true,
             SecondsPressingToAnswer = 4
+        }
+    })),
+    new PageConfig("->", "<-Only through-> HARD LONG", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "<-Only through-> HARD LONG",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=16,
+        MaxSum=20,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = 2,
+            IsArrowLengthDynamic = true
         }
     })),
     new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
@@ -688,7 +723,7 @@ namespace GestureSample.Views
     })),
      new PageConfig("->", "<-Only through-> HARD", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "<-Only through->",
+        GameName = "<-Only through-> HARD",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.Random,
         OnlyThrougTen = true,
