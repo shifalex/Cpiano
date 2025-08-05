@@ -420,7 +420,8 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer  = 5,
-            IsArrow = true
+            IsArrow = true,
+            IsArrowLengthDynamic = true
         }
     })),
     new PageConfig("Tutorial", "First ->", () => new SimpleViewCellsPage(new GameConfig
