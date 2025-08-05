@@ -150,12 +150,13 @@ namespace GestureSample.Maui.Models
         }
 
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=106, int columnspan=2)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=107, int columnspan=2, bool isSecondArrow=false)
         {
             Console.WriteLine("Adding arrow: {0} {1} {2} {3}", direction, aboveKeyNumber, numberAbove, row);
-            double seperator_width = 16;
+            double seperator_width = 10;
             double arrow_reduction = 13;
-             double border_width = 5;
+             double border_width = 1;
+            int stroke_thickness = 6;
             Grid Arrow = new()
             {
                 RowDefinitions =
@@ -208,42 +209,41 @@ namespace GestureSample.Maui.Models
                     _ => 2
                 };
                 arrowEnd = 0;// arrowStart + columnWidth * Math.Min(colSpan, 2);// - (aboveKeyNumber == 10 ? columnWidth / 2 + 10 : 0) + 10;
-                if (aboveKeyNumber == 5) { toAddSeperator = true; } // Because of ColSpan 3
+                if (aboveKeyNumber == FINGER_SEPERATOR) { toAddSeperator = true; } 
                 if (IsArrowByLength)
                 {
                     colSpan = numberAbove;
                     Console.WriteLine("{0} {1}",aboveKeyNumber, numberAbove);
                     toAddSeperator = false;
                     arrowEnd = 0;
-                    if (numberAbove > 0)
+                    if (!isSecondArrow)
                     {
                         
-                        if (aboveKeyNumber + numberAbove >= 10)
+                        if (aboveKeyNumber -1 + numberAbove > 10)//aboveKeyNumber is the number that it is to it's left
                         {
                             colSpan = 10 - aboveKeyNumber + 1;
                             int secondArrowColSpan = aboveKeyNumber + numberAbove - 10-1;
-                            secondArrowColSpan = (secondArrowColSpan>FINGER_SEPERATOR)? secondArrowColSpan+1 : secondArrowColSpan;
+                            //secondArrowColSpan = (secondArrowColSpan>FINGER_SEPERATOR)? secondArrowColSpan+1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
-                            AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan);
+                            AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan, true);
                             arrowEnd += 3*arrow_reduction;
                         }
-                        if (aboveKeyNumber < 6 && aboveKeyNumber + numberAbove > 6)
+                        if (aboveKeyNumber <= FINGER_SEPERATOR && aboveKeyNumber -1 + numberAbove > FINGER_SEPERATOR)
                         {
                             toAddSeperator = true;
                             
                         }
                         
                     }
-                    else {
-                        if (columnspan != 2)//TODO: better if "it is first arrow
-                      
-                        {
-                            colSpan = columnspan;
-                            Console.WriteLine("Colspan second arrow: {0}", colSpan);
-                            arrowStart -= 2*border_width;
-                            arrowEnd += 2*border_width;
-                        }
+                    else 
+                    {
+                        colSpan = columnspan;
+                        if(colSpan>FINGER_SEPERATOR) toAddSeperator = true;
+                        Console.WriteLine("Colspan second arrow: {0}", colSpan);
+                        arrowStart -= 2* stroke_thickness;
+                        arrowEnd += 2* stroke_thickness;
                     }
+                    
                  }
                 arrowEnd += arrowStart + columnWidth * colSpan+(toAddSeperator? seperator_width : 0) -border_width- arrow_reduction ;
 
@@ -258,45 +258,41 @@ namespace GestureSample.Maui.Models
                     1 => 1,
                     _ => 2
                 };
-                if (aboveKeyNumber == 6) toAddSeperator = true;
+                if (aboveKeyNumber == (FINGER_SEPERATOR + 1)) toAddSeperator = true;
 
                 arrowEnd = aboveKeyNumber == 1 ? 0 : 0;
                 //if (aboveKeyNumber == 1) arrowStart = -3;  
                 if (IsArrowByLength)
                 {
                     toAddSeperator = false;
-                    if (numberAbove > 0)
+                    if (!isSecondArrow)
                     {
                         colSpan = numberAbove;
                         if (aboveKeyNumber - numberAbove < 0)
                         {
-                            colSpan = aboveKeyNumber; if (colSpan > 5) toAddSeperator = true;
+                            colSpan = aboveKeyNumber; if (colSpan > FINGER_SEPERATOR) toAddSeperator = true;
                             int secondArrowColSpan = numberAbove-aboveKeyNumber;
 
-                            secondArrowColSpan = (secondArrowColSpan > 5) ? secondArrowColSpan + 1 : secondArrowColSpan;
+                            secondArrowColSpan = (secondArrowColSpan > FINGER_SEPERATOR) ? secondArrowColSpan + 1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
-                            AddArrow(Direction.Left, 10, -1, 1, columnWidth, secondArrowColSpan);
+                            AddArrow(Direction.Left, 10, -1, 1, columnWidth, secondArrowColSpan, true);
                             arrowEnd -= 3 * arrow_reduction;
                         }
-                        if (aboveKeyNumber > 6 && aboveKeyNumber - numberAbove < 5)
+                        if (aboveKeyNumber > FINGER_SEPERATOR && aboveKeyNumber - numberAbove <= FINGER_SEPERATOR)
                         {
                             toAddSeperator = true;
                         }
                     }
                     else
-                    {
-                        if (columnspan != 2)//TODO: better if "it is first arrow
-
-                        {
-                            colSpan = columnspan; if(colSpan>5) toAddSeperator = true;
-                            Console.WriteLine("Colspan second arrow: {0}", colSpan);
-                            arrowStart += 2*border_width;
-                            arrowEnd -= 2*border_width;
-
-                        }
+                    {                       
+                        colSpan = columnspan; 
+                        if(colSpan> FINGER_SEPERATOR) toAddSeperator = true;
+                        Console.WriteLine("Colspan second arrow: {0}", colSpan);
+                        arrowStart += 2*stroke_thickness;
+                        arrowEnd -= 2*stroke_thickness;                        
                     }
                 }
-                arrowStart += colSpan * columnWidth + (toAddSeperator ? seperator_width : 0)- border_width; 
+                arrowStart += colSpan * columnWidth + (toAddSeperator ? seperator_width : 0) - 2*stroke_thickness; 
                 
                 
                 arrowEnd += arrow_reduction;
@@ -338,9 +334,15 @@ namespace GestureSample.Maui.Models
             //TODO: is the column==-1 check needed?
             if (column == -1 || (FINGER_SEPERATOR>0 && ((column>FINGER_SEPERATOR-1 && direction == Direction.Right) || (aboveKeyNumber > FINGER_SEPERATOR && direction == Direction.Left)))) column++;
             //Console.WriteLine("Adding arrow (2) at column {0} colSpan {2}", column, row, colSpan);
+
+
+            //Arrow.BackgroundColor = Colors.Blue;
+            Arrow.VerticalOptions = LayoutOptions.End;
             this.Add(Arrow, column, row);
+            //this.RowDefinitions[1].Height = new GridLength(60);
 
             Grid.SetColumnSpan(Arrow, colSpan);
+            Console.WriteLine("Arrow added!!! at column {0} row {1} colSpan {2}", column, row, colSpan);
 
             if (Arrow1 == null) Arrow1 = Arrow; else Arrow2 = Arrow;
         }
