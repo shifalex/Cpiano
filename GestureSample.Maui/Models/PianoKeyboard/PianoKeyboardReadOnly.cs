@@ -219,10 +219,10 @@ namespace GestureSample.Maui.Models
                     if (!isSecondArrow)
                     {
                         
-                        if (aboveKeyNumber -1 + numberAbove > 10)//aboveKeyNumber is the number that it is to it's left
+                        if (aboveKeyNumber -1 + numberAbove > NUMBER_OF_KEYS)//aboveKeyNumber is the number that it is to it's left
                         {
-                            colSpan = 10 - aboveKeyNumber + 1;
-                            int secondArrowColSpan = aboveKeyNumber + numberAbove - 10-1;
+                            colSpan = NUMBER_OF_KEYS - aboveKeyNumber + 1;
+                            int secondArrowColSpan = aboveKeyNumber + numberAbove - NUMBER_OF_KEYS - 1;
                             //secondArrowColSpan = (secondArrowColSpan>FINGER_SEPERATOR)? secondArrowColSpan+1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
                             AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan, true);
@@ -275,7 +275,7 @@ namespace GestureSample.Maui.Models
 
                             secondArrowColSpan = (secondArrowColSpan > FINGER_SEPERATOR) ? secondArrowColSpan + 1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
-                            AddArrow(Direction.Left, 10, -1, 1, columnWidth, secondArrowColSpan, true);
+                            AddArrow(Direction.Left, NUMBER_OF_KEYS, -1 , 1, columnWidth, secondArrowColSpan, true);
                             arrowEnd -= 3 * arrow_reduction;
                         }
                         if (aboveKeyNumber > FINGER_SEPERATOR && aboveKeyNumber - numberAbove <= FINGER_SEPERATOR)
