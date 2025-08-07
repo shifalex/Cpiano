@@ -702,24 +702,8 @@ namespace GestureSample.Views
 
             SyncType = SyncType.Sync,
             IsArrow = true,
-            SecondsPressingToAnswer = 2,
+            SecondsPressingToAnswer = 4,
             IsArrowLengthDynamic = true
-        }
-    })),
-    new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through->",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 2
         }
     })),
      new PageConfig("->", "<-Only through-> HARD", () => new SimpleViewCellsPage(new GameConfig
@@ -729,6 +713,22 @@ namespace GestureSample.Views
         QuestionOrder = QuestionOrder.Random,
         OnlyThrougTen = true,
         MaxAddend = 10,MinSum=16,
+        MaxSum=20,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = 4
+        }
+    })),
+    new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "<-Only through->",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,MinSum=11,
         MaxSum=20,
         KeyboardConfig = new KeyboardConfig
         {
