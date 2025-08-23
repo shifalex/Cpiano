@@ -5,6 +5,7 @@ using GestureSample.Views;
 using GestureSample.Maui.Views;
 using GestureSample.Views.Tests;
 using Microsoft.Maui.Controls;
+using static SQLite.SQLite3;
 
 namespace GestureSample.Maui.Models
 {
@@ -102,6 +103,7 @@ namespace GestureSample.Maui.Models
             if (!IsCorrectInput())
             {
                 _status = Statement.WrongInput;
+                addend1 = oldA1; addend2 = oldA2; Sum = oldS;
                 await _view.UpdateView();
                 return false;
             }
@@ -140,6 +142,7 @@ namespace GestureSample.Maui.Models
                         _questionsWrong++;
                         _lastQuestionWrong = true;
                     }
+                    addend1 = oldA1; addend2 = oldA2; Sum = oldS;
                 }
                 if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
                 {
@@ -206,15 +209,29 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        int oldA1, oldA2, oldS;
+        bool isKeyboardFit = true;
         public virtual async Task<bool> Check(int a1, int a2, int s)
         {
-            addend1 = a1; addend2 = a2; Sum = s;
-            return await CheckAsync();
+            oldA1 = addend1; oldA2 = addend2; oldS = Sum;
+            if(addend1 == NAN) addend1 = a1; 
+            if(addend2 == NAN) addend2 = a2;
+            if (Sum == NAN) Sum = s;
+            bool result = await CheckAsync();
+            return result;
         }
 
         public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
-            bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
+            int keyboardSum = Sum;
+            if (Sum == NAN && (pianoKeyboard.Addend1>=0 && pianoKeyboard.Addend2>=0)) {
+               if( pianoKeyboard.Addend1 == addend1 && pianoKeyboard.Addend2 == addend2)
+                 keyboardSum = pianoKeyboard.Sum; //if the sum is not set, it is set to the sum of addends
+                else
+                    keyboardSum = pianoKeyboard.Sum == Config.MinSum ? ++Config.MinSum : Config.MinSum;
+            }
+            bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
+            
             _view.IsEnabled = false;
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
              _view.IsEnabled = true;

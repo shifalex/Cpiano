@@ -169,7 +169,8 @@ namespace GestureSample.Maui.Models
                 ColumnDefinitions =
                 {
                     new ColumnDefinition { Width = GridLength.Star }
-                }
+                },
+                FlowDirection = FlowDirection.LeftToRight // << no mirroring for arrows
             };
 
             var request = btnKeys[0].Measure(double.PositiveInfinity, double.PositiveInfinity);
@@ -192,7 +193,7 @@ namespace GestureSample.Maui.Models
                 HorizontalTextAlignment = TextAlignment.Center,
                 FontAttributes = Microsoft.Maui.Controls.FontAttributes.Bold,
                 FontFamily = DeviceInfo.Platform == DevicePlatform.iOS ? "HelveticaNeue-Bold" : null, // Use iOS system bold font
-
+                FlowDirection = FlowDirection.LeftToRight, // <— add
                 IsVisible = numberAbove > -1
 
             };
@@ -374,6 +375,7 @@ namespace GestureSample.Maui.Models
             int keysInRow = Config.KeysInRow;
             int rows = Config.Rows;
             NUMBER_OF_KEYS = keysInRow * rows;
+            this.FlowDirection = FlowDirection.LeftToRight;  // << force LTR
             InitializeWithConfig(Config);
         }
         public PianoKeyboardReadOnly(KeyboardConfig config) : base()
@@ -382,6 +384,7 @@ namespace GestureSample.Maui.Models
             int keysInRow = config.KeysInRow;
             int rows = config.Rows;
             NUMBER_OF_KEYS = keysInRow * rows;
+            this.FlowDirection = FlowDirection.LeftToRight;  // << force LTR
             InitializeWithConfig(config);
         }
 
@@ -449,6 +452,7 @@ namespace GestureSample.Maui.Models
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 
                         //UpCommand =  new Command<MR.Gestures.DownUpEventArgs>(OnUp), 
+                        FlowDirection = FlowDirection.LeftToRight  // << force LTR
                     }, (i < handSeperator) ? i : i + 1,
                         //r+1 
                         rows - r + (config.IsArrow ? 1 : 0)
