@@ -165,19 +165,33 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig()
         {
             ImposeEdges =true,
-            SyncType= SyncType.Sync
+            SyncType= SyncType.Sync,
+            SecondsPressingToAnswer = 3
         }
     }){
 
      }),
-     new PageConfig("new Number", "From PPW to keyboard SYNC", () => new SimpleViewCellsPage(new GameConfig
+     new PageConfig("new Number", "From PPW to keyboard ->", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "From PPW to keyboard SYNC",
-        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.OneNoSum, UIQuestionType=UIQuestionType.ThreeTexts,
+        GameName = "From PPW to keyboard ->",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.OneCanBeSum, UIQuestionType=UIQuestionType.ThreeTexts,
         KeyboardConfig = new KeyboardConfig()
         {
             ImposeEdges =true,
-            SyncType= SyncType.Sync
+            SyncType= SyncType.Sync,
+            SecondsPressingToAnswer = 3
+        }
+    }){
+
+     }),
+     new PageConfig("new Number", "From PPW to keyboard FREE", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From PPW to keyboard FREE",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.OneCanBeSum, UIQuestionType=UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            SyncType= SyncType.Spatial,
+            SecondsPressingToAnswer = 3
         }
     }){
 

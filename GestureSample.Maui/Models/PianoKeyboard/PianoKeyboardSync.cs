@@ -1,4 +1,6 @@
-﻿namespace GestureSample.Maui.Models
+﻿using System.Collections;
+
+namespace GestureSample.Maui.Models
 {
     internal class PianoKeyboardSync : PianoKeyboard
     {
@@ -7,10 +9,13 @@
         protected virtual bool IS_WHOLE_TIMER { get; }
         protected virtual int SECONDS_TO_ANSWER { get; }
 
+
+        int[] pressCounter;
         public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
         {
             SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer* (pianoConfig.SecondsPressingToAnswer>0? 1: -1);
             IS_WHOLE_TIMER = pianoConfig.SecondsPressingToAnswer < 0;
+            pressCounter  = new int[NUMBER_OF_KEYS + 1];
             TimerInit();
             timer.Start();
         }
@@ -22,6 +27,7 @@
                 return string.Format("00:0{0}", SECONDS_TO_ANSWER - _seconds_pressed);
             }
         }
+        bool isKeyPressedTwice = false;
         protected virtual void TimerInit()
         {
             timer = Application.Current.Dispatcher.CreateTimer();
@@ -31,7 +37,16 @@
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     if (SECONDS_TO_ANSWER == 0) { _lblTimer.Text = Statement.Neutral; return; }
-                
+
+                    isKeyPressedTwice = false;
+                    for (int i = 0; i< pressCounter.Length; i++) { if (pressCounter[i] > 0) isKeyPressedTwice = true; }
+                    if (isKeyPressedTwice)
+                    {
+                        for (int i = 0; i < pressCounter.Length; i++)
+                            if (pressCounter[i] > 0)
+                            { }// btnKeys[i].BackgroundColor = _seconds_pressed % 2 == 0 ? Colors.Red : COLOR_PRESSED;
+                    }
+
                     _seconds_pressed = (_addend1 == 0 && _addend2 == 0) ? 0 : (_seconds_pressed + 1);
                     _lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
                     _lblTimer.Text = SecondsToEnd;// (_addend1 == 0 && _addend2 == 0) ? Statement.Neutral : SecondsToEnd;
@@ -44,7 +59,9 @@
                     if (_seconds_pressed >= SECONDS_TO_ANSWER)
                     {
                         _seconds_pressed = 0;
-                        await PianoInitWithTimer();
+                       //if(!isKeyPressedTwice) 
+                            await PianoInitWithTimer();
+                       
                     }
                 });
             };
@@ -56,7 +73,7 @@
             IsEnabled = false;
             bool isCorrect = await _gamePlay.CheckAsync(this);
 
-            if (isCorrect)
+            if (isCorrect )
             {
                 _gamePlay.GenerateExercise();
             }
@@ -64,13 +81,18 @@
             {
                 _lblTimer.Text = Statement.Neutral;
             }
+            for (int i = 0; i < pressCounter.Length; i++)
+                pressCounter[i] = 0;
             PianoInit();
             timer.Start();
         }
 
+
+        //ArrayList<MR.Gestures.Button> twicePressedKeys = new();
+
         protected override bool InnerKeyDown(MR.Gestures.Button sender)
         {
-            if (sender.BackgroundColor == COLOR_PRESSED) return true;
+            if (sender.BackgroundColor == COLOR_PRESSED) { pressCounter[Convert.ToInt32(sender.CommandParameter) - 1]++; return true; }
             if(!IS_WHOLE_TIMER) _seconds_pressed = 0;
             _lblTimer.Text = SecondsToEnd;
             sender.BackgroundColor = COLOR_PRESSED;
@@ -82,10 +104,12 @@
 
             return true;
         }
-
         protected override bool InnerKeyUp(MR.Gestures.Button sender)
         {
-            if (sender.BackgroundColor == COLOR_FREE) return true;
+            if (sender.BackgroundColor == COLOR_FREE)
+            {
+               if(pressCounter[Convert.ToInt32(sender.CommandParameter)-1] > 0) pressCounter[Convert.ToInt32(sender.CommandParameter)-1]--; return true;
+            }
             if (!IS_WHOLE_TIMER) { _seconds_pressed = 0;  } //OnPropertyChanged(nameof(SecondsToEnd));  
             _lblTimer.Text = SecondsToEnd;
             sender.BackgroundColor = COLOR_FREE;
