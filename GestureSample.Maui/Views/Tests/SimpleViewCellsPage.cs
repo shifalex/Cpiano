@@ -511,6 +511,9 @@ _lblStatement.Text = text;
                     SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
+                if (_config.KeyboardConfig.KeyboardAsAQuestion) {
+                    _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
+                }
                 grid.Add(_pianoKeyboard);
                 Grid.SetRow(_pianoKeyboard, 2);
             }
