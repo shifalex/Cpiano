@@ -210,7 +210,6 @@ namespace GestureSample.Maui.Models
         }
 
         int oldA1, oldA2, oldS;
-        bool isKeyboardFit = true;
         public virtual async Task<bool> Check(int a1, int a2, int s)
         {
             oldA1 = addend1; oldA2 = addend2; oldS = Sum;

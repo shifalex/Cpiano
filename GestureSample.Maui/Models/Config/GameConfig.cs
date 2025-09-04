@@ -117,7 +117,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         OneNoSum,
         SumOnly,
         //TwoAny,
-        TwoNoSum
+        TwoNoSum,
+        Three
     }
 
     public enum Direction

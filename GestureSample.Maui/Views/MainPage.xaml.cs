@@ -196,6 +196,18 @@ namespace GestureSample.Views
     }){
 
      }),
+      new PageConfig("new Number", "From Keyboard to PPW FREE", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From Keyboard to PPW FREE",
+        MinAddend = 1, MaxAddend=8, MaxSum=9, VariableTypes= VariableTypes.Three, UIQuestionType=UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            SyncType= SyncType.None,
+            KeyboardAsAQuestion=true
+        }
+    }){
+
+     }),
      new PageConfig("new Number", "decomposition game Till 20 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Till 20 With keyboard Only Yellow",
