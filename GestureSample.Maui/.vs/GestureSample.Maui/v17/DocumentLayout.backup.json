@@ -3,36 +3,36 @@
   "WorkspaceRootPath": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\partpartwholegameplay\\ppwgameplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\partpartwholegameplay\\ppwgameplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\views\\mainpage.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:views\\mainpage.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\config\\keyboardconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\config\\keyboardconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\config\\gameconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\config\\gameconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\partpartwholegameplay\\ppwgameplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\partpartwholegameplay\\ppwgameplay.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\views\\tests\\simpleviewcellspage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:views\\tests\\simpleviewcellspage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\config\\gameconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\config\\gameconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboard.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\sasha\\source\\repos\\shifalex\\gesturesample\\gesturesample.maui\\models\\config\\keyboardconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\config\\keyboardconfig.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -50,91 +50,51 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "KeyboardConfig.cs",
-              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\KeyboardConfig.cs",
-              "RelativeDocumentMoniker": "Models\\Config\\KeyboardConfig.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\KeyboardConfig.cs",
-              "RelativeToolTip": "Models\\Config\\KeyboardConfig.cs",
-              "ViewState": "AgIAAIYAAAAAAAAAAIAwwJoAAABHAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T10:31:20.421Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "PPWGamePlay.cs",
               "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
               "RelativeDocumentMoniker": "Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\PPWGamePlay.cs*",
-              "RelativeToolTip": "Models\\PartPartWholeGameplay\\PPWGamePlay.cs*",
-              "ViewState": "AgIAANgAAAAAAAAAAAApwO8AAAAJAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
+              "RelativeToolTip": "Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-23T10:02:45.468Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "MainPage.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\MainPage.xaml.cs",
               "RelativeDocumentMoniker": "Views\\MainPage.xaml.cs",
               "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\MainPage.xaml.cs",
               "RelativeToolTip": "Views\\MainPage.xaml.cs",
-              "ViewState": "AgIAAJ4AAAAAAAAAAIAwwLgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAA0EAAAAAAAAAAAMwOcDAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-23T09:58:17.475Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "PianoKeyboard.cs",
-              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboard.cs",
-              "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboard.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboard.cs",
-              "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboard.cs",
-              "ViewState": "AgIAACkAAAAAAAAAAAAawDsAAAAkAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "SimpleViewCellsPage.cs",
+              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
+              "RelativeDocumentMoniker": "Views\\Tests\\SimpleViewCellsPage.cs",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
+              "RelativeToolTip": "Views\\Tests\\SimpleViewCellsPage.cs",
+              "ViewState": "AgIAAM0CAAAAAAAAAIAwwOcCAAA6AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T10:34:02.607Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "GameConfig.cs",
-              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\GameConfig.cs",
-              "RelativeDocumentMoniker": "Models\\Config\\GameConfig.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\GameConfig.cs",
-              "RelativeToolTip": "Models\\Config\\GameConfig.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T10:31:22.561Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-23T09:57:40.993Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "PianoKeyboardSync.cs",
-              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardSync.cs",
-              "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardSync.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardSync.cs",
-              "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboardSync.cs",
-              "ViewState": "AgIAADEAAAAAAAAAAAAcwEkAAAAyAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T10:02:29.046Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
               "Title": "PianoKeyboardReadOnly.cs",
               "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
-              "ViewState": "AgIAAA4BAAAAAAAAAAAawCMBAAA5AAAAAAAAAA==",
+              "ViewState": "AgIAAIoAAAAAAAAAAAAawJwAAAB7AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-09T13:01:16.586Z",
               "EditorCaption": ""
@@ -142,15 +102,50 @@
             {
               "$type": "Document",
               "DocumentIndex": 7,
-              "Title": "SimpleViewCellsPage.cs",
-              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
-              "RelativeDocumentMoniker": "Views\\Tests\\SimpleViewCellsPage.cs",
-              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
-              "RelativeToolTip": "Views\\Tests\\SimpleViewCellsPage.cs",
-              "ViewState": "AgIAAEcAAAAAAAAAAAAwwFQBAAARAAAAAAAAAA==",
+              "Title": "KeyboardConfig.cs",
+              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\KeyboardConfig.cs",
+              "RelativeDocumentMoniker": "Models\\Config\\KeyboardConfig.cs",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\KeyboardConfig.cs",
+              "RelativeToolTip": "Models\\Config\\KeyboardConfig.cs",
+              "ViewState": "AgIAAIYAAAAAAAAAAIAwwJoAAABHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-23T09:57:40.993Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-23T10:31:20.421Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "PianoKeyboard.cs",
+              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboard.cs",
+              "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboard.cs",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboard.cs",
+              "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboard.cs",
+              "ViewState": "AgIAACkAAAAAAAAAAAAawDoAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-23T10:34:02.607Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "GameConfig.cs",
+              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\GameConfig.cs",
+              "RelativeDocumentMoniker": "Models\\Config\\GameConfig.cs",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\Config\\GameConfig.cs",
+              "RelativeToolTip": "Models\\Config\\GameConfig.cs",
+              "ViewState": "AgIAAF4AAAAAAAAAAAAIwHEAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-23T10:31:22.561Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "PianoKeyboardSync.cs",
+              "DocumentMoniker": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardSync.cs",
+              "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardSync.cs",
+              "ToolTip": "C:\\Users\\Sasha\\source\\repos\\shifalex\\GestureSample\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardSync.cs",
+              "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboardSync.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAcwEkAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-23T10:02:29.046Z"
             }
           ]
         }
