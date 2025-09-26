@@ -764,9 +764,26 @@ namespace GestureSample.Views
             SecondsPressingToAnswer = 2
         }
     })),
+
+    new PageConfig("->", "FURIOUS build up", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "FURIOUS build up",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.Random,
+        OnlyThrougTen = true,
+        MaxAddend = 10,
+        MaxSum=15,
+        KeyboardConfig = new KeyboardConfig
+        {
+
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer = -2
+        }
+    })),
     new PageConfig("->", "<-Only through-> FAST", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Cyclical Mixed",
+        GameName = "<-Only through-> FAST",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.Random,
         OnlyThrougTen = true,
@@ -782,7 +799,7 @@ namespace GestureSample.Views
     })),
     new PageConfig("->", "<-Only through-> FURIOUS", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Cyclical Mixed",
+        GameName = "<-Only through-> FURIOUS",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.Random,
         OnlyThrougTen = true,
@@ -961,9 +978,22 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
-    new PageConfig("+ -", "Level 2.3 - Only through 10", () => new SimpleViewCellsPage(new GameConfig
+     new PageConfig("+ -", "Level 2.3 - Only through 10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 2.3",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 9,
+        MaxSum=20,
+        OnlyThrougTen = true,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
+    new PageConfig("+ -", "Level 2.4 - Only through 10 - No repetition", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 2.4",
         OperationList = new() { Operation.Sum},
         MinAddend = 2,
         MaxAddend = 9,
