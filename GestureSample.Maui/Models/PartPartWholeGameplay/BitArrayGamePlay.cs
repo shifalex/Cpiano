@@ -173,6 +173,8 @@ namespace GestureSample.Maui.Models
                 Operation.Copy => this.Equals(bitArrayAnswer),
                 //BitArrayGameType.Reorder => this.Equals(),
                 Operation.Quantity => this.SumEquals(bitArrayAnswer),
+                Operation.Mirror => this.Mirror(bitArrayAnswer),
+                Operation.Sequence => this.Sequence(bitArrayAnswer),
                 //BitArrayGameType.SerializeWithArrow => this.Equals(),
                 Operation.Not => this.Not(bitArrayAnswer),
                 Operation.And => this.And(bitArrayAnswer),
@@ -296,12 +298,35 @@ After:
                 if (bitArrayAnswer[i] != BitArrayQuestion[i]) return false;
             return true;
         }
+
+        public bool Mirror(bool[] bitArrayAnswer)
+        {
+            //TODO? Through Exceptions
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (bitArrayAnswer[i] != BitArrayQuestion[bitArrayAnswer.Length-1-i]) return false;
+            return true;
+        }
+
         public bool SumEquals(bool[] bitArrayAnswer)
         {
             int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
             { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
             return s1 == s2;
+        }
+
+        public bool Sequence(bool[] bitArrayAnswer)
+        {
+            int s1 = 0, s2 = 0;
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
+            if( s1 == s2)
+            {
+                for (int i = 0; i < s1; i++)
+                    if (!bitArrayAnswer[i]) return false;
+                return true;
+            }
+            return false;
         }
 
         public bool Not(bool[] bitArrayAnswer)

@@ -1,6 +1,6 @@
 ﻿namespace GestureSample.Maui.Models
 {
-    internal class PPWObject
+    public class PPWObject
     {
         public PPWObject(int addend1, int addend2, int sum)
         {

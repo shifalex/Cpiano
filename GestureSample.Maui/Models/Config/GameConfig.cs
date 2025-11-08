@@ -98,6 +98,10 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Copy,
         [Description("EQUAL")]
         Quantity,
+        [Description("->")]
+        Sequence,
+        [Description("MIRROR")]
+        Mirror,
         //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
         //Reorder,
         [Description("NOT(!)")]
@@ -148,7 +152,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.Not };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.Sequence, Operation.Mirror, Operation.Not };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }
 
@@ -180,6 +184,11 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public bool OnlyCloseTriad { get; set; } = false;
 
+        // Fix for CS0236: Move the initialization of DefaultTriad to the constructor, as field initializers cannot reference non-static fields.
+
+        public PPWObject DefaultTriad { get; set; } = null;
+
+
         public int NumberOfTasksToWin { get; set; } = -1;
         public int NumberOfMistakesToLose { get; set; } = -1;
 
@@ -190,6 +199,11 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
         // Nested configuration with defaults
         public KeyboardConfig KeyboardConfig { get; set; } = null;
+        public GameConfig()
+        {
+            if(DefaultTriad == null)
+                DefaultTriad = OnlyThrougTen ? new PPWObject(3, 2, 5) : new PPWObject(8, 7, 15);
+        }
 
 
     }

@@ -146,6 +146,20 @@ namespace GestureSample.Views
             KeyboardOnlyForHelp = true
         }
     })),
+    new PageConfig("new Number", "decomposition game Till 20 With keyboard Yellow & green", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition game Till 20 With keyboard Yellow  & green",
+        MinAddend = 1, MaxAddend=19, MaxSum=20, VariableTypes= VariableTypes.OneCanBeSum, 
+        OnlyCloseTriad=true,
+        DefaultTriad= new PPWObject(6, 6, 12),
+        FromNumToNum = true,
+        KeyboardConfig = new KeyboardConfig()
+        {
+            Rows = 2,
+            KeyboardOnlyForHelp = true,
+            IsMulticolor = true
+        }
+    })),
      new PageConfig("new Number", "From PPW to keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "From PPW to keyboard",
@@ -593,9 +607,9 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             IsArrow = true,
-            ShowNumbersOnKeys = true,
+            //ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=1
+            SecondsPressingToAnswer=2
         }
     })),
 
@@ -676,9 +690,9 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             IsArrow = true,
-            ShowNumbersOnKeys = true,
+            //ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=1
+            SecondsPressingToAnswer=2
         }
     })),
 
