@@ -23,6 +23,10 @@ namespace GestureSample.Maui.Models
 
         protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
+
+        protected readonly Color SECOND_COLOR = Colors.LightGreen;
+        protected readonly Color THIRD_COLOR = Colors.Blue;
+        protected readonly Color REMOVE_COLOR = Colors.Red;
         public Color[] colors;
 
         public static readonly BindableProperty KeysProperty =

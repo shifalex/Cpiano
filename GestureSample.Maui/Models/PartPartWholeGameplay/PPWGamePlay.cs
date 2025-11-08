@@ -305,12 +305,12 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }   
                 
-                if (_isFirstGuess && !Config.OnlyThrougTen)
+                if (_isFirstGuess /*&& !Config.OnlyThrougTen*/)
                 {
                     if (Config.MaxSum < 100)
-                    { factors[0] = 2; factors[1] = 3; factors[2] = 5; }
+                    { factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; }
                     _isFirstGuess = false;
-                    addend1 = 2; addend2 = 3; Sum = 5;
+                    addend1 = Config.DefaultTriad.Addend1; addend2 = Config.DefaultTriad.Addend2; Sum = Config.DefaultTriad.Sum;
                     if (IsCorrectInput())
                         return factors;
                 }
@@ -323,7 +323,7 @@ namespace GestureSample.Maui.Models
                         factors[2] = this.Sum;
                         factors[0] = this.addend1;
                         factors[1] = this.addend2;
-                        chosenClosedTriad = r.Next(5);
+                        chosenClosedTriad = r.Next(6);
                         switch (chosenClosedTriad)
                         {
                             case 0:
@@ -340,6 +340,11 @@ namespace GestureSample.Maui.Models
                                 break;
                             case 4:
                                 factors[1]--; factors[2]--;
+                                break;
+                            case 5:
+                                factors[0]--; factors[1]++;
+                                break;
+                             case 6:
                                 break;
                         }
                     } 

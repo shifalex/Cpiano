@@ -2,9 +2,6 @@
 {
     internal class PianoKeyboardHalfSync : PianoKeyboardSync
     {
-        private readonly Color SECOND_COLOR = Colors.LightGreen;
-        private readonly Color THIRD_COLOR = Colors.Blue;
-        private readonly Color REMOVE_COLOR = Colors.Red;
 
 
 

@@ -2,6 +2,7 @@
 using MvvmCross.Base;
 using GestureSample.Maui.Data;
 using Microsoft.Maui.Layouts;
+using MetalPerformanceShadersGraph;
 
 
 namespace GestureSample.Maui.Models
@@ -90,7 +91,7 @@ After:
             KeyboardConfig pianoConfig) : base(pianoConfig)
         {
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
-            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges;
+            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor;
             _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
@@ -327,12 +328,31 @@ After:
         }
         protected virtual bool InnerKeyDown(MR.Gestures.Button sender)
         {
-            sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
+            if (Config.IsMulticolor)
+            {
+                if (sender.BackgroundColor == COLOR_FREE)
+                {
+                    sender.BackgroundColor = COLOR_PRESSED;
+                }
+                else if (sender.BackgroundColor == COLOR_PRESSED)
+                {
+                    sender.BackgroundColor = SECOND_COLOR;
+                }
+                else
+                {
+                    sender.BackgroundColor = COLOR_FREE;
+                }
+            }
+            else
+            {
+                sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
+            }
             return false;
         }
 
         protected virtual bool InnerKeyUp(MR.Gestures.Button sender)
         {
+
             if (Convert.ToInt32(sender.CommandParameter) > 5)
                 _addend2 = (sender.BackgroundColor != COLOR_PRESSED) ? _addend2 - 1 : _addend2 + 1;
             else

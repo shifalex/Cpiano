@@ -253,6 +253,8 @@
         public int LeftAddendIndex { get; set; } = 0;
 
         public bool IsArrow { get; set; } = false;
+
+        public bool IsMulticolor { get; set; } = false;
         public ArrowType ArrowType { get; set; } = ArrowType.Straight;
         public bool? IsArrowLengthDynamic { get; set; } = false;
 
