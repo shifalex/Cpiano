@@ -371,7 +371,7 @@ namespace GestureSample.Views
     {
         GameName = "Sequence",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = {Operation.SequenceLTR, Operation.SequenceRTL },
+        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -382,7 +382,7 @@ namespace GestureSample.Views
     {
         GameName = "Move",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = {Operation.MoveBy },
+        OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -393,7 +393,7 @@ namespace GestureSample.Views
     {
         GameName = "Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = {Operation.Not },
+        OperationList = new() { Operation.Not },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -415,7 +415,7 @@ namespace GestureSample.Views
     {
         GameName = "Or",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = {Operation.Or },
+        OperationList =new()  {Operation.Or },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -426,7 +426,7 @@ namespace GestureSample.Views
     {
         GameName = "Neutralize",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = {Operation.Neutralize },
+        OperationList =new()  {Operation.Neutralize },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
