@@ -35,8 +35,8 @@ namespace GestureSample.Views.Tests
                 {
                     _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
                     _btnCheck.IsEnabled = value;
-                    if(_btnPrev!=null) 
-                        _btnPrev.IsEnabled = value;
+                    //if(_btnPrev!=null) 
+                    //    _btnPrev.IsEnabled = value;
                     if (value) _lblStatement.Text = Statement.Neutral;
                 }
 
@@ -347,7 +347,7 @@ _lblStatement.Text = text;
         private async void CheckGamePlay()
         {
             if (_btnNext != null) _btnNext.IsEnabled = false;
-            if (_btnPrev != null) _btnPrev.IsEnabled = false;
+            //if (_btnPrev != null) _btnPrev.IsEnabled = false;
 
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
