@@ -449,7 +449,7 @@ namespace GestureSample.Maui.Models
                     this.Add(
                     btnKeys[i + keysInRow * r] = new()
                     {
-                        Text = (config.ShowNumbersOnKeys) ? (i + 1 + keysInRow * r).ToString() : "",
+                        Text = (config.ShowNumbersOnKeys) ? (config.WeightsArray!=null && i<config.WeightsArray.Length) ? config.WeightsArray[i].ToString() : (i + 1 + keysInRow * r).ToString() : "",
                         TextColor = Colors.Black,
                         BackgroundColor = COLOR_FREE,  
                         CommandParameter = i + 1 + keysInRow * r,

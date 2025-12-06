@@ -261,5 +261,7 @@
         public int[] WeightsArray = null;
         public List<List<int>> DependancyArray = null;
 
+        public bool IsNumberVoice { get; set; } = false;
+
     }
 }
