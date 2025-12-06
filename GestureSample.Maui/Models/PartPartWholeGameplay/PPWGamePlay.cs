@@ -323,10 +323,16 @@ namespace GestureSample.Maui.Models
                         factors[2] = this.Sum;
                         factors[0] = this.addend1;
                         factors[1] = this.addend2;
-                        chosenClosedTriad = r.Next(6);
+                        chosenClosedTriad = r.Next(12);
                         switch (chosenClosedTriad)
                         {
-                            case 0:
+                            case 0: case 7: case 8: 
+                                factors[0]++; factors[1]--;
+                                break;
+                            case 9:
+                            case 10:
+                            case 11:
+                                factors[0]++; factors[1]--;
                                 factors[0]++; factors[1]--;
                                 break;
                             case 1:

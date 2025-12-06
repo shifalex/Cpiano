@@ -34,6 +34,7 @@ namespace GestureSample.Views
             new PageConfig(null, "new Number", null),
             new PageConfig(null, "Bits", null),
 
+
             new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
     {
          GameName = "Spatial decomposition required new combinations Blind to 5",
@@ -159,6 +160,14 @@ namespace GestureSample.Views
             KeyboardOnlyForHelp = true,
             IsMulticolor = true
         }
+    })),
+    new PageConfig("new Number", "Benchmarks", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Benchmarks",
+        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
+        OnlyCloseTriad=true,
+        DefaultTriad= new PPWObject(30, 30, 60),
+        ShowPrev=true
     })),
      new PageConfig("new Number", "From PPW to keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -357,6 +366,74 @@ namespace GestureSample.Views
 
 
 
+            new PageConfig("&& ||", "One operation", null),
+             new PageConfig("One operation", "Sequence", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sequence",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.SequenceLTR, Operation.SequenceRTL },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+             new PageConfig("One operation", "Move", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Move",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.MoveBy },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+             new PageConfig("One operation", "Not", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Not",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.Not },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+            new PageConfig("One operation", "And", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "And",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.And },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+             new PageConfig("One operation", "Or", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Or",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.Or },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+             new PageConfig("One operation", "Neutralize", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Neutralize",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = {Operation.Neutralize },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+
 
             new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
@@ -436,6 +513,36 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
 
             TextBoxesQuantity = 1
+        }
+    })),
+
+    new PageConfig("Tutorial", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =99, MaxAddend=98,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
+            ShowNumbersOnKeys = true
+        }
+    })),
+
+    new PageConfig("Tutorial", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted one number binary bit array",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =1023, MaxAddend=1022,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
+            ShowNumbersOnKeys = true
         }
     })),
 
@@ -924,6 +1031,8 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
+
+
 
 
             #endregion

@@ -98,8 +98,12 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Copy,
         [Description("EQUAL")]
         Quantity,
-        [Description("->")]
-        Sequence,
+        [Description("SEQUENCE ->")]
+        SequenceLTR,
+        [Description("SEQUENCE <-")]
+        SequenceRTL, 
+        [Description("MOVE BY ")]
+        MoveBy,
         [Description("MIRROR")]
         Mirror,
         //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
@@ -152,7 +156,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.Sequence, Operation.Mirror, Operation.Not };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.MoveBy, Operation.Mirror, Operation.Not };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
         }
 
@@ -171,6 +175,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool OnlyToTen = false;
         public bool isHelpEntries = false;
         public bool isOnlySequence = true;
+        public bool ShowPrev = false;
 
         public List<int> addendsList = new();
         public List<int> addendsListSecond = null;

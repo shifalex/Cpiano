@@ -35,6 +35,8 @@ namespace GestureSample.Views.Tests
                 {
                     _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
                     _btnCheck.IsEnabled = value;
+                    if(_btnPrev!=null) 
+                        _btnPrev.IsEnabled = value;
                     if (value) _lblStatement.Text = Statement.Neutral;
                 }
 
@@ -65,6 +67,11 @@ namespace GestureSample.Views.Tests
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
         private Button _btnNext = null;
         private Button _btnCheck = null;
+        private Button _btnPrev = null;
+
+        private PPWObject _currentPPW;
+        private PPWObject _currentPPWEnabled;
+        private PPWObject _previousPPW = null;
 
         private Command _cmdNext = null;
         private Command _cmdCheck = null;
@@ -111,6 +118,12 @@ _lblStatement.Text = text;
         /*private bool _btnNextEnabled = false;
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
         #region view updating
+
+        public async Task AddToLblAction(string text)
+        {
+            _lblAction.Text += text;
+        }
+
         public async Task UpdateView(bool newExercise = false)
         {
                
@@ -141,6 +154,7 @@ _lblStatement.Text = text;
             if (_config.SecondsTillAllowInput > 0)
             {
                 if (_btnNext != null) { _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; Console.WriteLine(" _gamePlay.GuessNumber: {0}", _gamePlay.GuessNumber); }
+
                 tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
             }
 
@@ -151,8 +165,12 @@ _lblStatement.Text = text;
                     EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
                     EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
                     EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+                    _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
+                    _currentPPWEnabled = new PPWObject(
+                        _txtAddend1.IsEnabled ? 1 : 0,
+                        _txtAddend2.IsEnabled ? 1 :0,
+                        _txtSum.IsEnabled ? 1 : 0);
 
-                   
                 }
                 if (_config.isHelpEntries)
                     for (int i = 0; i < txt.Length; i++)
@@ -329,6 +347,8 @@ _lblStatement.Text = text;
         private async void CheckGamePlay()
         {
             if (_btnNext != null) _btnNext.IsEnabled = false;
+            if (_btnPrev != null) _btnPrev.IsEnabled = false;
+
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
                 bool isCorrect = await _gamePlay.CheckAsync(_pianoKeyboard);
@@ -341,6 +361,7 @@ _lblStatement.Text = text;
                 {
                     if (await _gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
                     {
+                        _previousPPW = new PPWObject(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text));
                         if (_config.NumberOfTasksToWin < 0)//TODO: Check if ok to remove or change condition
                         {
                             _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
@@ -657,7 +678,37 @@ _lblStatement.Text = text;
                 HorizontalOptions = LayoutOptions.Center
             };
 
-            
+            if (_config.ShowPrev)
+            {
+                _btnPrev = new Button
+                {
+                    Text = "Prev",
+                    
+                    HorizontalOptions = LayoutOptions.Center
+                };
+                _btnPrev.Pressed += (_, _) => {
+                    if (_previousPPW != null)
+                    {
+                        _txtAddend1.Text = _previousPPW.Addend1.ToString(); _txtAddend1.IsEnabled = false;
+                        _txtAddend2.Text = _previousPPW.Addend2.ToString(); _txtAddend2.IsEnabled = false;
+                        _txtSum.Text = _previousPPW.Sum.ToString(); _txtSum.IsEnabled = false;
+                    }
+
+                };
+                _btnPrev.Released += (_, _) =>
+                {
+                    _txtAddend1.IsEnabled = _currentPPWEnabled.Addend1 == 1;
+                    _txtAddend2.IsEnabled = _currentPPWEnabled.Addend2 == 1;
+                    _txtSum.IsEnabled = _currentPPWEnabled.Sum == 1;
+                    _txtAddend1.Text = _currentPPW.Addend1 == PPWGamePlay.NAN ? "" : _currentPPW.Addend1.ToString();
+                    _txtAddend2.Text = _currentPPW.Addend2 == PPWGamePlay.NAN ? "" : _currentPPW.Addend2.ToString();
+                    _txtSum.Text = _currentPPW.Sum == PPWGamePlay.NAN ? "" : _currentPPW.Sum.ToString();
+                    //ForceFocusAsync(_lastFocused);
+
+                };
+
+                hslBtns.Add(_btnPrev);
+            }
             if (_config.NumberOfMistakesToLose < 0 && !_config.IsHistory)
             {   hslBtns.Add(_btnCheck);
                 hslBtns.Add(_btnNext);
