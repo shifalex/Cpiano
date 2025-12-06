@@ -2,7 +2,6 @@
 using MvvmCross.Base;
 using GestureSample.Maui.Data;
 using Microsoft.Maui.Layouts;
-using MetalPerformanceShadersGraph;
 
 
 namespace GestureSample.Maui.Models

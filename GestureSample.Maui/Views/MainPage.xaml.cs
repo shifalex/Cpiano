@@ -5,7 +5,6 @@ using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;
 using GestureSample.Views;
 using GestureSample.Maui.Models;
-using MongoDB.Driver.Core.Authentication;
 
 namespace GestureSample.Views
 {
