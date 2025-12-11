@@ -174,6 +174,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool OnlyThrougTen = false;
         public bool OnlyToTen = false;
         public bool isHelpEntries = false;
+        public bool isHelpThroughTen = false;
         public bool isOnlySequence = true;
         public bool ShowPrev = false;
 

@@ -50,7 +50,7 @@ namespace GestureSample.Views.Tests
         private GraphicsView rightHandCanvas;
 
 
-        private readonly int TASK_WIDTH = 120;//TODO: if phone then make smaller and make answer keyboard only notSync
+        private readonly int TASK_WIDTH = 180;//TODO: if phone then make smaller and make answer keyboard only notSync
         private Label _lblStatement;
         private Label _lblHistory;
         private Entry _txtAddend1;
@@ -126,12 +126,12 @@ _lblStatement.Text = text;
 
         public async Task UpdateView(bool newExercise = false)
         {
-               
-            await UpdateStatement();
-            
-            List <Task> tasks = new();
 
-            if (_btnNext != null)  _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; 
+            await UpdateStatement();
+
+            List<Task> tasks = new();
+
+            if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
             if (_isThreeTexts)
             {
@@ -139,7 +139,7 @@ _lblStatement.Text = text;
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
                 _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
-                
+
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -168,13 +168,40 @@ _lblStatement.Text = text;
                     _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
                     _currentPPWEnabled = new PPWObject(
                         _txtAddend1.IsEnabled ? 1 : 0,
-                        _txtAddend2.IsEnabled ? 1 :0,
+                        _txtAddend2.IsEnabled ? 1 : 0,
                         _txtSum.IsEnabled ? 1 : 0);
 
                 }
-                if (_config.isHelpEntries)
+                if (_config.isHelpEntries || _config.isHelpThroughTen)
                     for (int i = 0; i < txt.Length; i++)
                         txt[i].Text = "";
+                if (_config.isHelpThroughTen)
+                {
+                    txt[1].IsEnabled = true;
+                    //if (_gamePlay.addend1 != PPWGamePlay.NAN)
+                        txt[0].Text = "10";//((_gamePlay.addend1 / 10 + 1) * 10).ToString();
+                    /*txt[0].WidthRequest = 2 * TASK_WIDTH / 3;
+                    txt[0].IsEnabled = false;
+                    txt[1].WidthRequest = TASK_WIDTH / 3;
+                    txt[1].IsEnabled = true;*/
+                
+                /* else if (_gamePlay.addend2 != PPWGamePlay.NAN)
+                     {
+                         txt[1].Text = ((_gamePlay.addend2 / 10 + 1) * 10).ToString();
+                         txt[1].WidthRequest = 2* TASK_WIDTH / 3;
+                         txt[1].IsEnabled = false;
+                         txt[0].WidthRequest = TASK_WIDTH / 3;
+                         txt[0].IsEnabled = true;
+                     }*/
+                    if (_gamePlay.Sum != PPWGamePlay.NAN)
+                    {
+                        txt[1].Text = (_gamePlay.Sum - 10).ToString();
+                        txt[1].IsEnabled = false;
+
+                    }
+                    txt[4].Text = txt[1].Text;
+                    txt[2].Text = _txtAddend1.Text;
+                }
 
                 if (_config.UIQuestionType == UIQuestionType.SimpleEquation)
                     if (Operation.Divide == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
@@ -460,7 +487,7 @@ _lblStatement.Text = text;
                         txt[i] = new Entry
                         {
                             HorizontalOptions = LayoutOptions.Center,
-                            HorizontalTextAlignment = TextAlignment.Start,
+                            HorizontalTextAlignment = TextAlignment.Center,
                             BackgroundColor = Colors.White,
                             TextColor = Colors.Black,
                             WidthRequest = TASK_WIDTH / 4,
@@ -469,10 +496,42 @@ _lblStatement.Text = text;
                         };
                         txt[i].Keyboard = Keyboard.Numeric;
                     }
+                    Label lbl2 = new Label
+                    {
+                        Text = "",
+                        FontSize = 18,
+                        WidthRequest = TASK_WIDTH / 2,
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        VerticalTextAlignment = TextAlignment.Center
+                    };
+                    Label lbl4 = new Label
+                    {
+                        Text = "",
+                        FontSize = 18,
+                        WidthRequest = TASK_WIDTH / 4,
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        VerticalTextAlignment = TextAlignment.Center
+                    };
+                    if (_config.isHelpThroughTen)
+                    {
+                        txt[0].IsEnabled = false;
+                        txt[1].IsEnabled = false;
+                        txt[0].WidthRequest = 3* TASK_WIDTH / 4;
+                        txt[1].WidthRequest =  TASK_WIDTH / 4;
+                        txt[2].WidthRequest =  TASK_WIDTH / 2;
+                        txt[3].WidthRequest =  TASK_WIDTH / 4;
+                        txt[4].WidthRequest = TASK_WIDTH / 4;
+                    }
+
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
 
+                    if (_config.isHelpThroughTen)
+                    {
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
+                        //vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { lbl2, txt[3] , lbl4 } });
+                    }
                     if (_config.OperationList.Contains(Operation.Multiplication))
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
