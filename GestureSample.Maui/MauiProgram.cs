@@ -2,6 +2,8 @@
 using GestureSample.Maui.Data;
 using Supabase;
 using GestureSample.Maui.Handlers;
+using Plugin.Maui.Audio;
+using GestureSample.Maui.Models;
 
 namespace GestureSample.Maui;
 
@@ -40,6 +42,11 @@ public static class MauiProgram
         Console.WriteLine("a");
         builder.Services.AddSingleton<UserRepository>();
         builder.Services.AddSingleton<CurrentUserSession>();
+
+        builder.Services.AddSingleton(AudioManager.Current);
+        builder.Services.AddSingleton<SoundService>();
+
+
         Console.WriteLine("b");
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
 
