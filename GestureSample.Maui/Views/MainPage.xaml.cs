@@ -1104,7 +1104,7 @@ namespace GestureSample.Views
         NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
     })),
-    new PageConfig("+ -", "Level 2.2 - Only through 10, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("+ -", "Level 2.2 - Only through 10, Helping Lines Through 10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 2.2",
         OperationList = new() { Operation.Sum},
@@ -1113,7 +1113,7 @@ namespace GestureSample.Views
         MaxSum=20,
         OnlyThrougTen = true,
         VariableTypes = VariableTypes.OneCanBeSum,
-        isHelpEntries = true,
+        isHelpThroughTen = true,
         RepeatingTimesOfTriad = 1,
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4

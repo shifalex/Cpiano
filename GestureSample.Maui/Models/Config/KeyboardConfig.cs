@@ -61,6 +61,10 @@
     //TODO: Through ten instead text boxes
     //TODO: Prev button disable when needed
     //TODO: Audion - sound BEKA/CountOn/CountUsual
+    //TODO: More user friendly beginer boolean algebra
+    //TODO: BUG - equations???
+    //TODO: BUG - + in some binay algebra still left
+    //TODO: From Keyboard to PPW and back
     //TODO: Kyboard going up & down - create my own buttons on screen?? Ot use someone else's keyboard
     //TODO: DUMP data button
     //TODO: Save on outside db and upload to local if needed
