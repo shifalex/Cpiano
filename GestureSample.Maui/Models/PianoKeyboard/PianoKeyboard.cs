@@ -90,7 +90,7 @@ After:
             KeyboardConfig pianoConfig) : base(pianoConfig)
         {
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
-            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor;
+            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
@@ -284,6 +284,22 @@ After:
         //Spatial
         protected virtual void setAddendsByPattern()
         {
+            if(Config.WeightsArray != null)
+            {
+                _addend1 = 0; _addend2 = 0;
+                for (int i = 0; i < NUMBER_OF_KEYS; i++)
+                {
+                    if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
+                    {
+                        if (i < NUMBER_OF_KEYS / 2)
+                            _addend1 += Config.WeightsArray[i];
+                        else
+                            _addend2 += Config.WeightsArray[i];
+                    }
+                }
+                return;
+            }
+
             _addend1 = 0; _addend2 = 0; bool isNowYellowStreak = false; int yellowStreaksTillNowIncluding = 0;
             for (int i = 0; i < NUMBER_OF_KEYS; i++)
             {
