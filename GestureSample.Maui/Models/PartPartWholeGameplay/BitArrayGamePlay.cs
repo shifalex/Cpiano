@@ -174,7 +174,9 @@ namespace GestureSample.Maui.Models
                 //BitArrayGameType.Reorder => this.Equals(),
                 Operation.Quantity => this.SumEquals(bitArrayAnswer),
                 Operation.Mirror => this.Mirror(bitArrayAnswer),
-                Operation.Sequence => this.Sequence(bitArrayAnswer),
+                Operation.SequenceLTR => this.Sequence(bitArrayAnswer, Direction.Left),
+                Operation.SequenceRTL => this.Sequence(bitArrayAnswer, Direction.Right),
+                Operation.MoveBy => this.Move(bitArrayAnswer),
                 //BitArrayGameType.SerializeWithArrow => this.Equals(),
                 Operation.Not => this.Not(bitArrayAnswer),
                 Operation.And => this.And(bitArrayAnswer),
@@ -254,7 +256,14 @@ After:
             }
             _keyboardQuestionRepository.SaveAsync(s);
 
+
             _view.UpdateView(true);
+            if(CurrentOperation==Operation.MoveBy)
+            {
+                dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                length = r.Next(1, BitArrayQuestion.Length);
+                _view.AddToLblAction(" "+ length.ToString()+ " " + dir.ToString() );
+            }
 
         }
 
@@ -315,18 +324,32 @@ After:
             return s1 == s2;
         }
 
-        public bool Sequence(bool[] bitArrayAnswer)
+        public bool Sequence(bool[] bitArrayAnswer, Direction dir)
         {
             int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
+            {   s1 += BitArrayQuestion[i] ? 1 : 0; 
+                s2 += bitArrayAnswer[i] ? 1 : 0; 
+            }
             if( s1 == s2)
             {
+
                 for (int i = 0; i < s1; i++)
-                    if (!bitArrayAnswer[i]) return false;
+
+                    if ((!bitArrayAnswer[i] && dir==Direction.Left) ||
+                        (!bitArrayAnswer[bitArrayAnswer.Length-1-i] && dir == Direction.Right)) return false;
                 return true;
             }
             return false;
+        }
+
+        public bool Move(bool[] bitArrayAnswer)
+        {
+            int moveIndex = dir == Direction.Right ? length : bitArrayAnswer.Length - length;
+            //TODO? Through Exceptions
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (BitArrayQuestion[i] != bitArrayAnswer[(i+moveIndex)%bitArrayAnswer.Length] ) return false;
+            return true;
         }
 
         public bool Not(bool[] bitArrayAnswer)
