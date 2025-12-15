@@ -600,6 +600,23 @@ namespace GestureSample.Views
             IsArrow = true
         }
     })),
+    new PageConfig("Tutorial", "Till 10 -> Count On", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Till 10 -> Count On",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=9,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 3,
+            IsArrow = true,
+            IsNumberVoice = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
     new PageConfig("Tutorial", "One hand practice Edges ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "One hand practice ->",

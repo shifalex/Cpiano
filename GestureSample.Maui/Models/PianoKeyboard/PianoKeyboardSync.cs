@@ -97,6 +97,7 @@ namespace GestureSample.Maui.Models
             _lblTimer.Text = SecondsToEnd;
             sender.BackgroundColor = COLOR_PRESSED;
 
+
             if (Convert.ToInt32(sender.CommandParameter) > 5)
                 _addend2++;
             else

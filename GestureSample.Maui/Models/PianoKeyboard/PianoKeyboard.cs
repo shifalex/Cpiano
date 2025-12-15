@@ -9,6 +9,7 @@ namespace GestureSample.Maui.Models
     internal class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
     {
 
+        protected readonly SoundService _soundService;
 
         protected override int heading_height { get; set; } = 55;
         public bool[] initColors ;
@@ -89,6 +90,8 @@ After:
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
             KeyboardConfig pianoConfig) : base(pianoConfig)
         {
+
+            _soundService =  ServiceHelper.GetService<SoundService>();
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
@@ -381,9 +384,18 @@ After:
             return true;
         }
 
-        private void OnDown(MR.Gestures.DownUpEventArgs e)
+        private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
             OnKey(e, true);
+
+            if (Config.IsNumberVoice)
+            {
+                Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                if(_soundService != null)
+                    await _soundService.PlayNumberAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                else
+                    Console.WriteLine("Sound service is null");
+            }
         }
         private void OnUp(MR.Gestures.DownUpEventArgs e)
         {
