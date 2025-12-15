@@ -58,6 +58,10 @@
     //ODO: Back button from Grid to "New Number"
     //ODO: split pianoKeyboard and number games
 
+    //TODO: Through ten instead text boxes
+    //TODO: Prev button disable when needed
+    //TODO: Audion - sound BEKA/CountOn/CountUsual
+    //TODO: Kyboard going up & down - create my own buttons on screen?? Ot use someone else's keyboard
     //TODO: DUMP data button
     //TODO: Save on outside db and upload to local if needed
     //TODO: Show user name and icon in the up
