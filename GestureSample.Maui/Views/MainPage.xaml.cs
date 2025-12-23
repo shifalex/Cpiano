@@ -420,11 +420,11 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
-             new PageConfig("One operation", "Neutralize", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Neutralise", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Neutralize",
+        GameName = "Neutralise",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.Neutralize },
+        OperationList =new()  {Operation.Neutralise },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -613,6 +613,23 @@ namespace GestureSample.Views
             SecondsPressingToAnswer  = 3,
             IsArrow = true,
             IsNumberVoice = true,
+            ShowNumbersOnKeys = true
+        }
+    })),
+    new PageConfig("Tutorial", "Till 10 -> With Voice", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Till 10 -> With Voice",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=9,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 3,
+            IsArrow = true,
+            IsVoice = true,
             ShowNumbersOnKeys = true
         }
     })),
