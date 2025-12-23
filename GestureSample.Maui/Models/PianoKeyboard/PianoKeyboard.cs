@@ -92,6 +92,7 @@ After:
         {
 
             _soundService =  ServiceHelper.GetService<SoundService>();
+            _soundService.Mode = pianoConfig.IsVoice?2:1;//TODO:make an enum
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
@@ -282,6 +283,8 @@ After:
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
             AddDummies();
+            if(_soundService!=null)
+                _soundService.StopAllVoices();
         }
 
         //Spatial
@@ -388,18 +391,28 @@ After:
         {
             OnKey(e, true);
 
-            if (Config.IsNumberVoice)
+            if (Config.IsNumberVoice || Config.IsVoice)
             {
                 Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
-                if(_soundService != null)
+                if(_soundService != null && Config.IsNumberVoice)
                     await _soundService.PlayNumberAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                if (_soundService != null && Config.IsVoice)
+                    await _soundService.PlayVoiceAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
                 else
                     Console.WriteLine("Sound service is null");
             }
         }
-        private void OnUp(MR.Gestures.DownUpEventArgs e)
+        private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
             OnKey(e, false);
+            if (Config.IsNumberVoice || Config.IsVoice)
+            {
+                Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                if (_soundService != null && Config.IsVoice)
+                    _soundService.StopVoiceAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                else
+                    Console.WriteLine("Sound service is null");
+            }
         }
         private void OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {

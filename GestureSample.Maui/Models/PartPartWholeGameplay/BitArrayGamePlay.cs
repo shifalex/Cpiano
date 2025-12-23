@@ -181,7 +181,7 @@ namespace GestureSample.Maui.Models
                 Operation.Not => this.Not(bitArrayAnswer),
                 Operation.And => this.And(bitArrayAnswer),
                 Operation.Or => this.Or(bitArrayAnswer),
-                Operation.Neutralize => this.Xor(bitArrayAnswer),
+                Operation.Neutralise => this.Xor(bitArrayAnswer),
                 _ => false
             };
         }
