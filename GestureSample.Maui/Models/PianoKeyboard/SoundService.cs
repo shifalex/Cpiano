@@ -60,9 +60,6 @@ namespace GestureSample.Maui.Models
         
         public async Task PlayCustomVoiceAsync(int keyNumber, int voiceNumber, string folderName="Voice", string fileType = "wav")
         {
-            if (keyNumber < 1 || keyNumber > 10)
-                return;
-
             var fileName = string.Format("{0}/{1}.{2}", folderName, voiceNumber, fileType); // or .wav/.mp3 if you prefer
 
             if (!_players.TryGetValue(keyNumber, out var Player) || _playerFileNames[keyNumber] != fileName)
