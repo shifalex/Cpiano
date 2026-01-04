@@ -133,6 +133,7 @@ namespace GestureSample.Maui.Models
 
         public bool[] BitArrayQuestion { get; set; }
         public bool[] BitArrayQuestion2 { get; set; }
+        private bool[] BitArrayCorrectAnswer { get; set; }
         public UIQuestionType ArrayQuestionType { get; set; }
 
         public override int Sum
@@ -229,6 +230,7 @@ namespace GestureSample.Maui.Models
                     BitArrayQuestion = RandomArray();
                     BitArrayQuestion2 = RandomArray();
                 }
+                BuildCorrectAnswer();
 
             }
 
@@ -265,6 +267,158 @@ After:
                 _view.AddToLblAction(" "+ length.ToString()+ " " + dir.ToString() );
             }
 
+        }
+
+        public bool IsCloseEnough(bool[] candidate, int allowedDifferences = 1)
+        {
+            if (candidate == null) return false;
+
+            // Prefer comparing to the precomputed canonical correct answer
+            if (BitArrayCorrectAnswer != null)
+            {
+                if (candidate.Length != BitArrayCorrectAnswer.Length) return false;
+                int diffs = 0;
+                for (int i = 0; i < candidate.Length; i++)
+                {
+                    if (candidate[i] != BitArrayCorrectAnswer[i] && ++diffs > allowedDifferences)
+                        return false;
+                }
+                return true;
+            }
+
+            // Operation-specific tolerant checks
+            if (CurrentOperation == Operation.Quantity)
+            {
+                // allow difference in count up to allowedDifferences
+                return Math.Abs(SumArray(BitArrayQuestion) - SumArray(candidate)) <= allowedDifferences;
+            }
+
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                // allow minimal mismatches across all circular shifts up to allowedDifferences
+                int len = BitArrayQuestion.Length;
+                if (candidate.Length != len) return false;
+                for (int shift = 0; shift < len; shift++)
+                {
+                    int diffs = 0;
+                    for (int i = 0; i < len; i++)
+                    {
+                        if (candidate[i] != BitArrayQuestion[(i + shift) % len] && ++diffs > allowedDifferences)
+                            break;
+                    }
+                    if (diffs <= allowedDifferences) return true;
+                }
+                return false;
+            }
+
+            // Generic fallback: compare candidate to the original BitArrayQuestion with tolerance
+            if (candidate.Length != BitArrayQuestion.Length) return false;
+            int genericDiffs = 0;
+            for (int i = 0; i < candidate.Length; i++)
+            {
+                if (candidate[i] != BitArrayQuestion[i] && ++genericDiffs > allowedDifferences)
+                    return false;
+            }
+            return true;
+        }
+
+        // Overload so callers can pass the PianoKeyboard directly
+        public override bool IsCloseEnough(PianoKeyboard keyboard, int allowedDifferences = 1)
+        {
+            if (keyboard == null) return false;
+            return IsCloseEnough(keyboard.ToBitArray(), allowedDifferences);
+        }
+
+        private void BuildCorrectAnswer()
+        {
+            BitArrayCorrectAnswer = null;
+
+            if (BitArrayQuestion == null) return;
+
+            int len = BitArrayQuestion.Length;
+
+            switch (CurrentOperation)
+            {
+                case Operation.Copy:
+                    BitArrayCorrectAnswer = BitArrayQuestion.ToArray();
+                    break;
+
+                case Operation.Mirror:
+                    BitArrayCorrectAnswer = new bool[len];
+                    for (int i = 0; i < len; i++)
+                        BitArrayCorrectAnswer[i] = BitArrayQuestion[len - 1 - i];
+                    break;
+
+                case Operation.SequenceLTR:
+                    {
+                        int count = Sum;
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = i < count;
+                    }
+                    break;
+
+                case Operation.SequenceRTL:
+                    {
+                        int count = Sum;
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = i >= (len - count);
+                    }
+                    break;
+
+                case Operation.MoveBy:
+                    {
+                        int moveIndex = dir == Direction.Right ? length : len - length;
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int k = 0; k < len; k++)
+                            BitArrayCorrectAnswer[k] = BitArrayQuestion[(k - moveIndex + len) % len];
+                    }
+                    break;
+
+                case Operation.Not:
+                    BitArrayCorrectAnswer = new bool[len];
+                    for (int i = 0; i < len; i++)
+                        BitArrayCorrectAnswer[i] = !BitArrayQuestion[i];
+                    break;
+
+                case Operation.And:
+                    if (BitArrayQuestion2 != null)
+                    {
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = BitArrayQuestion[i] && BitArrayQuestion2[i];
+                    }
+                    break;
+
+                case Operation.Or:
+                    if (BitArrayQuestion2 != null)
+                    {
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = BitArrayQuestion[i] || BitArrayQuestion2[i];
+                    }
+                    break;
+
+                case Operation.Neutralise:
+                    if (BitArrayQuestion2 != null)
+                    {
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = BitArrayQuestion[i] ^ BitArrayQuestion2[i];
+                    }
+                    break;
+
+                case Operation.Quantity:
+                    // Quantity allows any array with the same count — keep BitArrayCorrectAnswer null so fallback
+                    BitArrayCorrectAnswer = null;
+                    break;
+
+                default:
+                    // For unknown/unsupported operations keep fallback behavior
+                    BitArrayCorrectAnswer = null;
+                    break;
+            }
         }
 
         private bool IsResultAllZeros()
@@ -318,10 +472,18 @@ After:
 
         public bool SumEquals(bool[] bitArrayAnswer)
         {
-            int s1 = 0, s2 = 0;
+            /*int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }
-            return s1 == s2;
+            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
+            return SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer);
+        }
+
+        private int SumArray(bool[] bitArray)
+        {
+            int s1 = 0;
+            for (int i = 0; i < bitArray.Length; i++)
+             { s1 += bitArray[i] ? 1 : 0; }
+            return s1;
         }
 
         public bool Sequence(bool[] bitArrayAnswer, Direction dir)

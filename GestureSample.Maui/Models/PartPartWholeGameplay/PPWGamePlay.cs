@@ -10,7 +10,7 @@ using static SQLite.SQLite3;
 namespace GestureSample.Maui.Models
 {
 
-    internal class PPWGamePlay
+    public class PPWGamePlay
     {
         public static readonly int NAN = -1111;
         public Guid GameId { get; set; } = Guid.NewGuid();
@@ -97,6 +97,8 @@ namespace GestureSample.Maui.Models
                 return false;
             return true;
         }
+
+
 
         public virtual async Task<bool> CheckAsync()
         {
@@ -194,6 +196,16 @@ namespace GestureSample.Maui.Models
 
         }
 
+        public virtual bool IsCloseEnough(PianoKeyboard keyboard, int allowedDifferences = 1)
+        {
+            return IsCloseEnough(keyboard.Addend1, keyboard.Addend2, Sum, allowedDifferences);
+        }
+
+        public bool IsCloseEnough(int addend1, int addend2, int sum, int allowedDifferences = 1)
+        {
+            // returns true when the addends' sum differs from 'sum' by at most 1
+            return Math.Abs(addend1 + addend2 - sum) <= allowedDifferences;
+        }
         private void RemoveItemToHistory(int addend1, int addend2, int sum)
         {
             if (PossibleTriads.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any())

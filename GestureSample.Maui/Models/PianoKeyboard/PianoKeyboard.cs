@@ -6,7 +6,7 @@ using Microsoft.Maui.Layouts;
 
 namespace GestureSample.Maui.Models
 {
-    internal class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
+    public class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
     {
 
         protected readonly SoundService _soundService;
@@ -267,6 +267,8 @@ After:
             IsEnabled = true;
             _addend1 = 0;
             _addend2 = 0;
+            if(_soundService!=null)
+                _soundService.StopAllVoices();
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
@@ -283,8 +285,6 @@ After:
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
             AddDummies();
-            if(_soundService!=null)
-                _soundService.StopAllVoices();
         }
 
         //Spatial
@@ -389,7 +389,7 @@ After:
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
-            OnKey(e, true);
+            await OnKey(e, true);
 
             if (Config.IsNumberVoice || Config.IsVoice)
             {
@@ -404,7 +404,7 @@ After:
         }
         private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
-            OnKey(e, false);
+            await OnKey(e, false);
             if (Config.IsNumberVoice || Config.IsVoice)
             {
                 Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
@@ -414,14 +414,43 @@ After:
                     Console.WriteLine("Sound service is null");
             }
         }
-        private void OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
+        private async Task OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {
             
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
             Color prevColor = sender.BackgroundColor;
             if ((isDown ? InnerKeyDown(sender) : InnerKeyUp(sender)) && _patterns)
+            {
                 setAddendsByPattern();
+            }
+                Console.WriteLine("Special sounds");
+                if (_soundService != null && (Config.IsVoice || Config.IsVoices))
+                {
+                bool stopCorrectSound = true;
+                
+                if (isDown && BitArrayHelper.IsSequential(this.ToBitArray()) && BitArrayHelper.CountSetBits(this.ToBitArray()) >= 2)
+                    {
+                        await _soundService.PlayCustomVoiceAsync(11, 4, "Voices");
+                        if (_gamePlay.IsCloseEnough(this))
+                        {
+                            await _soundService.PlayCustomVoiceAsync(12, 6, "Voices");
+                            stopCorrectSound=false;
+                        }
+                    }
+                    else if (isDown && !BitArrayHelper.IsSequential(this.ToBitArray()) && BitArrayHelper.CountSetBits(this.ToBitArray()) >= 2)
+                    {
+                        await _soundService.PlayCustomVoiceAsync(11, 3, "Voices");
+                    }
+                    else
+                    { 
+                        _soundService.StopVoiceAsync(11);
+                        
+                    }
+                if (stopCorrectSound)
+                        _soundService.StopVoiceAsync(12);
+            }
+            
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
