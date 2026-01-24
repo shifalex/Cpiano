@@ -98,11 +98,11 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Copy,
         [Description("EQUAL")]
         Quantity,
-        [Description("SEQUENCE ->")]
+        [Description("GROUP to the RIGHT ->")]
         SequenceLTR,
-        [Description("SEQUENCE <-")]
+        [Description("<- GROUP to the LEFT")]
         SequenceRTL, 
-        [Description("MOVE BY ")]
+        [Description("SHIFT BY ")]
         MoveBy,
         [Description("MIRROR")]
         Mirror,
