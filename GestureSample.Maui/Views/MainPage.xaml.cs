@@ -365,15 +365,16 @@ namespace GestureSample.Views
 
 
             new PageConfig("&& ||", "One operation", null),
-             new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Copy", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Group to side",
+        GameName = "Copy",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL },
+        OperationList = new() {Operation.Copy },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
              new PageConfig("One operation", "Shift by", () => new SimpleViewCellsPage(new GameConfig
@@ -381,6 +382,17 @@ namespace GestureSample.Views
         GameName = "Shift by",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+                  new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group to side",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
