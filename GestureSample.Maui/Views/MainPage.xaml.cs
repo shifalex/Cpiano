@@ -365,9 +365,9 @@ namespace GestureSample.Views
 
 
             new PageConfig("&& ||", "One operation", null),
-             new PageConfig("One operation", "Sequence", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Sequence",
+        GameName = "Group to side",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL },
         OnlyToTen = true,
@@ -376,11 +376,22 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
-             new PageConfig("One operation", "Move", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Shift by", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Move",
+        GameName = "Shift by",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
+             new PageConfig("One operation", "Mirror", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Mirror",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Mirror },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
