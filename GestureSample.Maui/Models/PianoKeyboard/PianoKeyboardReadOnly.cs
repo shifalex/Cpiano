@@ -1,5 +1,6 @@
 ﻿using Microsoft.Maui.Controls.Shapes;
 using MongoDB.Bson;
+using static Supabase.Postgrest.Constants;
 
 namespace GestureSample.Maui.Models
 {
@@ -43,6 +44,7 @@ namespace GestureSample.Maui.Models
             set => SetValue(KeysProperty, value);
         }
 
+        public readonly double MAX_KEY_WIDTH = 105;
         public double ActualKeyWidth { get; private set; }
 
         private static void OnKeysChanged(BindableObject bindable, object oldValue, object newValue)
@@ -160,6 +162,7 @@ namespace GestureSample.Maui.Models
             Console.WriteLine("Adding arrow: {0} {1} {2} {3}", direction, aboveKeyNumber, numberAbove, row);
             if (!isSecondArrow) { AboveNumber =aboveKeyNumber ; ArrowLength = numberAbove; Direction = direction; } // Set the properties for the first arrow
             columnWidth = ActualKeyWidth > 0 ? ActualKeyWidth : columnWidth; // Use ActualKeyWidth if available, otherwise use provided columnWidth
+            if (columnWidth > MAX_KEY_WIDTH) columnWidth = MAX_KEY_WIDTH;
             double border_width = 5;
             double seperator_width = 5+ border_width;
             double arrow_reduction = 13;
@@ -396,11 +399,21 @@ namespace GestureSample.Maui.Models
         {
             await Task.Delay(200);
             if (btnKeys.Length > 0)
+            {
                 ActualKeyWidth = btnKeys[0].Width; // Or average, or max, etc.
-            Console.WriteLine("Actual key width: " + ActualKeyWidth);
-            Console.WriteLine("Actual Column width: " + this.Children[0].Width);
-            Console.WriteLine("Actual Column spacing: " + this.ColumnSpacing);
+                ActualKeyWidth = Math.Min(ActualKeyWidth, MAX_KEY_WIDTH);
+                Console.WriteLine("Actual key width: " + ActualKeyWidth);
+                Console.WriteLine("Actual Column width: " + this.Children[0].Width);
+                Console.WriteLine("Actual Column spacing: " + this.ColumnSpacing);
+                Console.WriteLine("Actual Width: " + this.ColumnSpacing);
 
+                double contentWidth = btnKeys.Length * ActualKeyWidth + (btnKeys.Length > 10 ? 0 : 1) * FINGER_SEPERATOR + (btnKeys.Length - 1) * this.ColumnSpacing;
+                // available width is the control's width (not subtracting padding yet, because we're setting it)
+                double extra = this.Width - contentWidth;
+                if (extra < 0) extra = 0;
+                // keep any existing top/bottom padding you might want
+                this.Padding = new Thickness(extra / 2, this.Padding.Top, extra / 2, this.Padding.Bottom);
+            }
             Console.WriteLine("CURRENT ARROW: {0} {1} {2}", Direction, AboveNumber, ArrowLength);
             if (ArrowLength != null && AboveNumber != null)
             {   
@@ -420,7 +433,7 @@ namespace GestureSample.Maui.Models
             this.ColumnSpacing = 5;
             this.BackgroundColor = Colors.Black;
             //this.Padding = textBoxesQuantity==0? new Thickness(0, 30, 0, 0):0;
-            int handSeperator = 5; if (keysInRow > 10) handSeperator = keysInRow + 1;
+            int handSeperator = keysInRow/2; if (keysInRow > 10) handSeperator = keysInRow + 1;
 
             colors = new Color[NUMBER_OF_KEYS];
 
@@ -453,6 +466,7 @@ namespace GestureSample.Maui.Models
                         TextColor = Colors.Black,
                         BackgroundColor = COLOR_FREE,  
                         CommandParameter = i + 1 + keysInRow * r,
+                        MaximumWidthRequest = MAX_KEY_WIDTH,
                         Margin = new Thickness(0, 5, 0, 0),
                         //DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown), 
                         //UpCommand =  new Command<MR.Gestures.DownUpEventArgs>(OnUp), 
