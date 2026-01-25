@@ -76,10 +76,10 @@ namespace GestureSample.Maui.Models
             // restart from beginning each time
             Player.Stop();
 
-            Console.WriteLine("playing Stopped...");
+            //Console.WriteLine("playing Stopped...");
             Player.Play();
 
-            Console.WriteLine("playing Started...");
+            //Console.WriteLine("playing Started...");
         }
     }
 }

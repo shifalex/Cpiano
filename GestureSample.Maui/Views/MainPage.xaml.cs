@@ -383,9 +383,25 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
+        isOnlySequence = false,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            
+            KeysInRow = 6
+        }
+    })),
+              new PageConfig("One operation", "Shift by TO CHECK WHY NO RIGHT SEQUENCE?", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
         }
     })),
                   new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
@@ -396,7 +412,8 @@ namespace GestureSample.Views
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
              new PageConfig("One operation", "Mirror", () => new SimpleViewCellsPage(new GameConfig

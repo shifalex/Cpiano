@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
+using static Realms.ChangeSet;
 
 namespace GestureSample.Maui.Models
 {
@@ -10,6 +11,10 @@ namespace GestureSample.Maui.Models
         public Direction dir = Direction.Right;
         public int aboveNumber;
         public int length;
+
+        public Direction moveBydir = Direction.Right;
+        public int moveByLength;
+
         public List<int> triads = new();
 
 
@@ -206,6 +211,20 @@ namespace GestureSample.Maui.Models
 
         }
 
+        private (int from, int length) ChooseFromAndLength(Random r, int minLength)
+        {
+            int from = r.Next(0, BitArrayQuestion.Length);
+            int length = r.Next(minLength, BitArrayQuestion.Length);
+            while ((from + length >= BitArrayQuestion.Length && Config.OnlyToTen) ||
+                   (from + length < BitArrayQuestion.Length && Config.OnlyThrougTen))
+            {
+                from = r.Next(0, BitArrayQuestion.Length);
+                length = r.Next(minLength, BitArrayQuestion.Length);
+                Console.WriteLine("Rechoosing from:{0} length: {1}", from, length);
+            }
+            return (from, length);
+        }
+
         public override void GenerateExercise()
         {
             Random r = new();
@@ -218,21 +237,77 @@ namespace GestureSample.Maui.Models
             else
             {
                 int from, length;
-                from = r.Next(0, BitArrayQuestion.Length); length = r.Next(1, BitArrayQuestion.Length);
-                while((from+length >= BitArrayQuestion.Length && Config.OnlyToTen) ||
-                    (from + length < BitArrayQuestion.Length && Config.OnlyThrougTen))
-                { from = r.Next(0, BitArrayQuestion.Length); length = r.Next(1, BitArrayQuestion.Length); }
-                BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from,length) : RandomArray();
-                from = r.Next(0, BitArrayQuestion.Length); length = r.Next(0, BitArrayQuestion.Length);
-                while ((from + length >= BitArrayQuestion.Length && Config.OnlyToTen) ||
-                    (from + length < BitArrayQuestion.Length && Config.OnlyThrougTen))
-                { from = r.Next(0, BitArrayQuestion.Length); length = r.Next(1, BitArrayQuestion.Length); }
+
+                // first pair (preserve original behavior: min length 1)
+                (from, length) = ChooseFromAndLength(r, 1);
+                BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+
+
+                // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
+                (from, length) = ChooseFromAndLength(r, 0);
                 BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+
+
+                moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                moveByLength = r.Next(1, BitArrayQuestion.Length);
+                if (CurrentOperation is Operation.MoveBy && Config.OnlyToTen)
+                {
+                    while (BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1] )
+                    {
+                        BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(); ;
+                    }
+                    if (BitArrayQuestion[0] || BitArrayQuestion[BitArrayQuestion.Length - 1])
+                    {
+                        if (BitArrayQuestion[0] && !BitArrayQuestion[BitArrayQuestion.Length - 1])
+                        {
+                            moveBydir = Direction.Right;
+                        }
+                        else if (!BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
+                        {
+                            moveBydir = Direction.Left;
+                        }
+                    }
+                    else
+                    {
+                        moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                        Console.WriteLine("Random direction: {0}", moveBydir);
+                    }
+                        int maxLength= BitArrayQuestion.Length;
+                        if (moveBydir == Direction.Left)
+                        {
+                            for (int i = 0; i < BitArrayQuestion.Length; i++)
+                            {
+                                if (BitArrayQuestion[i] )
+                                {
+                                    maxLength = i;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (int i = BitArrayQuestion.Length - 1; i >= 0; i--)
+                            {
+                                if (BitArrayQuestion[i])
+                                {
+                                    maxLength = BitArrayQuestion.Length - 1 - i;
+                                    break;
+                                }
+                            }
+                        }
+                        Console.WriteLine("Max length for move by: {0}", maxLength);
+                        moveByLength = r.Next(1, maxLength+1);
+                    }
+                
+                 
+
+
                 while (IsResultAllZeros())
                 {
                     BitArrayQuestion = RandomArray();
                     BitArrayQuestion2 = RandomArray();
                 }
+
                 BuildCorrectAnswer();
 
             }
@@ -265,9 +340,7 @@ After:
             _view.UpdateView(true);
             if(CurrentOperation==Operation.MoveBy)
             {
-                dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
-                length = r.Next(1, BitArrayQuestion.Length);
-                _view.AddToLblAction(" "+ length.ToString()+ " " + dir.ToString() );
+                _view.AddToLblAction(" "+ moveBydir.ToString()+ " BY " + moveByLength.ToString()  );
             }
 
         }
@@ -515,7 +588,7 @@ After:
 
         public bool Move(bool[] bitArrayAnswer)
         {
-            int moveIndex = dir == Direction.Right ? length : bitArrayAnswer.Length - length;
+            int moveIndex = moveBydir == Direction.Right ? moveByLength : bitArrayAnswer.Length - moveByLength;
             //TODO? Through Exceptions
             for (int i = 0; i < bitArrayAnswer.Length; i++)
                 if (BitArrayQuestion[i] != bitArrayAnswer[(i+moveIndex)%bitArrayAnswer.Length] ) return false;
