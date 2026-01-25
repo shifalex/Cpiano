@@ -182,8 +182,9 @@ namespace GestureSample.Maui.Models
                 //BitArrayGameType.Reorder => this.Equals(),
                 Operation.Quantity => this.QuantityEquals(bitArrayAnswer),
                 Operation.Mirror => this.Mirror(bitArrayAnswer),
-                Operation.SequenceLTR => this.Sequence(bitArrayAnswer, Direction.Left),
-                Operation.SequenceRTL => this.Sequence(bitArrayAnswer, Direction.Right),
+                Operation.SequenceLTR => this.Sequence(bitArrayAnswer, Direction.Right),
+                Operation.SequenceRTL => this.Sequence(bitArrayAnswer, Direction.Left),
+                Operation.Split => this.Split(bitArrayAnswer),
                 Operation.MoveBy => this.Move(bitArrayAnswer),
                 //BitArrayGameType.SerializeWithArrow => this.Equals(),
                 Operation.Not => this.Not(bitArrayAnswer),
@@ -442,7 +443,21 @@ After:
                             BitArrayCorrectAnswer[i] = i >= (len - count);
                     }
                     break;
-
+                    case Operation.Split:
+                    {
+                        int countR = 0; int countL = 0;
+                        BitArrayCorrectAnswer = new bool[len];
+                        for (int i = 0; i < len; i++)
+                            if (BitArrayQuestion[i])
+                            {
+                                if (i < len / 2) countL++;
+                                else countR++;
+                            }
+                        for (int i = 0; i < len; i++)
+                            BitArrayCorrectAnswer[i] = (i < len / 2) ? (i < countL) : (i >= len - countR);
+                    }    
+                    break;
+                    
                 case Operation.MoveBy:
                     {
                         int moveIndex = dir == Direction.Right ? length : len - length;
@@ -571,7 +586,7 @@ After:
         {
             int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
-            {   s1 += BitArrayQuestion[i] ? 1 : 0; 
+            {   s1 += BitArrayQuestion[ dir==Direction.Left ? i : BitArrayQuestion.Length - 1 - i] ? 1 : 0; 
                 s2 += bitArrayAnswer[i] ? 1 : 0; 
             }
             if( s1 == s2)
@@ -583,6 +598,14 @@ After:
                         (!bitArrayAnswer[bitArrayAnswer.Length-1-i] && dir == Direction.Right)) return false;
                 return true;
             }
+            return false;
+        }
+
+        public bool Split(bool[] bitArrayAnswer)
+        {
+            if (Sequence(bitArrayAnswer[..(bitArrayAnswer.Length/2)], Direction.Left) 
+                && Sequence(bitArrayAnswer[(bitArrayAnswer.Length / 2)..], Direction.Right))
+                    return true;
             return false;
         }
 

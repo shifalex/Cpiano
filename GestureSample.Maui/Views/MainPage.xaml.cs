@@ -408,7 +408,8 @@ namespace GestureSample.Views
     {
         GameName = "Group to side",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL },
+        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
+        isOnlySequence = false,
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -416,6 +417,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
+
              new PageConfig("One operation", "Mirror", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Mirror",

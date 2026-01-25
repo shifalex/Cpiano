@@ -101,7 +101,9 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         [Description("GROUP to the RIGHT ->")]
         SequenceLTR,
         [Description("<- GROUP to the LEFT")]
-        SequenceRTL, 
+        SequenceRTL,
+        [Description("<- SPLIT ->")]
+        Split,
         [Description("SHIFT")]
         MoveBy,
         [Description("MIRROR")]
@@ -158,7 +160,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         {
             public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.MoveBy, Operation.Mirror, Operation.Not };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.SUMM };
         }
 
