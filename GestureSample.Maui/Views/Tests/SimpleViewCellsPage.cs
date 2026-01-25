@@ -50,7 +50,10 @@ namespace GestureSample.Views.Tests
         private GraphicsView rightHandCanvas;
 
 
+        private readonly int FONT_SIZE_DEFAULT = 18;
         private readonly int TASK_WIDTH = 180;//TODO: if phone then make smaller and make answer keyboard only notSync
+        private readonly int PIANO_HEIGHT1 = 90;
+        private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
         private Label _lblHistory;
         private Entry _txtAddend1;
@@ -211,7 +214,17 @@ _lblStatement.Text = text;
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
-                    _keyboardTask2.IsVisible = GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation);
+                    if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
+                    {
+                        _keyboardTask2.IsVisible = true;
+                        _keyboardTask1.HeightRequest = PIANO_HEIGHT2;
+                        _keyboardTask2.HeightRequest = PIANO_HEIGHT2;
+                    } else
+                    {
+                        _keyboardTask2.IsVisible = false;
+                        _keyboardTask1.HeightRequest = PIANO_HEIGHT1;
+                        _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
+                    }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -457,7 +470,7 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = _isKeyboard?((_config.UIQuestionType == UIQuestionType.LogicalKeyboards)?40:55): FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black,
                 Text = Statement.Neutral
             };
@@ -491,7 +504,7 @@ _lblStatement.Text = text;
                             BackgroundColor = Colors.White,
                             TextColor = Colors.Black,
                             WidthRequest = TASK_WIDTH / 4,
-                            FontSize = 18,
+                            FontSize = FONT_SIZE_DEFAULT,
                             IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
                         };
                         txt[i].Keyboard = Keyboard.Numeric;
@@ -499,7 +512,7 @@ _lblStatement.Text = text;
                     Label lbl2 = new Label
                     {
                         Text = "",
-                        FontSize = 18,
+                        FontSize = FONT_SIZE_DEFAULT,
                         WidthRequest = TASK_WIDTH / 2,
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
@@ -507,8 +520,8 @@ _lblStatement.Text = text;
                     Label lbl4 = new Label
                     {
                         Text = "",
-                        FontSize = 18,
-                        WidthRequest = TASK_WIDTH / 4,
+                        FontSize = FONT_SIZE_DEFAULT,
+                        WidthRequest = TASK_WIDTH / 4,  
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
                     };
@@ -585,6 +598,7 @@ _lblStatement.Text = text;
 
             if (_isKeyboard)
             {
+                //_lblStatement.FontSize = 55;
                 _pianoKeyboard = _config.KeyboardConfig.SyncType switch
                 {
                     SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
@@ -607,12 +621,12 @@ _lblStatement.Text = text;
             _txtAddend2.WidthRequest = TASK_WIDTH / 2;
             _txtSum.WidthRequest = TASK_WIDTH / 2;
             _txtSum.BackgroundColor = Colors.White;
-            _txtSum.FontSize = 18;
+            _txtSum.FontSize = FONT_SIZE_DEFAULT;
             HorizontalStackLayout hzlEquation = new HorizontalStackLayout
             {
                 HorizontalOptions = LayoutOptions.Center,
                 Children ={ _txtAddend1, _lblAction, _txtAddend2,
-                            new Label {FontSize=18, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
+                            new Label {FontSize=FONT_SIZE_DEFAULT, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
                             _txtSum }
             };
             return hzlEquation;
@@ -653,19 +667,19 @@ _lblStatement.Text = text;
             _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = TASK_WIDTH / 2
+                HeightRequest = PIANO_HEIGHT2
             };
             _lblAction = new Label
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,  
                 TextColor = Colors.Black
             };
             _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = TASK_WIDTH / 2
+                HeightRequest = PIANO_HEIGHT2
             };
             vsl.Add(_keyboardTask2);
             vsl.Add(_lblAction);
@@ -680,7 +694,7 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black
             };
             leftHandCanvas = new()
@@ -806,12 +820,12 @@ _lblStatement.Text = text;
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
                 };
             _lblAction = new Label
             {
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
@@ -836,7 +850,7 @@ _lblStatement.Text = text;
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
             };
             _txtAddend1.Keyboard = Keyboard.Numeric;
