@@ -102,7 +102,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         SequenceLTR,
         [Description("<- GROUP to the LEFT")]
         SequenceRTL, 
-        [Description("SHIFT BY ")]
+        [Description("SHIFT")]
         MoveBy,
         [Description("MIRROR")]
         Mirror,
