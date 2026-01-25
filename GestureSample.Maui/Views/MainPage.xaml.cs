@@ -443,6 +443,17 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync
         }
     })),
+              new PageConfig("One operation", "Sum", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Sum",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.SUMM },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync
+        }
+    })),
              new PageConfig("One operation", "Neutralise", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Neutralise",

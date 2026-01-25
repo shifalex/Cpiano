@@ -148,6 +148,8 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        
+
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
 
         public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
@@ -173,7 +175,7 @@ namespace GestureSample.Maui.Models
             {
                 Operation.Copy => this.Equals(bitArrayAnswer),
                 //BitArrayGameType.Reorder => this.Equals(),
-                Operation.Quantity => this.SumEquals(bitArrayAnswer),
+                Operation.Quantity => this.QuantityEquals(bitArrayAnswer),
                 Operation.Mirror => this.Mirror(bitArrayAnswer),
                 Operation.SequenceLTR => this.Sequence(bitArrayAnswer, Direction.Left),
                 Operation.SequenceRTL => this.Sequence(bitArrayAnswer, Direction.Right),
@@ -183,6 +185,7 @@ namespace GestureSample.Maui.Models
                 Operation.And => this.And(bitArrayAnswer),
                 Operation.Or => this.Or(bitArrayAnswer),
                 Operation.Neutralise => this.Xor(bitArrayAnswer),
+                Operation.SUMM => this.SumEquals(bitArrayAnswer),
                 _ => false
             };
         }
@@ -410,12 +413,9 @@ After:
                     break;
 
                 case Operation.Quantity:
-                    // Quantity allows any array with the same count — keep BitArrayCorrectAnswer null so fallback
-                    BitArrayCorrectAnswer = null;
-                    break;
-
+                case Operation.SUMM:
                 default:
-                    // For unknown/unsupported operations keep fallback behavior
+                    // Quantity allows any array with the same count — keep BitArrayCorrectAnswer null so fallback
                     BitArrayCorrectAnswer = null;
                     break;
             }
@@ -470,12 +470,20 @@ After:
             return true;
         }
 
-        public bool SumEquals(bool[] bitArrayAnswer)
+        public bool QuantityEquals(bool[] bitArrayAnswer)
         {
             /*int s1 = 0, s2 = 0;
             for (int i = 0; i < bitArrayAnswer.Length; i++)
             { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
             return SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer);
+        }
+
+        public bool SumEquals(bool[] bitArrayAnswer)
+        {
+            /*int s1 = 0, s2 = 0;
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
+            return SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) == SumArray(bitArrayAnswer);
         }
 
         private int SumArray(bool[] bitArray)
