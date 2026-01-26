@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
+using System.Diagnostics;
 
 namespace GestureSample.Maui.Models
 {
@@ -19,49 +20,59 @@ namespace GestureSample.Maui.Models
 
         private void GenerateArrowExercise()
         {
-            int fromIndex =0, lengthIndexes =1;
+            var r = new Random();
+            var (fromIndex, lengthIndexes) = PrepareArrowFields(r);
+            SetBitArrayForArrow(fromIndex, lengthIndexes);
+            Console.WriteLine("above number:{0}", aboveNumber);
+        }
+
+        private (int fromIndex, int lengthIndexes) PrepareArrowFields(Random r)
+        {
+            int fromIndex = 0, lengthIndexes = 1;
             int keys = BitArrayQuestion.Length;
-            bool isOrdinal = Config.KeyboardConfig.ArrowType == ArrowType.Rounded;
-            Random r = new();
+            bool isOrdinal = Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded;
+
+            // initial direction and fallback factors
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
             int[] specialAboves = { 1, 5, 6, 10 };
+
+            // impose edges handling
             if (Config != null && Config.KeyboardConfig != null && Config.KeyboardConfig.ImposeEdges)
             {
                 aboveNumber = specialAboves[r.Next(specialAboves.Length)];
-                length = r.Next(1, keys);
-                length = (aboveNumber ==5 || aboveNumber == 6)?length% 5 : length % keys;
+                length = r.Next(1, Math.Min(Config.MaxAddend2+1, keys));
+                length = (aboveNumber == 5 || aboveNumber == 6) ? length % 5 : length;
                 length++;
-                
                 dir = (aboveNumber == 5 || aboveNumber == 10) ? Direction.Left : Direction.Right;
             }
             else
-            /*if (Config.MaxSum >= keys)
-            {
-                aboveNumber = r.Next(1, keys + 1);
-                length = r.Next(1, keys);
-            }
-            else*/
             {
                 int[] factors = Factors;
-                //aboveNumber = Math.Max( factors[0], factors[1])% keys;
-                //length = Math.Min(factors[0], factors[1])% keys;
-                //if (aboveNumber == 0) aboveNumber = 1;
-
-                aboveNumber = factors[0] % keys; length = factors[1] % keys;
-                if (length == 0) {length = 1; Console.WriteLine("{3}->{4}: {0} {1} {2}", factors[0], factors[1], factors[2], aboveNumber, length);}
-                aboveNumber = (dir == Direction.Left) ? (aboveNumber + length) % keys : aboveNumber+1;
+                aboveNumber = factors[0] % keys;
+                do length = factors[1] % Math.Min(Config.MaxAddend2+1, keys); while (length+aboveNumber > Config.MaxSum);
+                if (length == 0)
+                {
+                    length = 1;
+                    Console.WriteLine("{3}->{4}: {0} {1} {2}", factors[0], factors[1], factors[2], aboveNumber, length);
+                }
+                aboveNumber = (dir == Direction.Left) ? (aboveNumber + length) % keys : aboveNumber + 1;
                 Console.WriteLine("{3}->{4}: {0} {1} {2}", factors[0], factors[1], factors[2], aboveNumber, length);
-
             }
 
-            if (new QuestionOrder[] { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }.Contains(Config.QuestionOrder))
+            // cyclical orders
+            if (new QuestionOrder[] { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }
+                .Contains(Config.QuestionOrder))
             {
                 aboveNumber = _nextArrowAboveNumber;
                 if (Config.QuestionOrder == QuestionOrder.CyclicalRight) dir = Direction.Right;
-                if (Config.QuestionOrder == QuestionOrder.CyclicalLeft) dir = Direction.Left;
+                else if (Config.QuestionOrder == QuestionOrder.CyclicalLeft) dir = Direction.Left;
+                else if (Config.QuestionOrder == QuestionOrder.CyclicalMixed && Config.OnlyToTen)
+                { if(aboveNumber == keys) dir = Direction.Left; else if (aboveNumber == 1) dir = Direction.Right;
+                 length = r.Next(1, dir == Direction.Right ? (keys - aboveNumber + 1) : (aboveNumber+1));
+                }
 
                 if (dir == Direction.Left && _prevDir == Direction.Right)
-                    aboveNumber = (aboveNumber + keys +(isOrdinal ? 0 :-1)) % keys;
+                    aboveNumber = (aboveNumber + keys + (isOrdinal ? 0 : -1)) % keys;
                 if (dir == Direction.Right && _prevDir == Direction.Left)
                     aboveNumber = (aboveNumber + (isOrdinal ? 0 : 1)) % keys;
                 if (aboveNumber == 0) { aboveNumber = keys; }
@@ -71,6 +82,7 @@ namespace GestureSample.Maui.Models
                 if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = keys; }
             }
 
+            // FromLeft / ToLeft handling (triads sequence)
             if (Config.QuestionOrder == QuestionOrder.FromLeft || Config.QuestionOrder == QuestionOrder.ToLeft)
             {
                 bool isFirst = false;
@@ -78,61 +90,66 @@ namespace GestureSample.Maui.Models
                 {
                     addend1 = r.Next(1, keys);
                     addend2 = r.Next(1, keys);
-                    if(addend2 > addend1 && Config.QuestionOrder == QuestionOrder.FromLeft) { int t = addend1; addend1 = addend2; addend2 = t;  }
-                    int sum = (addend1 + addend2)%keys; if(sum == 0) sum = keys;
-                    triads.Add(0); triads.Add(addend1); triads.Add(addend2); triads.Add(sum );
+                    if (addend2 > addend1 && Config.QuestionOrder == QuestionOrder.FromLeft)
+                    {
+                        int t = addend1; addend1 = addend2; addend2 = t;
+                    }
+                    int sum = (addend1 + addend2) % keys; if (sum == 0) sum = keys;
+                    triads.Add(0); triads.Add(addend1); triads.Add(addend2); triads.Add(sum);
                     isFirst = true;
                 }
+
                 if (Config.QuestionOrder == QuestionOrder.FromLeft)
                 {
                     dir = Direction.Right;
-                    fromIndex = triads.Count == 2 ? 0 : triads[0]; 
+                    fromIndex = triads.Count == 2 ? 0 : triads[0];
                     lengthIndexes = triads[1];
-                    //BitArrayQuestion = triads.Count == 2 ? GenerateSequenceArrayQuestion(0, triads[1]) : GenerateSequenceArrayQuestion(triads[0], triads[1]);
                     aboveNumber = triads.Count == 2 ? 1 : triads[0] + 1;
                     length = triads[1];
                     triads.RemoveAt(0); if (triads.Count == 1) { triads.RemoveAt(0); }
                 }
+
                 if (Config.QuestionOrder == QuestionOrder.ToLeft)
                 {
                     if (addend1 + addend2 == keys) isFirst = false;
                     dir = isFirst ? Direction.Right : Direction.Left;
                     fromIndex = isFirst ? 0 : ((triads[^1] - triads[^2] + keys) % keys);
                     lengthIndexes = isFirst ? triads[^1] : triads[^2];
-                    //BitArrayQuestion = isFirst ? GenerateSequenceArrayQuestion(0, triads[^1]) : GenerateSequenceArrayQuestion((triads[^1] - triads[^2] + keys) % keys, triads[^2]);
                     aboveNumber = isFirst ? 1 : triads[^1];
                     length = isFirst ? triads[^1] : triads[^2];
                     if (!isFirst) triads.RemoveAt(triads.Count - 1);
-                    if (triads.Count == 1)
-                    {
-                        triads.RemoveAt(0);
-                    }
+                    if (triads.Count == 1) triads.RemoveAt(0);
                     if (triads.Count == 3)
                     {
                         triads.RemoveAt(2); triads.Add(addend1);
                         triads.RemoveAt(0);
                     }
                 }
+
                 if (length == 0) length = keys;
                 if (aboveNumber == 0) aboveNumber = keys;
-
             }
             else
             {
                 fromIndex = (dir == Direction.Left ? (aboveNumber - length + keys) : (aboveNumber) - 1) % keys;
                 lengthIndexes = length;
-                //BitArrayQuestion = GenerateSequenceArrayQuestion((dir == Direction.Left ? (aboveNumber - length + keys) : (aboveNumber) - 1) % keys, length);
             }
-                
 
-            if(Config.KeyboardConfig.ArrowType==ArrowType.Rounded)
-                BitArrayQuestion = GenerateSequenceArrayQuestion(((dir == Direction.Left ? (aboveNumber - lengthIndexes + keys) : (aboveNumber+ lengthIndexes)) - 1) % keys, 1);
+            return (fromIndex, lengthIndexes);
+        }
+
+        private void SetBitArrayForArrow(int fromIndex, int lengthIndexes)
+        {
+            int keys = BitArrayQuestion.Length;
+            if (Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded)
+            {
+                int start = ((dir == Direction.Left ? (aboveNumber - lengthIndexes + keys) : (aboveNumber + lengthIndexes)) - 1) % keys;
+                BitArrayQuestion = GenerateSequenceArrayQuestion(start, 1);
+            }
             else
+            {
                 BitArrayQuestion = GenerateSequenceArrayQuestion(fromIndex, lengthIndexes);
-            Console.WriteLine("above number:{0}", aboveNumber);
-
-
-
+            }
         }
 
         public bool[] BitArrayQuestion { get; set; }
@@ -152,7 +169,7 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        
+
 
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
 
@@ -166,10 +183,11 @@ namespace GestureSample.Maui.Models
 
         public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
+            Console.WriteLine("Checking BitArrayGamePlay answer...");
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
-            await Task.Delay(Config.SecondsTillNextExercise * 1000);
             await _view.UpdateView();
+            await Task.Delay(Config.SecondsTillNextExercise * 1000);
             return result;
         }
 
@@ -177,21 +195,9 @@ namespace GestureSample.Maui.Models
         {
            return CurrentOperation switch
             {
-               
+
                 Operation.Quantity => this.QuantityEquals(bitArrayAnswer),
                 Operation.SUMM => this.SumEquals(bitArrayAnswer),
-                /*Operation.Copy => this.Equals(bitArrayAnswer),
-                Operation.Mirror => this.Mirror(bitArrayAnswer),
-                Operation.SequenceLTR => this.Sequence(bitArrayAnswer, Direction.Right),
-                Operation.SequenceRTL => this.Sequence(bitArrayAnswer, Direction.Left),
-                Operation.Split => this.Split(bitArrayAnswer),
-                Operation.MoveBy => this.Move(bitArrayAnswer),
-                //BitArrayGameType.SerializeWithArrow => this.Equals(),
-                Operation.Not => this.Not(bitArrayAnswer),
-                Operation.And => this.And(bitArrayAnswer),
-                Operation.Or => this.Or(bitArrayAnswer),
-                Operation.Neutralise => this.Xor(bitArrayAnswer),*/
-
                 _ =>ArraysEqual(bitArrayAnswer, BitArrayCorrectAnswer)
             };
         }
@@ -237,100 +243,24 @@ namespace GestureSample.Maui.Models
         {
             Random r = new();
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+
             if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
                 CurrentOperation = Operation.Copy;
                 GenerateArrowExercise();
+                BuildCorrectAnswer();
             }
             else
             {
-                int from, length;
-
-                // first pair (preserve original behavior: min length 1)
-                (from, length) = ChooseFromAndLength(r, 1);
-                BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
-
-
-                // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
-                (from, length) = ChooseFromAndLength(r, 0);
-                BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
-
-
-                moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
-                moveByLength = r.Next(1, BitArrayQuestion.Length);
-                if (CurrentOperation is Operation.MoveBy && Config.OnlyToTen)
-                {
-                    while (BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1] )
-                    {
-                        (from, length) = ChooseFromAndLength(r, 1);
-                        BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(); ;
-                    }
-                    if (BitArrayQuestion[0] || BitArrayQuestion[BitArrayQuestion.Length - 1])
-                    {
-                        if (BitArrayQuestion[0] && !BitArrayQuestion[BitArrayQuestion.Length - 1])
-                        {
-                            moveBydir = Direction.Right;
-                        }
-                        else if (!BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
-                        {
-                            moveBydir = Direction.Left;
-                        }
-                    }
-                    else
-                    {
-                        moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
-                        Console.WriteLine("Random direction: {0}", moveBydir);
-                    }
-                        int maxLength= BitArrayQuestion.Length;
-                        if (moveBydir == Direction.Left)
-                        {
-                            for (int i = 0; i < BitArrayQuestion.Length; i++)
-                            {
-                                if (BitArrayQuestion[i] )
-                                {
-                                    maxLength = i;
-                                    break;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            for (int i = BitArrayQuestion.Length - 1; i >= 0; i--)
-                            {
-                                if (BitArrayQuestion[i])
-                                {
-                                    maxLength = BitArrayQuestion.Length - 1 - i;
-                                    break;
-                                }
-                            }
-                        }
-                        Console.WriteLine("Max length for move by: {0}", maxLength);
-                        moveByLength = r.Next(1, maxLength+1);
-                    }
-                
-                 
-
-                BuildCorrectAnswer();
-
-                while (IsResultAllZeros() ||
-                    (CurrentOperation == Operation.SUMM &&  
-                    SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
-                {
-                    GenerateExercise();
-                    return;
-                }
-
-
+                GenerateNonArrowExercise(r);
             }
 
-/* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
-Before:
-            Data.KeyboardQuestion s = new()
-            {
-After:
-            KeyboardQuestion s = new()
-            {
-*/
+            /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
+            Before:
+                        Data.KeyboardQuestion s = new()
+            After:
+                        KeyboardQuestion s = new()
+            */
             Data.SQLite.KeyboardQuestion s = new()
             {
 
@@ -349,11 +279,87 @@ After:
 
 
             _view.UpdateView(true);
-            if(CurrentOperation==Operation.MoveBy)
+            if (CurrentOperation == Operation.MoveBy)
             {
-                _view.AddToLblAction(" "+ moveBydir.ToString()+ " BY " + moveByLength.ToString()  );
+                _view.AddToLblAction(" " + moveBydir.ToString() + " BY " + moveByLength.ToString());
             }
 
+        }
+
+        private void GenerateNonArrowExercise(Random r)
+        {
+            int from, length;
+
+            // first pair (preserve original behavior: min length 1)
+            (from, length) = ChooseFromAndLength(r, 1);
+            BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+
+            // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
+            (from, length) = ChooseFromAndLength(r, 0);
+            BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+
+            // move-by configuration
+            moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+            moveByLength = r.Next(1, BitArrayQuestion.Length);
+            if (CurrentOperation is Operation.MoveBy && Config.OnlyToTen)
+            {
+                // ensure edges constraints
+                while (BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
+                {
+                    (from, length) = ChooseFromAndLength(r, 1);
+                    BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+                }
+
+                if (BitArrayQuestion[0] || BitArrayQuestion[BitArrayQuestion.Length - 1])
+                {
+                    if (BitArrayQuestion[0] && !BitArrayQuestion[BitArrayQuestion.Length - 1])
+                        moveBydir = Direction.Right;
+                    else if (!BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
+                        moveBydir = Direction.Left;
+                }
+                else
+                {
+                    moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                    Console.WriteLine("Random direction: {0}", moveBydir);
+                }
+
+                int maxLength = BitArrayQuestion.Length;
+                if (moveBydir == Direction.Left)
+                {
+                    for (int i = 0; i < BitArrayQuestion.Length; i++)
+                    {
+                        if (BitArrayQuestion[i])
+                        {
+                            maxLength = i;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = BitArrayQuestion.Length - 1; i >= 0; i--)
+                    {
+                        if (BitArrayQuestion[i])
+                        {
+                            maxLength = BitArrayQuestion.Length - 1 - i;
+                            break;
+                        }
+                    }
+                }
+                Console.WriteLine("Max length for move by: {0}", maxLength);
+                moveByLength = r.Next(1, maxLength + 1);
+            }
+
+            BuildCorrectAnswer();
+
+            while (IsResultAllZeros() ||
+                (CurrentOperation == Operation.SUMM &&
+                SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
+            {
+                // regenerate whole exercise if invalid - preserve original behavior
+                GenerateExercise();
+                return;
+            }
         }
 
         public bool IsCloseEnough(bool[] candidate, int allowedDifferences = 1)
@@ -379,7 +385,7 @@ After:
                 // allow difference in count up to allowedDifferences
                 return Math.Abs(SumArray(BitArrayQuestion) - SumArray(candidate)) <= allowedDifferences;
             }
-            if(CurrentOperation == Operation.SUMM)
+            if (CurrentOperation == Operation.SUMM)
             {
                 // allow difference in total count up to allowedDifferences
                 int total1 = SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2);
@@ -387,27 +393,6 @@ After:
                 return Math.Abs(total1 - total2) <= allowedDifferences;
             }
 
-
-            //SHIFT BUT WRONG ONE IS CLOSE ENOUGH..
-            /*
-            if (CurrentOperation == Operation.MoveBy)
-            {
-                // allow minimal mismatches across all circular shifts up to allowedDifferences
-                int len = BitArrayQuestion.Length;
-                if (candidate.Length != len) return false;
-                for (int shift = 0; shift < len; shift++)
-                {
-                    int diffs = 0;
-                    for (int i = 0; i < len; i++)
-                    {
-                        if (candidate[i] != BitArrayQuestion[(i + shift) % len] && ++diffs > allowedDifferences)
-                            break;
-                    }
-                    if (diffs <= allowedDifferences) return true;
-                }
-                return false;
-            }
-                        */
             // Generic fallback: compare candidate to the original BitArrayQuestion with tolerance
             if (candidate.Length != BitArrayQuestion.Length) return false;
             int genericDiffs = 0;
@@ -426,7 +411,7 @@ After:
             return IsCloseEnough(keyboard.ToBitArray(), allowedDifferences);
         }
 
-      
+
         private bool IsResultAllZeros()
         {
             bool[] wrongArray = new bool[BitArrayQuestion.Length];

@@ -479,12 +479,14 @@ namespace GestureSample.Maui.Models
                 {
                     int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
                     if (sum >= minSum && sum <= maxSum)
-                        if (!Config.OnlyThrougTen)
+                        if (!Config.OnlyThrougTen && !Config.OnlyToTen)
                         {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                             Console.WriteLine("{0} {1}= {2}", i, j, sum);
                         }
                         else if ((i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                            PossibleTriads.Add(new PPWObject(i, j, sum));
+                        else if(i+j<=10)
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                 }
         }

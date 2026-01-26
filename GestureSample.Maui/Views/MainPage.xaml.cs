@@ -434,7 +434,6 @@ namespace GestureSample.Views
         GameName = "Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
-        OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync
