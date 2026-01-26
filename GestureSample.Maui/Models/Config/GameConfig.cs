@@ -194,10 +194,29 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public bool OnlyCloseTriad { get; set; } = false;
 
-        // Fix for CS0236: Move the initialization of DefaultTriad to the constructor, as field initializers cannot reference non-static fields.
+        // DefaultTriad is computed lazily from the current configuration when first requested.
+        private PPWObject? _defaultTriad;
+        public PPWObject DefaultTriad
+        {
+            get
+            {
+                if (_defaultTriad is null)
+                {
+                    _defaultTriad = ComputeDefaultTriad();
+                }
+                return _defaultTriad;
+            }
+            set => _defaultTriad = value;
+        }
 
-        public PPWObject DefaultTriad { get; set; } = null;
-
+        private PPWObject ComputeDefaultTriad()
+        {
+            // compute based on the (already-initialized) properties
+            // adjust conditions to match desired logic
+            if (OnlyThrougTen && MaxSum > 10)
+                return new PPWObject(8, 7, 15);
+            return new PPWObject(3, 2, 5);
+        }
 
         public int NumberOfTasksToWin { get; set; } = -1;
         public int NumberOfMistakesToLose { get; set; } = -1;
@@ -211,8 +230,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public KeyboardConfig KeyboardConfig { get; set; } = null;
         public GameConfig()
         {
-            if(DefaultTriad == null)
-                DefaultTriad = OnlyThrougTen ? new PPWObject(3, 2, 5) : new PPWObject(8, 7, 15);
+            // No eager DefaultTriad initialization here; DefaultTriad is computed lazily when first used.
         }
 
 
