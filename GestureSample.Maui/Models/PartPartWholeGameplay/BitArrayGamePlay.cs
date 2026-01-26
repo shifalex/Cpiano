@@ -1,6 +1,5 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
-using static Realms.ChangeSet;
 
 namespace GestureSample.Maui.Models
 {
@@ -169,8 +168,8 @@ namespace GestureSample.Maui.Models
         {
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
-            await _view.UpdateView();
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
+            await _view.UpdateView();
             return result;
         }
 
