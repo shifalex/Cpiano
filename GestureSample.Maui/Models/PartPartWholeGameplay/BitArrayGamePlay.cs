@@ -157,7 +157,7 @@ namespace GestureSample.Maui.Models
         private bool[] BitArrayCorrectAnswer { get; set; }
         public UIQuestionType ArrayQuestionType { get; set; }
 
-        private Direction whichHand;
+        private Direction? whichHand;
 
         public override int Sum
         {
@@ -227,24 +227,17 @@ namespace GestureSample.Maui.Models
 
         }
 
-        private (int from, int length) ChooseFromAndLength(Random r, int minLength)
+        private (int from, int length) ChooseFromAndLength(Random r, int minLength, int start =0, int end = -1)
         {
-
-            int from = r.Next(0, BitArrayQuestion.Length);
-            int length = r.Next(minLength, BitArrayQuestion.Length);
-
-            whichHand = Config.WhichHand ?? (r.Next(0, 2) == 0 ? Direction.Left : Direction.Right);
-            if (Config.IsOnlyOneHand)
-            {
-                from = whichHand==Direction.Left? r.Next(0, BitArrayQuestion.Length / 2): r.Next(BitArrayQuestion.Length / 2, BitArrayQuestion.Length);
-                length = r.Next(minLength, BitArrayQuestion.Length/2 - from% (BitArrayQuestion.Length/2));
-            }
+            if( end == -1) end = BitArrayQuestion.Length;
+            int from = r.Next(start, end);
+            int length = r.Next(minLength, end - from);
 
             if ((from + length > BitArrayQuestion.Length && Config.OnlyToTen) ||
                    (from + length <= BitArrayQuestion.Length && Config.OnlyThrougTen))
             {
                 Console.WriteLine("Rechoosing from:{0} length: {1}", from, length);
-                return ChooseFromAndLength(r, minLength);
+                return ChooseFromAndLength(r, minLength, start, end);
             }
             return (from, length);
         }
@@ -263,6 +256,17 @@ namespace GestureSample.Maui.Models
             else
             {
                 GenerateNonArrowExercise(r);
+
+                //TODO: check if can use outside the else
+                BuildCorrectAnswer();
+
+                while (IsResultAllZeros() ||
+                    (CurrentOperation == Operation.SUMM &&
+                    SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
+                {
+                    // regenerate whole exercise if invalid - preserve original behavior
+                    GenerateNonArrowExercise(r);
+                }
             }
 
             /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
@@ -300,13 +304,22 @@ namespace GestureSample.Maui.Models
         {
             int from, length;
 
-            // first pair (preserve original behavior: min length 1)
-            (from, length) = ChooseFromAndLength(r, 1);
-            BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+            int start = 0; int end = BitArrayQuestion.Length; int half = BitArrayQuestion.Length / 2;
+            whichHand = null;
+            if (Config.IsOnlyOneHand)
+            {
+                whichHand = Config.WhichHand ?? (r.Next(0, 2) == 0 ? Direction.Left : Direction.Right);
+                start = whichHand == Direction.Left ? 0 : BitArrayQuestion.Length / 2;
+                end = whichHand == Direction.Left ? BitArrayQuestion.Length / 2 : BitArrayQuestion.Length;
+            }
+
+                // first pair (preserve original behavior: min length 1)
+                (from, length) = ChooseFromAndLength(r, 1, start, end);
+            BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
 
             // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
-            (from, length) = ChooseFromAndLength(r, 0);
-            BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+            (from, length) = ChooseFromAndLength(r, 0, start, end);
+            BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
 
             // move-by configuration
             moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -316,8 +329,8 @@ namespace GestureSample.Maui.Models
                 // ensure edges constraints
                 while (BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
                 {
-                    (from, length) = ChooseFromAndLength(r, 1);
-                    BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray();
+                    (from, length) = ChooseFromAndLength(r, 1, start, end);
+                    BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
                 }
 
                 if (BitArrayQuestion[0] || BitArrayQuestion[BitArrayQuestion.Length - 1])
@@ -360,16 +373,6 @@ namespace GestureSample.Maui.Models
                 moveByLength = r.Next(1, maxLength + 1);
             }
 
-            BuildCorrectAnswer();
-
-            while (IsResultAllZeros() ||
-                (CurrentOperation == Operation.SUMM &&
-                SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
-            {
-                // regenerate whole exercise if invalid - preserve original behavior
-                GenerateExercise();
-                return;
-            }
         }
 
         public bool IsCloseEnough(bool[] candidate, int allowedDifferences = 1)
@@ -433,14 +436,18 @@ namespace GestureSample.Maui.Models
 
         }
 
-        protected bool[] RandomArray()
+        protected bool[] RandomArray(int from =0, int to = -1)
         {
+            if( to == -1) to = BitArrayQuestion.Length;
             Random r = new();
             bool[] array = new bool[BitArrayQuestion.Length];
 
             for (int i = 0; i < array.Length; i++)
             {
-                array[i] = r.Next(2) == 1; // Generates either true or false
+                if( i>= from && i< to)
+                    array[i] = r.Next(2) == 1; // Generates either true or false
+                else
+                    array[i] = false;
             }
             return array;
         }
