@@ -157,6 +157,8 @@ namespace GestureSample.Maui.Models
         private bool[] BitArrayCorrectAnswer { get; set; }
         public UIQuestionType ArrayQuestionType { get; set; }
 
+        private Direction whichHand;
+
         public override int Sum
         {
             get
@@ -227,14 +229,22 @@ namespace GestureSample.Maui.Models
 
         private (int from, int length) ChooseFromAndLength(Random r, int minLength)
         {
+
             int from = r.Next(0, BitArrayQuestion.Length);
             int length = r.Next(minLength, BitArrayQuestion.Length);
-            while ((from + length > BitArrayQuestion.Length && Config.OnlyToTen) ||
+
+            whichHand = Config.WhichHand ?? (r.Next(0, 2) == 0 ? Direction.Left : Direction.Right);
+            if (Config.IsOnlyOneHand)
+            {
+                from = whichHand==Direction.Left? r.Next(0, BitArrayQuestion.Length / 2): r.Next(BitArrayQuestion.Length / 2, BitArrayQuestion.Length);
+                length = r.Next(minLength, BitArrayQuestion.Length/2 - from% (BitArrayQuestion.Length/2));
+            }
+
+            if ((from + length > BitArrayQuestion.Length && Config.OnlyToTen) ||
                    (from + length <= BitArrayQuestion.Length && Config.OnlyThrougTen))
             {
-                from = r.Next(0, BitArrayQuestion.Length);
-                length = r.Next(minLength, BitArrayQuestion.Length);
                 Console.WriteLine("Rechoosing from:{0} length: {1}", from, length);
+                return ChooseFromAndLength(r, minLength);
             }
             return (from, length);
         }
