@@ -2,6 +2,8 @@
 using GestureSample.Maui.Models;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Platform;
+using Microsoft.Maui.Graphics;
+using System.Diagnostics;
 
 namespace GestureSample.Views.Tests
 {
@@ -49,6 +51,8 @@ namespace GestureSample.Views.Tests
         private GraphicsView leftHandCanvas;
         private GraphicsView rightHandCanvas;
 
+        // Added field for tutorial hand drawable view
+        private GraphicsView handGraphicsView;
 
         private readonly int FONT_SIZE_DEFAULT = 18;
         private readonly int TASK_WIDTH = 180;//TODO: if phone then make smaller and make answer keyboard only notSync
@@ -441,7 +445,8 @@ _lblStatement.Text = text;
 
 
 
-        private void InitializeUI()
+        // Changed to async so we can await tutorial animation without changing constructor call site.
+        private async void InitializeUI()
         {
             bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType!=SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             int pianoHeight = _isKeyboard ? (isPianoHigh ? 100 : 60) : 1;
@@ -577,6 +582,57 @@ _lblStatement.Text = text;
                 vsl.Padding = 0;
                 vsl.Spacing = 0;
                 vsl.HorizontalOptions = LayoutOptions.Fill;
+
+                if(_config.IncludeTutorials)
+                {
+                    Debug.WriteLine("Starting tutorial hand animation...");
+
+                    // create the drawable
+                    var hand = new HandDrawable(isLeftHand: false)
+                    {
+                        Bits = new[] { 1, 1, 1, 1, 1 },
+                        Position = new PointF(0, 0),
+                        Opacity = 0f
+                    };
+
+                    // create a full-screen overlay GraphicsView so hand coordinates are page-relative
+                    handGraphicsView ??= new GraphicsView
+                    {
+                        Drawable = hand,
+                        HorizontalOptions = LayoutOptions.Fill,
+                        VerticalOptions = LayoutOptions.Fill,
+                        BackgroundColor = Colors.Red.WithAlpha(0.30f),
+                        InputTransparent = true, // let touches pass through
+                        // ensure it renders above other content
+                        ZIndex = 100
+                    };
+
+                    // add overlay to grid (span all rows/columns so it floats above everything)
+                                if (!grid.Children.Contains(handGraphicsView))
+                    {
+                        grid.Add(handGraphicsView);
+                        Grid.SetRowSpan(handGraphicsView, grid.RowDefinitions.Count);
+                        Grid.SetColumnSpan(handGraphicsView, grid.ColumnDefinitions.Count);
+                    }
+
+                    // Wait for layout (size) then center the hand and force redraw
+                    void OnSizeChanged(object? s, EventArgs e)
+                    {
+                        if (handGraphicsView.Width > 0 && handGraphicsView.Height > 0)
+                        {
+                            hand.Position = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
+                            handGraphicsView.Invalidate();
+                            handGraphicsView.SizeChanged -= OnSizeChanged;
+                        }
+                    }
+                    handGraphicsView.SizeChanged += OnSizeChanged;
+
+
+                    // Wait a short time for layout to settle so overlay has a valid size, then animate to center
+                    // await Task.Delay(50);
+                    var target = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
+                 //   await hand.ShowMoveHideAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(8000), TimeSpan.FromMilliseconds(2500));
+                }
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -711,6 +767,7 @@ _lblStatement.Text = text;
                 Drawable = new HandDrawable(isLeftHand: false)
             };
 
+    
 
 
 
