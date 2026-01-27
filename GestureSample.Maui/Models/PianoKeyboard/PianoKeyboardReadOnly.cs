@@ -47,6 +47,10 @@ namespace GestureSample.Maui.Models
         public readonly double MAX_KEY_WIDTH = 105;
         public double ActualKeyWidth { get; private set; }
 
+        public IReadOnlyList<MR.Gestures.Button> KeyButtons => btnKeys;
+        public int KeyCount => btnKeys?.Length ?? 0;
+
+
         private static void OnKeysChanged(BindableObject bindable, object oldValue, object newValue)
         {
             if (bindable is PianoKeyboardReadOnly control)
