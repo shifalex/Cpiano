@@ -194,6 +194,11 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public bool OnlyCloseTriad { get; set; } = false;
 
+        public bool IncludeTutorials { get; set; } = false;
+
+        public Direction? WhichHand { get; set; } = null;
+        public bool IsOnlyOneHand { get; set; } = false;
+
         // DefaultTriad is computed lazily from the current configuration when first requested.
         private PPWObject? _defaultTriad;
         public PPWObject DefaultTriad

@@ -49,7 +49,7 @@ namespace GestureSample.Maui.Models
         public void StopAllVoices()
         {
 
-            Console.WriteLine("playing Stopped1");
+            //Console.WriteLine("playing Stopped1");
             foreach (var player in _players.Values)
             {
                 if (player != null)
@@ -68,7 +68,7 @@ namespace GestureSample.Maui.Models
                 // File must be in Resources/Raw with Build Action: MauiAsset
                 var stream = await FileSystem.OpenAppPackageFileAsync(fileName);
                 Player = _audioManager.CreatePlayer(stream);
-                Console.WriteLine("playing file...");
+               // Console.WriteLine("playing file...");
                 _players[keyNumber] = Player;
                 _playerFileNames[keyNumber] = fileName;
             }
