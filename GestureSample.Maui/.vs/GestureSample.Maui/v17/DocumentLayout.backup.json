@@ -118,8 +118,12 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 4,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 4,
@@ -167,7 +171,7 @@
               "RelativeDocumentMoniker": "Models\\PartPartWholeGameplay\\BitArrayGamePlay.cs",
               "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\BitArrayGamePlay.cs*",
               "RelativeToolTip": "Models\\PartPartWholeGameplay\\BitArrayGamePlay.cs*",
-              "ViewState": "AgIAACYBAAAAAAAAAAAQwC0BAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAAOAAAAAAAAAAAAAewOoAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-01-02T06:59:38.657Z",
               "EditorCaption": ""
@@ -226,8 +230,8 @@
               "Title": "SoundService.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\SoundService.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\SoundService.cs",
-              "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\SoundService.cs*",
-              "RelativeToolTip": "Models\\PianoKeyboard\\SoundService.cs*",
+              "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\SoundService.cs",
+              "RelativeToolTip": "Models\\PianoKeyboard\\SoundService.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAADMAAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-23T11:54:12.795Z",
@@ -448,10 +452,6 @@
               "ViewState": "AgIAABAAAAAAAAAAAAAUwCkAAABOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-02-14T18:40:00.877Z"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             }
           ]
         }
