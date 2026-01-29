@@ -7,6 +7,14 @@
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:views\\tests\\simpleviewcellspage.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\pianokeyboard\\keyboardoverlayhost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\keyboardoverlayhost.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\handdrawable.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\handdrawable.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -41,10 +49,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardhalfsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardhalfsync.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|solutionrelative:models\\pianokeyboard\\pianokeyboardreadonly.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{7DD2BC67-A5E6-4FF2-AFE6-A534536FE28E}|GestureSample.Maui.csproj|c:\\users\\alex\\source\\repos\\cpiano\\gesturesample.maui\\models\\pianokeyboard\\bitarrayhelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -131,6 +135,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "KeyboardOverlayHost.cs",
+              "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\KeyboardOverlayHost.cs",
+              "RelativeDocumentMoniker": "Models\\PianoKeyboard\\KeyboardOverlayHost.cs",
+              "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\KeyboardOverlayHost.cs",
+              "RelativeToolTip": "Models\\PianoKeyboard\\KeyboardOverlayHost.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAAwBMAAABCAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-27T10:57:12.948Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "HandDrawable.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\HandDrawable.cs",
               "RelativeDocumentMoniker": "Models\\HandDrawable.cs",
@@ -143,7 +160,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "GameConfig.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\Config\\GameConfig.cs",
               "RelativeDocumentMoniker": "Models\\Config\\GameConfig.cs",
@@ -156,7 +173,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 0,
+              "Title": "SimpleViewCellsPage.cs",
+              "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
+              "RelativeDocumentMoniker": "Views\\Tests\\SimpleViewCellsPage.cs",
+              "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
+              "RelativeToolTip": "Views\\Tests\\SimpleViewCellsPage.cs",
+              "ViewState": "AgIAAC8BAAAAAAAAAAAgwD8BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-23T13:23:31.614Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
               "Title": "MainPage.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\MainPage.xaml.cs",
               "RelativeDocumentMoniker": "Views\\MainPage.xaml.cs",
@@ -169,20 +199,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "SimpleViewCellsPage.cs",
-              "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs",
-              "RelativeDocumentMoniker": "Views\\Tests\\SimpleViewCellsPage.cs",
-              "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\Tests\\SimpleViewCellsPage.cs*",
-              "RelativeToolTip": "Views\\Tests\\SimpleViewCellsPage.cs*",
-              "ViewState": "AgIAAFcCAAAAAAAAAAAAwGoCAAApAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-23T13:23:31.614Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "BitArrayGamePlay.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\BitArrayGamePlay.cs",
               "RelativeDocumentMoniker": "Models\\PartPartWholeGameplay\\BitArrayGamePlay.cs",
@@ -195,19 +212,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 2,
               "Title": "PianoKeyboardReadOnly.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "ToolTip": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
               "RelativeToolTip": "Models\\PianoKeyboard\\PianoKeyboardReadOnly.cs",
-              "ViewState": "AgIAAIsBAAAAAAAAAAAkwJIBAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAB4AAAAAAAAAAAAYwDEAAAA/AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-02T08:58:43.386Z"
+              "WhenOpened": "2026-01-02T08:58:43.386Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "PianoKeyboard.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboard.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboard.cs",
@@ -219,7 +237,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 8,
               "Title": "PPWGamePlay.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
               "RelativeDocumentMoniker": "Models\\PartPartWholeGameplay\\PPWGamePlay.cs",
@@ -231,7 +249,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "BitArrayHelper.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\BitArrayHelper.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\BitArrayHelper.cs",
@@ -243,7 +261,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "SoundService.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\SoundService.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\SoundService.cs",
@@ -256,7 +274,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 9,
               "Title": "PianoKeyboardSync.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardSync.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardSync.cs",
@@ -268,7 +286,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 13,
               "Title": "KeyboardConfig.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\Config\\KeyboardConfig.cs",
               "RelativeDocumentMoniker": "Models\\Config\\KeyboardConfig.cs",
@@ -280,7 +298,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 14,
               "Title": "MauiProgram.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\MauiProgram.cs",
               "RelativeDocumentMoniker": "MauiProgram.cs",
@@ -292,7 +310,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 15,
               "Title": "PPWObject.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PartPartWholeGameplay\\PPWObject.cs",
               "RelativeDocumentMoniker": "Models\\PartPartWholeGameplay\\PPWObject.cs",
@@ -304,7 +322,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 17,
               "Title": "ShowDataXaml.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\ShowDataXaml.xaml.cs",
               "RelativeDocumentMoniker": "Views\\ShowDataXaml.xaml.cs",
@@ -316,7 +334,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 18,
               "Title": "StateConnection.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Data\\SQLite\\StateConnection.cs",
               "RelativeDocumentMoniker": "Data\\SQLite\\StateConnection.cs",
@@ -328,7 +346,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 19,
               "Title": "RecordsUser.xaml",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\RecordsUser.xaml",
               "RelativeDocumentMoniker": "Views\\RecordsUser.xaml",
@@ -340,7 +358,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 20,
               "Title": "CreateUserPage.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\CreateUserPage.xaml.cs",
               "RelativeDocumentMoniker": "Views\\CreateUserPage.xaml.cs",
@@ -352,7 +370,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 21,
               "Title": "SplashPage.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\SplashPage.xaml.cs",
               "RelativeDocumentMoniker": "Views\\SplashPage.xaml.cs",
@@ -364,7 +382,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 16,
               "Title": "SupabaseService.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Data\\SupaBase\\SupabaseService.cs",
               "RelativeDocumentMoniker": "Data\\SupaBase\\SupabaseService.cs",
@@ -376,7 +394,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 22,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Properties\\launchSettings.json",
@@ -388,7 +406,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "PianoKeyboardHalfSync.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Models\\PianoKeyboard\\PianoKeyboardHalfSync.cs",
               "RelativeDocumentMoniker": "Models\\PianoKeyboard\\PianoKeyboardHalfSync.cs",
@@ -400,7 +418,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 23,
               "Title": "StackLayoutXaml.xaml",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\StackLayoutXaml.xaml",
               "RelativeDocumentMoniker": "Views\\StackLayoutXaml.xaml",
@@ -412,7 +430,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 24,
               "Title": "App.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\App.xaml.cs",
               "RelativeDocumentMoniker": "App.xaml.cs",
@@ -424,7 +442,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 25,
               "Title": "RecordsUser.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\RecordsUser.xaml.cs",
               "RelativeDocumentMoniker": "Views\\RecordsUser.xaml.cs",
@@ -436,7 +454,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 26,
               "Title": "GameRepository.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Data\\GameRepository.cs",
               "RelativeDocumentMoniker": "Data\\GameRepository.cs",
@@ -448,7 +466,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 27,
               "Title": "Game.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Data\\SQLite\\Game.cs",
               "RelativeDocumentMoniker": "Data\\SQLite\\Game.cs",
@@ -460,7 +478,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 28,
               "Title": "SwitchUserPage.xaml.cs",
               "DocumentMoniker": "C:\\Users\\Alex\\source\\repos\\CPiano\\GestureSample.Maui\\Views\\SwitchUserPage.xaml.cs",
               "RelativeDocumentMoniker": "Views\\SwitchUserPage.xaml.cs",

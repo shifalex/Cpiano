@@ -11,7 +11,7 @@ namespace GestureSample.Maui.Models
     public sealed class KeyboardOverlayHost : Grid
     {
         public PianoKeyboardReadOnly Keyboard { get; }
-        public AbsoluteLayout Overlay { get; } = new() { ZIndex = 99, InputTransparent = true };
+        public AbsoluteLayout Overlay { get; } = new() { ZIndex = 99, InputTransparent = true};
 
 
         private Border[] _keyOverlays = Array.Empty<Border>();
@@ -114,7 +114,7 @@ namespace GestureSample.Maui.Models
 
             var cursor = new Border
             {
-                BackgroundColor = Colors.Yellow.WithAlpha(0.35f),
+                BackgroundColor = Colors.Yellow.WithAlpha(0.7f),
                 Stroke = Colors.Yellow.WithAlpha(0.9f),
                 StrokeThickness = 2,
                 StrokeShape = new RoundRectangle { CornerRadius = 8 },
