@@ -13,7 +13,7 @@ namespace GestureSample.Maui.Models
         public int length;
 
         public Direction moveBydir = Direction.Right;
-        public int moveByLength;
+        public int moveByLength =1;
 
         public List<int> triads = new();
 
