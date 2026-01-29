@@ -72,6 +72,7 @@ namespace GestureSample.Views.Tests
         private PianoKeyboardReadOnly _keyboardTask2;
         private KeyboardOverlayHost _task1Host;
         private KeyboardOverlayHost _task2Host;
+        private KeyboardOverlayHost _taskMainHost;
 
         //TODO: show arrows for patterns
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
@@ -235,8 +236,10 @@ _lblStatement.Text = text;
                     }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                     _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-
-                    Tutorial();
+                    if(_taskMainHost!=null)
+                        _taskMainHost.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                        Tutorial(_taskMainHost);
+                    
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
                 {
@@ -312,7 +315,7 @@ _lblStatement.Text = text;
                 entry.Focus();
             });
         }
-        void Tutorial()
+        void Tutorial(KeyboardOverlayHost koh)
         {
             _ = Task.Run(async () =>
             {
@@ -321,8 +324,12 @@ _lblStatement.Text = text;
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Task.WhenAll(
-                        _task1Host.AnimateCursor(0, _keyboardTask1.Length - 1, 8000),
-                        _task2Host.AnimateCursor(_keyboardTask2.Length - 1, 0 , 8000)
+
+                koh.AnimateShiftByK(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, ((BitArrayGamePlay)_gamePlay).moveBydir == Direction.Right
+    ? ((BitArrayGamePlay)_gamePlay).moveByLength
+    : -((BitArrayGamePlay)_gamePlay).moveByLength, commit: false, autoDisappear: true, 4000)
+                    //_task1Host.AnimateCursor(0, _keyboardTask1.Length - 1, 8000),
+                    //  _task2Host.AnimateCursor(_keyboardTask2.Length - 1, 0 , 8000)
                     );
                 });
             });
@@ -692,8 +699,17 @@ _lblStatement.Text = text;
                 if (_config.KeyboardConfig.KeyboardAsAQuestion) {
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
-                grid.Add(_pianoKeyboard);
-                Grid.SetRow(_pianoKeyboard, 2);
+                if (_config.IncludeTutorials)
+                {
+                    _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
+                    grid.Add(_taskMainHost);
+                    Grid.SetRow(_taskMainHost, 2);
+                }
+                else
+                {
+                    grid.Add(_pianoKeyboard);
+                    Grid.SetRow(_pianoKeyboard, 2);
+                }
             }
             Content = grid;
 

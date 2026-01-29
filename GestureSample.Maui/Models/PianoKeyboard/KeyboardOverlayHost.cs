@@ -10,132 +10,260 @@ namespace GestureSample.Maui.Models
 {
     public sealed class KeyboardOverlayHost : Grid
     {
+        private sealed class PatternDrawable : IDrawable
+        {
+            public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
+
+            // What’s currently highlighted (static)
+            public bool[] Bits { get; set; } = Array.Empty<bool>();
+
+            // Animation shift (in keys)
+            public float ShiftKeys { get; set; } = 0f;
+
+            // Optional cursor: draw one rect at a fractional index (e.g., 3.2)
+            public float? CursorIndex { get; set; } = null;
+            public float CursorAlpha { get; set; } = 0.7f;
+
+            public float FillAlpha { get; set; } = 0.35f;
+            public float StrokeAlpha { get; set; } = 0.9f;
+            public float Radius { get; set; } = 8f;
+
+            public void Draw(ICanvas canvas, RectF dirtyRect)
+            {
+                if (KeyRects.Length == 0) return;
+
+                DrawBits(canvas);
+                DrawCursor(canvas);
+            }
+
+            void DrawBits(ICanvas canvas)
+            {
+                if (Bits.Length == 0) return;
+
+                canvas.StrokeSize = 2;
+                canvas.StrokeColor = Colors.Yellow.WithAlpha(StrokeAlpha);
+                canvas.FillColor = Colors.Yellow.WithAlpha(FillAlpha);
+
+                int n = Math.Min(Bits.Length, KeyRects.Length);
+                for (int i = 0; i < n; i++)
+                {
+                    if (!Bits[i]) continue;
+
+                    RectF r = RectForFractionalIndex(i + ShiftKeys);
+                    canvas.FillRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
+                    canvas.DrawRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
+                }
+            }
+
+            void DrawCursor(ICanvas canvas)
+            {
+                if (CursorIndex is null) return;
+
+                RectF r = RectForFractionalIndex(CursorIndex.Value);
+
+                canvas.StrokeSize = 2;
+                canvas.StrokeColor = Colors.Yellow.WithAlpha(0.95f);
+                canvas.FillColor = Colors.Yellow.WithAlpha(CursorAlpha);
+
+                canvas.FillRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
+                canvas.DrawRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
+            }
+
+            RectF RectForFractionalIndex(float idx)
+            {
+                int i0 = (int)MathF.Floor(idx);
+                int i1 = i0 + 1;
+                if (i0 < 0) i0 = 0;
+                if (i0 >= KeyRects.Length) i0 = KeyRects.Length - 1;
+
+                RectF r0 = KeyRects[i0];
+                if (i1 < 0 || i1 >= KeyRects.Length) return r0;
+
+                float t = idx - i0;
+                RectF r1 = KeyRects[i1];
+                return LerpRect(r0, r1, t);
+            }
+
+            static RectF LerpRect(RectF a, RectF b, float t)
+            {
+                float x = a.X + (b.X - a.X) * t;
+                float y = a.Y + (b.Y - a.Y) * t;
+                float w = a.Width + (b.Width - a.Width) * t;
+                float h = a.Height + (b.Height - a.Height) * t;
+                return new RectF(x, y, w, h);
+            }
+        }
         public PianoKeyboardReadOnly Keyboard { get; }
-        public AbsoluteLayout Overlay { get; } = new() { ZIndex = 99, InputTransparent = true};
-
-
-        private Border[] _keyOverlays = Array.Empty<Border>();
-        private bool _syncScheduled;
+       
+       
+        private readonly PatternDrawable _patternDrawable = new();
+        private readonly GraphicsView _patternView;
+        private RectF[] _keyRects = Array.Empty<RectF>();
 
         public KeyboardOverlayHost(PianoKeyboardReadOnly keyboard)
         {
             Keyboard = keyboard;
             Children.Add(Keyboard);
-            Children.Add(Overlay);
             Keyboard.SizeChanged += (_, _) => SyncOverlay();
-        }
 
-        public void EnsureKeyOverlays()
-        {
-            if (Keyboard.KeyButtons is null || Keyboard.KeyButtons.Count == 0)
-                return;
-
-
-            if (_keyOverlays.Length == Keyboard.KeyButtons.Count)
-                return;
-
-
-            Overlay.Children.Clear();
-            _keyOverlays = new Border[Keyboard.KeyButtons.Count];
-
-
-            for (int i = 0; i < _keyOverlays.Length; i++)
+            _patternView = new GraphicsView
             {
-                _keyOverlays[i] = new Border
-                {
-                    BackgroundColor = Colors.Transparent,
-                    Stroke = Colors.Transparent,
-                    StrokeThickness = 0,
-                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
-                    InputTransparent = true
-                };
-                Overlay.Children.Add(_keyOverlays[i]);
-            }
+                Drawable = _patternDrawable,
+                InputTransparent = true,
+                ZIndex = 110
+            };
+            Children.Add(_patternView);
         }
-
-
 
         // Visual sync: paint overlays according to a bool[] state
         public void SetOverlayState(bool[] bits)
         {
-            EnsureKeyOverlays();
-            if (bits is null) return;
-
-
-            int n = Math.Min(bits.Length, _keyOverlays.Length);
-            for (int i = 0; i < n; i++)
-            {
-                if (bits[i])
-                {
-                    _keyOverlays[i].BackgroundColor = Colors.Yellow.WithAlpha(0.35f);
-                    _keyOverlays[i].Stroke = Colors.Yellow.WithAlpha(0.9f);
-                    _keyOverlays[i].StrokeThickness = 2;
-                }
-                else
-                {
-                    _keyOverlays[i].BackgroundColor = Colors.Transparent;
-                    _keyOverlays[i].Stroke = Colors.Transparent;
-                    _keyOverlays[i].StrokeThickness = 0;
-                }
-            }
+            _patternDrawable.Bits = bits ?? Array.Empty<bool>();
+            _patternDrawable.ShiftKeys = 0f;
+            _patternDrawable.CursorIndex = null;
+            _patternView.Invalidate();
         }
 
         public void SyncOverlay()
         {
-            EnsureKeyOverlays();
-            if (_keyOverlays.Length == 0) return;
 
+            int n = Keyboard.KeyButtons.Count;
+            if (_keyRects.Length != n)
+                _keyRects = new RectF[n];
 
-            for (int i = 0; i < _keyOverlays.Length; i++)
+            for (int i = 0; i < n; i++)
             {
                 var key = Keyboard.KeyButtons[i];
-
-
-                var rect = new Rect(
-                key.X,
-                key.Y,
-                key.Width,
-                key.Height);
-
-
-                AbsoluteLayout.SetLayoutBounds(_keyOverlays[i], rect);
-                AbsoluteLayout.SetLayoutFlags(_keyOverlays[i], AbsoluteLayoutFlags.None);
+                _keyRects[i] = new RectF((float)key.X, (float)key.Y, (float)key.Width, (float)key.Height);
             }
+
+            // Tell drawable the geometry
+            _patternDrawable.KeyRects = _keyRects;
+            _patternView.Invalidate();
         }
         // Animation: move a single “cursor” rect from key A to key B
         public async Task AnimateCursor(int fromIndex, int toIndex, uint ms = 250)
         {
             SyncOverlay();
 
+            _patternDrawable.CursorIndex = fromIndex;
+            _patternDrawable.CursorAlpha = 0.7f;
+            _patternView.Invalidate();
 
-            var from = AbsoluteLayout.GetLayoutBounds(_keyOverlays[fromIndex]);
-            var to = AbsoluteLayout.GetLayoutBounds(_keyOverlays[toIndex]);
+            var tcs = new TaskCompletionSource();
 
-
-            var cursor = new Border
+            new Animation(v =>
             {
-                BackgroundColor = Colors.Yellow.WithAlpha(0.7f),
-                Stroke = Colors.Yellow.WithAlpha(0.9f),
-                StrokeThickness = 2,
-                StrokeShape = new RoundRectangle { CornerRadius = 8 },
-                InputTransparent = true
-            };
+                _patternDrawable.CursorIndex = (float)(fromIndex + (toIndex - fromIndex) * v);
+                _patternView.Invalidate();
+            })
+            .Commit(this, "CursorMove", 16, ms, Easing.CubicInOut, (v, c) => tcs.SetResult());
 
+            await tcs.Task;
 
-            AbsoluteLayout.SetLayoutBounds(cursor, from);
-            Overlay.Children.Add(cursor);
-
-
-            await cursor.TranslateTo(
-            to.X - from.X,
-            to.Y - from.Y,
-            ms,
-            Easing.CubicInOut);
-
-
-            Overlay.Children.Remove(cursor);
+            _patternDrawable.CursorIndex = null;
+            _patternView.Invalidate();
         }
 
-        
+
+        public async Task AnimateShiftByK(
+    bool[] bits,
+    int k,
+    bool commit,
+    bool autoDisappear,
+    uint ms = 4000)
+        {
+            SyncOverlay();
+
+            _patternDrawable.Bits = bits;
+            _patternDrawable.ShiftKeys = 0f;
+            _patternView.Invalidate();
+
+            await RunShiftAnimation(k, ms);
+
+            if (commit)
+            {
+                var shifted = ShiftBits(bits, k);
+                SetOverlayState(shifted);
+            }
+
+            if (autoDisappear)
+            {
+                await Task.Delay(1000);
+                await FadeOutOverlay();
+            }
+        }
+
+       
+        private static bool[] ShiftBits(bool[] bits, int k)
+        {
+            int n = bits.Length;
+            var outBits = new bool[n];
+
+            for (int i = 0; i < n; i++)
+            {
+                int j = i + k;
+                if ((uint)j < (uint)n) outBits[j] = bits[i];
+            }
+            return outBits;
+        }
+
+        private Task RunShiftAnimation(int k, uint ms, string name = "ShiftBits")
+        {
+            var tcs = new TaskCompletionSource();
+
+            // (Optional) cancel any previous animation with same name
+            this.AbortAnimation(name);
+
+            new Animation(v =>
+            {
+                _patternDrawable.ShiftKeys = (float)(v * k);
+                _patternView.Invalidate();
+            })
+            .Commit(
+                owner: this,
+                name: name,
+                rate: 16,
+                length: ms,
+                easing: Easing.CubicInOut,
+                finished: (v, c) => tcs.SetResult());
+
+            return tcs.Task;
+        }
+
+        public async Task FadeInOverlay(uint ms = 150)
+        {
+            if (_patternView is null)
+                return;
+
+            _patternView.IsVisible = true;
+            _patternView.Opacity = 0;
+
+            await _patternView.FadeTo(1, ms, Easing.CubicIn);
+        }
+
+        public async Task FadeOutOverlay(uint ms = 200)
+        {
+            if (_patternView is null)
+                return;
+
+            if (!_patternView.IsVisible)
+                return;
+
+            await _patternView.FadeTo(0, ms, Easing.CubicOut);
+
+            _patternView.IsVisible = false;
+            _patternView.Opacity = 1;
+
+            ClearOverlay();
+        }
+
+        public void ClearOverlay()
+        {
+            _patternDrawable.Bits = Array.Empty<bool>();
+            _patternDrawable.ShiftKeys = 0f;
+            _patternDrawable.CursorIndex = null;
+            _patternView.Invalidate();
+        }
     }
 }
