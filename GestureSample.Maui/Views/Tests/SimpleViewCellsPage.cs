@@ -70,6 +70,9 @@ namespace GestureSample.Views.Tests
         //private  Entry txtResult;
         private PianoKeyboardReadOnly _keyboardTask1;
         private PianoKeyboardReadOnly _keyboardTask2;
+        private KeyboardOverlayHost _task1Host;
+        private KeyboardOverlayHost _task2Host;
+
         //TODO: show arrows for patterns
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
         private Button _btnNext = null;
@@ -218,6 +221,7 @@ _lblStatement.Text = text;
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
+                    _task2Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
                     if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
                     {
                         _keyboardTask2.IsVisible = true;
@@ -230,6 +234,9 @@ _lblStatement.Text = text;
                         _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
                     }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                    _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+
+                    Tutorial();
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
                 {
@@ -303,6 +310,21 @@ _lblStatement.Text = text;
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 entry.Focus();
+            });
+        }
+        void Tutorial()
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Task.WhenAll(
+                        _task1Host.AnimateCursor(0, _keyboardTask1.Length - 1, 8000),
+                        _task2Host.AnimateCursor(_keyboardTask2.Length - 1, 0 , 8000)
+                    );
+                });
             });
         }
         private static void EntryEnabled(Entry ent, bool enabled)
@@ -587,6 +609,10 @@ _lblStatement.Text = text;
                 {
                     Debug.WriteLine("Starting tutorial hand animation...");
 
+
+
+
+
                     // create the drawable
                     var hand = new HandDrawable(isLeftHand: false)
                     {
@@ -601,11 +627,13 @@ _lblStatement.Text = text;
                         Drawable = hand,
                         HorizontalOptions = LayoutOptions.Fill,
                         VerticalOptions = LayoutOptions.Fill,
-                        BackgroundColor = Colors.Red.WithAlpha(0.30f),
+                        //BackgroundColor = Colors.Red.WithAlpha(0.30f),
                         InputTransparent = true, // let touches pass through
                         // ensure it renders above other content
                         ZIndex = 100
                     };
+
+
 
                     // add overlay to grid (span all rows/columns so it floats above everything)
                                 if (!grid.Children.Contains(handGraphicsView))
@@ -737,9 +765,15 @@ _lblStatement.Text = text;
                 HorizontalOptions = LayoutOptions.Fill,
                 HeightRequest = PIANO_HEIGHT2
             };
-            vsl.Add(_keyboardTask2);
+
+            _task2Host = new KeyboardOverlayHost(_keyboardTask2);
+            _task1Host = new KeyboardOverlayHost(_keyboardTask1);
+
+
+            //vsl.Add(_keyboardTask2);
+            vsl.Add(_task2Host);
             vsl.Add(_lblAction);
-            vsl.Add(_keyboardTask1);
+            vsl.Add(_task1Host);//vsl.Add(_keyboardTask1);
             return vsl;
         }
 
