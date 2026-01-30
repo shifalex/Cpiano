@@ -422,7 +422,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-        /*
+        
     new PageConfig("One operation", "Group To Side - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Group to side",
@@ -430,12 +430,13 @@ namespace GestureSample.Views
         OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
         isOnlySequence = false,
         OnlyToTen = true,
+        IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
             KeysInRow = 6
         }
-    })),*/
+    })),
 
              new PageConfig("One operation", "Mirror - one hand", () => new SimpleViewCellsPage(new GameConfig
     {
