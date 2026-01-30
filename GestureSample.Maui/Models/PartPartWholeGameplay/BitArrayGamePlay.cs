@@ -13,7 +13,7 @@ namespace GestureSample.Maui.Models
         public int length;
 
         public Direction moveBydir = Direction.Right;
-        public int moveByLength =1;
+        public int moveByLength =0;
 
         public List<int> triads = new();
 
@@ -185,7 +185,6 @@ namespace GestureSample.Maui.Models
 
         public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
-            Console.WriteLine("Checking BitArrayGamePlay answer...");
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
             await _view.UpdateView();
@@ -343,7 +342,6 @@ namespace GestureSample.Maui.Models
                 else
                 {
                     moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
-                    Console.WriteLine("Random direction: {0}", moveBydir);
                 }
 
                 int maxLength = BitArrayQuestion.Length;
@@ -369,7 +367,6 @@ namespace GestureSample.Maui.Models
                         }
                     }
                 }
-                Console.WriteLine("Max length for move by: {0}", maxLength);
                 moveByLength = r.Next(1, maxLength + 1);
             }
 

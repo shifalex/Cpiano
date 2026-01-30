@@ -385,6 +385,7 @@ namespace GestureSample.Views
         GameName = "Copy",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.Copy },
+        IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -413,6 +414,7 @@ namespace GestureSample.Views
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         isOnlySequence = false,
+        IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
