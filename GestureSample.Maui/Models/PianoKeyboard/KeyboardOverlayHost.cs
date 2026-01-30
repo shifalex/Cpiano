@@ -21,6 +21,10 @@ namespace GestureSample.Maui.Models
             // Animation shift (in keys)
             public float ShiftKeys { get; set; } = 0f;
 
+            public int[] DestIndex { get; set; } = Array.Empty<int>(); // per source index
+            public float MapT { get; set; } = 0f;                      // 0..1 animation progress
+            public bool UseDistanceBasedSpeed { get; set; } = true;
+
             // Optional cursor: draw one rect at a fractional index (e.g., 3.2)
             public float? CursorIndex { get; set; } = null;
             public float CursorAlpha { get; set; } = 0.7f;
@@ -50,10 +54,38 @@ namespace GestureSample.Maui.Models
                 {
                     if (!Bits[i]) continue;
 
-                    RectF r = RectForFractionalIndex(i + ShiftKeys);
+                    RectF r = KeyRects[i];
+
+                    if (DestIndex.Length == KeyRects.Length && MapT > 0f)
+                    {
+                        int dest = DestIndex[i];
+                        if ((uint)dest < (uint)KeyRects.Length && dest != i)
+                        {
+                            int dist = Math.Abs(dest - i);
+                            float tt = UseDistanceBasedSpeed ? EaseByDistance(MapT, dist) : MapT;
+                            r = LerpRect(KeyRects[i], KeyRects[dest], tt);
+                        }
+                    }
+                    else if (ShiftKeys != 0f)
+                    {
+                        r = RectForFractionalIndex(i + ShiftKeys);
+                    }
                     canvas.FillRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
                     canvas.DrawRoundedRectangle(r.X, r.Y, r.Width, r.Height, Radius);
                 }
+            }
+
+            static float EaseByDistance(float t, int dist)
+            {
+                // dist=0 -> no movement
+                if (dist <= 0) return 1f;
+
+                // bigger dist -> smaller exponent -> moves faster early
+                // tweak these numbers to taste
+                float exponent = 1.8f - MathF.Min(1.2f, 0.15f * dist);  // e.g. dist 1=>1.65, dist 8=>0.6
+                exponent = MathF.Max(0.35f, exponent);
+
+                return MathF.Pow(t, exponent);
             }
 
             void DrawCursor(ICanvas canvas)
@@ -166,75 +198,141 @@ namespace GestureSample.Maui.Models
             _patternView.Invalidate();
         }
 
-
-        public async Task AnimateShiftByK(
-    bool[] bits,
-    int k,
-    bool commit,
-    bool autoDisappear,
-    uint ms = 4000)
+        public async Task Animate(bool[] bits, Operation op, int k,  uint ms = 450, bool commit = false, bool autoDisappear = true)
         {
             SyncOverlay();
-            Console.WriteLine($"AnimateShiftByK");
+
+            if (op is Operation.Copy) k = 0;
+            
+            bits ??= Array.Empty<bool>();
             _patternDrawable.Bits = bits;
             _patternDrawable.ShiftKeys = 0f;
-            Debug.Assert(_patternDrawable.Bits.Length == bits.Length);
+            _patternDrawable.CursorIndex = null;
+
+            _patternDrawable.DestIndex = op switch
+            {
+                Operation.SequenceLTR => BuildDestPackRight(bits),
+                Operation.SequenceRTL => BuildDestPackLeft(bits),
+                Operation.Split => BuildDestSplitToSidesFromCenter(bits),
+                Operation.MoveBy or Operation.Copy => BuildDestShift(bits, k),
+                _ => Array.Empty<int>()
+            };
+
+            if (_patternDrawable.DestIndex.Length == 0)
+                return;
+
+            _patternDrawable.MapT = 0f;
+            _patternDrawable.UseDistanceBasedSpeed = true;
+
+            _patternView.IsVisible = true;
+            _patternView.Opacity = 1;
             _patternView.Invalidate();
 
-            Console.WriteLine("Starting shift animation...");
-            await RunShiftAnimation(k, ms);
-            Console.WriteLine("Shift animation completed.");
+            await RunMapAnimation(ms);
+
             if (commit)
             {
-                Console.WriteLine("Committing shifted state...");
-                var shifted = ShiftBits(bits, k);
-                SetOverlayState(shifted);
+                bool[] moved = ApplyDest(bits, _patternDrawable.DestIndex);
+                SetOverlayState(moved);
             }
+
+            // cleanup mapping state (overlay may remain showing committed bits)
+            _patternDrawable.MapT = 0f;
+            _patternDrawable.DestIndex = Array.Empty<int>();
+            _patternView.Invalidate();
 
             if (autoDisappear)
             {
-                Console.WriteLine("Fading out overlay...");
                 await Task.Delay(1000);
                 await FadeOutOverlay();
             }
         }
 
-       
-        private static bool[] ShiftBits(bool[] bits, int k)
+        private Task RunMapAnimation(uint ms, string name = "MapAnim")
+        {
+            var tcs = new TaskCompletionSource();
+            this.AbortAnimation(name);
+
+            new Animation(v =>
+            {
+                _patternDrawable.MapT = (float)v;
+                _patternView.Invalidate();
+            })
+            .Commit(this, name, 16, ms, Easing.CubicInOut, (v, c) => tcs.SetResult());
+
+            return tcs.Task;
+        }
+
+        static bool[] ApplyDest(bool[] bits, int[] dest)
         {
             int n = bits.Length;
             var outBits = new bool[n];
 
-            for (int i = 0; i < n; i++)
+            for (int i = 0; i < n && i < dest.Length; i++)
             {
-                int j = i + k;
-                if ((uint)j < (uint)n) outBits[j] = bits[i];
+                if (!bits[i]) continue;
+                int d = dest[i];
+                if ((uint)d < (uint)n) outBits[d] = true;
             }
             return outBits;
         }
 
-        private Task RunShiftAnimation(int k, uint ms, string name = "ShiftBits")
+
+        private static int[] BuildDestShift(bool[] bits, int k)
         {
-            var tcs = new TaskCompletionSource();
+            int n = bits.Length;
 
-            // (Optional) cancel any previous animation with same name
-            //this.AbortAnimation(name);
+            int[] dest = new int[n];
 
-            new Animation(v =>
+            int write = 0;
+
+            for (int i = 0; i < n; i++)
             {
-                Console.WriteLine($"Animation progress: {v}");
-                _patternDrawable.ShiftKeys = (float)(v * k);
-                _patternView.Invalidate();
-            })
-            .Commit(
-                owner: this,
-                name: name,
-                rate: 16,
-                length: ms,
-                easing: Easing.CubicInOut,
-                finished: (v, c) => tcs.SetResult());
+                if (bits[i]) dest[i] = i+k;
+                else dest[i] = i;
+            }
+            return dest;
+        }
 
-            return tcs.Task;
+        static int[] BuildDestPackLeft(bool[] bits)
+        {
+            int n = bits.Length;
+            int[] dest = new int[n];
+
+            int write = 0;
+            for (int i = 0; i < n; i++)
+            {
+                if (bits[i]) dest[i] = write++;
+                else dest[i] = i;
+            }
+            return dest;
+        }
+
+        static int[] BuildDestPackRight(bool[] bits)
+        {
+            int n = bits.Length;
+            int[] dest = new int[n];
+
+            int count = bits.Count(b => b);
+            int write = n - count;
+
+            for (int i = 0; i < n; i++)
+            {
+                if (bits[i]) dest[i] = write++;
+                else dest[i] = i;
+            }
+            return dest;
+        }
+
+        static int[] BuildDestSplitToSidesFromCenter(bool[] bits)
+        {
+            int half = bits.Length/2;
+            int[] destR = BuildDestPackRight(bits[half..]);
+            for(int i = 0; i < destR.Length; i++)
+            {
+                destR[i] += half;
+            }
+            return BuildDestPackLeft(bits[0..half]).Concat(destR).ToArray();
         }
 
         public async Task FadeInOverlay(uint ms = 150)
@@ -247,6 +345,9 @@ namespace GestureSample.Maui.Models
 
             await _patternView.FadeTo(1, ms, Easing.CubicIn);
         }
+
+
+
 
         public async Task FadeOutOverlay(uint ms = 200)
         {
