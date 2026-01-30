@@ -236,9 +236,11 @@ _lblStatement.Text = text;
                     }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                     _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                    if(_taskMainHost!=null)
+                    if (_taskMainHost != null && _config.IncludeTutorials)
+                    {
                         _taskMainHost.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                         Tutorial(_taskMainHost);
+                    }
                     
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -319,15 +321,19 @@ _lblStatement.Text = text;
         {
             _ = Task.Run(async () =>
             {
-                await Task.Delay(1000);
+                await Task.Delay(1000);/*
+                System.Diagnostics.Debug.WriteLine($"_task1Host null? {_task1Host is null}");
+                System.Diagnostics.Debug.WriteLine($"_task1Host.Keyboard null? {_task1Host?.Keyboard is null}");
+                System.Diagnostics.Debug.WriteLine($"KeyButtons count: {_task1Host?.Keyboard?.KeyButtons?.Count}");
 
+                System.Diagnostics.Debug.WriteLine($"_task1Host null? {_taskMainHost is null}");
+                System.Diagnostics.Debug.WriteLine($"_task1Host.Keyboard null? {_taskMainHost?.Keyboard is null}");
+                System.Diagnostics.Debug.WriteLine($"_gamePlay type: {_gamePlay?.GetType().Name}");*/
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Task.WhenAll(
 
-                koh.AnimateShiftByK(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, ((BitArrayGamePlay)_gamePlay).moveBydir == Direction.Right
-    ? ((BitArrayGamePlay)_gamePlay).moveByLength
-    : -((BitArrayGamePlay)_gamePlay).moveByLength, commit: false, autoDisappear: true, 4000)
+                koh.AnimateShiftByK(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1), false, false, 4000)
                     //_task1Host.AnimateCursor(0, _keyboardTask1.Length - 1, 8000),
                     //  _task2Host.AnimateCursor(_keyboardTask2.Length - 1, 0 , 8000)
                     );

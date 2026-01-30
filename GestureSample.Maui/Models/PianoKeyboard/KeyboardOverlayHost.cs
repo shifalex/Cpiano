@@ -2,6 +2,7 @@
 using Microsoft.Maui.Layouts;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -126,7 +127,6 @@ namespace GestureSample.Maui.Models
 
         public void SyncOverlay()
         {
-
             int n = Keyboard.KeyButtons.Count;
             if (_keyRects.Length != n)
                 _keyRects = new RectF[n];
@@ -140,6 +140,7 @@ namespace GestureSample.Maui.Models
             // Tell drawable the geometry
             _patternDrawable.KeyRects = _keyRects;
             _patternView.Invalidate();
+            Console.WriteLine("Overlay synced.");
         }
         // Animation: move a single “cursor” rect from key A to key B
         public async Task AnimateCursor(int fromIndex, int toIndex, uint ms = 250)
@@ -174,21 +175,25 @@ namespace GestureSample.Maui.Models
     uint ms = 4000)
         {
             SyncOverlay();
-
+            Console.WriteLine($"AnimateShiftByK");
             _patternDrawable.Bits = bits;
             _patternDrawable.ShiftKeys = 0f;
+            Debug.Assert(_patternDrawable.Bits.Length == bits.Length);
             _patternView.Invalidate();
 
+            Console.WriteLine("Starting shift animation...");
             await RunShiftAnimation(k, ms);
-
+            Console.WriteLine("Shift animation completed.");
             if (commit)
             {
+                Console.WriteLine("Committing shifted state...");
                 var shifted = ShiftBits(bits, k);
                 SetOverlayState(shifted);
             }
 
             if (autoDisappear)
             {
+                Console.WriteLine("Fading out overlay...");
                 await Task.Delay(1000);
                 await FadeOutOverlay();
             }
@@ -213,10 +218,11 @@ namespace GestureSample.Maui.Models
             var tcs = new TaskCompletionSource();
 
             // (Optional) cancel any previous animation with same name
-            this.AbortAnimation(name);
+            //this.AbortAnimation(name);
 
             new Animation(v =>
             {
+                Console.WriteLine($"Animation progress: {v}");
                 _patternDrawable.ShiftKeys = (float)(v * k);
                 _patternView.Invalidate();
             })
