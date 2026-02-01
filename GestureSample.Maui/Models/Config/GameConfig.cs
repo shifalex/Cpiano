@@ -82,7 +82,57 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         PartialScreenCovering
     }
 
+    public enum PlanStepKind
+    {
+        NewQuestion,     // generate a fresh question
+        RepeatQuestion,  // reuse previous question as-is
+        UsePrevAnswer    // take previous answer and make it the new question (BitArray Not-Not)
+    }
 
+    public enum PlanOpMode
+    {
+        Keep,                 // don't change CurrentOperation
+        Fixed,                // set to Step.Operation
+        RandomFromConfigList  // random from Config.OperationList
+    }
+
+    public enum PermutationPolicy
+    {
+        None,
+        ConstantForChain,
+        RandomEachStep,
+        RandomAfterFirst
+    }
+
+    public sealed class ExercisePlanStep
+    {
+        public PlanStepKind Kind { get; init; } = PlanStepKind.NewQuestion;
+
+        // how many times to do this step before moving on
+        public int Repeat { get; init; } = 1;
+
+        // operation selection for this step
+        public PlanOpMode OpMode { get; init; } = PlanOpMode.RandomFromConfigList;
+        public Operation Operation { get; init; } = Operation.Sum;
+
+        // BitArray-specific extras (safe to keep for PPW too)
+        public PermutationPolicy PermutationPolicy { get; init; } = PermutationPolicy.None;
+
+        // if true, BitArray builds Question2 as a permuted version of Question1 (Or/And/Xor style)
+        public bool UseSecondOperandFromPermutation { get; init; } = false;
+    }
+
+    public sealed class ExercisePlan
+    {
+        // if null -> old behavior (no plan)
+        public List<ExercisePlanStep> Steps { get; init; } = new();
+
+        // if true, after plan ends: loop back to beginning
+        public bool Loop { get; init; } = true;
+
+        // deterministic chains (optional)
+        public int? Seed { get; init; } = null;
+    }
 
     public enum Operation
     {
@@ -163,6 +213,9 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
             public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
             public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.SUMM };
         }
+
+        public ExercisePlan? Plan { get; set; } = null;
+
 
         public string GameName = "";
         // Properties with default values

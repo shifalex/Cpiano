@@ -697,6 +697,7 @@ _lblStatement.Text = text;
                 }
                 if (_config.IncludeTutorials)
                 {
+
                     _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
                     grid.Add(_taskMainHost);
                     Grid.SetRow(_taskMainHost, 2);
