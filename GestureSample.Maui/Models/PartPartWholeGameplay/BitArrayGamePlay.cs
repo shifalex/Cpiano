@@ -258,109 +258,133 @@ namespace GestureSample.Maui.Models
             Random r = new();
 
             ExercisePlanStep? step = AcquirePlanStep();
+
+            // 1) Resolve operation
+            ResolveOperation(r, step);
+
+            // 2) Resolve question source
+            ResolveQuestionSource(r, step);
+
+            // 3) Apply step extras (permutation-based operand2, etc.)
+            //ApplyBitArrayStepExtrasIfNeeded(step);
+
+            // 4) Persist + snapshot + UI
+            SaveQuestionToDb();
+            SnapshotPrev();
+            _view.UpdateView(true);
+
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";
+                _view.AddToLblAction(" " + strDir + " BY " + moveByLength.ToString());
+            }
+        }
+
+        private void ResolveOperation(Random r, ExercisePlanStep? step)
+        {
+            // Preserve your rule: Arrow keyboard always uses Copy
+            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            {
+                CurrentOperation = Operation.Copy;
+                return;
+            }
+
             if (step != null)
             {
-                ApplyOpMode(step);
+                ApplyOpMode(step); // plan decides op (Fixed/Keep/RandomFromConfigList)
+                return;
+            }
 
+            // legacy behavior
+            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+        }
+
+        private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
+        {
+            if (step != null)
+            {
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevBitArrayQuestion != null)
                 {
                     BitArrayQuestion = _prevBitArrayQuestion.ToArray();
                     BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
-                    // BitArrayQuestion2 depends on step flags (below)
+                    BuildCorrectAnswer(); // ensure answer matches reused question
+                    return;
                 }
-                else if (step.Kind == PlanStepKind.UsePrevAnswer && _prevBitArrayAnswer != null)
+
+                if (step.Kind == PlanStepKind.UsePrevAnswer && _prevBitArrayAnswer != null)
                 {
                     BitArrayQuestion = _prevBitArrayAnswer.ToArray();
                     BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
-
-                }
-                else
-                {
-
-                    CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
-
-                    if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
-                    {
-                        CurrentOperation = Operation.Copy;
-                        GenerateArrowExercise();
-                        BuildCorrectAnswer();
-                    }
-                    else
-                    {
-                        GenerateNonArrowExercise(r);
-
-                        //TODO: check if can use outside the else
-                        BuildCorrectAnswer();
-
-                        while (IsResultAllZeros() ||
-                            (CurrentOperation == Operation.SUMM &&
-                            SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
-                        {
-                            // regenerate whole exercise if invalid - preserve original behavior
-                            GenerateNonArrowExercise(r);
-                        }
-                    }
-
+                    BuildCorrectAnswer();
+                    return;
                 }
             }
-            else
+
+            // Otherwise: NewQuestion (plan) OR legacy mode
+            GenerateNewQuestion(r);
+        }
+
+        private void GenerateNewQuestion(Random r)
+        {
+            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
-                CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
-
-                if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
-                {
-                    CurrentOperation = Operation.Copy;
-                    GenerateArrowExercise();
-                    BuildCorrectAnswer();
-                }
-                else
-                {
-                    GenerateNonArrowExercise(r);
-
-                    //TODO: check if can use outside the else
-                    BuildCorrectAnswer();
-
-                    while (IsResultAllZeros() ||
-                        (CurrentOperation == Operation.SUMM &&
-                        SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
-                    {
-                        // regenerate whole exercise if invalid - preserve original behavior
-                        GenerateNonArrowExercise(r);
-                    }
-                }
-
+                GenerateArrowExercise();
+                BuildCorrectAnswer();
+                return;
             }
-            /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
-            Before:
-                        Data.KeyboardQuestion s = new()
-            After:
-                        KeyboardQuestion s = new()
-            */
-            Data.SQLite.KeyboardQuestion s = new()
-                {
 
-                    GameId = this.GameId.ToString(),
-                    QuestionNumber = _questionNumber,
-                    Time = DateTime.Now,
-                    keyboard1 = BitArrayQuestion,
-                    keyboard2 = BitArrayQuestion2
-                };
+            // non-arrow: keep your validity constraints
+            do
+            {
+                GenerateNonArrowExercise(r);
+                BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
+            }
+            while (IsResultAllZeros() ||
+                  (CurrentOperation == Operation.SUMM &&
+                   SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length));
+        }
+
+        /*private void ApplyBitArrayStepExtrasIfNeeded(ExercisePlanStep? step)
+        {
+            if (step == null) return;
+
+            // If you want permutation-based operand2 to be enforced by plan,
+            // do it here so it applies to repeat steps too.
+            if (!step.UseSecondOperandFromPermutation) return;
+
+            // If you have special cases (e.g. arrow keyboard), you can early-return here.
+            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow) return;
+
+            // Build operand2 from permutation policy (you likely already have / will add a helper).
+            BitArrayQuestion2 = BuildPermutedOperand(BitArrayQuestion, step.PermutationPolicy);
+
+            BuildCorrectAnswer();
+        }*/
+
+        private void SaveQuestionToDb()
+        {
+            Data.SQLite.KeyboardQuestion s = new()
+            {
+                GameId = this.GameId.ToString(),
+                QuestionNumber = _questionNumber,
+                Time = DateTime.Now,
+                keyboard1 = BitArrayQuestion,
+                keyboard2 = BitArrayQuestion2
+            };
+
             if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
                 s.aboveNumber = aboveNumber;
                 s.length = length;
             }
-            _keyboardQuestionRepository.SaveAsync(s);
 
+            _keyboardQuestionRepository.SaveAsync(s);
+        }
+
+        private void SnapshotPrev()
+        {
             _prevBitArrayQuestion = BitArrayQuestion.ToArray();
             _prevBitArrayQuestion2 = BitArrayQuestion2?.ToArray();
-            _view.UpdateView(true);
-            if (CurrentOperation == Operation.MoveBy)
-            {
-                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";   
-                _view.AddToLblAction(" " + strDir + " BY " + moveByLength.ToString());
-            }
-
         }
 
         private void GenerateNonArrowExercise(Random r)

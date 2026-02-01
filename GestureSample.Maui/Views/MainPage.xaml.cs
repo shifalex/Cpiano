@@ -555,7 +555,7 @@ namespace GestureSample.Views
     Steps = new()
     {
         new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Copy, OpMode = PlanOpMode.Fixed },
-        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
     },
     Loop = true
         },
@@ -574,6 +574,15 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             KeysInRow = 6
+        },
+         Plan = new ExercisePlan
+{
+    Steps = new()
+    {
+        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+    },
+    Loop = true
         }
     })),
 
