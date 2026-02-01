@@ -273,5 +273,7 @@
         public bool IsVoice { get; set; } = false;
         public bool IsVoices { get; set; } = false;
 
+        public bool IsHelpNeeded { get; set; } = false;
+
     }
 }

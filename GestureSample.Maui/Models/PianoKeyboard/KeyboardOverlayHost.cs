@@ -172,7 +172,6 @@ namespace GestureSample.Maui.Models
             // Tell drawable the geometry
             _patternDrawable.KeyRects = _keyRects;
             _patternView.Invalidate();
-            Console.WriteLine("Overlay synced.");
         }
         // Animation: move a single “cursor” rect from key A to key B
         public async Task AnimateCursor(int fromIndex, int toIndex, uint ms = 250)

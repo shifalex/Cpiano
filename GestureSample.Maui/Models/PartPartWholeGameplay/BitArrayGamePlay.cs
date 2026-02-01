@@ -1,6 +1,5 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
-using System.Diagnostics;
 
 namespace GestureSample.Maui.Models
 {
@@ -155,6 +154,13 @@ namespace GestureSample.Maui.Models
         public bool[] BitArrayQuestion { get; set; }
         public bool[] BitArrayQuestion2 { get; set; }
         private bool[] BitArrayCorrectAnswer { get; set; }
+
+        private bool[]? _prevBitArrayQuestion;
+        private bool[]? _prevBitArrayQuestion2;
+        private bool[]? _prevBitArrayAnswer;
+
+        // plan permutation stable seed
+        private int _chainSeed;
         public UIQuestionType ArrayQuestionType { get; set; }
 
         private Direction? whichHand;
@@ -181,12 +187,18 @@ namespace GestureSample.Maui.Models
             BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
             BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _chainSeed = Config?.Plan?.Seed ?? Environment.TickCount;
+
         }
 
         public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
+            if(result)
+                _prevBitArrayAnswer = pianoKeyboard.ToBitArray().ToArray();
+
+
             await _view.UpdateView();
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
             return result;
@@ -244,30 +256,80 @@ namespace GestureSample.Maui.Models
         public override void GenerateExercise()
         {
             Random r = new();
-            CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            ExercisePlanStep? step = AcquirePlanStep();
+            if (step != null)
             {
-                CurrentOperation = Operation.Copy;
-                GenerateArrowExercise();
-                BuildCorrectAnswer();
+                ApplyOpMode(step);
+
+                if (step.Kind == PlanStepKind.RepeatQuestion && _prevBitArrayQuestion != null)
+                {
+                    BitArrayQuestion = _prevBitArrayQuestion.ToArray();
+                    BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
+                    // BitArrayQuestion2 depends on step flags (below)
+                }
+                else if (step.Kind == PlanStepKind.UsePrevAnswer && _prevBitArrayAnswer != null)
+                {
+                    BitArrayQuestion = _prevBitArrayAnswer.ToArray();
+                    BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
+
+                }
+                else
+                {
+
+                    CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+
+                    if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+                    {
+                        CurrentOperation = Operation.Copy;
+                        GenerateArrowExercise();
+                        BuildCorrectAnswer();
+                    }
+                    else
+                    {
+                        GenerateNonArrowExercise(r);
+
+                        //TODO: check if can use outside the else
+                        BuildCorrectAnswer();
+
+                        while (IsResultAllZeros() ||
+                            (CurrentOperation == Operation.SUMM &&
+                            SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
+                        {
+                            // regenerate whole exercise if invalid - preserve original behavior
+                            GenerateNonArrowExercise(r);
+                        }
+                    }
+
+                }
             }
             else
             {
-                GenerateNonArrowExercise(r);
+                CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
-                //TODO: check if can use outside the else
-                BuildCorrectAnswer();
-
-                while (IsResultAllZeros() ||
-                    (CurrentOperation == Operation.SUMM &&
-                    SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
+                if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
                 {
-                    // regenerate whole exercise if invalid - preserve original behavior
-                    GenerateNonArrowExercise(r);
+                    CurrentOperation = Operation.Copy;
+                    GenerateArrowExercise();
+                    BuildCorrectAnswer();
                 }
-            }
+                else
+                {
+                    GenerateNonArrowExercise(r);
 
+                    //TODO: check if can use outside the else
+                    BuildCorrectAnswer();
+
+                    while (IsResultAllZeros() ||
+                        (CurrentOperation == Operation.SUMM &&
+                        SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length))
+                    {
+                        // regenerate whole exercise if invalid - preserve original behavior
+                        GenerateNonArrowExercise(r);
+                    }
+                }
+
+            }
             /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
             Before:
                         Data.KeyboardQuestion s = new()
@@ -275,14 +337,14 @@ namespace GestureSample.Maui.Models
                         KeyboardQuestion s = new()
             */
             Data.SQLite.KeyboardQuestion s = new()
-            {
+                {
 
-                GameId = this.GameId.ToString(),
-                QuestionNumber = _questionNumber,
-                Time = DateTime.Now,
-                keyboard1 = BitArrayQuestion,
-                keyboard2 = BitArrayQuestion2
-            };
+                    GameId = this.GameId.ToString(),
+                    QuestionNumber = _questionNumber,
+                    Time = DateTime.Now,
+                    keyboard1 = BitArrayQuestion,
+                    keyboard2 = BitArrayQuestion2
+                };
             if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
                 s.aboveNumber = aboveNumber;
@@ -290,11 +352,13 @@ namespace GestureSample.Maui.Models
             }
             _keyboardQuestionRepository.SaveAsync(s);
 
-
+            _prevBitArrayQuestion = BitArrayQuestion.ToArray();
+            _prevBitArrayQuestion2 = BitArrayQuestion2?.ToArray();
             _view.UpdateView(true);
             if (CurrentOperation == Operation.MoveBy)
             {
-                _view.AddToLblAction(" " + moveBydir.ToString() + " BY " + moveByLength.ToString());
+                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";   
+                _view.AddToLblAction(" " + strDir + " BY " + moveByLength.ToString());
             }
 
         }

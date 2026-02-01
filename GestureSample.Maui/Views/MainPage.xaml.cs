@@ -365,7 +365,7 @@ namespace GestureSample.Views
 
 
             new PageConfig("&& ||", "One operation", null),
-            new PageConfig("One operation", "Copy - One hand", () => new SimpleViewCellsPage(new GameConfig
+            new PageConfig("One operation", "Copy - One hand - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Copy -one hand",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -380,7 +380,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Copy", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Copy - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Copy",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -392,7 +392,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-    new PageConfig("One operation", "Shift by - One hand", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("One operation", "Shift by - One hand - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Shift by - One hand",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -407,7 +407,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Shift by", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Shift by - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Shift by",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -437,6 +437,74 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
+    new PageConfig("One operation", "Copy - One hand", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Copy -one hand",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.Copy },
+        OnlyToTen = true,
+        IsOnlyOneHand = true,
+
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Copy", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Copy",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.Copy },
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+    new PageConfig("One operation", "Shift by - One hand", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by - One hand",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        IsOnlyOneHand = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Shift by", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        isOnlySequence = false,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+
+    new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group to side",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
+        isOnlySequence = false,
+        OnlyToTen = true,
+        IncludeTutorials = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
 
              new PageConfig("One operation", "Mirror - one hand", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -448,7 +516,8 @@ namespace GestureSample.Views
         IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
 
@@ -460,7 +529,8 @@ namespace GestureSample.Views
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
              new PageConfig("One operation", "Not", () => new SimpleViewCellsPage(new GameConfig
@@ -471,9 +541,42 @@ namespace GestureSample.Views
         IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
+             new PageConfig("One operation", "Copy-Not", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Copy-Not",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Copy, Operation.Not },
+        Plan = new ExercisePlan
+{
+    Steps = new()
+    {
+        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Copy, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+    },
+    Loop = true
+        },
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Not-Not", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Not-Not",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Not },
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+
             new PageConfig("One operation", "And", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "And",
@@ -483,7 +586,8 @@ namespace GestureSample.Views
         IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
              new PageConfig("One operation", "Or", () => new SimpleViewCellsPage(new GameConfig
@@ -494,7 +598,8 @@ namespace GestureSample.Views
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
               new PageConfig("One operation", "Sum", () => new SimpleViewCellsPage(new GameConfig
@@ -505,7 +610,8 @@ namespace GestureSample.Views
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
              new PageConfig("One operation", "Neutralise", () => new SimpleViewCellsPage(new GameConfig
@@ -516,7 +622,32 @@ namespace GestureSample.Views
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Or-And-Neutralise", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Or-And-Neutralise",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.Neutralise },
+        OnlyToTen = true,
+        Plan = new ExercisePlan
+{
+    Seed = 123, // optional
+    Steps = new()
+    {
+        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Neutralise, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
+    },
+    Loop = true
+},
+
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
         }
     })),
 
