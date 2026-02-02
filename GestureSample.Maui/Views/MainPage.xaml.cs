@@ -483,6 +483,7 @@ namespace GestureSample.Views
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         isOnlySequence = false,
+        OnlyResultMoreThanOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -499,6 +500,7 @@ namespace GestureSample.Views
         isOnlySequence = false,
         OnlyToTen = true,
         IncludeTutorials = true,
+        OnlyResultMoreThanOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -514,6 +516,7 @@ namespace GestureSample.Views
         OnlyToTen = true,
         IsOnlyOneHand = true,
         IncludeTutorials = true,
+        OnlyResultMoreThanOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -549,6 +552,7 @@ namespace GestureSample.Views
     {
         GameName = "Copy-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
+        IncludeTutorials = true,
         OperationList = new() { Operation.Copy, Operation.Not },
         Plan = new ExercisePlan
 {
@@ -570,6 +574,7 @@ namespace GestureSample.Views
         GameName = "Not-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
+        IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -641,6 +646,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList =new()  {Operation.Neutralise },
         OnlyToTen = true,
+        OnlyStrangeGroups = true,
         Plan = new ExercisePlan
 {
     Seed = 123, // optional

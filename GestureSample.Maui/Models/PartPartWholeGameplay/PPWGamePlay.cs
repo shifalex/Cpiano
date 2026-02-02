@@ -319,93 +319,118 @@ namespace GestureSample.Maui.Models
         {
             Random r = new();
 
-
             ExercisePlanStep? step = AcquirePlanStep();
+
+            ResolveOperation(r, step);
+            ResolveQuestionSource(r, step);
+
+            // runtime bookkeeping (same as your current pattern)
+            _status = Statement.Neutral;
+            _guessNumber = 0;
+            _questionNumber++;
+
+            SaveState();
+            _view.UpdateView(true);
+        }
+
+        private void ResolveOperation(Random r, ExercisePlanStep? step)
+        {
             if (step != null)
             {
+                // Plan decides op (Fixed/Keep/RandomFromConfigList)
                 ApplyOpMode(step);
+                return;
+            }
 
+            // Legacy behavior: keep your triad logic
+            if (_currentTriadIndex == 0 || _currentTriadIndex >= Config.RepeatingTimesOfTriad - 1)
+            {
+                CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+            }
+        }
+
+        private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
+        {
+            if (step != null)
+            {
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevPPWQuestion.HasValue)
                 {
-                    var q = _prevPPWQuestion.Value;
-                    addend1 = q.a1; addend2 = q.a2; Sum = q.s;
-                    CurrentOperation = q.op;
-                    Config.VariableTypes = q.vt; // only if you want repeats to preserve hidden-variable pattern
+                    RestorePrevPPWQuestion();
+                    return;
                 }
-                else
-                {
-                    if (_currentTriadIndex == 0 || _currentTriadIndex >= Config.RepeatingTimesOfTriad - 1)
-                        CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
 
-                    int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? FactorsMultiplication : Factors;
-                    //TODO: Make a list for multiplication triads
-                    //else if (Config.OnlyThrougTen)
-                    //    factors = FactorsThroughTen;
+                // NewQuestion (or Repeat requested but no prev yet)
+                GenerateNewPPWQuestion(r);
 
-                    Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0], CurrentOperation.ToDString(), factors[1], factors[2]);
-                    int n = (Config.VariableTypes == VariableTypes.OneCanBeSum /*|| Config.VariableTypes == VariableTypes.TwoAny*/) ? r.Next(3) : r.Next(2);
-                    switch (Config.VariableTypes)
-                    {
-                        case VariableTypes.OneCanBeSum:
-                        case VariableTypes.OneNoSum:
-                            factors[n] = NAN; break;
-                        case VariableTypes.SumOnly:
-                            factors[2] = NAN; break;
-                        case VariableTypes.TwoNoSum:
-                            factors[0] = NAN; factors[1] = NAN; break;
-                        //case VariableTypes.TwoAny:
-                        default:
-                            for (int i = 0; i < 3; i++)
-                                if (i != n) factors[i] = NAN;
-                            break;
-                    }
-
-                    addend1 = factors[0];
-                    addend2 = factors[1];
-                    Sum = factors[2];
-                }
+                SnapshotPrevPPWQuestion();
+                return;
             }
-            else
+
+            // Legacy mode: your existing generation logic
+            GenerateNewPPWQuestion(r);
+
+            // your existing triad bookkeeping likely happens elsewhere;
+            // if you handle it here, keep it:
+            _currentTriadIndex = (_currentTriadIndex + 1) % Config.RepeatingTimesOfTriad;
+
+            SnapshotPrevPPWQuestion();
+        }
+
+        private void GenerateNewPPWQuestion(Random r)
+        {
+            // pick factor set depending on operation
+            int[] factors =
+                (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
+                    ? FactorsMultiplication
+                    : Factors;
+
+            // Decide which value becomes NAN based on Config.VariableTypes
+            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
+
+            switch (Config.VariableTypes)
             {
-                if (_currentTriadIndex == 0 || _currentTriadIndex >= Config.RepeatingTimesOfTriad - 1)
-                    CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+                case VariableTypes.OneCanBeSum:
+                case VariableTypes.OneNoSum:
+                    factors[n] = NAN;
+                    break;
 
-                int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? FactorsMultiplication : Factors;
-                //TODO: Make a list for multiplication triads
-                //else if (Config.OnlyThrougTen)
-                //    factors = FactorsThroughTen;
+                case VariableTypes.SumOnly:
+                    factors[2] = NAN;
+                    break;
 
-                Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0], CurrentOperation.ToDString(), factors[1], factors[2]);
-                int n = (Config.VariableTypes == VariableTypes.OneCanBeSum /*|| Config.VariableTypes == VariableTypes.TwoAny*/) ? r.Next(3) : r.Next(2);
-                switch (Config.VariableTypes)
-                {
-                    case VariableTypes.OneCanBeSum:
-                    case VariableTypes.OneNoSum:
-                        factors[n] = NAN; break;
-                    case VariableTypes.SumOnly:
-                        factors[2] = NAN; break;
-                    case VariableTypes.TwoNoSum:
-                        factors[0] = NAN; factors[1] = NAN; break;
-                    //case VariableTypes.TwoAny:
-                    default:
-                        for (int i = 0; i < 3; i++)
-                            if (i != n) factors[i] = NAN;
-                        break;
-                }
+                case VariableTypes.TwoNoSum:
+                    factors[0] = NAN;
+                    factors[1] = NAN;
+                    break;
 
-                addend1 = factors[0];
-                addend2 = factors[1];
-                Sum = factors[2];
+                default:
+                    for (int i = 0; i < 3; i++)
+                        if (i != n) factors[i] = NAN;
+                    break;
             }
-                _status = Statement.Neutral;
-            _guessNumber = 0;//???
-            _questionNumber++;
-            SaveState();
 
+            addend1 = factors[0];
+            addend2 = factors[1];
+            Sum = factors[2];
+        }
+
+        private void RestorePrevPPWQuestion()
+        {
+            var q = _prevPPWQuestion.Value;
+
+            addend1 = q.a1;
+            addend2 = q.a2;
+            Sum = q.s;
+
+            CurrentOperation = q.op;
+
+            // Optional: if you want repeats to preserve which-variable-hidden mode:
+            // Config.VariableTypes = q.vt;
+        }
+
+        private void SnapshotPrevPPWQuestion()
+        {
             _prevPPWQuestion = (addend1, addend2, Sum, CurrentOperation, Config.VariableTypes);
-            _view.UpdateView(true);
-
-
         }
 
         protected virtual int[] Factors
