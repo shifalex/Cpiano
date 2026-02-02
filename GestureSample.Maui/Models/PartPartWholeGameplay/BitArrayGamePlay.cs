@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
+using MongoDB.Driver.Core.Operations;
 
 namespace GestureSample.Maui.Models
 {
@@ -209,8 +210,8 @@ namespace GestureSample.Maui.Models
            return CurrentOperation switch
             {
 
-                Operation.Quantity => this.QuantityEquals(bitArrayAnswer),
-                Operation.SUMM => this.SumEquals(bitArrayAnswer),
+                Operation.Quantity => SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer),
+                Operation.SUMM => SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) == SumArray(bitArrayAnswer),
                 _ =>ArraysEqual(bitArrayAnswer, BitArrayCorrectAnswer)
             };
         }
@@ -334,14 +335,33 @@ namespace GestureSample.Maui.Models
             }
 
             // non-arrow: keep your validity constraints
+            int quantity;
             do
             {
                 GenerateNonArrowExercise(r);
                 BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
+                quantity = SumArray(BitArrayCorrectAnswer);
+                 
             }
-            while (IsResultAllZeros() ||
+            while (quantity == 0 ||
+                  (quantity == 1 && Config.OnlyResultMoreThanOne) ||
+                  (Config.OnlyStrangeGroups && !AreStrangeGroups(BitArrayQuestion, BitArrayQuestion2)) ||
                   (CurrentOperation == Operation.SUMM &&
                    SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length));
+        }
+
+        private bool AreStrangeGroups(bool[] arr1, bool[] arr2)
+        {
+            if (arr1 == null || arr2 == null) return false;
+            if (arr1.Length != arr2.Length) return false;
+            if (SumArray(arr1) == 0 || SumArray(arr2) == 0) return false;
+            if(arr1.Equals(arr2)) return false;
+
+            bool[] arrAns = new bool[arr1.Length];
+            for (int i = 0; i < arr1.Length; i++)
+                arrAns[i] = arr1[i] && arr2[i];
+
+            return SumArray(arrAns)>0;
         }
 
         /*private void ApplyBitArrayStepExtrasIfNeeded(ExercisePlanStep? step)
@@ -510,17 +530,6 @@ namespace GestureSample.Maui.Models
         }
 
 
-        private bool IsResultAllZeros()
-        {
-            bool[] wrongArray = new bool[BitArrayQuestion.Length];
-            for (int i = 0; i < wrongArray.Length; i++)
-            {
-                wrongArray[i] = false;
-            }
-            return CheckOnly(wrongArray);
-
-        }
-
         protected bool[] RandomArray(int from =0, int to = -1)
         {
             if( to == -1) to = BitArrayQuestion.Length;
@@ -544,25 +553,7 @@ namespace GestureSample.Maui.Models
                 leftHandBits[i] = BitArrayQuestion[rightHandBits.Length - 1 - i] ? 1 : 0; // Generates either 0 or 1
                 rightHandBits[i] = BitArrayQuestion[rightHandBits.Length + i] ? 1 : 0; // Generates either 0 or 1
             }
-
-        }
-
-
-        public bool QuantityEquals(bool[] bitArrayAnswer)
-        {
-            /*int s1 = 0, s2 = 0;
-            for (int i = 0; i < bitArrayAnswer.Length; i++)
-            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
-            return SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer);
-        }
-
-        public bool SumEquals(bool[] bitArrayAnswer)
-        {
-            /*int s1 = 0, s2 = 0;
-            for (int i = 0; i < bitArrayAnswer.Length; i++)
-            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
-            return SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) == SumArray(bitArrayAnswer);
-        }
+        }       
 
         private int SumArray(bool[] bitArray)
         {
@@ -571,15 +562,6 @@ namespace GestureSample.Maui.Models
              { s1 += bitArray[i] ? 1 : 0; }
             return s1;
         }
-
-        public bool Equals(bool[] bitArrayAnswer)
-        {
-            //TODO? Through Exceptions
-           for (int i = 0; i < bitArrayAnswer.Length; i++)
-                if (bitArrayAnswer[i] != BitArrayQuestion[i]) return false;
-            return true;
-        }
-
 
         private void BuildCorrectAnswer()
         {
@@ -677,6 +659,35 @@ namespace GestureSample.Maui.Models
         }
 
         #region NOT NEEDED FUNCTIONS
+        private bool IsResultAllZeros()
+        {
+            int quantity = SumArray(BitArrayCorrectAnswer);
+            return quantity == 0 ||
+                (Config.OnlyResultMoreThanOne && quantity == 1);
+        }
+        public bool QuantityEquals(bool[] bitArrayAnswer)
+        {
+            /*int s1 = 0, s2 = 0;
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
+            return SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer);
+        }
+
+        public bool SumEquals(bool[] bitArrayAnswer)
+        {
+            /*int s1 = 0, s2 = 0;
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+            { s1 += BitArrayQuestion[i] ? 1 : 0; s2 += bitArrayAnswer[i] ? 1 : 0; }*/
+            return SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) == SumArray(bitArrayAnswer);
+        }
+
+        public bool Equals(bool[] bitArrayAnswer)
+        {
+            //TODO? Through Exceptions
+            for (int i = 0; i < bitArrayAnswer.Length; i++)
+                if (bitArrayAnswer[i] != BitArrayQuestion[i]) return false;
+            return true;
+        }
 
         public bool Mirror(bool[] bitArrayAnswer)
         {
