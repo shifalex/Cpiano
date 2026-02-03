@@ -13,6 +13,8 @@ namespace GestureSample.Maui.Models
         int[] pressCounter;
         public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
         {
+            //TODO:REALLY NOT SURE WHERE IS THE CORRECT PLACE FOR THIS - it should be in the gui - piano should give only text
+            //_lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
             SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer* (pianoConfig.SecondsPressingToAnswer>0? 1: -1);
             IS_WHOLE_TIMER = pianoConfig.SecondsPressingToAnswer < 0;
             pressCounter  = new int[NUMBER_OF_KEYS + 1];
@@ -48,7 +50,7 @@ namespace GestureSample.Maui.Models
                     }
 
                     _seconds_pressed = (_addend1 == 0 && _addend2 == 0) ? 0 : (_seconds_pressed + 1);
-                    _lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
+                    
                     _lblTimer.Text = SecondsToEnd;// (_addend1 == 0 && _addend2 == 0) ? Statement.Neutral : SecondsToEnd;
 
                     // Removed the problematic line as 'Stroke' is not a valid property for Label.  
