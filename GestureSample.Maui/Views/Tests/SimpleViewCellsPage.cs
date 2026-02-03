@@ -2,6 +2,8 @@
 using GestureSample.Maui.Models;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Platform;
+using Microsoft.Maui.Graphics;
+using System.Diagnostics;
 
 namespace GestureSample.Views.Tests
 {
@@ -49,8 +51,13 @@ namespace GestureSample.Views.Tests
         private GraphicsView leftHandCanvas;
         private GraphicsView rightHandCanvas;
 
+        // Added field for tutorial hand drawable view
+        private GraphicsView handGraphicsView;
 
-        private readonly int TASK_WIDTH = 120;//TODO: if phone then make smaller and make answer keyboard only notSync
+        private readonly int FONT_SIZE_DEFAULT = 18;
+        private readonly int TASK_WIDTH = 180;//TODO: if phone then make smaller and make answer keyboard only notSync
+        private readonly int PIANO_HEIGHT1 = 90;
+        private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
         private Label _lblHistory;
         private Entry _txtAddend1;
@@ -63,6 +70,10 @@ namespace GestureSample.Views.Tests
         //private  Entry txtResult;
         private PianoKeyboardReadOnly _keyboardTask1;
         private PianoKeyboardReadOnly _keyboardTask2;
+        private KeyboardOverlayHost _task1Host;
+        private KeyboardOverlayHost _task2Host;
+        private KeyboardOverlayHost _taskMainHost;
+
         //TODO: show arrows for patterns
         //TODO: Hand image and other images spaces.. To allow a fingu like scenario(just with no moving objects)
         private Button _btnNext = null;
@@ -126,12 +137,12 @@ _lblStatement.Text = text;
 
         public async Task UpdateView(bool newExercise = false)
         {
-               
-            await UpdateStatement();
-            
-            List <Task> tasks = new();
 
-            if (_btnNext != null)  _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; 
+            await UpdateStatement();
+
+            List<Task> tasks = new();
+
+            if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
             if (_isThreeTexts)
             {
@@ -139,7 +150,7 @@ _lblStatement.Text = text;
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
                 _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
-                
+
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -168,13 +179,40 @@ _lblStatement.Text = text;
                     _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
                     _currentPPWEnabled = new PPWObject(
                         _txtAddend1.IsEnabled ? 1 : 0,
-                        _txtAddend2.IsEnabled ? 1 :0,
+                        _txtAddend2.IsEnabled ? 1 : 0,
                         _txtSum.IsEnabled ? 1 : 0);
 
                 }
-                if (_config.isHelpEntries)
+                if (_config.isHelpEntries || _config.isHelpThroughTen)
                     for (int i = 0; i < txt.Length; i++)
                         txt[i].Text = "";
+                if (_config.isHelpThroughTen)
+                {
+                    txt[1].IsEnabled = true;
+                    //if (_gamePlay.addend1 != PPWGamePlay.NAN)
+                        txt[0].Text = "10";//((_gamePlay.addend1 / 10 + 1) * 10).ToString();
+                    /*txt[0].WidthRequest = 2 * TASK_WIDTH / 3;
+                    txt[0].IsEnabled = false;
+                    txt[1].WidthRequest = TASK_WIDTH / 3;
+                    txt[1].IsEnabled = true;*/
+                
+                /* else if (_gamePlay.addend2 != PPWGamePlay.NAN)
+                     {
+                         txt[1].Text = ((_gamePlay.addend2 / 10 + 1) * 10).ToString();
+                         txt[1].WidthRequest = 2* TASK_WIDTH / 3;
+                         txt[1].IsEnabled = false;
+                         txt[0].WidthRequest = TASK_WIDTH / 3;
+                         txt[0].IsEnabled = true;
+                     }*/
+                    if (_gamePlay.Sum != PPWGamePlay.NAN)
+                    {
+                        txt[1].Text = (_gamePlay.Sum - 10).ToString();
+                        txt[1].IsEnabled = false;
+
+                    }
+                    txt[4].Text = txt[1].Text;
+                    txt[2].Text = _txtAddend1.Text;
+                }
 
                 if (_config.UIQuestionType == UIQuestionType.SimpleEquation)
                     if (Operation.Divide == _gamePlay.CurrentOperation || Operation.Minus == _gamePlay.CurrentOperation)
@@ -184,8 +222,26 @@ _lblStatement.Text = text;
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
-                    _keyboardTask2.IsVisible = GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation);
+                    _task2Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
+                    if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
+                    {
+                        _keyboardTask2.IsVisible = true;
+                        _keyboardTask1.HeightRequest = PIANO_HEIGHT2;
+                        _keyboardTask2.HeightRequest = PIANO_HEIGHT2;
+                    } else
+                    {
+                        _keyboardTask2.IsVisible = false;
+                        _keyboardTask1.HeightRequest = PIANO_HEIGHT1;
+                        _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
+                    }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                    _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                    if (_taskMainHost != null && _config.IncludeTutorials)
+                    {
+                        _taskMainHost.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                        Tutorial(_taskMainHost);
+                    }
+                    
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
                 {
@@ -259,6 +315,19 @@ _lblStatement.Text = text;
             await MainThread.InvokeOnMainThreadAsync(() =>
             {
                 entry.Focus();
+            });
+        }
+        void Tutorial(KeyboardOverlayHost koh)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000);
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Task.WhenAll(
+                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,((BitArrayGamePlay)_gamePlay).CurrentOperation, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000, true)
+                    );
+                });
             });
         }
         private static void EntryEnabled(Entry ent, bool enabled)
@@ -401,7 +470,8 @@ _lblStatement.Text = text;
 
 
 
-        private void InitializeUI()
+        // Changed to async so we can await tutorial animation without changing constructor call site.
+        private async void InitializeUI()
         {
             bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType!=SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             int pianoHeight = _isKeyboard ? (isPianoHigh ? 100 : 60) : 1;
@@ -430,7 +500,7 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = _isKeyboard?((_config.UIQuestionType == UIQuestionType.LogicalKeyboards)?40:55): FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black,
                 Text = Statement.Neutral
             };
@@ -460,19 +530,51 @@ _lblStatement.Text = text;
                         txt[i] = new Entry
                         {
                             HorizontalOptions = LayoutOptions.Center,
-                            HorizontalTextAlignment = TextAlignment.Start,
+                            HorizontalTextAlignment = TextAlignment.Center,
                             BackgroundColor = Colors.White,
                             TextColor = Colors.Black,
                             WidthRequest = TASK_WIDTH / 4,
-                            FontSize = 18,
+                            FontSize = FONT_SIZE_DEFAULT,
                             IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
                         };
                         txt[i].Keyboard = Keyboard.Numeric;
                     }
+                    Label lbl2 = new Label
+                    {
+                        Text = "",
+                        FontSize = FONT_SIZE_DEFAULT,
+                        WidthRequest = TASK_WIDTH / 2,
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        VerticalTextAlignment = TextAlignment.Center
+                    };
+                    Label lbl4 = new Label
+                    {
+                        Text = "",
+                        FontSize = FONT_SIZE_DEFAULT,
+                        WidthRequest = TASK_WIDTH / 4,  
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        VerticalTextAlignment = TextAlignment.Center
+                    };
+                    if (_config.isHelpThroughTen)
+                    {
+                        txt[0].IsEnabled = false;
+                        txt[1].IsEnabled = false;
+                        txt[0].WidthRequest = 3* TASK_WIDTH / 4;
+                        txt[1].WidthRequest =  TASK_WIDTH / 4;
+                        txt[2].WidthRequest =  TASK_WIDTH / 2;
+                        txt[3].WidthRequest =  TASK_WIDTH / 4;
+                        txt[4].WidthRequest = TASK_WIDTH / 4;
+                    }
+
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
 
+                    if (_config.isHelpThroughTen)
+                    {
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
+                        //vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { lbl2, txt[3] , lbl4 } });
+                    }
                     if (_config.OperationList.Contains(Operation.Multiplication))
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
                     vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
@@ -505,6 +607,63 @@ _lblStatement.Text = text;
                 vsl.Padding = 0;
                 vsl.Spacing = 0;
                 vsl.HorizontalOptions = LayoutOptions.Fill;
+
+                if(_config.IncludeTutorials)
+                {
+                    Debug.WriteLine("Starting tutorial hand animation...");
+
+
+
+
+
+                    // create the drawable
+                    var hand = new HandDrawable(isLeftHand: false)
+                    {
+                        Bits = new[] { 1, 1, 1, 1, 1 },
+                        Position = new PointF(0, 0),
+                        Opacity = 0f
+                    };
+
+                    // create a full-screen overlay GraphicsView so hand coordinates are page-relative
+                    handGraphicsView ??= new GraphicsView
+                    {
+                        Drawable = hand,
+                        HorizontalOptions = LayoutOptions.Fill,
+                        VerticalOptions = LayoutOptions.Fill,
+                        //BackgroundColor = Colors.Red.WithAlpha(0.30f),
+                        InputTransparent = true, // let touches pass through
+                        // ensure it renders above other content
+                        ZIndex = 100
+                    };
+
+
+
+                    // add overlay to grid (span all rows/columns so it floats above everything)
+                                if (!grid.Children.Contains(handGraphicsView))
+                    {
+                        grid.Add(handGraphicsView);
+                        Grid.SetRowSpan(handGraphicsView, grid.RowDefinitions.Count);
+                        Grid.SetColumnSpan(handGraphicsView, grid.ColumnDefinitions.Count);
+                    }
+
+                    // Wait for layout (size) then center the hand and force redraw
+                    void OnSizeChanged(object? s, EventArgs e)
+                    {
+                        if (handGraphicsView.Width > 0 && handGraphicsView.Height > 0)
+                        {
+                            hand.Position = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
+                            handGraphicsView.Invalidate();
+                            handGraphicsView.SizeChanged -= OnSizeChanged;
+                        }
+                    }
+                    handGraphicsView.SizeChanged += OnSizeChanged;
+
+
+                    // Wait a short time for layout to settle so overlay has a valid size, then animate to center
+                    // await Task.Delay(50);
+                    var target = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
+                 //   await hand.ShowMoveHideAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(8000), TimeSpan.FromMilliseconds(2500));
+                }
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -526,6 +685,7 @@ _lblStatement.Text = text;
 
             if (_isKeyboard)
             {
+                //_lblStatement.FontSize = 55;
                 _pianoKeyboard = _config.KeyboardConfig.SyncType switch
                 {
                     SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
@@ -535,8 +695,18 @@ _lblStatement.Text = text;
                 if (_config.KeyboardConfig.KeyboardAsAQuestion) {
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
-                grid.Add(_pianoKeyboard);
-                Grid.SetRow(_pianoKeyboard, 2);
+                if (_config.IncludeTutorials)
+                {
+
+                    _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
+                    grid.Add(_taskMainHost);
+                    Grid.SetRow(_taskMainHost, 2);
+                }
+                else
+                {
+                    grid.Add(_pianoKeyboard);
+                    Grid.SetRow(_pianoKeyboard, 2);
+                }
             }
             Content = grid;
 
@@ -548,12 +718,12 @@ _lblStatement.Text = text;
             _txtAddend2.WidthRequest = TASK_WIDTH / 2;
             _txtSum.WidthRequest = TASK_WIDTH / 2;
             _txtSum.BackgroundColor = Colors.White;
-            _txtSum.FontSize = 18;
+            _txtSum.FontSize = FONT_SIZE_DEFAULT;
             HorizontalStackLayout hzlEquation = new HorizontalStackLayout
             {
                 HorizontalOptions = LayoutOptions.Center,
                 Children ={ _txtAddend1, _lblAction, _txtAddend2,
-                            new Label {FontSize=18, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
+                            new Label {FontSize=FONT_SIZE_DEFAULT, WidthRequest=20, HorizontalTextAlignment=TextAlignment.Center, VerticalTextAlignment=TextAlignment.Center, Text = "=" },
                             _txtSum }
             };
             return hzlEquation;
@@ -594,23 +764,29 @@ _lblStatement.Text = text;
             _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = TASK_WIDTH / 2
+                HeightRequest = PIANO_HEIGHT2
             };
             _lblAction = new Label
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,  
                 TextColor = Colors.Black
             };
             _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = TASK_WIDTH / 2
+                HeightRequest = PIANO_HEIGHT2
             };
-            vsl.Add(_keyboardTask2);
+
+            _task2Host = new KeyboardOverlayHost(_keyboardTask2);
+            _task1Host = new KeyboardOverlayHost(_keyboardTask1);
+
+
+            //vsl.Add(_keyboardTask2);
+            vsl.Add(_task2Host);
             vsl.Add(_lblAction);
-            vsl.Add(_keyboardTask1);
+            vsl.Add(_task1Host);//vsl.Add(_keyboardTask1);
             return vsl;
         }
 
@@ -621,7 +797,7 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black
             };
             leftHandCanvas = new()
@@ -638,6 +814,7 @@ _lblStatement.Text = text;
                 Drawable = new HandDrawable(isLeftHand: false)
             };
 
+    
 
 
 
@@ -747,12 +924,12 @@ _lblStatement.Text = text;
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
                 };
             _lblAction = new Label
             {
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
@@ -777,7 +954,7 @@ _lblStatement.Text = text;
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
-                FontSize = 18,
+                FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
             };
             _txtAddend1.Keyboard = Keyboard.Numeric;

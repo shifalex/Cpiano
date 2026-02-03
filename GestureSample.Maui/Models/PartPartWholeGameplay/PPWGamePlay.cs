@@ -10,8 +10,11 @@ using static SQLite.SQLite3;
 namespace GestureSample.Maui.Models
 {
 
-    internal class PPWGamePlay
+    public class PPWGamePlay
     {
+
+
+
         public static readonly int NAN = -1111;
         public Guid GameId { get; set; } = Guid.NewGuid();
         public int addend1;
@@ -34,7 +37,7 @@ namespace GestureSample.Maui.Models
         protected string _status = Statement.Neutral;
         public string Status { get => _status; }
 
-        private bool _isFirstGuess = true;
+        public bool IsFirstGuess { get; set; } = true;
 
         protected int _currentTriadIndex = 0;
 
@@ -48,6 +51,65 @@ namespace GestureSample.Maui.Models
 
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
+
+        // plan runtime
+        private int _planStepIndex = 0;
+        private int _planStepRepeatLeft = 0;
+        private int _planSeed;
+        private Random _planRandom;
+
+        // snapshot of last question (PPW form)
+        private (int a1, int a2, int s, Operation op, VariableTypes vt)? _prevPPWQuestion;
+        private (int a1, int a2, int s)? _prevPPWAnswer; // if you ever want it
+
+
+        protected ExercisePlanStep? CurrentPlanStep
+        {
+            get
+            {
+                if (Config?.Plan?.Steps == null || Config.Plan.Steps.Count == 0) return null;
+                if (_planStepIndex < 0 || _planStepIndex >= Config.Plan.Steps.Count) return null;
+                return Config.Plan.Steps[_planStepIndex];
+            }
+        }
+
+        protected ExercisePlanStep? AcquirePlanStep()
+        {
+            if (Config?.Plan?.Steps == null || Config.Plan.Steps.Count == 0) return null;
+
+            if (_planStepRepeatLeft <= 0)
+            {
+                if (_planStepIndex >= Config.Plan.Steps.Count)
+                {
+                    if (Config.Plan.Loop) _planStepIndex = 0;
+                    else return null;
+                }
+
+                ExercisePlanStep step = Config.Plan.Steps[_planStepIndex];
+                _planStepRepeatLeft = Math.Max(1, step.Repeat);
+                _planStepIndex++;
+            }
+
+            _planStepRepeatLeft--;
+            return Config.Plan.Steps[Math.Max(0, _planStepIndex - 1)];
+        }
+
+        protected void ApplyOpMode(ExercisePlanStep step)
+        {
+            switch (step.OpMode)
+            {
+                case PlanOpMode.Keep:
+                    return;
+                case PlanOpMode.Fixed:
+                    CurrentOperation = step.Operation;
+                    return;
+                case PlanOpMode.RandomFromConfigList:
+                default:
+                    if (Config.OperationList != null && Config.OperationList.Count > 0)
+                        CurrentOperation = Config.OperationList[_planRandom.Next(Config.OperationList.Count)];
+                    return;
+            }
+        }
 
         public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
         {
@@ -66,7 +128,10 @@ namespace GestureSample.Maui.Models
              };
             _gameRepository.SaveAsync(_gameData);
 
+
+
             GeneratePossibleTriadsSet();
+
 
             //SaveState();
         }
@@ -97,6 +162,8 @@ namespace GestureSample.Maui.Models
                 return false;
             return true;
         }
+
+
 
         public virtual async Task<bool> CheckAsync()
         {
@@ -194,6 +261,16 @@ namespace GestureSample.Maui.Models
 
         }
 
+        public virtual bool IsCloseEnough(PianoKeyboard keyboard, int allowedDifferences = 1)
+        {
+            return IsCloseEnough(keyboard.Addend1, keyboard.Addend2, Sum, allowedDifferences);
+        }
+
+        public bool IsCloseEnough(int addend1, int addend2, int sum, int allowedDifferences = 1)
+        {
+            // returns true when the addends' sum differs from 'sum' by at most 1
+            return Math.Abs(addend1 + addend2 - sum) <= allowedDifferences;
+        }
         private void RemoveItemToHistory(int addend1, int addend2, int sum)
         {
             if (PossibleTriads.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any())
@@ -241,26 +318,91 @@ namespace GestureSample.Maui.Models
         public virtual void GenerateExercise()
         {
             Random r = new();
-            if (_currentTriadIndex ==0 || _currentTriadIndex>= Config.RepeatingTimesOfTriad - 1)
+
+            ExercisePlanStep? step = AcquirePlanStep();
+
+            ResolveOperation(r, step);
+            ResolveQuestionSource(r, step);
+
+            // runtime bookkeeping (same as your current pattern)
+            _status = Statement.Neutral;
+            _guessNumber = 0;
+            _questionNumber++;
+
+            SaveState();
+            _view.UpdateView(true);
+        }
+
+        private void ResolveOperation(Random r, ExercisePlanStep? step)
+        {
+            if (step != null)
+            {
+                // Plan decides op (Fixed/Keep/RandomFromConfigList)
+                ApplyOpMode(step);
+                return;
+            }
+
+            // Legacy behavior: keep your triad logic
+            if (_currentTriadIndex == 0 || _currentTriadIndex >= Config.RepeatingTimesOfTriad - 1)
+            {
                 CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
+            }
+        }
 
-            int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)? FactorsMultiplication : Factors;
-            //TODO: Make a list for multiplication triads
-            //else if (Config.OnlyThrougTen)
-            //    factors = FactorsThroughTen;
+        private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
+        {
+            if (step != null)
+            {
+                if (step.Kind == PlanStepKind.RepeatQuestion && _prevPPWQuestion.HasValue)
+                {
+                    RestorePrevPPWQuestion();
+                    return;
+                }
 
-            Console.WriteLine("Factors:{0}{1}{2}={3}", factors[0], CurrentOperation.ToDString(), factors[1], factors[2]);
-            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum /*|| Config.VariableTypes == VariableTypes.TwoAny*/) ? r.Next(3) : r.Next(2);
+                // NewQuestion (or Repeat requested but no prev yet)
+                GenerateNewPPWQuestion(r);
+
+                SnapshotPrevPPWQuestion();
+                return;
+            }
+
+            // Legacy mode: your existing generation logic
+            GenerateNewPPWQuestion(r);
+
+            // your existing triad bookkeeping likely happens elsewhere;
+            // if you handle it here, keep it:
+            _currentTriadIndex = (_currentTriadIndex + 1) % Config.RepeatingTimesOfTriad;
+
+            SnapshotPrevPPWQuestion();
+        }
+
+        private void GenerateNewPPWQuestion(Random r)
+        {
+            // pick factor set depending on operation
+            int[] factors =
+                (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
+                    ? FactorsMultiplication
+                    : Factors;
+
+            // Decide which value becomes NAN based on Config.VariableTypes
+            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
+
             switch (Config.VariableTypes)
             {
                 case VariableTypes.OneCanBeSum:
                 case VariableTypes.OneNoSum:
-                    factors[n] = NAN; break;
+                    factors[n] = NAN;
+                    break;
+
                 case VariableTypes.SumOnly:
-                    factors[2] = NAN; break;
+                    factors[2] = NAN;
+                    break;
+
                 case VariableTypes.TwoNoSum:
-                    factors[0] = NAN; factors[1] = NAN; break;
-                //case VariableTypes.TwoAny:
+                    factors[0] = NAN;
+                    factors[1] = NAN;
+                    break;
+
                 default:
                     for (int i = 0; i < 3; i++)
                         if (i != n) factors[i] = NAN;
@@ -270,13 +412,25 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
 
-            _status = Statement.Neutral;
-            _guessNumber = 0;//???
-            _questionNumber++;
-            SaveState();
-            
-            _view.UpdateView(true);
+        private void RestorePrevPPWQuestion()
+        {
+            var q = _prevPPWQuestion.Value;
+
+            addend1 = q.a1;
+            addend2 = q.a2;
+            Sum = q.s;
+
+            CurrentOperation = q.op;
+
+            // Optional: if you want repeats to preserve which-variable-hidden mode:
+            // Config.VariableTypes = q.vt;
+        }
+
+        private void SnapshotPrevPPWQuestion()
+        {
+            _prevPPWQuestion = (addend1, addend2, Sum, CurrentOperation, Config.VariableTypes);
         }
 
         protected virtual int[] Factors
@@ -305,11 +459,11 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }   
                 
-                if (_isFirstGuess /*&& !Config.OnlyThrougTen*/)
+                if (    IsFirstGuess /*&& !Config.OnlyThrougTen*/)
                 {
                     if (Config.MaxSum < 100)
                     { factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; }
-                    _isFirstGuess = false;
+                        IsFirstGuess = false;
                     addend1 = Config.DefaultTriad.Addend1; addend2 = Config.DefaultTriad.Addend2; Sum = Config.DefaultTriad.Sum;
                     if (IsCorrectInput())
                         return factors;
@@ -448,6 +602,7 @@ namespace GestureSample.Maui.Models
             }
         }
 
+
         #region History
         public List<PPWObject> AllHistory = new();
 
@@ -467,12 +622,14 @@ namespace GestureSample.Maui.Models
                 {
                     int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
                     if (sum >= minSum && sum <= maxSum)
-                        if (!Config.OnlyThrougTen)
+                        if (!Config.OnlyThrougTen && !Config.OnlyToTen)
                         {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                             Console.WriteLine("{0} {1}= {2}", i, j, sum);
                         }
                         else if ((i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                            PossibleTriads.Add(new PPWObject(i, j, sum));
+                        else if(i+j<=10)
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                 }
         }

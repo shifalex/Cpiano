@@ -82,7 +82,57 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         PartialScreenCovering
     }
 
+    public enum PlanStepKind
+    {
+        NewQuestion,     // generate a fresh question
+        RepeatQuestion,  // reuse previous question as-is
+        UsePrevAnswer    // take previous answer and make it the new question (BitArray Not-Not)
+    }
 
+    public enum PlanOpMode
+    {
+        Keep,                 // don't change CurrentOperation
+        Fixed,                // set to Step.Operation
+        RandomFromConfigList  // random from Config.OperationList
+    }
+
+    public enum PermutationPolicy
+    {
+        None,
+        ConstantForChain,
+        RandomEachStep,
+        RandomAfterFirst
+    }
+
+    public sealed class ExercisePlanStep
+    {
+        public PlanStepKind Kind { get; init; } = PlanStepKind.NewQuestion;
+
+        // how many times to do this step before moving on
+        public int Repeat { get; init; } = 1;
+
+        // operation selection for this step
+        public PlanOpMode OpMode { get; init; } = PlanOpMode.RandomFromConfigList;
+        public Operation Operation { get; init; } = Operation.Sum;
+
+        // BitArray-specific extras (safe to keep for PPW too)
+        public PermutationPolicy PermutationPolicy { get; init; } = PermutationPolicy.None;
+
+        // if true, BitArray builds Question2 as a permuted version of Question1 (Or/And/Xor style)
+        public bool UseSecondOperandFromPermutation { get; init; } = false;
+    }
+
+    public sealed class ExercisePlan
+    {
+        // if null -> old behavior (no plan)
+        public List<ExercisePlanStep> Steps { get; init; } = new();
+
+        // if true, after plan ends: loop back to beginning
+        public bool Loop { get; init; } = true;
+
+        // deterministic chains (optional)
+        public int? Seed { get; init; } = null;
+    }
 
     public enum Operation
     {
@@ -98,11 +148,13 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Copy,
         [Description("EQUAL")]
         Quantity,
-        [Description("SEQUENCE ->")]
+        [Description("GROUP to the RIGHT ->")]
         SequenceLTR,
-        [Description("SEQUENCE <-")]
-        SequenceRTL, 
-        [Description("MOVE BY ")]
+        [Description("<- GROUP to the LEFT")]
+        SequenceRTL,
+        [Description("<- SPLIT ->")]
+        Split,
+        [Description("SHIFT")]
         MoveBy,
         [Description("MIRROR")]
         Mirror,
@@ -114,8 +166,10 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         And,
         [Description("OR(||)")]
         Or,
-        [Description("Neutralize")]
-        Neutralize
+        [Description("Neutralise")]
+        Neutralise,
+        [Description("SUM(+)")]
+        SUMM
 
     }
 
@@ -154,11 +208,14 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
     {
         public class Operations
         {
-            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralize, Operation.Not };
+            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.MoveBy, Operation.Mirror, Operation.Not };
-            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralize };
+            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
+            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.SUMM };
         }
+
+        public ExercisePlan? Plan { get; set; } = null;
+
 
         public string GameName = "";
         // Properties with default values
@@ -174,6 +231,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool OnlyThrougTen = false;
         public bool OnlyToTen = false;
         public bool isHelpEntries = false;
+        public bool isHelpThroughTen = false;
         public bool isOnlySequence = true;
         public bool ShowPrev = false;
 
@@ -189,10 +247,37 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public bool OnlyCloseTriad { get; set; } = false;
 
-        // Fix for CS0236: Move the initialization of DefaultTriad to the constructor, as field initializers cannot reference non-static fields.
+        public bool IncludeTutorials { get; set; } = false;
 
-        public PPWObject DefaultTriad { get; set; } = null;
+        public bool OnlyStrangeGroups { get; set; } = false;
+        public bool OnlyResultMoreThanOne { get; set; } = false;
 
+        public Direction? WhichHand { get; set; } = null;
+        public bool IsOnlyOneHand { get; set; } = false;
+
+        // DefaultTriad is computed lazily from the current configuration when first requested.
+        private PPWObject? _defaultTriad;
+        public PPWObject DefaultTriad
+        {
+            get
+            {
+                if (_defaultTriad is null)
+                {
+                    _defaultTriad = ComputeDefaultTriad();
+                }
+                return _defaultTriad;
+            }
+            set => _defaultTriad = value;
+        }
+
+        private PPWObject ComputeDefaultTriad()
+        {
+            // compute based on the (already-initialized) properties
+            // adjust conditions to match desired logic
+            if (OnlyThrougTen && MaxSum > 10)
+                return new PPWObject(8, 7, 15);
+            return new PPWObject(3, 2, 5);
+        }
 
         public int NumberOfTasksToWin { get; set; } = -1;
         public int NumberOfMistakesToLose { get; set; } = -1;
@@ -206,8 +291,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public KeyboardConfig KeyboardConfig { get; set; } = null;
         public GameConfig()
         {
-            if(DefaultTriad == null)
-                DefaultTriad = OnlyThrougTen ? new PPWObject(3, 2, 5) : new PPWObject(8, 7, 15);
+            // No eager DefaultTriad initialization here; DefaultTriad is computed lazily when first used.
         }
 
 
