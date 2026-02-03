@@ -6,7 +6,7 @@ using Microsoft.Maui.Layouts;
 
 namespace GestureSample.Maui.Models
 {
-    internal class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
+    public class PianoKeyboard : PianoKeyboardReadOnly//, IDisposable
     {
 
         protected readonly SoundService _soundService;
@@ -92,6 +92,7 @@ After:
         {
 
             _soundService =  ServiceHelper.GetService<SoundService>();
+            _soundService.Mode = pianoConfig.IsVoice?2:1;//TODO:make an enum
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
@@ -266,6 +267,8 @@ After:
             IsEnabled = true;
             _addend1 = 0;
             _addend2 = 0;
+            if(_soundService!=null)
+                _soundService.StopAllVoices();
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
@@ -386,29 +389,68 @@ After:
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
-            OnKey(e, true);
+            await OnKey(e, true);
 
-            if (Config.IsNumberVoice)
+            if (Config.IsNumberVoice || Config.IsVoice)
             {
                 Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
-                if(_soundService != null)
+                if(_soundService != null && Config.IsNumberVoice)
                     await _soundService.PlayNumberAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                if (_soundService != null && Config.IsVoice)
+                    await _soundService.PlayVoiceAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
                 else
                     Console.WriteLine("Sound service is null");
             }
         }
-        private void OnUp(MR.Gestures.DownUpEventArgs e)
+        private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
-            OnKey(e, false);
+            await OnKey(e, false);
+            if (Config.IsNumberVoice || Config.IsVoice)
+            {
+                Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                if (_soundService != null && Config.IsVoice)
+                    _soundService.StopVoiceAsync(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
+                else
+                    Console.WriteLine("Sound service is null");
+            }
         }
-        private void OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
+        private async Task OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {
             
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
             Color prevColor = sender.BackgroundColor;
             if ((isDown ? InnerKeyDown(sender) : InnerKeyUp(sender)) && _patterns)
+            {
                 setAddendsByPattern();
+            }
+                Console.WriteLine("Special sounds");
+                if (_soundService != null && (Config.IsVoice || Config.IsVoices))
+                {
+                bool stopCorrectSound = true;
+                
+                if (isDown && BitArrayHelper.IsSequential(this.ToBitArray()) && BitArrayHelper.CountSetBits(this.ToBitArray()) >= 2)
+                    {
+                        await _soundService.PlayCustomVoiceAsync(11, 4, "Voices");
+                        if (_gamePlay.IsCloseEnough(this))
+                        {
+                            await _soundService.PlayCustomVoiceAsync(12, 6, "Voices");
+                            stopCorrectSound=false;
+                        }
+                    }
+                    else if (isDown && !BitArrayHelper.IsSequential(this.ToBitArray()) && BitArrayHelper.CountSetBits(this.ToBitArray()) >= 2)
+                    {
+                        await _soundService.PlayCustomVoiceAsync(11, 3, "Voices");
+                    }
+                    else
+                    { 
+                        _soundService.StopVoiceAsync(11);
+                        
+                    }
+                if (stopCorrectSound)
+                        _soundService.StopVoiceAsync(12);
+            }
+            
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
