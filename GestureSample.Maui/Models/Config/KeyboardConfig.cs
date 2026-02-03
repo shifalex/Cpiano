@@ -270,6 +270,10 @@
         public List<List<int>> DependancyArray = null;
 
         public bool IsNumberVoice { get; set; } = false;
+        public bool IsVoice { get; set; } = false;
+        public bool IsVoices { get; set; } = false;
+
+        public bool IsHelpNeeded { get; set; } = false;
 
     }
 }
