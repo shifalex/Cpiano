@@ -194,3 +194,7 @@ project.lock.json
 /GestureSample.Maui/.vs/GestureSample.Maui/FileContentIndex/fadb4689-93bb-4ccf-a6bd-0ad454328449.vsidx
 /GestureSample.Maui/.vs/GestureSample.Maui/FileContentIndex
 /GestureSample.Maui/GestureSample.Maui.csproj
+
+# Visual Studio
+.vs/
+**/.vs/
