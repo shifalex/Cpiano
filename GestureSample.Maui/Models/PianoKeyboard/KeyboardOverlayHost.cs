@@ -201,7 +201,7 @@ namespace GestureSample.Maui.Models
         {
             SyncOverlay();
 
-            if (op is Operation.Copy) k = 0;
+            if (op is Operation.Copy || op is Operation.CopySpeccial) k = 0;
             
             bits ??= Array.Empty<bool>();
             _patternDrawable.Bits = bits;
@@ -213,7 +213,7 @@ namespace GestureSample.Maui.Models
                 Operation.SequenceLTR => BuildDestPackRight(bits),
                 Operation.SequenceRTL => BuildDestPackLeft(bits),
                 Operation.Split => BuildDestSplitToSidesFromCenter(bits),
-                Operation.MoveBy or Operation.Copy => BuildDestShift(bits, k),
+                Operation.MoveBy or Operation.Copy or Operation.CopySpeccial => BuildDestShift(bits, k),
                 _ => Array.Empty<int>()
             };
 

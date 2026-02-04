@@ -146,6 +146,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Minus,
         [Description("COPY")]
         Copy,
+        [Description("COPY Special")]
+        CopySpeccial,
         [Description("EQUAL")]
         Quantity,
         [Description("GROUP to the RIGHT ->")]
@@ -233,6 +235,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool isHelpEntries = false;
         public bool isHelpThroughTen = false;
         public bool isOnlySequence = true;
+        public bool isOnlyKeyboard = false;
         public bool ShowPrev = false;
 
         public List<int> addendsList = new();
