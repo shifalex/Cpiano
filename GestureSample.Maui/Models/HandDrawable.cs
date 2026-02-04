@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.ApplicationModel;
-using Microsoft.Maui.Graphics.Platform;
 
 namespace GestureSample.Maui.Models
 {
