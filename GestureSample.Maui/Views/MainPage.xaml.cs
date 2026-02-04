@@ -444,6 +444,7 @@ namespace GestureSample.Views
         OperationList = new() {Operation.Copy },
         OnlyToTen = true,
         IsOnlyOneHand = true,
+        isOnlyKeyboard = true,
 
         KeyboardConfig = new KeyboardConfig
         {
@@ -456,6 +457,7 @@ namespace GestureSample.Views
         GameName = "Copy",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.Copy },
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -469,6 +471,7 @@ namespace GestureSample.Views
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         IsOnlyOneHand = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -483,6 +486,7 @@ namespace GestureSample.Views
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         isOnlySequence = false,
+        isOnlyKeyboard = true,
         OnlyResultMoreThanOne = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -499,8 +503,8 @@ namespace GestureSample.Views
         OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
         isOnlySequence = false,
         OnlyToTen = true,
-        IncludeTutorials = true,
         OnlyResultMoreThanOne = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -517,6 +521,7 @@ namespace GestureSample.Views
         IsOnlyOneHand = true,
         IncludeTutorials = true,
         OnlyResultMoreThanOne = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -530,6 +535,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Mirror },
         OnlyToTen = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -542,6 +548,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
         IncludeTutorials = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -554,6 +561,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         IncludeTutorials = true,
         OperationList = new() { Operation.Copy, Operation.Not },
+        isOnlyKeyboard = true,
         Plan = new ExercisePlan
 {
     Steps = new()
@@ -575,6 +583,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
         IncludeTutorials = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -597,7 +606,6 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = {Operation.And },
         OnlyToTen = true,
-        IncludeTutorials = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,

@@ -4,6 +4,7 @@ using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Platform;
 using Microsoft.Maui.Graphics;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace GestureSample.Views.Tests
 {
@@ -236,10 +237,15 @@ _lblStatement.Text = text;
                     }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                     _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                    if (_taskMainHost != null && _config.IncludeTutorials)
+                    if (_config.isOnlyKeyboard)//TODO: move to init method
+                        _keyboardTask1.IsVisible = false;
+                    if (_taskMainHost != null && (_config.IncludeTutorials || _config.isOnlyKeyboard))
                     {
                         _taskMainHost.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                        Tutorial(_taskMainHost);
+                        if (_config.IncludeTutorials)
+                            Tutorial(_taskMainHost);
+                        else if (_config.isOnlyKeyboard)//TODO: tutorial only if did wrong.
+                            Tutorial(_taskMainHost, Operation.Copy);
                     }
                     
                 }
@@ -317,15 +323,20 @@ _lblStatement.Text = text;
                 entry.Focus();
             });
         }
-        void Tutorial(KeyboardOverlayHost koh)
+        async Task Tutorial(KeyboardOverlayHost koh, Operation? op = null)
         {
+            if (op == null)
+            {
+                op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
+            }
             _ = Task.Run(async () =>
             {
                 await Task.Delay(1000);
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Task.WhenAll(
-                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,((BitArrayGamePlay)_gamePlay).CurrentOperation, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000, true)
+                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,(Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000, true, op != Operation.Copy)
+
                     );
                 });
             });
@@ -695,7 +706,7 @@ _lblStatement.Text = text;
                 if (_config.KeyboardConfig.KeyboardAsAQuestion) {
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
-                if (_config.IncludeTutorials)
+                if (_config.IncludeTutorials || _config.isOnlyKeyboard)
                 {
 
                     _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
