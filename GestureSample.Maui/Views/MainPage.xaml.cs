@@ -542,6 +542,18 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
+        new PageConfig("One operation", "Quantity", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Quantity",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.Quantity },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
              new PageConfig("One operation", "Not", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Not",
