@@ -340,7 +340,7 @@ namespace GestureSample.Maui.Models
             {
                 GenerateNonArrowExercise(r);
                 BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
-                quantity = SumArray(BitArrayCorrectAnswer);
+                quantity = BitArrayCorrectAnswer!=null?SumArray(BitArrayCorrectAnswer):SumArray(BitArrayQuestion);
                  
             }
             while (quantity == 0 ||
