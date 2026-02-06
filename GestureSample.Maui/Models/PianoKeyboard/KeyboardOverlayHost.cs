@@ -26,7 +26,7 @@ namespace GestureSample.Maui.Models
             public int? CursorIndex { get; set; } = null;
 
             // tuning
-            public float StaticAlpha { get; set; } = 0.7f;
+            public float StaticAlpha { get; set; } = 0.5f;
             public float AnimAlpha { get; set; } = 0.3f;
 
 
@@ -63,8 +63,8 @@ namespace GestureSample.Maui.Models
             {
                 if (bits == null || bits.Length == 0) return;
 
-                canvas.FillColor = Colors.Yellow.WithAlpha(alpha);
-                canvas.StrokeColor = Colors.Yellow.WithAlpha(alpha + 0.2f);
+                canvas.FillColor = Colors.DarkOrange.WithAlpha(alpha);
+                canvas.StrokeColor = Colors.DarkOrange.WithAlpha(alpha + 0.2f);
                 canvas.StrokeSize = 2;
 
                 int n = Math.Min(bits.Length, KeyRects.Length);
@@ -148,7 +148,7 @@ namespace GestureSample.Maui.Models
 
 
         }
-        public PianoKeyboardReadOnly Keyboard { get; }
+        public PianoKeyboardReadOnly Keyboard { get; set; }
        
        
         private readonly PatternDrawable _patternDrawable = new();
@@ -159,8 +159,7 @@ namespace GestureSample.Maui.Models
         {
             Keyboard = keyboard;
             Children.Add(Keyboard);
-            Keyboard.SizeChanged += (_, _) => TrySyncOverlay();
-
+            AttachToKeyboard(keyboard);
             _patternView = new GraphicsView
             {
                 Drawable = _patternDrawable,
@@ -219,6 +218,20 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimTargets = Array.Empty<int>();
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
+            _patternView.Invalidate();
+        }
+
+        public void AttachToKeyboard(PianoKeyboardReadOnly keyboard)
+        {
+            Keyboard = keyboard;
+
+            keyboard.LayoutReady += (_, _) => SyncOverlay();
+            keyboard.KeysRebuilt += (_, _) => SyncOverlay();
+        }
+
+        public void SyncOverlay()
+        {
+            if (!TrySyncOverlay()) return;
             _patternView.Invalidate();
         }
 

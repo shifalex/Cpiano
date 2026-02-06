@@ -466,7 +466,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-    new PageConfig("One operation", "Shift by - One hand", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("One operation", "Shift by - One Finger", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Shift by - One hand",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -474,6 +474,7 @@ namespace GestureSample.Views
         OnlyToTen = true,
         IsOnlyOneHand = true,
         isOnlyKeyboard = true,
+        MaxSum =1,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -481,7 +482,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Shift by", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "Shift by - Two Fingers", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Shift by",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -489,7 +490,24 @@ namespace GestureSample.Views
         OnlyToTen = true,
         isOnlySequence = false,
         isOnlyKeyboard = true,
-        OnlyResultMoreThanOne = true,
+        MinSum=2,
+        MaxSum=2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Shift by - Structure", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        isOnlySequence = false,
+        isOnlyKeyboard = true,
+        MinSum=2,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -505,8 +523,69 @@ namespace GestureSample.Views
         OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
         isOnlySequence = false,
         OnlyToTen = true,
-        OnlyResultMoreThanOne = true,
+        MinSum =2,
         isOnlyKeyboard = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+    new PageConfig("One operation", "Shift by - One Finger - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by - One hand",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        IsOnlyOneHand = true,
+        MaxSum =1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Shift by - Two Fingers - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        isOnlySequence = false,
+        MinSum=2,
+        MaxSum=2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Shift by - Structure - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Shift by",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.MoveBy },
+        OnlyToTen = true,
+        isOnlySequence = false,
+        MinSum=2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            KeysInRow = 6
+        }
+    })),
+
+    new PageConfig("One operation", "Group To Side - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group to side",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
+        isOnlySequence = false,
+        OnlyToTen = true,
+        MinSum =2,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -521,8 +600,6 @@ namespace GestureSample.Views
         OperationList = new() { Operation.Mirror },
         OnlyToTen = true,
         IsOnlyOneHand = true,
-        IncludeTutorials = true,
-        OnlyResultMoreThanOne = true,
         isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -561,7 +638,6 @@ namespace GestureSample.Views
         GameName = "Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
-        IncludeTutorials = true,
         isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -573,7 +649,6 @@ namespace GestureSample.Views
     {
         GameName = "Copy-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        IncludeTutorials = true,
         OperationList = new() { Operation.Copy, Operation.Not },
         isOnlyKeyboard = true,
         Plan = new ExercisePlan
@@ -596,7 +671,6 @@ namespace GestureSample.Views
         GameName = "Not-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
-        IncludeTutorials = true,
         isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -608,7 +682,12 @@ namespace GestureSample.Views
     Steps = new()
     {
         new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
-        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+
     },
     Loop = true
         }
@@ -620,6 +699,8 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = {Operation.And },
         OnlyToTen = true,
+        TwoKeybordsOnOne = true,
+        DenyStrangeOrSameGroups = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -632,6 +713,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList =new()  {Operation.Or },
         OnlyToTen = true,
+        TwoKeybordsOnOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -644,6 +726,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList =new()  {Operation.SUMM },
         OnlyToTen = true,
+        TwoKeybordsOnOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -656,6 +739,7 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList =new()  {Operation.Neutralise },
         OnlyToTen = true,
+        TwoKeybordsOnOne = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -668,7 +752,8 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList =new()  {Operation.Neutralise },
         OnlyToTen = true,
-        OnlyStrangeGroups = true,
+        DenyStrangeOrSameGroups = true,
+        TwoKeybordsOnOne = true,
         Plan = new ExercisePlan
 {
     Seed = 123, // optional
@@ -688,6 +773,43 @@ namespace GestureSample.Views
         }
     })),
 
+              new PageConfig("One operation", "Neutralise - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Neutralise",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.Neutralise },
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Or-And-Neutralise - FAR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Or-And-Neutralise",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.Neutralise },
+        OnlyToTen = true,
+        DenyStrangeOrSameGroups = true,
+        Plan = new ExercisePlan
+{
+    Seed = 123, // optional
+    Steps = new()
+    {
+        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Neutralise, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
+    },
+    Loop = true
+},
+
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
 
             new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
