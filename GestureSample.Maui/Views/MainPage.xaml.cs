@@ -663,6 +663,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            SecondsPressingToAnswer=1,
             KeysInRow = 6
         }
     })),
@@ -672,9 +673,12 @@ namespace GestureSample.Views
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() { Operation.Not },
         isOnlyKeyboard = true,
+        SecondsTillNextExercise = 1,
+        SecondsTillAllowInput =0,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            SecondsPressingToAnswer=1,
             KeysInRow = 6
         },
          Plan = new ExercisePlan
@@ -687,6 +691,36 @@ namespace GestureSample.Views
         new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
         new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed },
                 new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Not, OpMode = PlanOpMode.Fixed }
+
+    },
+    Loop = true
+        }
+    })),
+              new PageConfig("One operation", "Mirror-Mirror", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Mirror-Mirror",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Not },
+        isOnlyKeyboard = true,
+        IsOnlyOneHand = true,
+        SecondsTillNextExercise = 1,
+        SecondsTillAllowInput =0,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer=1,
+            KeysInRow = 6
+        },
+         Plan = new ExercisePlan
+{
+    Steps = new()
+    {
+        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed },
+        new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.UsePrevAnswer, Operation = Operation.Mirror, OpMode = PlanOpMode.Fixed }
 
     },
     Loop = true
@@ -740,6 +774,7 @@ namespace GestureSample.Views
         OperationList =new()  {Operation.Neutralise },
         OnlyToTen = true,
         TwoKeybordsOnOne = true,
+        IsSpecialColor = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -754,6 +789,8 @@ namespace GestureSample.Views
         OnlyToTen = true,
         DenyStrangeOrSameGroups = true,
         TwoKeybordsOnOne = true,
+        SecondsTillNextExercise = 1,
+        SecondsTillAllowInput =0,
         Plan = new ExercisePlan
 {
     Seed = 123, // optional
@@ -769,6 +806,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            SecondsPressingToAnswer=1,
             KeysInRow = 6
         }
     })),
