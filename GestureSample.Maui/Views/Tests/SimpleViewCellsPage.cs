@@ -5,6 +5,7 @@ using Microsoft.Maui.Platform;
 using Microsoft.Maui.Graphics;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace GestureSample.Views.Tests
 {
@@ -222,29 +223,40 @@ _lblStatement.Text = text;
                         OrderEntries(_hzlEquation, _txtAddend1, _txtSum);
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
-                    _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
-                    if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
+                    if (_config.TwoKeybordsOnOne)
                     {
-                        _keyboardTask2.IsVisible = true;
-                        _keyboardTask1.HeightRequest = PIANO_HEIGHT2;
-                        _keyboardTask2.HeightRequest = PIANO_HEIGHT2;
-                    } else
-                    {
-                        _keyboardTask2.IsVisible = false;
-                        _keyboardTask1.HeightRequest = PIANO_HEIGHT1;
-                        _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
+
+                        _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion
+    .Concat(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2).ToArray());
+                        _keyboardTask1.SetNoBorderBetweenRows();
+                        _keyboardTask2.IsVisible=false;
                     }
-                    _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                    if (_config.isOnlyKeyboard)//TODO: move to init method
-                        _keyboardTask1.IsVisible = false;
-                    if (_taskMainHost != null && (_config.IncludeTutorials || _config.isOnlyKeyboard))
+                    else
                     {
-                        if (_config.isOnlyKeyboard)
-                            _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                        if (_config.IncludeTutorials)
-                            Tutorial(_taskMainHost);
+                        _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
+                        if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
+                        {
+                            _keyboardTask2.IsVisible = true;
+                            _keyboardTask1.HeightRequest = PIANO_HEIGHT2;
+                            _keyboardTask2.HeightRequest = PIANO_HEIGHT2;
+                        }
+                        else
+                        {
+                            _keyboardTask2.IsVisible = false;
+                            _keyboardTask1.HeightRequest = PIANO_HEIGHT1;
+                            _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
+                        }
+                        _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                        if (_config.isOnlyKeyboard)//TODO: move to init method
+                            _keyboardTask1.IsVisible = false;
+                        if (_taskMainHost != null && (_config.IncludeTutorials || _config.isOnlyKeyboard))
+                        {
+                            if (_config.isOnlyKeyboard)
+                                _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                            if (_config.IncludeTutorials)
+                                Tutorial(_taskMainHost);
+                        }
                     }
-                    
                 }
                 if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
                 {
@@ -775,13 +787,19 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = FONT_SIZE_DEFAULT,  
+                FontSize = 40,  
                 TextColor = Colors.Black
             };
-            _keyboardTask1 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
+            KeyboardConfig config1 = new KeyboardConfig
+            {
+                Rows = 1,
+                KeysInRow = _config.KeyboardConfig.KeysInRow
+            };
+            if (_config.TwoKeybordsOnOne) config1.Rows = 2;
+            _keyboardTask1 = new PianoKeyboardReadOnly(config1)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = PIANO_HEIGHT2
+                HeightRequest = (_config.TwoKeybordsOnOne)? (PIANO_HEIGHT2*2)+5 : PIANO_HEIGHT2
             };
 
             _task2Host = new KeyboardOverlayHost(_keyboardTask2);

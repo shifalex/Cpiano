@@ -8,7 +8,8 @@ namespace GestureSample.Maui.Models
 
     public class PianoKeyboardReadOnly : MR.Gestures.Grid
     {
-
+        public event EventHandler? LayoutReady;
+        public event EventHandler? KeysRebuilt;
 
         public Grid Arrow1; // The combined object containing the number and the arrow
         public Grid Arrow2;
@@ -17,6 +18,8 @@ namespace GestureSample.Maui.Models
         protected readonly int NUMBER_OF_KEYS;
         protected readonly int FINGER_SEPERATOR = 5;
         int STROKE_THICKNESS = 6;
+        int _layoutVersion;
+
         protected MR.Gestures.Button[] btnKeys;
         public int Length => btnKeys.Length;
         protected virtual int heading_height { get; set; } = 5;
@@ -50,6 +53,18 @@ namespace GestureSample.Maui.Models
         public IReadOnlyList<MR.Gestures.Button> KeyButtons => btnKeys;
         public int KeyCount => btnKeys?.Length ?? 0;
 
+
+        public void SetNoBorderBetweenRows()
+        {
+            for (int i = 0; i < RowDefinitions.Count; i++)
+            {
+                if (RowDefinitions[i].Height.IsStar)
+                {
+                    //RowDefinitions[i] = null;
+                    //RowDefinitions[i].Height = new GridLength(0, GridUnitType.Star);
+                }
+            }
+        }
 
         private static void OnKeysChanged(BindableObject bindable, object oldValue, object newValue)
         {
@@ -401,32 +416,64 @@ namespace GestureSample.Maui.Models
 
         private async void OnSizeChanged(object sender, EventArgs e)
         {
+            int v = ++_layoutVersion;
+
             await Task.Delay(200);
+
+            // ignore stale calls
+            if (v != _layoutVersion) return;
+
             if (btnKeys.Length > 0)
             {
-                ActualKeyWidth = btnKeys[0].Width; // Or average, or max, etc.
+                ActualKeyWidth = btnKeys[0].Width;
                 ActualKeyWidth = Math.Min(ActualKeyWidth, MAX_KEY_WIDTH);
-                Console.WriteLine("Actual key width: " + ActualKeyWidth);
-                Console.WriteLine("Actual Column width: " + this.Children[0].Width);
-                Console.WriteLine("Actual Column spacing: " + this.ColumnSpacing);
-                Console.WriteLine("Actual Width: " + this.ColumnSpacing);
 
-                double contentWidth = btnKeys.Length * ActualKeyWidth + (btnKeys.Length > 10 ? 0 : 1) * FINGER_SEPERATOR + (btnKeys.Length - 1) * this.ColumnSpacing;
-                // available width is the control's width (not subtracting padding yet, because we're setting it)
-                double extra = this.Width - contentWidth;
+                // IMPORTANT: use keys-per-row for content width, not btnKeys.Length (which is rows*keys)
+                int keysInRow = Config.KeysInRow;
+
+                // fixed constants
+                double sep = (keysInRow > 10 ? 0 : FINGER_SEPERATOR);
+                double spacing = (keysInRow - 1) * this.ColumnSpacing;
+
+                // available width BEFORE we change padding
+                double available = this.Width;
+                if (available <= 0) return;
+
+                // choose desired key width from available width (NOT from current button width)
+                double desiredKeyWidth = (available - spacing - sep) / keysInRow;
+                desiredKeyWidth = Math.Min(desiredKeyWidth, MAX_KEY_WIDTH);
+                if (desiredKeyWidth < 0) desiredKeyWidth = 0;
+
+                // compute content width from desired width
+                double contentWidth = keysInRow * desiredKeyWidth + spacing + sep;
+
+                // padding is leftover space / 2
+                double extra = available - contentWidth;
                 if (extra < 0) extra = 0;
-                // keep any existing top/bottom padding you might want
-                this.Padding = new Thickness(extra / 2, this.Padding.Top, extra / 2, this.Padding.Bottom);
+
+                var newPadding = new Thickness(extra / 2, this.Padding.Top, extra / 2, this.Padding.Bottom);
+
+                // apply only if it actually changed (prevents tiny oscillations)
+                if (Math.Abs(newPadding.Left - this.Padding.Left) > 0.5)
+                    this.Padding = newPadding;
+
+                // store for arrow sizing
+                ActualKeyWidth = desiredKeyWidth;
             }
-            Console.WriteLine("CURRENT ARROW: {0} {1} {2}", Direction, AboveNumber, ArrowLength);
+
+            LayoutReady?.Invoke(this, EventArgs.Empty);
+
             if (ArrowLength != null && AboveNumber != null)
-            {   
-                int arrowLength = (int)this.ArrowLength; int aboveNumber = (int)this.AboveNumber; Direction dir = this.Direction;
+            {
+                int arrowLength = (int)ArrowLength;
+                int aboveNumber = (int)AboveNumber;
+                Direction dir = Direction;
+
                 RemoveArrows();
-                Console.WriteLine("Adding arrow with length {0} above number {1} in direction {2}", arrowLength, aboveNumber, dir);
                 AddArrow(dir, aboveNumber, arrowLength, 1, ActualKeyWidth);
             }
         }
+
 
         private void InitializeWithConfig(KeyboardConfig config)
         {
@@ -487,7 +534,13 @@ namespace GestureSample.Maui.Models
                 this.AddArrow(Direction.Left, 10);
             }*/
 
+
+
+            this.SizeChanged -= OnSizeChanged;
             this.SizeChanged += OnSizeChanged;
+
+            KeysRebuilt?.Invoke(this, EventArgs.Empty);
+
         }
         /// <summary>
         /// Creates pressed piano
