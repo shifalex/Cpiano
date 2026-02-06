@@ -250,8 +250,9 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
 
         public bool IncludeTutorials { get; set; } = false;
 
-        public bool OnlyStrangeGroups { get; set; } = false;
-        public bool OnlyResultMoreThanOne { get; set; } = false;
+        public bool DenyStrangeOrSameGroups { get; set; } = false;
+
+        public bool TwoKeybordsOnOne { get; set; } = false;
 
         public Direction? WhichHand { get; set; } = null;
         public bool IsOnlyOneHand { get; set; } = false;
