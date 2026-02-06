@@ -400,6 +400,7 @@ namespace GestureSample.Views
         OnlyToTen = true,
         IsOnlyOneHand = true,
         IncludeTutorials = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -431,6 +432,7 @@ namespace GestureSample.Views
         isOnlySequence = false,
         OnlyToTen = true,
         IncludeTutorials = true,
+        isOnlyKeyboard = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
