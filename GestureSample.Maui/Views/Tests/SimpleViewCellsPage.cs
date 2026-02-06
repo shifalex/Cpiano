@@ -223,7 +223,6 @@ _lblStatement.Text = text;
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
-                    _task2Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
                     if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
                     {
                         _keyboardTask2.IsVisible = true;
@@ -236,16 +235,14 @@ _lblStatement.Text = text;
                         _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
                     }
                     _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                    _task1Host.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                     if (_config.isOnlyKeyboard)//TODO: move to init method
                         _keyboardTask1.IsVisible = false;
                     if (_taskMainHost != null && (_config.IncludeTutorials || _config.isOnlyKeyboard))
                     {
-                        _taskMainHost.SetOverlayState(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                        if (_config.isOnlyKeyboard)
+                            _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                         if (_config.IncludeTutorials)
                             Tutorial(_taskMainHost);
-                        else if (_config.isOnlyKeyboard)//TODO: tutorial only if did wrong.
-                            Tutorial(_taskMainHost, Operation.Copy);
                     }
                     
                 }
@@ -323,19 +320,16 @@ _lblStatement.Text = text;
                 entry.Focus();
             });
         }
-        async Task Tutorial(KeyboardOverlayHost koh, Operation? op = null)
+        async Task Tutorial(KeyboardOverlayHost koh)
         {
-            if (op == null)
-            {
-                op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
-            }
-            _ = Task.Run(async () =>
+           Operation op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
+             _ = Task.Run(async () =>
             {
                 await Task.Delay(1000);
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Task.WhenAll(
-                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,(Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000, true, op != Operation.Copy)
+                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,(Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000)
 
                     );
                 });

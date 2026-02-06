@@ -146,9 +146,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Minus,
         [Description("COPY")]
         Copy,
-        [Description("COPY Special")]
-        CopySpeccial,
-        [Description("EQUAL")]
+       [Description("EQUAL")]
         Quantity,
         [Description("GROUP to the RIGHT ->")]
         SequenceLTR,
