@@ -597,5 +597,13 @@ namespace GestureSample.Maui.Models
 
             for (int i = 0; i < NUMBER_OF_KEYS; i++) colors[i] = btnKeys[i].BackgroundColor;
         }
+
+        public void SpecialColors()
+        {             for (int i = 0; i < NUMBER_OF_KEYS; i++)
+            {
+                btnKeys[i].BackgroundColor = btnKeys[i].BackgroundColor == COLOR_PRESSED ? Colors.Blue : Colors.Red;
+                
+            }
+        }
     }
 }

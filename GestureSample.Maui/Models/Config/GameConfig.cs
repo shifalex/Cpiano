@@ -256,6 +256,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
 
         public Direction? WhichHand { get; set; } = null;
         public bool IsOnlyOneHand { get; set; } = false;
+        public bool IsSpecialColor { get; set; } = false;
 
         // DefaultTriad is computed lazily from the current configuration when first requested.
         private PPWObject? _defaultTriad;

@@ -228,6 +228,8 @@ _lblStatement.Text = text;
 
                         _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion
     .Concat(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2).ToArray());
+                        if (_config.IsSpecialColor)
+                            _keyboardTask1.SpecialColors();
                         _keyboardTask1.SetNoBorderBetweenRows();
                         _keyboardTask2.IsVisible=false;
                     }
