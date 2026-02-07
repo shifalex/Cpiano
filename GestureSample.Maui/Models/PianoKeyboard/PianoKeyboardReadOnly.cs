@@ -10,6 +10,8 @@ namespace GestureSample.Maui.Models
     {
         public event EventHandler? LayoutReady;
         public event EventHandler? KeysRebuilt;
+        GraphicsView? _overlayView;
+        IDrawable? _overlayDrawable;
 
         public Grid Arrow1; // The combined object containing the number and the arrow
         public Grid Arrow2;
@@ -32,6 +34,7 @@ namespace GestureSample.Maui.Models
         protected readonly Color THIRD_COLOR = Colors.Blue;
         protected readonly Color REMOVE_COLOR = Colors.Red;
         public Color[] colors;
+
 
         public static readonly BindableProperty KeysProperty =
         BindableProperty.Create(
@@ -64,6 +67,48 @@ namespace GestureSample.Maui.Models
                     //RowDefinitions[i].Height = new GridLength(0, GridUnitType.Star);
                 }
             }
+        }
+
+        public void InvalidateOverlay() => _overlayView?.Invalidate();
+
+        private void FixOverlaySpan()
+        {
+            if (_overlayView == null) return;
+
+            Grid.SetRow(_overlayView, 0);
+            Grid.SetColumn(_overlayView, 0);
+            Grid.SetRowSpan(_overlayView, Math.Max(1, RowDefinitions.Count));
+            Grid.SetColumnSpan(_overlayView, Math.Max(1, ColumnDefinitions.Count));
+
+            _overlayView.Invalidate();
+        }
+
+        public void InstallOverlay(IDrawable drawable, int zIndex = 1000)
+        {
+            _overlayDrawable = drawable;
+
+            if (_overlayView == null)
+            {
+                _overlayView = new GraphicsView
+                {
+                    InputTransparent = true,
+                    ZIndex = zIndex,
+                    //HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Fill
+                };
+
+                // add it as a child spanning the whole keyboard grid
+                Children.Add(_overlayView);
+
+                // span all rows/cols (works even if you later rebuild row/col defs)
+                Grid.SetRow(_overlayView, 0);
+                Grid.SetColumn(_overlayView, 0);
+                Grid.SetRowSpan(_overlayView, Math.Max(1, RowDefinitions.Count));
+                Grid.SetColumnSpan(_overlayView, Math.Max(1, ColumnDefinitions.Count));
+            }
+
+            _overlayView.Drawable = drawable;
+            _overlayView.Invalidate();
         }
 
         private static void OnKeysChanged(BindableObject bindable, object oldValue, object newValue)
@@ -417,51 +462,40 @@ namespace GestureSample.Maui.Models
         private async void OnSizeChanged(object sender, EventArgs e)
         {
             int v = ++_layoutVersion;
-
             await Task.Delay(200);
-
-            // ignore stale calls
             if (v != _layoutVersion) return;
 
             if (btnKeys.Length > 0)
             {
-                ActualKeyWidth = btnKeys[0].Width;
-                ActualKeyWidth = Math.Min(ActualKeyWidth, MAX_KEY_WIDTH);
-
-                // IMPORTANT: use keys-per-row for content width, not btnKeys.Length (which is rows*keys)
                 int keysInRow = Config.KeysInRow;
 
-                // fixed constants
-                double sep = (keysInRow > 10 ? 0 : FINGER_SEPERATOR);
-                double spacing = (keysInRow - 1) * this.ColumnSpacing;
+                double available = Width;
+                if (available > 0)
+                {
+                    double spacing = (keysInRow - 1) * ColumnSpacing;
+                    double sep = (keysInRow > 10 ? 0 : FINGER_SEPERATOR);
 
-                // available width BEFORE we change padding
-                double available = this.Width;
-                if (available <= 0) return;
+                    double desiredKeyWidth = (available - spacing - sep) / keysInRow;
+                    desiredKeyWidth = Math.Min(desiredKeyWidth, MAX_KEY_WIDTH);
+                    if (desiredKeyWidth < 0) desiredKeyWidth = 0;
 
-                // choose desired key width from available width (NOT from current button width)
-                double desiredKeyWidth = (available - spacing - sep) / keysInRow;
-                desiredKeyWidth = Math.Min(desiredKeyWidth, MAX_KEY_WIDTH);
-                if (desiredKeyWidth < 0) desiredKeyWidth = 0;
+                    double contentWidth = keysInRow * desiredKeyWidth + spacing + sep;
+                    double extra = available - contentWidth;
+                    if (extra < 0) extra = 0;
 
-                // compute content width from desired width
-                double contentWidth = keysInRow * desiredKeyWidth + spacing + sep;
+                    var newPadding = new Thickness(extra / 2, Padding.Top, extra / 2, Padding.Bottom);
+                    if (Math.Abs(newPadding.Left - Padding.Left) > 0.5)
+                        Padding = newPadding;
 
-                // padding is leftover space / 2
-                double extra = available - contentWidth;
-                if (extra < 0) extra = 0;
-
-                var newPadding = new Thickness(extra / 2, this.Padding.Top, extra / 2, this.Padding.Bottom);
-
-                // apply only if it actually changed (prevents tiny oscillations)
-                if (Math.Abs(newPadding.Left - this.Padding.Left) > 0.5)
-                    this.Padding = newPadding;
-
-                // store for arrow sizing
-                ActualKeyWidth = desiredKeyWidth;
+                    ActualKeyWidth = desiredKeyWidth;
+                }
             }
 
+            FixOverlaySpan();
             LayoutReady?.Invoke(this, EventArgs.Empty);
+
+
+            //LayoutReady?.Invoke(this, EventArgs.Empty);
 
             if (ArrowLength != null && AboveNumber != null)
             {
@@ -472,6 +506,7 @@ namespace GestureSample.Maui.Models
                 RemoveArrows();
                 AddArrow(dir, aboveNumber, arrowLength, 1, ActualKeyWidth);
             }
+
         }
 
 
@@ -539,7 +574,9 @@ namespace GestureSample.Maui.Models
             this.SizeChanged -= OnSizeChanged;
             this.SizeChanged += OnSizeChanged;
 
+            FixOverlaySpan();
             KeysRebuilt?.Invoke(this, EventArgs.Empty);
+
 
         }
         /// <summary>

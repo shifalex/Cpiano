@@ -152,23 +152,24 @@ namespace GestureSample.Maui.Models
        
        
         private readonly PatternDrawable _patternDrawable = new();
-        private readonly GraphicsView _patternView;
         private RectF[] _keyRects = Array.Empty<RectF>();
 
         public KeyboardOverlayHost(PianoKeyboardReadOnly keyboard)
         {
             Keyboard = keyboard;
             Children.Add(Keyboard);
-            AttachToKeyboard(keyboard);
-            _patternView = new GraphicsView
-            {
-                Drawable = _patternDrawable,
-                InputTransparent = true,
-                ZIndex = 110,
-                HorizontalOptions = LayoutOptions.Fill,
-                VerticalOptions = LayoutOptions.Fill
-            };
-            Children.Add(_patternView);
+
+            // ✅ BIG FIX: overlay is INSIDE the keyboard now
+            Keyboard.InstallOverlay(_patternDrawable);
+
+            // keep syncing rects on layout changes
+            Keyboard.LayoutReady += (_, _) => SyncOverlay();
+            Keyboard.KeysRebuilt += (_, _) => SyncOverlay();
+            Keyboard.SizeChanged += (_, _) => SyncOverlay(); // optional backup
+
+            SyncOverlay();
+
+
         }
 
         // persistent question / answer state
@@ -179,26 +180,26 @@ namespace GestureSample.Maui.Models
             // run again next UI tick.
             if (TrySyncOverlay())
             {
-                _patternView.Invalidate();
+                Keyboard.InvalidateOverlay(); 
                 return;
             }
 
             Dispatcher.Dispatch(() =>
             {
                 if (TrySyncOverlay())
-                    _patternView.Invalidate();
+                    Keyboard.InvalidateOverlay();
                 else
                 {
                     // layout not ready yet; try once more next frame
                     Dispatcher.Dispatch(() =>
                     {
                         if (TrySyncOverlay())
-                            _patternView.Invalidate();
+                            Keyboard.InvalidateOverlay();
                     });
                     return;
                 }
 
-                _patternView.Invalidate();
+                Keyboard.InvalidateOverlay();
             });
         }
 
@@ -208,7 +209,7 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimBits = bits ?? Array.Empty<bool>();
             _patternDrawable.AnimShiftKeys = 0f;
             _patternDrawable.CursorIndex = null;
-            _patternView.Invalidate();
+            Keyboard.InvalidateOverlay();
         }
 
         // clear only animation layer
@@ -218,21 +219,14 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimTargets = Array.Empty<int>();
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
-            _patternView.Invalidate();
+            Keyboard.InvalidateOverlay();
         }
 
-        public void AttachToKeyboard(PianoKeyboardReadOnly keyboard)
-        {
-            Keyboard = keyboard;
-
-            keyboard.LayoutReady += (_, _) => SyncOverlay();
-            keyboard.KeysRebuilt += (_, _) => SyncOverlay();
-        }
 
         public void SyncOverlay()
         {
-            if (!TrySyncOverlay()) return;
-            _patternView.Invalidate();
+            if (TrySyncOverlay())
+                Keyboard.InvalidateOverlay();
         }
 
         public bool TrySyncOverlay()
@@ -263,21 +257,21 @@ namespace GestureSample.Maui.Models
 
             _patternDrawable.CursorIndex = fromIndex;
             _patternDrawable.CursorAlpha = 0.7f;
-            _patternView.Invalidate();
+            Keyboard.InvalidateOverlay();
 
             var tcs = new TaskCompletionSource();
 
             new Animation(v =>
             {
                 _patternDrawable.CursorIndex = (int?)(fromIndex + (toIndex - fromIndex) * v);
-                _patternView.Invalidate();
+                Keyboard.InvalidateOverlay();
             })
             .Commit(this, "CursorMove", 16, ms, Easing.CubicInOut, (v, c) => tcs.SetResult());
 
             await tcs.Task;
 
             _patternDrawable.CursorIndex = null;
-            _patternView.Invalidate();
+            Keyboard.InvalidateOverlay();
         }
 
         public async Task Animate(
@@ -298,9 +292,9 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
 
-            _patternView.IsVisible = true;
-            _patternView.Opacity = 1;
-            _patternView.Invalidate();
+            //_patternView.IsVisible = true;
+            //_patternView.Opacity = 1;
+            Keyboard.InvalidateOverlay();
 
             // nothing to animate
             if (_patternDrawable.AnimTargets.Length == 0)
@@ -329,7 +323,7 @@ namespace GestureSample.Maui.Models
             new Animation(v =>
             {
                 setProgress((float)v);
-                _patternView.Invalidate();
+                Keyboard.InvalidateOverlay();
             })
             .Commit(this, name, 16, ms, Easing.CubicInOut,
                 (_, _) => tcs.SetResult());

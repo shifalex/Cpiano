@@ -148,12 +148,14 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Copy,
        [Description("EQUAL")]
         Quantity,
-        [Description("GROUP to the RIGHT ->")]
+        [Description("GROUP to the RIGHT -->")]
         SequenceLTR,
-        [Description("<- GROUP to the LEFT")]
+        [Description("<-- GROUP to the LEFT")]
         SequenceRTL,
         [Description("<- SPLIT ->")]
         Split,
+        [Description("GROUP -><-to CENTER")]
+        Centrelize,
         [Description("SHIFT")]
         MoveBy,
         [Description("MIRROR")]
@@ -166,8 +168,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         And,
         [Description("OR(||)")]
         Or,
-        [Description("Neutralise")]
-        Neutralise,
+        [Description("XOR")]
+        ExclusiveOr,
         [Description("SUM(+)")]
         SUMM
 
@@ -208,10 +210,10 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
     {
         public class Operations
         {
-            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.Not };
+            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.Not };
             public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
             public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
-            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.Neutralise, Operation.SUMM };
+            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.SUMM };
         }
 
         public ExercisePlan? Plan { get; set; } = null;
