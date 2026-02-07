@@ -643,7 +643,7 @@ namespace GestureSample.Maui.Models
                     }
                     break;
 
-                case Operation.Neutralise:
+                case Operation.ExclusiveOr:
                     if (BitArrayQuestion2 != null)
                     {
                         for (int i = 0; i < len; i++)

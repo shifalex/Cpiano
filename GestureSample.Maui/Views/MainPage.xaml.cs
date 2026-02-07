@@ -767,11 +767,11 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Neutralise", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("One operation", "XOR Special colors", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Neutralise",
+        GameName = "XOR",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.Neutralise },
+        OperationList =new()  {Operation.ExclusiveOr },
         OnlyToTen = true,
         TwoKeybordsOnOne = true,
         IsSpecialColor = true,
@@ -781,11 +781,24 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Or-And-Neutralise", () => new SimpleViewCellsPage(new GameConfig
+              new PageConfig("One operation", "XOR", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Or-And-Neutralise",
+        GameName = "XOR",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.Neutralise },
+        OperationList =new()  {Operation.ExclusiveOr },
+        OnlyToTen = true,
+        TwoKeybordsOnOne = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 6
+        }
+    })),
+             new PageConfig("One operation", "Or-And-XOR", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Or-And-XOR",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList =new()  {Operation.ExclusiveOr },
         OnlyToTen = true,
         DenyStrangeOrSameGroups = true,
         TwoKeybordsOnOne = true,
@@ -798,7 +811,7 @@ namespace GestureSample.Views
     {
         new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
         new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Neutralise, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.ExclusiveOr, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
     },
     Loop = true
 },
@@ -811,11 +824,11 @@ namespace GestureSample.Views
         }
     })),
 
-              new PageConfig("One operation", "Neutralise - FAR", () => new SimpleViewCellsPage(new GameConfig
+              new PageConfig("One operation", "XOR - FAR", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Neutralise",
+        GameName = "XOR",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.Neutralise },
+        OperationList =new()  {Operation.ExclusiveOr },
         OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
@@ -827,7 +840,7 @@ namespace GestureSample.Views
     {
         GameName = "Or-And-Neutralise",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.Neutralise },
+        OperationList =new()  {Operation.ExclusiveOr },
         OnlyToTen = true,
         DenyStrangeOrSameGroups = true,
         Plan = new ExercisePlan
@@ -837,7 +850,7 @@ namespace GestureSample.Views
     {
         new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
         new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Neutralise, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
+        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.ExclusiveOr, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
     },
     Loop = true
 },
