@@ -248,7 +248,13 @@ namespace GestureSample.Maui.Models
             for (int i = 0; i < n; i++)
             {
                 var key = keys[i];
-                _keyRects[i] = new RectF((float)key.X, (float)key.Y, (float)key.Width, (float)key.Height);
+                var (ox, oy) = Keyboard.GetOverlayOffset();
+                _keyRects[i] = new RectF(
+                    (float)(key.X - ox),
+                    (float)(key.Y - oy),
+                    (float)key.Width,
+                    (float)key.Height
+                );
             }
 
             _patternDrawable.KeyRects = _keyRects;

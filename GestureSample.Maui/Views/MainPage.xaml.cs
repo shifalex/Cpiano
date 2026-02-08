@@ -468,7 +468,7 @@ namespace GestureSample.Views
     })),
     new PageConfig("One operation", "Shift by - One Finger", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Shift by - One hand",
+        GameName = "Shift by -  - One Finger",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
@@ -484,7 +484,7 @@ namespace GestureSample.Views
     })),
              new PageConfig("One operation", "Shift by - Two Fingers", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Shift by",
+        GameName = "Shift by - Two Fingers",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
@@ -501,13 +501,13 @@ namespace GestureSample.Views
     })),
              new PageConfig("One operation", "Shift by - Structure", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Shift by",
+        GameName = "Shift by - Structure",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
         OnlyToTen = true,
         isOnlySequence = false,
         isOnlyKeyboard = true,
-        MinSum=2,
+        MinSum=3,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,

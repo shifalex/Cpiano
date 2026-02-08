@@ -83,6 +83,11 @@ namespace GestureSample.Maui.Models
 
             _overlayView.Invalidate();
         }
+        public (double X, double Y) GetOverlayOffset()
+        {
+            if (_overlayView == null) return (0, 0);
+            return (_overlayView.X, _overlayView.Y);
+        }
 
         public void InstallOverlay(IDrawable drawable, int zIndex = 1000)
         {
