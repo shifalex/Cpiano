@@ -57,6 +57,7 @@ namespace GestureSample.Maui.Models
         public int KeyCount => btnKeys?.Length ?? 0;
 
 
+
         public void SetNoBorderBetweenRows()
         {
             for (int i = 0; i < RowDefinitions.Count; i++)
@@ -93,7 +94,7 @@ namespace GestureSample.Maui.Models
                 {
                     InputTransparent = true,
                     ZIndex = zIndex,
-                    //HorizontalOptions = LayoutOptions.Fill,
+                    HorizontalOptions = LayoutOptions.Fill,
                     VerticalOptions = LayoutOptions.Fill
                 };
 
@@ -462,7 +463,7 @@ namespace GestureSample.Maui.Models
         private async void OnSizeChanged(object sender, EventArgs e)
         {
             int v = ++_layoutVersion;
-            await Task.Delay(200);
+            //await Task.Delay(200);
             if (v != _layoutVersion) return;
 
             if (btnKeys.Length > 0)
@@ -493,6 +494,7 @@ namespace GestureSample.Maui.Models
 
             FixOverlaySpan();
             LayoutReady?.Invoke(this, EventArgs.Empty);
+            //InvalidateOverlay();
 
 
             //LayoutReady?.Invoke(this, EventArgs.Empty);
@@ -576,7 +578,7 @@ namespace GestureSample.Maui.Models
 
             FixOverlaySpan();
             KeysRebuilt?.Invoke(this, EventArgs.Empty);
-
+            InvalidateOverlay();
 
         }
         /// <summary>
@@ -641,6 +643,7 @@ namespace GestureSample.Maui.Models
                 btnKeys[i].BackgroundColor = btnKeys[i].BackgroundColor == COLOR_PRESSED ? Colors.Blue : Colors.Red;
                 
             }
+            this.RowSpacing = 0;
         }
     }
 }

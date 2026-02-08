@@ -165,7 +165,7 @@ namespace GestureSample.Maui.Models
             // keep syncing rects on layout changes
             Keyboard.LayoutReady += (_, _) => SyncOverlay();
             Keyboard.KeysRebuilt += (_, _) => SyncOverlay();
-            Keyboard.SizeChanged += (_, _) => SyncOverlay(); // optional backup
+            //Keyboard.SizeChanged += (_, _) => SyncOverlay(); // optional backup
 
             SyncOverlay();
 
@@ -225,9 +225,13 @@ namespace GestureSample.Maui.Models
 
         public void SyncOverlay()
         {
-            if (TrySyncOverlay())
-                Keyboard.InvalidateOverlay();
+            Dispatcher.Dispatch(() =>
+            {
+                if (TrySyncOverlay())
+                    Keyboard.InvalidateOverlay();
+            });
         }
+        
 
         public bool TrySyncOverlay()
         {
