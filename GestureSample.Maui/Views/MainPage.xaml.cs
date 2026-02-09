@@ -512,7 +512,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            KeysInRow = 6
+            KeysInRow = 8
         }
     })),
 
@@ -679,6 +679,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            
             KeysInRow = 6
         },
          Plan = new ExercisePlan
