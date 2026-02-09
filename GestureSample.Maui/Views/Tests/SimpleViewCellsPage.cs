@@ -734,7 +734,7 @@ namespace GestureSample.Views.Tests
             }
             Content = grid;
 #if DEBUG
-            AttachHudOverlay();
+            //AttachHudOverlay();
 #endif
         }
 
