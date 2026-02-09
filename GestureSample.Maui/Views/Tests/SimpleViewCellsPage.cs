@@ -1,11 +1,13 @@
-﻿using GestureSample.Maui;
+﻿using GestureSample.Debugging;
+using GestureSample.Maui;
 using GestureSample.Maui.Models;
 using Microsoft.Maui.Controls.Platform;
-using Microsoft.Maui.Platform;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Layouts;
+using Microsoft.Maui.Platform;
 using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace GestureSample.Views.Tests
 {
@@ -34,8 +36,8 @@ namespace GestureSample.Views.Tests
             get => _pianoKeyboard?.IsEnabled ?? true;
             set
             {
-                if(_pianoKeyboard!=null) _pianoKeyboard.IsEnabled = value;
-                if (_btnNext != null && _btnCheck!=null && _btnCheck.IsVisible)
+                if (_pianoKeyboard != null) _pianoKeyboard.IsEnabled = value;
+                if (_btnNext != null && _btnCheck != null && _btnCheck.IsVisible)
                 {
                     _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
                     _btnCheck.IsEnabled = value;
@@ -105,9 +107,9 @@ namespace GestureSample.Views.Tests
             };
         }
         private async Task UpdateStatement()
-            {
-        string text = _gamePlay.Status;
-        TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
+        {
+            string text = _gamePlay.Status;
+            TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
             {
                 text = string.Format("{0}\n{1} Remaining\n", ts.ToFormattedString("mm:ss"), (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2));
@@ -115,16 +117,16 @@ namespace GestureSample.Views.Tests
                 {
                     text += string.Format("{0} Mistakes left", (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
                 }
-    text += "\n";
+                text += "\n";
             }
             else if (_config.NumberOfTasksToWin > -1)
-{
-    text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2),
-        (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
+            {
+                text += string.Format("\n{0} Remaining\n{1} Mistakes left", (_config.NumberOfTasksToWin - _gamePlay._tasksMade).ToString().PadRight(2),
+                    (_config.NumberOfMistakesToLose - _gamePlay._losesMade).ToString().PadRight(3));
 
-    text += "\n";
-}
-_lblStatement.Text = text;
+                text += "\n";
+            }
+            _lblStatement.Text = text;
 
         }
 
@@ -192,20 +194,20 @@ _lblStatement.Text = text;
                 {
                     txt[1].IsEnabled = true;
                     //if (_gamePlay.addend1 != PPWGamePlay.NAN)
-                        txt[0].Text = "10";//((_gamePlay.addend1 / 10 + 1) * 10).ToString();
+                    txt[0].Text = "10";//((_gamePlay.addend1 / 10 + 1) * 10).ToString();
                     /*txt[0].WidthRequest = 2 * TASK_WIDTH / 3;
                     txt[0].IsEnabled = false;
                     txt[1].WidthRequest = TASK_WIDTH / 3;
                     txt[1].IsEnabled = true;*/
-                
-                /* else if (_gamePlay.addend2 != PPWGamePlay.NAN)
-                     {
-                         txt[1].Text = ((_gamePlay.addend2 / 10 + 1) * 10).ToString();
-                         txt[1].WidthRequest = 2* TASK_WIDTH / 3;
-                         txt[1].IsEnabled = false;
-                         txt[0].WidthRequest = TASK_WIDTH / 3;
-                         txt[0].IsEnabled = true;
-                     }*/
+
+                    /* else if (_gamePlay.addend2 != PPWGamePlay.NAN)
+                         {
+                             txt[1].Text = ((_gamePlay.addend2 / 10 + 1) * 10).ToString();
+                             txt[1].WidthRequest = 2* TASK_WIDTH / 3;
+                             txt[1].IsEnabled = false;
+                             txt[0].WidthRequest = TASK_WIDTH / 3;
+                             txt[0].IsEnabled = true;
+                         }*/
                     if (_gamePlay.Sum != PPWGamePlay.NAN)
                     {
                         txt[1].Text = (_gamePlay.Sum - 10).ToString();
@@ -231,7 +233,7 @@ _lblStatement.Text = text;
                         if (_config.IsSpecialColor)
                             _keyboardTask1.SpecialColors();
                         _keyboardTask1.SetNoBorderBetweenRows();
-                        _keyboardTask2.IsVisible=false;
+                        _keyboardTask2.IsVisible = false;
                     }
                     else
                     {
@@ -285,7 +287,7 @@ _lblStatement.Text = text;
                     _pianoKeyboard.PianoInit();
                 }
                 if (tasks.Count > 0) await Task.WhenAll(tasks);
-                
+
             }
             if (_isThreeTexts && _config.KeyboardConfig == null)
             {
@@ -336,18 +338,18 @@ _lblStatement.Text = text;
         }
         async Task Tutorial(KeyboardOverlayHost koh)
         {
-           Operation op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
-             _ = Task.Run(async () =>
-            {
-                await Task.Delay(1000);
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await Task.WhenAll(
-                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion,(Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength*(((BitArrayGamePlay)_gamePlay).moveBydir==Direction.Right?1:-1),  4000)
+            Operation op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
+            _ = Task.Run(async () =>
+           {
+               await Task.Delay(1000);
+               MainThread.BeginInvokeOnMainThread(async () =>
+               {
+                   await Task.WhenAll(
+                       koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, (Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength * (((BitArrayGamePlay)_gamePlay).moveBydir == Direction.Right ? 1 : -1), 4000)
 
-                    );
-                });
-            });
+                   );
+               });
+           });
         }
         private static void EntryEnabled(Entry ent, bool enabled)
         {
@@ -420,6 +422,8 @@ _lblStatement.Text = text;
             InitializeGamePlay();
             InitializeUI();
 
+
+
             _gamePlay.GenerateExercise();
         }
 
@@ -440,7 +444,7 @@ _lblStatement.Text = text;
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
                 bool isCorrect = await _gamePlay.CheckAsync(_pianoKeyboard);
-                if(isCorrect) GenerateNextExercise();
+                if (isCorrect) GenerateNextExercise();
 
             }
             else
@@ -454,14 +458,14 @@ _lblStatement.Text = text;
                         {
                             _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
                             await Task.Delay(_config.SecondsTillNextExercise * 1000);
-                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true; 
+                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
                         }
                         if (!_gamePlay.GameOver) GenerateNextExercise();
                     }
                     else
                     {
                         Console.WriteLine("Wrong answer");
-                        await Task.Delay(_config.SecondsTillNextExercise * 1000); 
+                        await Task.Delay(_config.SecondsTillNextExercise * 1000);
                     }
                 }
                 catch
@@ -490,9 +494,9 @@ _lblStatement.Text = text;
 
 
         // Changed to async so we can await tutorial animation without changing constructor call site.
-        private async void InitializeUI()
+        private void InitializeUI()
         {
-            bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType!=SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
+            bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType != SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             int pianoHeight = _isKeyboard ? (isPianoHigh ? 100 : 60) : 1;
             if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 200;
             Grid grid = new()
@@ -519,11 +523,11 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = _isKeyboard?((_config.UIQuestionType == UIQuestionType.LogicalKeyboards)?40:55): FONT_SIZE_DEFAULT,
+                FontSize = _isKeyboard ? ((_config.UIQuestionType == UIQuestionType.LogicalKeyboards) ? 40 : 55) : FONT_SIZE_DEFAULT,
                 TextColor = Colors.Black,
                 Text = Statement.Neutral
             };
-            
+
             VerticalStackLayout vsl = new()
         {
             _lblStatement
@@ -570,7 +574,7 @@ _lblStatement.Text = text;
                     {
                         Text = "",
                         FontSize = FONT_SIZE_DEFAULT,
-                        WidthRequest = TASK_WIDTH / 4,  
+                        WidthRequest = TASK_WIDTH / 4,
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
                     };
@@ -578,10 +582,10 @@ _lblStatement.Text = text;
                     {
                         txt[0].IsEnabled = false;
                         txt[1].IsEnabled = false;
-                        txt[0].WidthRequest = 3* TASK_WIDTH / 4;
-                        txt[1].WidthRequest =  TASK_WIDTH / 4;
-                        txt[2].WidthRequest =  TASK_WIDTH / 2;
-                        txt[3].WidthRequest =  TASK_WIDTH / 4;
+                        txt[0].WidthRequest = 3 * TASK_WIDTH / 4;
+                        txt[1].WidthRequest = TASK_WIDTH / 4;
+                        txt[2].WidthRequest = TASK_WIDTH / 2;
+                        txt[3].WidthRequest = TASK_WIDTH / 4;
                         txt[4].WidthRequest = TASK_WIDTH / 4;
                     }
 
@@ -627,7 +631,7 @@ _lblStatement.Text = text;
                 vsl.Spacing = 0;
                 vsl.HorizontalOptions = LayoutOptions.Fill;
 
-                if(_config.IncludeTutorials)
+                if (_config.IncludeTutorials)
                 {
                     Debug.WriteLine("Starting tutorial hand animation...");
 
@@ -658,7 +662,7 @@ _lblStatement.Text = text;
 
 
                     // add overlay to grid (span all rows/columns so it floats above everything)
-                                if (!grid.Children.Contains(handGraphicsView))
+                    if (!grid.Children.Contains(handGraphicsView))
                     {
                         grid.Add(handGraphicsView);
                         Grid.SetRowSpan(handGraphicsView, grid.RowDefinitions.Count);
@@ -681,7 +685,7 @@ _lblStatement.Text = text;
                     // Wait a short time for layout to settle so overlay has a valid size, then animate to center
                     // await Task.Delay(50);
                     var target = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
-                 //   await hand.ShowMoveHideAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(8000), TimeSpan.FromMilliseconds(2500));
+                    //   await hand.ShowMoveHideAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(8000), TimeSpan.FromMilliseconds(2500));
                 }
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -711,7 +715,8 @@ _lblStatement.Text = text;
                     SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
-                if (_config.KeyboardConfig.KeyboardAsAQuestion) {
+                if (_config.KeyboardConfig.KeyboardAsAQuestion)
+                {
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
                 if (_config.IncludeTutorials || _config.isOnlyKeyboard)
@@ -728,7 +733,9 @@ _lblStatement.Text = text;
                 }
             }
             Content = grid;
-
+#if DEBUG
+            AttachHudOverlay();
+#endif
         }
 
         private HorizontalStackLayout InitEquationUI()
@@ -789,7 +796,7 @@ _lblStatement.Text = text;
             {
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = 40,  
+                FontSize = 40,
                 TextColor = Colors.Black
             };
             KeyboardConfig config1 = new KeyboardConfig
@@ -801,7 +808,7 @@ _lblStatement.Text = text;
             _keyboardTask1 = new PianoKeyboardReadOnly(config1)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = (_config.TwoKeybordsOnOne)? (PIANO_HEIGHT2*2)+5 : PIANO_HEIGHT2
+                HeightRequest = (_config.TwoKeybordsOnOne) ? (PIANO_HEIGHT2 * 2) + 5 : PIANO_HEIGHT2
             };
 
             _task2Host = new KeyboardOverlayHost(_keyboardTask2);
@@ -839,7 +846,7 @@ _lblStatement.Text = text;
                 Drawable = new HandDrawable(isLeftHand: false)
             };
 
-    
+
 
 
 
@@ -885,10 +892,11 @@ _lblStatement.Text = text;
                 _btnPrev = new Button
                 {
                     Text = "Prev",
-                    
+
                     HorizontalOptions = LayoutOptions.Center
                 };
-                _btnPrev.Pressed += (_, _) => {
+                _btnPrev.Pressed += (_, _) =>
+                {
                     if (_previousPPW != null)
                     {
                         _txtAddend1.Text = _previousPPW.Addend1.ToString(); _txtAddend1.IsEnabled = false;
@@ -912,7 +920,8 @@ _lblStatement.Text = text;
                 hslBtns.Add(_btnPrev);
             }
             if (_config.NumberOfMistakesToLose < 0 && !_config.IsHistory)
-            {   hslBtns.Add(_btnCheck);
+            {
+                hslBtns.Add(_btnCheck);
                 hslBtns.Add(_btnNext);
             }
             /*if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
@@ -937,11 +946,11 @@ _lblStatement.Text = text;
                 WidthRequest = TASK_WIDTH,
                 FontSize = 32,
                 IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard,
-               
-            };
-            
 
-                _txtAddend1 = new Entry
+            };
+
+
+            _txtAddend1 = new Entry
             {
                 Keyboard = Keyboard.Numeric,
                 HorizontalOptions = LayoutOptions.Center,
@@ -951,7 +960,7 @@ _lblStatement.Text = text;
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
-                };
+            };
             _lblAction = new Label
             {
                 FontSize = FONT_SIZE_DEFAULT,
@@ -994,7 +1003,7 @@ _lblStatement.Text = text;
             };
             _txtAddend1.Completed += (sender, e) =>
             {
-                if (_config.VariableTypes != VariableTypes.TwoNoSum )
+                if (_config.VariableTypes != VariableTypes.TwoNoSum)
                     CheckGamePlay();
                 else
                     _txtAddend2.Focus();
@@ -1005,10 +1014,32 @@ _lblStatement.Text = text;
             };
         }
 
-        protected override void OnDisappearing()
+        private void AttachHudOverlay()
         {
-            base.OnDisappearing();
-            //_pianoKeyboard?.Dispose();
+            var original = Content;
+            if (original == null) return;
+
+            var root = new AbsoluteLayout();
+
+            // Main content fills screen
+            AbsoluteLayout.SetLayoutBounds(original, new Rect(0, 0, 1, 1));
+            AbsoluteLayout.SetLayoutFlags(original, AbsoluteLayoutFlags.All);
+            root.Children.Add(original);
+
+            var hud = new DebugHudView
+            {
+                WidthRequest = 340,
+                HeightRequest = 240
+            };
+
+            // Top-right corner
+            AbsoluteLayout.SetLayoutBounds(hud, new Rect(1, 0, hud.WidthRequest, hud.HeightRequest));
+            AbsoluteLayout.SetLayoutFlags(hud, AbsoluteLayoutFlags.PositionProportional);
+
+            root.Children.Add(hud);
+
+            Content = root;
         }
     }
+
 }

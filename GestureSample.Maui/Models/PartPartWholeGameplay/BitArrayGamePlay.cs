@@ -1,5 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
+using GestureSample.Debugging;
 using MongoDB.Driver.Core.Operations;
 
 namespace GestureSample.Maui.Models
@@ -341,24 +342,28 @@ namespace GestureSample.Maui.Models
                 GenerateNonArrowExercise(r);
                 BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
                 quantity = BitArrayCorrectAnswer!=null?SumArray(BitArrayCorrectAnswer):SumArray(BitArrayQuestion);
-                 
+                DevLog.Write("Question is\t\t: "+ string.Join("", BitArrayQuestion.Cast<bool>().Select(b => b ? "1" : "0")));
+                DevLog.Write("Correct answer is\t: "+ string.Join("", BitArrayCorrectAnswer.Cast<bool>().Select(b => b ? "1" : "0")));
+                DevLog.Write("Is it ok?\t\t\t: "+(!(
+                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) && CurrentOperation != Operation.Copy) ||
+                    (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2) == 0)))).ToString());
+
             }
             while ( quantity < Config.MinSum ||
                     quantity > Config.MaxSum ||
-                    (Config.isOnlyKeyboard && AreOverlapingDifferentSets(BitArrayQuestion, BitArrayCorrectAnswer)&&CurrentOperation!=Operation.Copy) ||
-                    (Config.DenyStrangeOrSameGroups && !AreOverlapingDifferentSets(BitArrayQuestion, BitArrayQuestion2)) ||
+                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer)&& CurrentOperation!=Operation.Copy) ||
+                    (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2)==0)) ||
                     (CurrentOperation == Operation.SUMM &&
                     SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length)
                     );
         }
 
-        private bool AreOverlapingDifferentSets(bool[] arr1, bool[] arr2)
+        private bool AreOverlapingSets(bool[] arr1, bool[] arr2)
         {
-            if (arr1 == null || arr2 == null) return false;
-            if (arr1.Length != arr2.Length) return false;
-            if (SumArray(arr1) == 0 || SumArray(arr2) == 0) return false;
-            if(Equals(arr2,arr1)) return false;
-
+            if (arr1 == null || arr2 == null) return true;
+            if (arr1.Length != arr2.Length) return true;
+            if (SumArray(arr1) == 0 || SumArray(arr2) == 0) return true;
+            
             bool[] arrAns = new bool[arr1.Length];
             for (int i = 0; i < arr1.Length; i++)
                 arrAns[i] = arr1[i] && arr2[i];
