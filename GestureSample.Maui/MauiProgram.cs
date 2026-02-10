@@ -27,11 +27,19 @@ public static class MauiProgram
 #if ANDROID
                     handlers.AddHandler<Microsoft.Maui.Controls.Entry, CustomEntryHandler>();
 #endif
-            })
-            //.ConfigureMRGestures("ALZ9-BPVU-XQ35-CEBG-5ZRR-URJQ-ED5U-TSY8-6THP-3GVU-JW8Z-RZGE-CQW6");        // GestureSample
-            //.ConfigureMRGestures("NDTK-G7T7-QBLH-B48D-CKGP-F2NP-CV2N-B4M3-BXUR-WGQA-PLNK-BZVD-ZVCY");       // GestureSample.Maui
+            });
 
-            .ConfigureMRGestures();
+        //.ConfigureMRGestures("ALZ9-BPVU-XQ35-CEBG-5ZRR-URJQ-ED5U-TSY8-6THP-3GVU-JW8Z-RZGE-CQW6");        // GestureSample
+        //.ConfigureMRGestures("NDTK-G7T7-QBLH-B48D-CKGP-F2NP-CV2N-B4M3-BXUR-WGQA-PLNK-BZVD-ZVCY");       // GestureSample.Maui
+
+        try
+        {
+            builder.ConfigureMRGestures();
+        }
+        catch (Exception ex)
+        {
+            CrashLog.WriteException("MR.Gestures MAUI init failed", ex);
+        }
 
         /*builder.Services.AddSingleton((_) => new Supabase.Client(
             "https://njsspracfpbyozvandph.supabase.co", // Replace with your Supabase URL
@@ -39,7 +47,7 @@ public static class MauiProgram
         ));//Password: c!L2TkQ@8wLPt2e
         */
         // builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
-        Console.WriteLine("a");
+        CrashLog.Write("MauiProgram: registering UserRepository + CurrentUserSession");
         builder.Services.AddSingleton<UserRepository>();
         builder.Services.AddSingleton<CurrentUserSession>();
 
@@ -47,19 +55,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<SoundService>();
 
 
-        Console.WriteLine("b");
+        CrashLog.Write("MauiProgram: registering repositories");
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
 
         builder.Services.AddTransient<QuestionAnswerRepository>();
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
         builder.Services.AddTransient<KeyEventRepository>();
-        Console.WriteLine("c");
+        CrashLog.Write("MauiProgram: building app");
 
         var mauiApp = builder.Build();
         // Store the DI container (ServiceProvider)
         ServiceHelper.Services = mauiApp.Services;
-        Console.WriteLine("d");
+        CrashLog.Write("MauiProgram: app built");
         return mauiApp;
     }
 }
