@@ -27,7 +27,7 @@ namespace GestureSample.Maui.Models
 
             // tuning
             public float StaticAlpha { get; set; } = 0.5f;
-            public float AnimAlpha { get; set; } = 0.3f;
+            public float AnimAlpha { get; set; } = 0.5f;
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -303,19 +303,32 @@ namespace GestureSample.Maui.Models
             _patternDrawable.CursorIndex = null;
 
             //_patternView.IsVisible = true;
-            //_patternView.Opacity = 1;
+            //_patternView.OpacOpacity = 1;
             Keyboard.InvalidateOverlay();
 
             // nothing to animate
             if (_patternDrawable.AnimTargets.Length == 0)
                 return;
 
-            // --- run distance-based animation ---
-            await RunProgressAnimation(
-                $"Anim_{op}",
-                ms,
-                t => _patternDrawable.AnimProgress = t
-            );
+            if (op == Operation.MoveBy)
+            {
+
+                for (int i = 0; i < Math.Abs(shiftByK); i++)
+                {
+                    // Each "Next" press:
+                    await AnimateMoveByStepAsync(bits, shiftBy1: Math.Abs(shiftByK) / shiftByK, ms: 2200);
+                    bits = ShiftOnce(bits, Math.Abs(shiftByK) / shiftByK);
+                }
+            }
+            else
+            {
+                // --- run distance-based animation ---
+                await RunProgressAnimation(
+                    $"Anim_{op}",
+                    ms,
+                    t => _patternDrawable.AnimProgress = t
+                );
+            }
             await Task.Delay(2000);
             // --- clear animation layer ---
             ClearAnim();
@@ -359,6 +372,55 @@ namespace GestureSample.Maui.Models
 
                 _ => BuildShiftTargets(bits, 0)
             };
+        }
+
+        
+
+        public Task AnimateMoveByStepAsync(bool[] bits, int shiftBy1, uint ms = 220, string animName = "TutShiftStep")
+        {
+            TrySyncOverlay();
+
+            bits ??= Array.Empty<bool>();
+            if (bits.Length == 0)
+                return Task.CompletedTask;
+
+            // prepare animation layer
+            _patternDrawable.AnimBits = bits;
+            _patternDrawable.AnimTargets = BuildShiftTargets(bits, shiftBy1);
+            _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.CursorIndex = null;
+
+            Keyboard.InvalidateOverlay();
+
+            // nothing to animate
+            if (_patternDrawable.AnimTargets.Length == 0)
+                return Task.CompletedTask;
+
+            // run animation
+            return RunProgressAnimation(animName, ms, t => _patternDrawable.AnimProgress = t);
+        }
+
+        public void StopTutorialOverlayNow(string animName = "TutShiftStep")
+        {
+            this.AbortAnimation(animName);
+            ClearAnim();
+        }
+
+        public static bool[] ShiftOnce(bool[] bits, int shiftBy1)
+        {
+            int n = bits.Length;
+            var next = new bool[n];
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!bits[i]) continue;
+
+                int j = i + shiftBy1;
+                if ((uint)j < (uint)n)
+                    next[j] = true;
+            }
+
+            return next;
         }
 
         private static int[] BuildShiftTargets(bool[] bits, int shiftByK)
