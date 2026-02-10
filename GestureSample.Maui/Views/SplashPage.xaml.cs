@@ -6,15 +6,12 @@ namespace GestureSample.Maui.Views;
 
 public partial class SplashPage : ContentPage
 {
-    private readonly UserRepository _userRepo;
+    private UserRepository? _userRepo;
     private bool _isInitialized;
 
     public SplashPage()
     {
         Console.WriteLine("Splash constructing..");
-        _userRepo = ServiceHelper.GetService<UserRepository>();
-
-        Console.WriteLine("User repo succeeded..");
         InitializeComponent();
 
         Console.WriteLine("Initialize succeeded..");
@@ -32,6 +29,9 @@ public partial class SplashPage : ContentPage
         try
         {
             Console.WriteLine("Splash appearing");
+
+            _userRepo ??= ServiceHelper.GetService<UserRepository>();
+            Console.WriteLine("User repo resolved..");
 
             var users = await _userRepo.GetUsersAsync();
 

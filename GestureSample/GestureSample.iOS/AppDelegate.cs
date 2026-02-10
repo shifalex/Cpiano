@@ -24,8 +24,15 @@ namespace GestureSample.iOS
         {
 			global::Xamarin.Forms.Forms.Init();
 
+            try
+            {
 			MR.Gestures.iOS.Settings.LicenseKey = "ALZ9-BPVU-XQ35-CEBG-5ZRR-URJQ-ED5U-TSY8-6THP-3GVU-JW8Z-RZGE-CQW6";			// key for GestureSample
-			
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MR.Gestures license initialization failed: {ex}");
+            }
+
             LoadApplication(new App());
 
             return base.FinishedLaunching(app, options);
