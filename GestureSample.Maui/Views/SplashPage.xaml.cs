@@ -11,10 +11,10 @@ public partial class SplashPage : ContentPage
 
     public SplashPage()
     {
-        Console.WriteLine("Splash constructing..");
+        CrashLog.Write("Splash constructing");
         InitializeComponent();
 
-        Console.WriteLine("Initialize succeeded..");
+        CrashLog.Write("Splash InitializeComponent succeeded");
     }
 
     protected override async void OnAppearing()
@@ -28,10 +28,10 @@ public partial class SplashPage : ContentPage
 
         try
         {
-            Console.WriteLine("Splash appearing");
+            CrashLog.Write("Splash appearing");
 
             _userRepo ??= ServiceHelper.GetService<UserRepository>();
-            Console.WriteLine("User repo resolved..");
+            CrashLog.Write("UserRepository resolved");
 
             var users = await _userRepo.GetUsersAsync();
 
@@ -46,7 +46,7 @@ public partial class SplashPage : ContentPage
 
             if (currentUser == null)
             {
-                Console.WriteLine("Connecting user");
+                CrashLog.Write("Connecting user");
                 await session.LoadUserAsync(users[0].Id);
                 currentUser = session.ActiveUser;
 
@@ -54,18 +54,18 @@ public partial class SplashPage : ContentPage
                 {
                     currentUser.LastLoginTime = DateTime.Now;
                     await _userRepo.UpdateAsync(currentUser);
-                    Console.WriteLine("User updated");
+                    CrashLog.Write("User updated");
                 }
             }
 
-            Console.WriteLine("Going to Main page now");
+            CrashLog.Write("Going to MainPage");
             Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
         }
         catch (Exception ex)
         {
             _isInitialized = false;
-            Console.WriteLine($"Splash startup failed: {ex}");
-            await DisplayAlert("Startup Error", "Could not initialize user data. Please restart the app.", "OK");
+            CrashLog.WriteException("Splash startup failed", ex);
+            await DisplayAlert("Startup Error", $"Could not initialize user data. Log: {CrashLog.GetPath()}", "OK");
         }
     }
 }
