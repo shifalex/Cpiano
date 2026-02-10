@@ -197,3 +197,4 @@ project.lock.json
 # Visual Studio
 .vs/
 **/.vs/
+/file.patch
