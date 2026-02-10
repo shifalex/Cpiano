@@ -22,7 +22,7 @@ namespace GestureSample.Maui.Data.SQLite
         private StateConnection()
         {
             Console.WriteLine("Creating Database");
-            InitializeDatabase().Wait();
+            InitializeDatabase().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         private async Task InitializeDatabase()
@@ -35,11 +35,11 @@ namespace GestureSample.Maui.Data.SQLite
             Database = new SQLiteAsyncConnection(_dbPath);
             Console.WriteLine($"Database created successfully");
 
-            await CreateTableAsync<QuestionAnswer>();
-            await CreateTableAsync<KeyboardQuestion>();
-            await CreateTableAsync<Game>();
-            await CreateTableAsync<KeyEvent>();
-            await CreateTableAsync<User>();
+            await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
+            await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
+            await CreateTableAsync<Game>().ConfigureAwait(false);
+            await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
+            await CreateTableAsync<User>().ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
             //await MigrateAndResetWasSyncedAsync();
         }
@@ -49,7 +49,7 @@ namespace GestureSample.Maui.Data.SQLite
             try
             {
                 //_database.DropTableAsync<QuestionAnswer>().Wait();
-                Database.CreateTableAsync<T>().Wait();
+                await Database.CreateTableAsync<T>().ConfigureAwait(false);
                 Console.WriteLine($"Table '{typeof(T).Name}' created successfully.");
             }
             catch (Exception ex)

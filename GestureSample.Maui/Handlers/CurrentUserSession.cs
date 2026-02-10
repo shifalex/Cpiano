@@ -25,6 +25,12 @@ namespace GestureSample.Maui.Handlers
         /// <param name="userId">The ID of the user to load.</param>
         public async Task LoadUserAsync(Guid? userId)
         {
+            if (!userId.HasValue || userId.Value == Guid.Empty)
+            {
+                ActiveUser = null;
+                return;
+            }
+
             // Asynchronously load the user data using the repository.
             ActiveUser = await _userRepo.GetByIdAsync(userId);
 
