@@ -22,12 +22,12 @@ namespace GestureSample.Maui
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
-                Console.WriteLine($"[UnhandledException] {e.ExceptionObject}");
+                CrashLog.Write($"[UnhandledException] {e.ExceptionObject}");
             };
 
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
-                Console.WriteLine($"[UnobservedTaskException] {e.Exception}");
+                CrashLog.Write($"[UnobservedTaskException] {e.Exception}");
                 e.SetObserved();
             };
         }
@@ -35,6 +35,7 @@ namespace GestureSample.Maui
         public App()
         {
             InitializeComponent();
+            CrashLog.Write($"App ctor started. Log: {CrashLog.GetPath()}");
             InitializeExceptionHooks();
 
             // Start from SplashPage so user/database initialization is completed

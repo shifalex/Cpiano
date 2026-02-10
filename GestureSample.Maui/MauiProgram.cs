@@ -38,7 +38,7 @@ public static class MauiProgram
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"MR.Gestures MAUI init failed: {ex}");
+            CrashLog.WriteException("MR.Gestures MAUI init failed", ex);
         }
 
         /*builder.Services.AddSingleton((_) => new Supabase.Client(
@@ -47,7 +47,7 @@ public static class MauiProgram
         ));//Password: c!L2TkQ@8wLPt2e
         */
         // builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
-        Console.WriteLine("a");
+        CrashLog.Write("MauiProgram: registering UserRepository + CurrentUserSession");
         builder.Services.AddSingleton<UserRepository>();
         builder.Services.AddSingleton<CurrentUserSession>();
 
@@ -55,19 +55,19 @@ public static class MauiProgram
         builder.Services.AddSingleton<SoundService>();
 
 
-        Console.WriteLine("b");
+        CrashLog.Write("MauiProgram: registering repositories");
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
 
         builder.Services.AddTransient<QuestionAnswerRepository>();
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
         builder.Services.AddTransient<KeyEventRepository>();
-        Console.WriteLine("c");
+        CrashLog.Write("MauiProgram: building app");
 
         var mauiApp = builder.Build();
         // Store the DI container (ServiceProvider)
         ServiceHelper.Services = mauiApp.Services;
-        Console.WriteLine("d");
+        CrashLog.Write("MauiProgram: app built");
         return mauiApp;
     }
 }
