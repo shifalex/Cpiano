@@ -1839,18 +1839,17 @@ namespace GestureSample.Views
             base.OnAppearing();
 
 
-            // Check if navigation to SplashPage is needed
+            // If user session is unexpectedly missing, reset app flow to SplashPage.
             if (!_hasNavigatedToSplash &&
                 (ServiceHelper.GetService<CurrentUserSession>() == null ||
                  ServiceHelper.GetService<CurrentUserSession>().ActiveUser == null))
             {
                 _hasNavigatedToSplash = true;
-                await MainThread.InvokeOnMainThreadAsync(async () =>
-                {
-                    await Navigation.PushAsync(new SplashPage());
-                });
+                Application.Current.MainPage = new NavigationPage(new SplashPage());
+                return;
             }
-            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
+
+            Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
         }
 
         protected override bool OnBackButtonPressed()

@@ -13,8 +13,9 @@ namespace GestureSample.Maui
         {
             InitializeComponent();
 
-            //var mainPage = new MainPage("Control Categories", null);
-            MainPage = MainNavigation = new NavigationPage(new MainPage("Control Categories", null));
+            // Start from SplashPage so user/database initialization is completed
+            // before MainPage is created.
+            MainPage = MainNavigation = new NavigationPage(new SplashPage());
         }
 
     }

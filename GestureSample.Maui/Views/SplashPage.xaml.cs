@@ -7,6 +7,7 @@ namespace GestureSample.Maui.Views;
 public partial class SplashPage : ContentPage
 {
     private readonly UserRepository _userRepo;
+    private bool _isInitialized;
 
     public SplashPage()
     {
@@ -23,39 +24,48 @@ public partial class SplashPage : ContentPage
     {
         base.OnAppearing();
 
-        Console.WriteLine("Splash appearing");
-
-        var users = await _userRepo.GetUsersAsync();
-
-
-
-        if (users.Count == 0)
-        {
-            await Navigation.PushAsync(new CreateUserPage(firstUser: true));
+        if (_isInitialized)
             return;
-        }
-        var currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
 
-        if (currentUser == null)
+        _isInitialized = true;
+
+        try
         {
-            Console.WriteLine("Connecting user");
-            await ServiceHelper.GetService<CurrentUserSession>().LoadUserAsync(users[0].Id);
-            currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
-            currentUser.LastLoginTime = DateTime.Now;
-            Console.WriteLine("User Connected");
-            await _userRepo.UpdateAsync(currentUser);
+            Console.WriteLine("Splash appearing");
 
-            Console.WriteLine("User Updated");
+            var users = await _userRepo.GetUsersAsync();
 
+            if (users.Count == 0)
+            {
+                await Navigation.PushAsync(new CreateUserPage(firstUser: true));
+                return;
+            }
+
+            var session = ServiceHelper.GetService<CurrentUserSession>();
+            var currentUser = session.ActiveUser;
+
+            if (currentUser == null)
+            {
+                Console.WriteLine("Connecting user");
+                await session.LoadUserAsync(users[0].Id);
+                currentUser = session.ActiveUser;
+
+                if (currentUser != null)
+                {
+                    currentUser.LastLoginTime = DateTime.Now;
+                    await _userRepo.UpdateAsync(currentUser);
+                    Console.WriteLine("User updated");
+                }
+            }
+
+            Console.WriteLine("Going to Main page now");
+            Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
         }
-
-
-        // Go to the main page
-
-        Console.WriteLine("Going to Main page now");
-        //await Navigation.PopToRootAsync(new MainPage("Control Categories", null));
-        //await Navigation.PushAsync(new MainPage("Control Categories", null));
-        Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
-
+        catch (Exception ex)
+        {
+            _isInitialized = false;
+            Console.WriteLine($"Splash startup failed: {ex}");
+            await DisplayAlert("Startup Error", "Could not initialize user data. Please restart the app.", "OK");
+        }
     }
 }
