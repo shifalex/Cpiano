@@ -1850,7 +1850,7 @@ namespace GestureSample.Views
                     await Navigation.PushAsync(new SplashPage());
                 });
             }
-            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name);
+            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
         }
 
         protected override bool OnBackButtonPressed()

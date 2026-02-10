@@ -21,7 +21,7 @@ namespace GestureSample.Maui.Data.SupaBase
         private StateConnection()
         {
             Console.WriteLine("Creating Database");
-            InitializeDatabase().Wait();
+            InitializeDatabase().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         private async Task InitializeDatabase()
@@ -34,13 +34,13 @@ namespace GestureSample.Maui.Data.SupaBase
             Database = new SQLiteAsyncConnection(_dbPath);
             Console.WriteLine($"Database created successfully");
 
-            await CreateTableAsync<QuestionAnswer>();
-            await CreateTableAsync<KeyboardQuestion>();
-            await CreateTableAsync<Game>();
-            await Instance.Database.ExecuteAsync("UPDATE Game SET WasSynced = 0;");
+            await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
+            await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
+            await CreateTableAsync<Game>().ConfigureAwait(false);
+            await Instance.Database.ExecuteAsync("UPDATE Game SET WasSynced = 0;").ConfigureAwait(false);
             Console.WriteLine("Updated all 'Game' records: WasSynced set to false (0).");
-            await CreateTableAsync<KeyEvent>();
-            await CreateTableAsync<User>();
+            await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
+            await CreateTableAsync<User>().ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
         }
 
@@ -49,7 +49,7 @@ namespace GestureSample.Maui.Data.SupaBase
             try
             {
                 //_database.DropTableAsync<QuestionAnswer>().Wait();
-                await Instance.Database.CreateTableAsync<T>();
+                await Instance.Database.CreateTableAsync<T>().ConfigureAwait(false);
                 Console.WriteLine($"Table '{typeof(T).Name}' created successfully.");
             }
             catch (Exception ex)
