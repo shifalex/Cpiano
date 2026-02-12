@@ -36,11 +36,14 @@ namespace GestureSample.Views.Tests
             get => _pianoKeyboard?.IsEnabled ?? true;
             set
             {
-                if (_pianoKeyboard != null) _pianoKeyboard.IsEnabled = value;
+                if (_pianoKeyboard != null) { _pianoKeyboard.IsEnabled = value;
+                    _pianoKeyboard.BtnInit.IsEnabled = value;
+                }
                 if (_btnNext != null && _btnCheck != null && _btnCheck.IsVisible)
                 {
                     _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
                     _btnCheck.IsEnabled = value;
+                    _btnHelp.IsEnabled = value;
                     //if(_btnPrev!=null) 
                     //    _btnPrev.IsEnabled = value;
                     if (value) _lblStatement.Text = Statement.Neutral;
@@ -344,10 +347,12 @@ namespace GestureSample.Views.Tests
                await Task.Delay(1000);
                MainThread.BeginInvokeOnMainThread(async () =>
                {
+                   IsEnabled=false;
                    await Task.WhenAll(
                        koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, (Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength * (((BitArrayGamePlay)_gamePlay).moveBydir == Direction.Right ? 1 : -1), 4000)
-
+                       
                    );
+                   IsEnabled = true;
                });
            });
         }
@@ -409,7 +414,8 @@ namespace GestureSample.Views.Tests
 
         #endregion
 
-
+       
+        private Button _btnHelp = null;
         public SimpleViewCellsPage(GameConfig config)
         {
             Title = config.GameName;
@@ -492,7 +498,7 @@ namespace GestureSample.Views.Tests
         }
 
 
-
+        private bool _tutorialRunning = false;
         // Changed to async so we can await tutorial animation without changing constructor call site.
         private void InitializeUI()
         {
@@ -708,29 +714,89 @@ namespace GestureSample.Views.Tests
 
             if (_isKeyboard)
             {
-                //_lblStatement.FontSize = 55;
+
                 _pianoKeyboard = _config.KeyboardConfig.SyncType switch
                 {
                     SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
                     SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
+
                 if (_config.KeyboardConfig.KeyboardAsAQuestion)
                 {
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
-                if (_config.IncludeTutorials || _config.isOnlyKeyboard)
-                {
 
-                    _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
-                    grid.Add(_taskMainHost);
-                    Grid.SetRow(_taskMainHost, 2);
-                }
-                else
+                // Always host the keyboard inside an overlay host so we can run tutorials on-demand
+                _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
+                grid.Add(_taskMainHost);
+                Grid.SetRow(_taskMainHost, 2);
+
+                // Help button (top-right over the keyboard)
+                _btnHelp = new Button
                 {
-                    grid.Add(_pianoKeyboard);
-                    Grid.SetRow(_pianoKeyboard, 2);
+                    Text = "?",
+                    FontSize = 16,
+                    WidthRequest = 34,
+                    HeightRequest = 34,
+                    Padding = 0,
+                    CornerRadius = 17,
+                    BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                    TextColor = Colors.White,
+                    HorizontalOptions = LayoutOptions.End,
+                    VerticalOptions = LayoutOptions.Start,
+                    Margin = new Thickness(0, 8, 8, 0),
+                    ZIndex = 999,
+                };
+
+                _btnHelp.Clicked += async (_, __) =>
+                {
+                    if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
+                    if (_taskMainHost == null) return;
+                    if (_gamePlay is not BitArrayGamePlay) return;
+
+                    _tutorialRunning = true;
+                    // make sure rects are synced before animating
+                    _taskMainHost.SyncOverlay();
+                    await Tutorial(_taskMainHost);
+                    _tutorialRunning = false;
+                };
+
+                Grid overlayButtons = new()
+                {
+                    ColumnDefinitions =
+    {
+        new ColumnDefinition { Width = GridLength.Star },
+        new ColumnDefinition { Width = GridLength.Star }
+    },
+                    VerticalOptions = LayoutOptions.Start,
+                    Margin = new Thickness(8, 8, 8, 0),
+                    ZIndex = 999
+                };
+
+                // init button comes from the keyboard now
+                if (_pianoKeyboard is PianoKeyboard pk && pk.BtnInit != null)
+                {
+                    pk.BtnInit.WidthRequest = 34;
+                    pk.BtnInit.HeightRequest = 34;
+                    pk.BtnInit.Padding = 0;
+                    pk.BtnInit.CornerRadius = 17;
+                    pk.BtnInit.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+                    pk.BtnInit.HorizontalOptions = LayoutOptions.Start;
+
+                    overlayButtons.Add(pk.BtnInit, 0, 0);
                 }
+
+                if (_config.KeyboardConfig.IsHelpNeeded)
+                {
+                    //_taskMainHost.Children.Add(_btnHelp);
+                    overlayButtons.Add(_btnHelp, 1, 0);
+                }
+
+                _taskMainHost.Children.Add(overlayButtons);
+
+                
+                   
             }
             Content = grid;
 #if DEBUG

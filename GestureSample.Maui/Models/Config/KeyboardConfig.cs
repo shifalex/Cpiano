@@ -58,12 +58,15 @@
     //ODO: Back button from Grid to "New Number"
     //ODO: split pianoKeyboard and number games
 
+
+    //TODO: Hand tutorials
     //TODO: Through ten instead text boxes
     //TODO: Prev button disable when needed
     //TODO: Audion - sound BEKA/CountOn/CountUsual
     //TODO: More user friendly beginer boolean algebra
     //TODO: BUG - equations???
     //TODO: BUG - + in some binay algebra still left
+    //TODO: shift cyclical, shift only part. Equivalences
     //TODO: From Keyboard to PPW and back
     //TODO: Kyboard going up & down - create my own buttons on screen?? Ot use someone else's keyboard
     //TODO: DUMP data button

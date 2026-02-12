@@ -17,6 +17,9 @@ namespace GestureSample.Maui.Models
         protected int _addend1 = 0;
         protected int _addend2 = 0;
 
+        public Microsoft.Maui.Controls.Button BtnInit { get; private set; }
+
+
         //TODO: Let user define Statement.Neutral as NeutralText
         //TODO: Give the option to save to database the keypress and timestamp and keyboard ID and the new color(which is made when it is created. And a database to work with..
         //TODO: Make an interface
@@ -123,7 +126,7 @@ After:
                 initColors[i] = false;// btnKeys[i].BackgroundColor = COLOR_FREE;
             }
 
-            Microsoft.Maui.Controls.Button btnInit = new()
+            BtnInit = new()
             {
                 ImageSource = "reset.png", // Use your professional icon here
                 BackgroundColor = Colors.Transparent,
@@ -189,7 +192,7 @@ After:
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
-                g.Add(hzl, 1); g.Add(btnInit, 0);
+                g.Add(hzl, 1); 
                 this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
                 g.HorizontalOptions = LayoutOptions.Fill;
                 this.Add(g, 0);
@@ -254,7 +257,6 @@ After:
 
                 // the grid must allow children to spill out (needed only once)
                 IsClippedToBounds = false;*/
-                g.Add(btnInit, 0);
                 this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
                 g.HorizontalOptions = LayoutOptions.Fill;
                 this.Add(g, 0);
