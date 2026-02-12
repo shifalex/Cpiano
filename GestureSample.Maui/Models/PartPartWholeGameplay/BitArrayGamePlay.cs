@@ -484,6 +484,11 @@ namespace GestureSample.Maui.Models
                 }
                 moveByLength = r.Next(1, maxLength + 1);
             }
+            else if(CurrentOperation is Operation.MoveBy && !Config.OnlyToTen)
+            {
+                moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                moveByLength = r.Next(1, BitArrayQuestion.Length);
+            }
 
         }
 
