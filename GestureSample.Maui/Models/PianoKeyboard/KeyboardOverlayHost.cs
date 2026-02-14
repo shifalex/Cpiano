@@ -154,23 +154,42 @@ namespace GestureSample.Maui.Models
         private readonly PatternDrawable _patternDrawable = new();
         private RectF[] _keyRects = Array.Empty<RectF>();
 
+        private readonly BoxView _inputShield;
+        public bool IsTutorialMode { get; private set; }
+
         public KeyboardOverlayHost(PianoKeyboardReadOnly keyboard)
         {
             Keyboard = keyboard;
             Children.Add(Keyboard);
 
-            // ✅ BIG FIX: overlay is INSIDE the keyboard now
+            _inputShield = new BoxView
+            {
+                BackgroundColor = Colors.Transparent,
+                IsVisible = false,
+                InputTransparent = false, // IMPORTANT: must intercept touches
+                ZIndex = 9999
+            };
+            Children.Add(_inputShield);
+
             Keyboard.InstallOverlay(_patternDrawable);
 
-            // keep syncing rects on layout changes
             Keyboard.LayoutReady += (_, _) => SyncOverlay();
             Keyboard.KeysRebuilt += (_, _) => SyncOverlay();
-            //Keyboard.SizeChanged += (_, _) => SyncOverlay(); // optional backup
+            Keyboard.SizeChanged += (_, _) => SyncOverlay();
 
             SyncOverlay();
-
-
         }
+
+        public void SetTutorialMode(bool isOn)
+        {
+            IsTutorialMode = isOn;
+            _inputShield.IsVisible = isOn;
+
+            // Keep it above anything the page adds later (buttons, etc.)
+            _inputShield.ZIndex = 999999;
+        }
+
+
 
         // persistent question / answer state
         public void SetStaticBits(bool[] bits)
