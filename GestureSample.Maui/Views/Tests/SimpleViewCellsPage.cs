@@ -341,20 +341,26 @@ namespace GestureSample.Views.Tests
         }
         async Task Tutorial(KeyboardOverlayHost koh)
         {
-            Operation op = ((BitArrayGamePlay)_gamePlay).CurrentOperation;
-            _ = Task.Run(async () =>
-           {
-               await Task.Delay(1000);
-               MainThread.BeginInvokeOnMainThread(async () =>
-               {
-                   IsEnabled=false;
-                   await Task.WhenAll(
-                       koh.Animate(((BitArrayGamePlay)_gamePlay).BitArrayQuestion, (Operation)op, ((BitArrayGamePlay)_gamePlay).moveByLength * (((BitArrayGamePlay)_gamePlay).moveBydir == Direction.Right ? 1 : -1), 4000)
-                       
-                   );
-                   IsEnabled = true;
-               });
-           });
+            BitArrayGamePlay gp = (BitArrayGamePlay)_gamePlay;
+            Operation op = gp.CurrentOperation;
+
+            int dir = gp.moveBydir == Direction.Right ? 1 : -1;
+            int move = gp.moveByLength * dir;
+
+            await Task.Delay(1000);
+
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                koh.SetTutorialMode(true);
+                try
+                {
+                    await koh.Animate(gp.BitArrayQuestion, op, move, 4000);
+                }
+                finally
+                {
+                    koh.SetTutorialMode(false);
+                }
+            });
         }
         private static void EntryEnabled(Entry ent, bool enabled)
         {

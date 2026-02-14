@@ -1799,7 +1799,7 @@ namespace GestureSample.Views
 
 
             Title = title;
-            contents ??= AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
+            contents ??= AllPages.Where(pc => pc.Parent == null /*&& (_screenSize>=1100 || !pc.IsLargeScreenOnly)*/);
             BindingContext = contents;
 
             InitializeComponent();
@@ -1867,7 +1867,7 @@ namespace GestureSample.Views
                 {
                     // a menu page
                     var subpage = item.Title;
-                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >=1100 || !pc.IsLargeScreenOnly));
+                    var contents = AllPages.Where(pc => pc.Parent == subpage /*&& (_screenSize >=1100 || !pc.IsLargeScreenOnly)*/);
                     var page = new MainPage(subpage, contents);
                     await Navigation.PushAsync(page);
                 }

@@ -155,6 +155,27 @@ After:
                
             };
 
+            VisualStateManager.SetVisualStateGroups(BtnInit, new VisualStateGroupList
+{
+    new VisualStateGroup
+    {
+        Name = "CommonStates",
+        States =
+        {
+            new VisualState { Name = "Normal" },
+            new VisualState
+            {
+                Name = "Disabled",
+                Setters =
+                {
+                    new Setter { Property = Microsoft.Maui.Controls.Button.OpacityProperty, Value = 0.6 },
+                    new Setter { Property = Microsoft.Maui.Controls.Button.BackgroundColorProperty, Value = Colors.Transparent }
+                }
+            }
+        }
+    }
+});
+
             if (textBoxesQuantity > 0)
             {
                 Microsoft.Maui.Controls.Entry[] a_array = new Microsoft.Maui.Controls.Entry[3];
