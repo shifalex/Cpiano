@@ -144,6 +144,7 @@ namespace GestureSample.Views.Tests
 
         public async Task UpdateView(bool newExercise = false)
         {
+            if (_tutorialRunning) return;
 
             await UpdateStatement();
 
@@ -261,7 +262,12 @@ namespace GestureSample.Views.Tests
                             if (_config.isOnlyKeyboard)
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                             if (_config.IncludeTutorials)
-                                Tutorial(_taskMainHost);
+                            {
+                                _tutorialRunning = true;
+                                _taskMainHost.SetTutorialMode(true);
+                                try { await Tutorial(_taskMainHost); }
+                                finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; }
+                            }
                         }
                     }
                 }
@@ -339,28 +345,22 @@ namespace GestureSample.Views.Tests
                 entry.Focus();
             });
         }
-        async Task Tutorial(KeyboardOverlayHost koh)
-        {
-            BitArrayGamePlay gp = (BitArrayGamePlay)_gamePlay;
-            Operation op = gp.CurrentOperation;
 
-            int dir = gp.moveBydir == Direction.Right ? 1 : -1;
-            int move = gp.moveByLength * dir;
+       async Task Tutorial(KeyboardOverlayHost koh)
+        {
+            var gp = (BitArrayGamePlay)_gamePlay;
+            var op = gp.CurrentOperation;
+            int move = gp.moveByLength * (gp.moveBydir == Direction.Right ? 1 : -1);
 
             await Task.Delay(1000);
 
-            await MainThread.InvokeOnMainThreadAsync(async () =>
-            {
-                koh.SetTutorialMode(true);
-                try
-                {
-                    await koh.Animate(gp.BitArrayQuestion, op, move, 4000);
-                }
-                finally
-                {
-                    koh.SetTutorialMode(false);
-                }
-            });
+            // make sure overlay is synced before animation (important for Android first load)
+            // call the delayed sync explicitly:
+            // (you can expose a public method to do DelayedSyncOverlay if you want)
+            koh.SyncOverlay();
+
+            // DO NOT: IsEnabled = false;  (this causes black keyboard on Android)
+            await koh.Animate(gp.BitArrayQuestion, op, move, 4000);
         }
         private static void EntryEnabled(Entry ent, bool enabled)
         {
@@ -504,7 +504,7 @@ namespace GestureSample.Views.Tests
         }
 
 
-        private bool _tutorialRunning = false;
+        private volatile bool _tutorialRunning = false;
         // Changed to async so we can await tutorial animation without changing constructor call site.
         private void InitializeUI()
         {
@@ -764,7 +764,10 @@ namespace GestureSample.Views.Tests
                     _tutorialRunning = true;
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
-                    await Tutorial(_taskMainHost);
+                    _tutorialRunning = true;
+                    _taskMainHost.SetTutorialMode(true);
+                    try { await Tutorial(_taskMainHost); }
+                    finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; }
                     _tutorialRunning = false;
                 };
 

@@ -442,6 +442,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
 
             KeysInRow = 8
         }

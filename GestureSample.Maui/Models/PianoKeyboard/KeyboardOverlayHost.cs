@@ -164,18 +164,28 @@ namespace GestureSample.Maui.Models
 
             _inputShield = new BoxView
             {
-                BackgroundColor = Colors.Transparent,
+                BackgroundColor = Color.FromRgba(0, 0, 0, 0),
                 IsVisible = false,
                 InputTransparent = false, // IMPORTANT: must intercept touches
-                ZIndex = 9999
+                ZIndex = 99999
             };
             Children.Add(_inputShield);
 
             Keyboard.InstallOverlay(_patternDrawable);
 
-            Keyboard.LayoutReady += (_, _) => SyncOverlay();
-            Keyboard.KeysRebuilt += (_, _) => SyncOverlay();
-            Keyboard.SizeChanged += (_, _) => SyncOverlay();
+            this.Loaded += (_, _) => DelayedSyncOverlay("Host.Loaded");
+            Keyboard.KeysRebuilt += (_, _) => DelayedSyncOverlay("Keyboard.KeysRebuilt");
+            Keyboard.SizeChanged += (_, _) => DelayedSyncOverlay("Keyboard.SizeChanged");
+            Keyboard.LayoutReady += (_, _) => DelayedSyncOverlay("Keyboard.LayoutReady");
+            if (Keyboard is VisualElement ve)
+            {
+                ve.SizeChanged += (_, _) => DelayedSyncOverlay("VE.SizeChanged");
+                ve.Loaded += (_, _) => DelayedSyncOverlay("VE.Loaded");
+            }
+            if (Keyboard.OverlayView is VisualElement ov)
+            {
+                ov.SizeChanged += (_, _) => DelayedSyncOverlay("Overlay.SizeChanged");
+            }
 
             SyncOverlay();
         }
@@ -242,6 +252,27 @@ namespace GestureSample.Maui.Models
         }
 
 
+        private static Point GetRelativeTo(VisualElement child, VisualElement ancestor)
+        {
+            double x = 0, y = 0;
+            Element? cur = child;
+
+            while (cur is not null && cur != ancestor)
+            {
+                if (cur is VisualElement ve)
+                {
+                    x += ve.X + ve.TranslationX;
+                    y += ve.Y + ve.TranslationY;
+                }
+                cur = cur.Parent;
+            }
+
+            // if ancestor not found, return NaN so caller can detect
+            if (cur != ancestor) return new Point(double.NaN, double.NaN);
+
+            return new Point(x, y);
+        }
+
         public void SyncOverlay()
         {
             Dispatcher.Dispatch(() =>
@@ -250,33 +281,115 @@ namespace GestureSample.Maui.Models
                     Keyboard.InvalidateOverlay();
             });
         }
-        
+
+        private bool _syncing;
+
+public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
+{
+    if (_syncing) return;
+    _syncing = true;
+
+    try
+    {
+        for (int i = 0; i < maxTries; i++)
+        {
+            // Wait a UI tick (Android often needs at least 1-2)
+            await Task.Yield();
+
+            // Re-span overlay if the grid was rebuilt
+            Keyboard.FixOverlaySpan(); // see small method below (or call an internal hook)
+
+            if (TrySyncOverlay())
+            {
+                Keyboard.InvalidateOverlay();
+                return;
+            }
+
+            await Task.Delay(16); // ~1 frame
+        }
+    }
+    finally
+    {
+        _syncing = false;
+    }
+}
+
+        int _syncSeq = 0;
+        bool _syncPending;
+
+        void LogSync(string reason)
+        {
+            var keys = Keyboard.KeyButtons;
+            var k0 = (keys != null && keys.Count > 0) ? keys[0] : null;
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[KOH] #{_syncSeq} {reason} " +
+                $"Keyboard(W,H)=({Keyboard.Width:F1},{Keyboard.Height:F1}) " +
+                $"Keys={keys?.Count ?? 0} " +
+                $"k0(X,Y,W,H)=({k0?.X:F1},{k0?.Y:F1},{k0?.Width:F1},{k0?.Height:F1})"
+            );
+        }
+
+        async void DelayedSyncOverlay(string reason)
+        {
+            if (_syncPending) return;
+            _syncPending = true;
+
+            _syncSeq++;
+            LogSync(reason + " (before)");
+
+            // Android often needs a frame or two
+            await Task.Yield();
+            await Task.Delay(16);   // 1 frame
+            await Task.Delay(16);   // 2nd frame (often the one that fixes X/Y)
+
+            bool ok = TrySyncOverlay();
+            LogSync(reason + $" (after) ok={ok}");
+
+            if (ok)
+                Keyboard.InvalidateOverlay();
+
+            _syncPending = false;
+        }
 
         public bool TrySyncOverlay()
         {
             var keys = Keyboard.KeyButtons;
             if (keys == null || keys.Count == 0) return false;
 
-            // Layout not ready yet (common when called immediately after creating UI)
             if (keys[0].Width <= 0 || keys[0].Height <= 0) return false;
+
+            GraphicsView? overlay = Keyboard.OverlayView;
+            if (overlay == null || overlay.Width <= 0 || overlay.Height <= 0) return false;
 
             int n = keys.Count;
             if (_keyRects.Length != n)
                 _keyRects = new RectF[n];
 
+            // positions relative to the Keyboard root
+            Point ovInKb = GetRelativeTo(overlay, Keyboard);
+            if (double.IsNaN(ovInKb.X)) return false;
+
             for (int i = 0; i < n; i++)
             {
                 var key = keys[i];
-                var (ox, oy) = Keyboard.GetOverlayOffset();
+
+                Point keyInKb = GetRelativeTo(key, Keyboard);
+                if (double.IsNaN(keyInKb.X)) return false;
+
+                double rx = keyInKb.X - ovInKb.X;
+                double ry = keyInKb.Y - ovInKb.Y;
+
                 _keyRects[i] = new RectF(
-                    (float)(key.X - ox),
-                    (float)(key.Y - oy),
+                    (float)rx,
+                    (float)ry,
                     (float)key.Width,
                     (float)key.Height
                 );
             }
 
             _patternDrawable.KeyRects = _keyRects;
+            overlay.Invalidate();
             return true;
         }
         // Animation: move a single “cursor” rect from key A to key B

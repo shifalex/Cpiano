@@ -12,6 +12,7 @@ namespace GestureSample.Maui.Models
         public event EventHandler? KeysRebuilt;
         GraphicsView? _overlayView;
         IDrawable? _overlayDrawable;
+        public GraphicsView? OverlayView => _overlayView;
 
         public Grid Arrow1; // The combined object containing the number and the arrow
         public Grid Arrow2;
@@ -72,7 +73,7 @@ namespace GestureSample.Maui.Models
 
         public void InvalidateOverlay() => _overlayView?.Invalidate();
 
-        private void FixOverlaySpan()
+        public void FixOverlaySpan()
         {
             if (_overlayView == null) return;
 
@@ -83,11 +84,7 @@ namespace GestureSample.Maui.Models
 
             _overlayView.Invalidate();
         }
-        public (double X, double Y) GetOverlayOffset()
-        {
-            if (_overlayView == null) return (0, 0);
-            return (_overlayView.X, _overlayView.Y);
-        }
+        
 
         public void InstallOverlay(IDrawable drawable, int zIndex = 1000)
         {
@@ -103,14 +100,13 @@ namespace GestureSample.Maui.Models
                     VerticalOptions = LayoutOptions.Fill
                 };
 
-                // add it as a child spanning the whole keyboard grid
-                Children.Add(_overlayView);
+                _overlayView.Drawable = _overlayDrawable;
 
-                // span all rows/cols (works even if you later rebuild row/col defs)
-                Grid.SetRow(_overlayView, 0);
-                Grid.SetColumn(_overlayView, 0);
-                Grid.SetRowSpan(_overlayView, Math.Max(1, RowDefinitions.Count));
-                Grid.SetColumnSpan(_overlayView, Math.Max(1, ColumnDefinitions.Count));
+                // IMPORTANT: put overlay in same grid cell
+                Grid.SetRowSpan(_overlayView, 1000);
+                Grid.SetColumnSpan(_overlayView, 1000);
+
+                Children.Add(_overlayView);
             }
 
             _overlayView.Drawable = drawable;
