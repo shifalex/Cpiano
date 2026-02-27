@@ -379,11 +379,8 @@ namespace GestureSample.Maui.Models
         private void GenerateNewPPWQuestion(Random r)
         {
             // pick factor set depending on operation
-            int[] factors =
-                (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
-                    ? FactorsMultiplication
-                    : Factors;
-
+            int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)?factors = FactorsMultiplication: factors = Factors;
+            
             // Decide which value becomes NAN based on Config.VariableTypes
             int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
 
@@ -461,12 +458,12 @@ namespace GestureSample.Maui.Models
                 
                 if (    IsFirstGuess /*&& !Config.OnlyThrougTen*/)
                 {
-                    if (Config.MaxSum < 100)
-                    { factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; }
+                        factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; 
+               
                         IsFirstGuess = false;
-                    addend1 = Config.DefaultTriad.Addend1; addend2 = Config.DefaultTriad.Addend2; Sum = Config.DefaultTriad.Sum;
-                    if (IsCorrectInput())
-                        return factors;
+                        addend1 = factors[0]; addend2 = factors[1]; Sum = factors[2];
+                        if (IsCorrectInput())
+                            return factors;
                 }
 
                 if (Config.OnlyCloseTriad)
@@ -627,10 +624,16 @@ namespace GestureSample.Maui.Models
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                             Console.WriteLine("{0} {1}= {2}", i, j, sum);
                         }
-                        else if ((i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                        else if (!Config.OnlyToTen && (i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                        {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
-                        else if(i+j<=10)
+                            Console.WriteLine("{0} {1}= {2}", i, j, sum);
+                        }
+                        else if (!Config.OnlyThrougTen && i + j <= 10)
+                        {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
+                            Console.WriteLine("{0} {1}= {2}", i, j, sum);
+                        }
                 }
         }
 
