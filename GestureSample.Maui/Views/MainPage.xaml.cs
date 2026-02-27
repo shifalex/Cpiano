@@ -1617,8 +1617,7 @@ namespace GestureSample.Views
     new PageConfig("+ -", "Level 3.3 - free practice", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.4",
-        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=false,
-        OnlyThrougTen = true
+        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum
     })),
 
     new PageConfig("+ -", "Level 4   - Sum<200", () => new SimpleViewCellsPage(new GameConfig
@@ -1800,7 +1799,7 @@ namespace GestureSample.Views
 
 
             Title = title;
-            contents ??= AllPages.Where(pc => pc.Parent == null /*&& (_screenSize>=1100 || !pc.IsLargeScreenOnly)*/);
+            contents ??= AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
             BindingContext = contents;
 
             InitializeComponent();
@@ -1868,7 +1867,7 @@ namespace GestureSample.Views
                 {
                     // a menu page
                     var subpage = item.Title;
-                    var contents = AllPages.Where(pc => pc.Parent == subpage /*&& (_screenSize >=1100 || !pc.IsLargeScreenOnly)*/);
+                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >=1100 || !pc.IsLargeScreenOnly));
                     var page = new MainPage(subpage, contents);
                     await Navigation.PushAsync(page);
                 }
