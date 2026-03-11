@@ -23,7 +23,7 @@
 
         private bool _withoutZero;
 
-        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
+        public PianoKeyboardHalfSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pressProgress, pianoConfig)
         {
             if (pianoConfig.AllowRemoval && pianoConfig.AddendsNum == 3)
                 Type = KeyboardType.ThreeAddensWithRemoval;

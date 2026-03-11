@@ -11,8 +11,16 @@ namespace GestureSample.Maui.Models
 
 
         int[] pressCounter;
-        public PianoKeyboardSync(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer, KeyboardConfig pianoConfig) : base(gamePlay, lblTimer, pianoConfig)
+        private readonly ProgressBar _pressProgress;
+        private DateTime? _pressStartUtc;
+
+        public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
+            : base(gamePlay, lblTimer, pianoConfig)
         {
+            _pressProgress = pressProgress;
+            _pressProgress.Progress = 0;
+            _pressProgress.IsVisible = false;
+            _pressProgress.Opacity = 0;
             //TODO:REALLY NOT SURE WHERE IS THE CORRECT PLACE FOR THIS - it should be in the gui - piano should give only text
             //_lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
             SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer* (pianoConfig.SecondsPressingToAnswer>0? 1: -1);
@@ -33,38 +41,71 @@ namespace GestureSample.Maui.Models
         protected virtual void TimerInit()
         {
             timer = Application.Current.Dispatcher.CreateTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);
+            timer.Interval = TimeSpan.FromMilliseconds(33);
             timer.Tick += (s, e) =>
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    if (SECONDS_TO_ANSWER == 0) { _lblTimer.Text = Statement.Neutral; return; }
-
-                    isKeyPressedTwice = false;
-                    for (int i = 0; i< pressCounter.Length; i++) { if (pressCounter[i] > 0) isKeyPressedTwice = true; }
-                    if (isKeyPressedTwice)
+                    timer.Tick += (s, e) =>
                     {
-                        for (int i = 0; i < pressCounter.Length; i++)
-                            if (pressCounter[i] > 0)
-                            { }// btnKeys[i].BackgroundColor = _seconds_pressed % 2 == 0 ? Colors.Red : COLOR_PRESSED;
-                    }
+                        MainThread.BeginInvokeOnMainThread(async () =>
+                        {
+                            if (SECONDS_TO_ANSWER == 0)
+                            {
+                                _lblTimer.Text = Statement.Neutral;
+                                _pressProgress.Progress = 0;
+                                _pressProgress.IsVisible = false;
+                                _pressProgress.Opacity = 0;
+                                _pressStartUtc = null;
+                                return;
+                            }
 
-                    _seconds_pressed = (_addend1 == 0 && _addend2 == 0) ? 0 : (_seconds_pressed + 1);
-                    
-                    _lblTimer.Text = SecondsToEnd;// (_addend1 == 0 && _addend2 == 0) ? Statement.Neutral : SecondsToEnd;
+                            bool anyPressed = !(_addend1 == 0 && _addend2 == 0);
 
-                    // Removed the problematic line as 'Stroke' is not a valid property for Label.  
-                    // Instead, you can use other properties like BorderColor or BackgroundColor if applicable.  
+                            if (!anyPressed)
+                            {
+                                _pressStartUtc = null;
+                                _pressProgress.Progress = 0;
 
-                    //_lblTimer.BackgroundColor = (_seconds_pressed >= SECONDS_TO_ANSWER || (_addend1 == 0 && _addend2 == 0)) ? Colors.Transparent : Colors.Red;
+                                if (_pressProgress.IsVisible)
+                                {
+                                    await _pressProgress.FadeTo(0, 80);
+                                    _pressProgress.IsVisible = false;
+                                }
 
-                    if (_seconds_pressed >= SECONDS_TO_ANSWER)
-                    {
-                        _seconds_pressed = 0;
-                       //if(!isKeyPressedTwice) 
-                            await PianoInitWithTimer();
-                       
-                    }
+                                // keep your normal label when idle
+                                _lblTimer.Text = Statement.Neutral;
+                                return;
+                            }
+
+                            // start / continue timing
+                            _pressStartUtc ??= DateTime.UtcNow;
+
+                            TimeSpan elapsed = DateTime.UtcNow - _pressStartUtc.Value;
+                            double progress = elapsed.TotalSeconds / SECONDS_TO_ANSWER;
+
+                            if (progress < 0) progress = 0;
+                            if (progress > 1) progress = 1;
+
+                            if (!_pressProgress.IsVisible)
+                            {
+                                _pressProgress.IsVisible = true;
+                                _pressProgress.Opacity = 0;
+                                await _pressProgress.FadeTo(1, 80);
+                            }
+
+                            _pressProgress.Progress = progress;
+
+                            // OPTIONAL: show remaining seconds as text (remove if you want *only* animation)
+                            _lblTimer.Text = string.Format("00:0{0}", Math.Max(0, (int)Math.Ceiling(SECONDS_TO_ANSWER - elapsed.TotalSeconds)));
+
+                            if (progress >= 1.0)
+                            {
+                                _pressStartUtc = null;
+                                await PianoInitWithTimer();
+                            }
+                        });
+                    };
                 });
             };
         }
@@ -86,6 +127,10 @@ namespace GestureSample.Maui.Models
             for (int i = 0; i < pressCounter.Length; i++)
                 pressCounter[i] = 0;
             PianoInit();
+            _pressProgress.Progress = 0;
+            _pressProgress.IsVisible = false;
+            _pressProgress.Opacity = 0;
+            _pressStartUtc = null;
             timer.Start();
         }
 
@@ -95,7 +140,11 @@ namespace GestureSample.Maui.Models
         protected override bool InnerKeyDown(MR.Gestures.Button sender)
         {
             if (sender.BackgroundColor == COLOR_PRESSED) { pressCounter[Convert.ToInt32(sender.CommandParameter) - 1]++; return true; }
-            if(!IS_WHOLE_TIMER) _seconds_pressed = 0;
+            if(!IS_WHOLE_TIMER)
+            {
+                _seconds_pressed = 0;
+                _pressStartUtc = null;
+            }
             _lblTimer.Text = SecondsToEnd;
             sender.BackgroundColor = COLOR_PRESSED;
 
@@ -113,7 +162,11 @@ namespace GestureSample.Maui.Models
             {
                if(pressCounter[Convert.ToInt32(sender.CommandParameter)-1] > 0) pressCounter[Convert.ToInt32(sender.CommandParameter)-1]--; return true;
             }
-            if (!IS_WHOLE_TIMER) { _seconds_pressed = 0;  } //OnPropertyChanged(nameof(SecondsToEnd));  
+            if (!IS_WHOLE_TIMER)
+            {
+                _seconds_pressed = 0;
+                _pressStartUtc = null;
+            }//OnPropertyChanged(nameof(SecondsToEnd));  
             _lblTimer.Text = SecondsToEnd;
             sender.BackgroundColor = COLOR_FREE;
 

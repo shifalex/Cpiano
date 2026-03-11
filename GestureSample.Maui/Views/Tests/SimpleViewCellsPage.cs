@@ -66,6 +66,7 @@ namespace GestureSample.Views.Tests
         private readonly int PIANO_HEIGHT1 = 90;
         private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
+        private ProgressBar _pianoPressProgress;
         private Label _lblHistory;
         private Entry _txtAddend1;
         private Entry _txtAddend2;
@@ -540,9 +541,20 @@ namespace GestureSample.Views.Tests
                 Text = Statement.Neutral
             };
 
+            _pianoPressProgress = new ProgressBar
+            {
+                Progress = 0,
+                IsVisible = false,
+                Opacity = 0,
+                WidthRequest = 220,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start
+            };
+
             VerticalStackLayout vsl = new()
         {
-            _lblStatement
+            _lblStatement,
+    _pianoPressProgress
             };
 
             vsl.HorizontalOptions = LayoutOptions.Center;
@@ -723,8 +735,8 @@ namespace GestureSample.Views.Tests
 
                 _pianoKeyboard = _config.KeyboardConfig.SyncType switch
                 {
-                    SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
-                    SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _config.KeyboardConfig),
+                    SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
+                    SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
 
