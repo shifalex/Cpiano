@@ -202,7 +202,12 @@ namespace GestureSample.Maui.Models
 
 
             await _view.UpdateView();
+            _view.IsEnabled = false;
             await Task.Delay(Config.SecondsTillNextExercise * 1000);
+
+            _status = Statement.Neutral;
+            await _view.UpdateView();
+            _view.IsEnabled = true;
             return result;
         }
 
