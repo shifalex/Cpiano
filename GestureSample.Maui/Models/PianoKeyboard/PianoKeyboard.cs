@@ -447,7 +447,7 @@ After:
             {
                 setAddendsByPattern();
             }
-                Console.WriteLine("Special sounds");
+               // Console.WriteLine("Special sounds");
                 if (_soundService != null && (Config.IsVoice || Config.IsVoices))
                 {
                 bool stopCorrectSound = true;
