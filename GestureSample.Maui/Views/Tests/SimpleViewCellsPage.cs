@@ -112,6 +112,7 @@ namespace GestureSample.Views.Tests
         }
         private async Task UpdateStatement()
         {
+            Console.WriteLine("Updating statement. Current status: {0}", _gamePlay.Status);
             string text = _gamePlay.Status;
             TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
@@ -544,11 +545,11 @@ namespace GestureSample.Views.Tests
             _pianoPressProgress = new ProgressBar
             {
                 Progress = 0,
-                IsVisible = false,
-                Opacity = 0,
+                Opacity = 1,
+                HeightRequest = 20,
                 WidthRequest = 220,
-                HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Start
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Center
             };
 
             VerticalStackLayout vsl = new()
