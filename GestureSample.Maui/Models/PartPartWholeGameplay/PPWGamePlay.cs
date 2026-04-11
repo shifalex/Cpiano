@@ -371,8 +371,7 @@ namespace GestureSample.Maui.Models
 
             // your existing triad bookkeeping likely happens elsewhere;
             // if you handle it here, keep it:
-            _currentTriadIndex = (_currentTriadIndex + 1) % Config.RepeatingTimesOfTriad;
-
+            _currentTriadIndex = (_currentTriadIndex + 1) % (Config.RepeatingTimesOfTriad>1? Config.RepeatingTimesOfTriad: Config.RepeatingTimesOfSum);
             SnapshotPrevPPWQuestion();
         }
 
@@ -436,26 +435,40 @@ namespace GestureSample.Maui.Models
             {
                 Random r = new();
                 int[] factors = new int[3];
-                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
+                if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex>0 &&
+                    !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex>= Config.RepeatingTimesOfSum))
                 {
-                    _currentTriadIndex = 0;
-                }
-                if (_currentTriadIndex == 0)
-                {
-                    _currentTriadIndex++;
-                }
-                else { 
                     factors[2] = this.Sum;
-                    factors[0] = this.addend1;
-                    factors[1] = this.addend2;
-                    if(r.Next(2)==1) {
-                        factors[0] = this.addend2;
-                        factors[1] = this.addend1;
+                    if (Config.RepeatingTimesOfTriad > 1)
+                    {
+                        factors[0] = this.addend1;
+                        factors[1] = this.addend2;
+                        if (r.Next(2) == 1)
+                        {
+                            factors[0] = this.addend2;
+                            factors[1] = this.addend1;
+                        }
                     }
-                    _currentTriadIndex++;
+                    else if (Config.RepeatingTimesOfSum > 1)
+                    {
+                        List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == factors[2]).ToList();
+                        if (possibleSums.Count > 0)
+                        {
+                            int index = r.Next(possibleSums.Count);
+                            factors[0] = possibleSums[index].Addend1;
+                            factors[1] = possibleSums[index].Addend2;
+                        }
+                        else
+                        {
+                            factors[0] = this.addend1;
+                            factors[1] = this.addend2;
+                        }
+                    }
                     return factors;
                 }   
                 
+                
+
                 if (    IsFirstGuess /*&& !Config.OnlyThrougTen*/)
                 {
                         factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; 
@@ -560,25 +573,35 @@ namespace GestureSample.Maui.Models
             {
                 Random r = new();
                 int[] factors = new int[3];
-                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
-                {
-                    _currentTriadIndex = 0;
-                }
-                if (_currentTriadIndex == 0)
-                {
-                    _currentTriadIndex++;
-                }
-                else
+                if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex > 0 &&
+                    !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex >= Config.RepeatingTimesOfSum))
                 {
                     factors[2] = this.Sum;
-                    factors[0] = this.addend1;
-                    factors[1] = this.addend2;
-                    if (r.Next(2) == 1)
+                    if (Config.RepeatingTimesOfTriad > 1)
                     {
-                        factors[0] = this.addend2;
-                        factors[1] = this.addend1;
+                        factors[0] = this.addend1;
+                        factors[1] = this.addend2;
+                        if (r.Next(2) == 1)
+                        {
+                            factors[0] = this.addend2;
+                            factors[1] = this.addend1;
+                        }
                     }
-                    _currentTriadIndex++;
+                    else if (Config.RepeatingTimesOfSum > 1)
+                    {
+                        List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == factors[2]).ToList();
+                        if (possibleSums.Count > 0)
+                        {
+                            int index = r.Next(possibleSums.Count);
+                            factors[0] = possibleSums[index].Addend1;
+                            factors[1] = possibleSums[index].Addend2;
+                        }
+                        else
+                        {
+                            factors[0] = this.addend1;
+                            factors[1] = this.addend2;
+                        }
+                    }
                     return factors;
                 }
 

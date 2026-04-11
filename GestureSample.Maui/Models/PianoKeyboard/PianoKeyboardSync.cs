@@ -27,6 +27,7 @@ namespace GestureSample.Maui.Models
             //_lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
             SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer* (pianoConfig.SecondsPressingToAnswer>0? 1: -1);
             IS_WHOLE_TIMER = pianoConfig.SecondsPressingToAnswer < 0;
+            _pressProgress.ProgressColor = IS_WHOLE_TIMER ? Colors.Orange : Colors.DodgerBlue;
             pressCounter  = new int[NUMBER_OF_KEYS + 1];
             TimerInit();
             timer.Start();
