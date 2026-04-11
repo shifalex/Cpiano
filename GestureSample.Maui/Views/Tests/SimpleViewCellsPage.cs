@@ -2,6 +2,7 @@
 using GestureSample.Maui;
 using GestureSample.Maui.Models;
 using Microsoft.Maui.Controls.Platform;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
 using Microsoft.Maui.Platform;
@@ -14,6 +15,66 @@ namespace GestureSample.Views.Tests
 
     public class SimpleViewCellsPage : ContentPage
     {
+        private Border _statusLight = new()
+        {
+            WidthRequest = 18,
+            HeightRequest = 18,
+            StrokeThickness = 0,
+            BackgroundColor = Colors.Green,
+            StrokeShape = new RoundRectangle { CornerRadius = 9 },
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        private PlayUiState _currentUiState = PlayUiState.ReadyForInput;
+
+        private void ApplyUiStateAsync(PlayUiState state, string? text = null)
+        {
+            _currentUiState = state;
+
+            switch (state)
+            {
+                case PlayUiState.Question:
+                    _statusLight.BackgroundColor = Colors.Red;
+                   // _lblStatement.Text = text ?? "Look";
+                  //  _pianoPressProgress.Opacity = 0;
+                    break;
+
+                case PlayUiState.ReadyForInput:
+                    _statusLight.BackgroundColor = Colors.Green;
+                   // _lblStatement.Text = text ?? "Your turn";
+                  //  _pianoPressProgress.Opacity = 1;
+                    break;
+
+                case PlayUiState.Tutorial:
+                    _statusLight.BackgroundColor = Colors.Orange;
+                 //   _lblStatement.Text = text ?? "Tutorial";
+                //    _pianoPressProgress.Opacity = 0;
+                    break;
+
+                case PlayUiState.FeedbackCorrect:
+                    _statusLight.BackgroundColor = Colors.LimeGreen;
+               //     _lblStatement.Text = text ?? "✅";
+                //    _pianoPressProgress.Opacity = 0;
+                    break;
+
+                case PlayUiState.FeedbackWrong:
+                    _statusLight.BackgroundColor = Colors.IndianRed;
+                 //   _lblStatement.Text = text ?? "❌";
+                 //   _pianoPressProgress.Opacity = 0;
+                    break;
+
+                case PlayUiState.Disabled:
+                default:
+                    _statusLight.BackgroundColor = Colors.Gray;
+               //     _lblStatement.Text = text ?? "";
+                //    _pianoPressProgress.Opacity = 0;
+                    break;
+            }
+
+           // return Task.CompletedTask;
+        }
+
         private readonly GameConfig _config;
 
         private bool _isKeyboard { get { return _config.KeyboardConfig != null; } }
@@ -48,6 +109,10 @@ namespace GestureSample.Views.Tests
                     //    _btnPrev.IsEnabled = value;
                     if (value) _lblStatement.Text = Statement.Neutral;
                 }
+                if(value)
+                    ApplyUiStateAsync(PlayUiState.ReadyForInput);
+                else
+                    ApplyUiStateAsync(PlayUiState.Disabled);
 
             }
         }
@@ -112,7 +177,7 @@ namespace GestureSample.Views.Tests
         }
         private async Task UpdateStatement()
         {
-            Console.WriteLine("Updating statement. Current status: {0}", _gamePlay.Status);
+            //Console.WriteLine("Updating statement. Current status: {0}", _gamePlay.Status);
             string text = _gamePlay.Status;
             TimeSpan ts = DateTime.Now.Subtract(_gamePlay.StartTime);
             if (_config.NumberOfTasksToWin > -1 && (_gamePlay.Status == Statement.Neutral || _gamePlay.Status == Statement.True))
@@ -439,8 +504,22 @@ namespace GestureSample.Views.Tests
 
 
             _gamePlay.GenerateExercise();
+
+
         }
 
+        protected override async void OnAppearing()
+        {
+            base.OnAppearing();
+
+           /* await ApplyUiStateAsync(PlayUiState.Question);
+            await Task.Delay(1000);
+            await ApplyUiStateAsync(PlayUiState.ReadyForInput);
+            await Task.Delay(1000);
+            await ApplyUiStateAsync(PlayUiState.FeedbackCorrect);
+            await Task.Delay(1000);
+            await ApplyUiStateAsync(PlayUiState.FeedbackWrong);*/
+        }
         private void InitializeGamePlay()
         {
             _gamePlay = new PPWGamePlay(this, _config);
@@ -552,10 +631,22 @@ namespace GestureSample.Views.Tests
                 VerticalOptions = LayoutOptions.Center
             };
 
+           /* HorizontalStackLayout statusRow = new()
+            {
+                Spacing = 10,
+                HorizontalOptions = LayoutOptions.Center,
+                Children =
+    {
+        
+        
+    }
+            };*/
+
             VerticalStackLayout vsl = new()
         {
-            _lblStatement,
-    _pianoPressProgress
+           // statusRow,
+                
+_lblStatement
             };
 
             vsl.HorizontalOptions = LayoutOptions.Center;
@@ -727,7 +818,11 @@ namespace GestureSample.Views.Tests
                 vsl.Add(InitDecompositionGameUI());
             }
 
-
+            if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
+            {
+                vsl.Add(_statusLight);
+                vsl.Add(_pianoPressProgress);  
+            }
             grid.Add(vsl);
 
 
@@ -775,12 +870,14 @@ namespace GestureSample.Views.Tests
                     if (_gamePlay is not BitArrayGamePlay) return;
 
                     _tutorialRunning = true;
+                    
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
                     _tutorialRunning = true;
+                    ApplyUiStateAsync(PlayUiState.Tutorial);
                     _taskMainHost.SetTutorialMode(true);
                     try { await Tutorial(_taskMainHost); }
-                    finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; }
+                    finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; ApplyUiStateAsync(PlayUiState.ReadyForInput); }
                     _tutorialRunning = false;
                 };
 

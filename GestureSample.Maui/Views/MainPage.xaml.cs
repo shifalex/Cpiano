@@ -136,6 +136,22 @@ namespace GestureSample.Views
         }
 
     })),*/
+   new PageConfig("new Number", "decomposition of 10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition of 10",
+        MinAddend = 1, MaxAddend=9, MinSum=10, MaxSum=10, VariableTypes= VariableTypes.OneNoSum,
+
+        NumberOfTasksToWin=20,
+        NumberOfMistakesToLose=3
+    })),
+   new PageConfig("new Number", "decomposition till 10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition till 10",
+        MinAddend = 1, MaxAddend=9, MinSum=2, MaxSum=10, VariableTypes= VariableTypes.OneNoSum,
+        RepeatingTimesOfSum=4,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=3
+    })),
     new PageConfig("new Number", "decomposition game Till 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Till 10 With keyboard Only Yellow",
@@ -1473,6 +1489,20 @@ namespace GestureSample.Views
 
             #region +-
         
+    /*new PageConfig("+ -", "Level 0   - +-1", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 0",
+        OperationList = new() { Operation.Sum},
+        MinAddend2 = 0,
+        MaxAddend2 = 1,
+        MinAddend = 1,
+        MaxAddend = 9,
+        MaxSum=10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 3,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),*/
     new PageConfig("+ -", "Level 1   - Sum<10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 1",
@@ -1822,6 +1852,8 @@ namespace GestureSample.Views
                 });
             }
             else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
+
+
         }
 
         protected override bool OnBackButtonPressed()

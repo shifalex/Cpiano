@@ -204,6 +204,15 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         ToLeft
     }
 
+    public enum PlayUiState
+    {
+        Question,
+        ReadyForInput,
+        Tutorial,
+        FeedbackCorrect,
+        FeedbackWrong,
+        Disabled
+    }
     #endregion
 
     public class GameConfig
@@ -248,6 +257,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
         public int RepeatingTimesOfTriad { get; set; } = 1;
+        public int RepeatingTimesOfSum { get; set; } = 1;
         public bool OnlyCloseTriad { get; set; } = false;
 
         public bool IncludeTutorials { get; set; } = false;
