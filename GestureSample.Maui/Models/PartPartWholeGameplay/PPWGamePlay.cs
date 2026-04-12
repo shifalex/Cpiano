@@ -41,6 +41,23 @@ namespace GestureSample.Maui.Models
 
         protected int _currentTriadIndex = 0;
 
+        public PPWObject GenerateSecondaryTriad(int sum, int? addend1Min=null, int? addend1Max = null)
+        {
+            List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == sum).ToList();
+            if(addend1Min.HasValue && addend1Max.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 >= addend1Min.Value && t.Addend1<= addend1Max.Value).ToList();
+            else if (addend1Min.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 >= addend1Min.Value).ToList();
+            else if (addend1Max.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 <= addend1Max.Value).ToList();
+            if (possibleSums.Count > 0)
+            {
+                Random r = new();
+                int index = r.Next(possibleSums.Count);
+                return possibleSums[index];
+            }
+            return null;
+        }
         public int _tasksMade = 0;
         public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
@@ -379,7 +396,13 @@ namespace GestureSample.Maui.Models
         {
             // pick factor set depending on operation
             int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)?factors = FactorsMultiplication: factors = Factors;
-            
+
+            if (Config.isLargerAddend1 && factors[0] < factors[1])
+            {
+                int temp = factors[0];
+                factors[0] = factors[1];
+                factors[1] = temp;
+            }
             // Decide which value becomes NAN based on Config.VariableTypes
             int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
 
@@ -451,12 +474,11 @@ namespace GestureSample.Maui.Models
                     }
                     else if (Config.RepeatingTimesOfSum > 1)
                     {
-                        List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == factors[2]).ToList();
-                        if (possibleSums.Count > 0)
+                        PPWObject newTriad = GenerateSecondaryTriad(factors[2]);
+                        if (newTriad != null)
                         {
-                            int index = r.Next(possibleSums.Count);
-                            factors[0] = possibleSums[index].Addend1;
-                            factors[1] = possibleSums[index].Addend2;
+                            factors[0] = newTriad.Addend1;
+                            factors[1] = newTriad.Addend2;
                         }
                         else
                         {
@@ -589,12 +611,11 @@ namespace GestureSample.Maui.Models
                     }
                     else if (Config.RepeatingTimesOfSum > 1)
                     {
-                        List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == factors[2]).ToList();
-                        if (possibleSums.Count > 0)
+                        PPWObject newTriad = GenerateSecondaryTriad(factors[2]);
+                        if (newTriad != null)
                         {
-                            int index = r.Next(possibleSums.Count);
-                            factors[0] = possibleSums[index].Addend1;
-                            factors[1] = possibleSums[index].Addend2;
+                            factors[0] = newTriad.Addend1;
+                            factors[1] = newTriad.Addend2;
                         }
                         else
                         {
@@ -617,6 +638,7 @@ namespace GestureSample.Maui.Models
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
                 factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
+
 
                 return factors;
             }

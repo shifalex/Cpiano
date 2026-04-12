@@ -88,6 +88,8 @@ namespace GestureSample.Views.Tests
                     UIQuestionType.OneText => true,
                     UIQuestionType.SimpleEquation => true,
                     UIQuestionType.DecompositionGame => true,
+                    UIQuestionType.TwoLinesTwoAddends => true,
+                    UIQuestionType.ThreeAddends => true,
                     _ => false
                 };
             }
@@ -261,7 +263,16 @@ namespace GestureSample.Views.Tests
                 if (_config.isHelpEntries || _config.isHelpThroughTen)
                     for (int i = 0; i < txt.Length; i++)
                         txt[i].Text = "";
-                if (_config.isHelpThroughTen)
+                if (_config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
+                {
+                    //TODO:what if null?
+                    PPWObject secondary = _gamePlay.GenerateSecondaryTriad(_gamePlay.Sum);
+                    if(_config.MaxSum>10)
+                        secondary = _gamePlay.GenerateSecondaryTriad(_gamePlay.Sum, 10, 10);
+                    txt[0].Text = secondary.Addend1.ToString();
+                    txt[1].Text = secondary.Addend2.ToString();
+                }
+                    if (_config.isHelpThroughTen)
                 {
                     txt[1].IsEnabled = true;
                     //if (_gamePlay.addend1 != PPWGamePlay.NAN)
@@ -704,10 +715,19 @@ _lblStatement
                         txt[3].WidthRequest = TASK_WIDTH / 4;
                         txt[4].WidthRequest = TASK_WIDTH / 4;
                     }
+                    if(_config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
+                    {
+                        //_txtSum.IsVisible = false;
+                        txt[0].IsEnabled = false;
+                        txt[1].IsEnabled = false;
+                        txt[0].WidthRequest = TASK_WIDTH / 2;
+                        txt[1].WidthRequest = TASK_WIDTH / 2;
+                    }
 
-                    if (_config.isHelpEntries)
+                    if (_config.isHelpEntries || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
-                    vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
+                    if (_config.UIQuestionType != UIQuestionType.TwoLinesTwoAddends)
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
 
                     if (_config.isHelpThroughTen)
                     {
@@ -1130,7 +1150,7 @@ _lblStatement
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH,
                 FontSize = 32,
-                IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard,
+                IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard && _config.UIQuestionType != UIQuestionType.TwoLinesTwoAddends
 
             };
 
@@ -1144,7 +1164,7 @@ _lblStatement
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = FONT_SIZE_DEFAULT,
-                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends
             };
             _lblAction = new Label
             {
@@ -1174,7 +1194,7 @@ _lblStatement
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = FONT_SIZE_DEFAULT,
-                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends
             };
             _txtAddend1.Keyboard = Keyboard.Numeric;
             _txtAddend2.Keyboard = Keyboard.Numeric;
