@@ -152,6 +152,34 @@ namespace GestureSample.Views
         NumberOfTasksToWin=60,
         NumberOfMistakesToLose=3
     })),
+   new PageConfig("new Number", "First Tower", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "First Tower",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 1,
+        MaxAddend = 9,
+        MaxSum=10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.TwoLinesTwoAddends,
+        isLargerAddend1 = true,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
+    new PageConfig("new Number", "Only through 10 Tower", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Only through 10 Tower",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 1,
+        MaxAddend = 10,
+        MinSum=11,
+        MaxSum=20,
+        isLargerAddend1 = true,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.TwoLinesTwoAddends,
+        
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
     new PageConfig("new Number", "decomposition game Till 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Till 10 With keyboard Only Yellow",
@@ -1559,6 +1587,7 @@ namespace GestureSample.Views
         MaxAddend = 9,
         MaxSum=20,
         OnlyThrougTen = true,
+        isLargerAddend1 = true,
         VariableTypes = VariableTypes.OneCanBeSum,
         isHelpThroughTen = true,
         RepeatingTimesOfTriad = 1,

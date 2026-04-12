@@ -61,12 +61,14 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         OnlyKeyboard,
         OneText,//Can be also objects.. always exists
         ThreeTexts, //Can be with following options: history, levelPicker, DirectionsText, Guess one
+        ThreeAddends,
+        TwoLinesTwoAddends, 
+        Tower, //Can be text or keys tower
         SimpleEquation,//Can have +- or /* and sumonly or onemissing variable type, should have options,
         CanvasesHands,
         CanvasesObjects,
         DecompositionGame,
         //BitArrayQuestion, //Can be Hand or Keyboard
-        Tower, //Can be text or keys tower
         ArrowOnKeyboard,//May also have twoArrows. Can have or not a number on it On every exercise it is like new., Without text or with for pattern recognition
         LogicalKeyboards //2kyboards, second optional, 1 operand
     }
@@ -239,6 +241,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int MaxAddend2 { get { return maxAddend2; } set { maxAddend2 = value; } }
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
+        public bool isLargerAddend1 { get; set; } = false;
         public bool OnlyThrougTen = false;
         public bool OnlyToTen = false;
         public bool isHelpEntries = false;
