@@ -221,13 +221,19 @@ namespace GestureSample.Views.Tests
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
-            if (_isThreeTexts)
+            if (_isThreeTexts && (_config.UIQuestionType != UIQuestionType.ThreeAddends || newExercise))
             {
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
                 _txtSum.Text = _gamePlay.Sum == PPWGamePlay.NAN ? "" : _gamePlay.Sum.ToString();
                 _hr.IsVisible = _gamePlay.CurrentOperation == Operation.Multiplication;
 
+            }
+            if(_config.UIQuestionType  == UIQuestionType.ThreeAddends && !newExercise)
+            {
+                if (_gamePlay.addend1 == PPWGamePlay.NAN) _txtAddend1.Text = "";
+                if(_gamePlay.addend2 == PPWGamePlay.NAN) _txtAddend2.Text = "";
+                if(_gamePlay.Sum == PPWGamePlay.NAN) _txtSum.Text = "";
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
@@ -271,6 +277,21 @@ namespace GestureSample.Views.Tests
                         secondary = _gamePlay.GenerateSecondaryTriad(_gamePlay.Sum, 10, 10);
                     txt[0].Text = secondary.Addend1.ToString();
                     txt[1].Text = secondary.Addend2.ToString();
+                }
+                if (_config.UIQuestionType == UIQuestionType.ThreeAddends)
+                {
+                    if (_gamePlay.addend1 == PPWGamePlay.NAN)
+                    {
+                        PPWObject secondary = _gamePlay.GenerateTriadBySum(_gamePlay.addend2);
+                        txt[0].Text = secondary.Addend1.ToString();
+                        _txtAddend2.Text = secondary.Addend2.ToString();
+                    }
+                    else
+                    {
+                        PPWObject secondary = _gamePlay.GenerateTriadBySum(_gamePlay.addend1);
+                        _txtAddend1.Text = secondary.Addend1.ToString();
+                        txt[0].Text = secondary.Addend2.ToString();
+                    }
                 }
                     if (_config.isHelpThroughTen)
                 {
@@ -723,6 +744,13 @@ _lblStatement
                         txt[0].WidthRequest = TASK_WIDTH / 2;
                         txt[1].WidthRequest = TASK_WIDTH / 2;
                     }
+                    if (_config.UIQuestionType == UIQuestionType.ThreeAddends)
+                    {
+                        txt[0].IsEnabled = false;
+                        txt[0].WidthRequest = TASK_WIDTH / 3;
+                    _txtAddend1.WidthRequest = TASK_WIDTH / 3;
+                        _txtAddend2.WidthRequest = TASK_WIDTH / 3;
+                    }
 
                     if (_config.isHelpEntries || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
@@ -736,7 +764,10 @@ _lblStatement
                     }
                     if (_config.OperationList.Contains(Operation.Multiplication))
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
-                    vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
+                    if(_config.UIQuestionType == UIQuestionType.ThreeAddends)
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, txt[0], _txtAddend2 } });
+                    else
+                        vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
                     if (_config.isHelpEntries)
                         vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
                 }
@@ -1164,7 +1195,7 @@ _lblStatement
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = FONT_SIZE_DEFAULT,
-                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends || _config.UIQuestionType == UIQuestionType.ThreeAddends
             };
             _lblAction = new Label
             {
@@ -1194,7 +1225,7 @@ _lblStatement
                 TextColor = Colors.Black,
                 WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
                 FontSize = FONT_SIZE_DEFAULT,
-                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends
+                IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends || _config.UIQuestionType == UIQuestionType.ThreeAddends
             };
             _txtAddend1.Keyboard = Keyboard.Numeric;
             _txtAddend2.Keyboard = Keyboard.Numeric;

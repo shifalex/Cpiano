@@ -1579,6 +1579,7 @@ namespace GestureSample.Views
         NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
     })),
+
     new PageConfig("+ -", "Level 2.2 - Only through 10, Helping Lines Through 10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 2.2",
@@ -1620,6 +1621,20 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
+    new PageConfig("+ -", "Level 2.5 - till 20 - three addends", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 2.5",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 19,
+        MaxSum=20,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        UIQuestionType = UIQuestionType.ThreeAddends,
+        RepeatingTimesOfTriad = 1,
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
+    })),
+
     new PageConfig("+ -", "Level 3   - BIG+small, Only through, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3",
