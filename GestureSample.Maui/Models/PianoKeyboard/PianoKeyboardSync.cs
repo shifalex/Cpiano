@@ -51,13 +51,18 @@ namespace GestureSample.Maui.Models
             //_seconds_pressed = 0;
             _pressProgress.Progress = 0;
             _pressProgress.Opacity = 0;
+            _pressProgress.IsVisible = false;
+            _lblTimer.IsVisible = true;
+
         }
 
         private void ShowProgressVisual()
         {
 
             //Console.WriteLine("Before progress bar");
+            _pressProgress.IsVisible = true;
             _pressProgress.Opacity = 1;
+            _lblTimer.IsVisible = false;
         }
         protected virtual void TimerInit()
         {

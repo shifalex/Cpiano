@@ -1517,20 +1517,21 @@ namespace GestureSample.Views
 
             #region +-
         
-    /*new PageConfig("+ -", "Level 0   - +-1", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("+ -", "Level 0   - +-1", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 0",
         OperationList = new() { Operation.Sum},
+        MinAddend = 0,
+        MaxAddend = 9,
         MinAddend2 = 0,
         MaxAddend2 = 1,
-        MinAddend = 1,
-        MaxAddend = 9,
         MaxSum=10,
+        isLargerAddend1 = true,
         VariableTypes = VariableTypes.OneCanBeSum,
-        RepeatingTimesOfTriad = 3,
-        NumberOfTasksToWin=60,
+        RepeatingTimesOfTriad = 2,
+        NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
-    })),*/
+    })),
     new PageConfig("+ -", "Level 1   - Sum<10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 1",

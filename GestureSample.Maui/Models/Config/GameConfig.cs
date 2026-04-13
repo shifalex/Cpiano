@@ -294,6 +294,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
             // adjust conditions to match desired logic
             if (OnlyThrougTen && MaxSum > 10)
                 return new PPWObject(8, 7, 15);
+            if(maxAddend2<2)
+                return new PPWObject(2, 1, 3);
             return new PPWObject(3, 2, 5);
         }
 

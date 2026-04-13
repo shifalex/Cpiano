@@ -15,7 +15,17 @@ namespace GestureSample.Views.Tests
 
     public class SimpleViewCellsPage : ContentPage
     {
-        private Border _statusLight = new()
+        private Border _statusLight1 = new()
+        {
+            WidthRequest = 18,
+            HeightRequest = 18,
+            StrokeThickness = 0,
+            BackgroundColor = Colors.Green,
+            StrokeShape = new RoundRectangle { CornerRadius = 9 },
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center
+        };
+        private Border _statusLight2 = new()
         {
             WidthRequest = 18,
             HeightRequest = 18,
@@ -35,43 +45,43 @@ namespace GestureSample.Views.Tests
             switch (state)
             {
                 case PlayUiState.Question:
-                    _statusLight.BackgroundColor = Colors.Red;
+                    _statusLight1.BackgroundColor = Colors.Red;
                    // _lblStatement.Text = text ?? "Look";
                   //  _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.ReadyForInput:
-                    _statusLight.BackgroundColor = Colors.Green;
+                    _statusLight1.BackgroundColor = Colors.Green;
                    // _lblStatement.Text = text ?? "Your turn";
                   //  _pianoPressProgress.Opacity = 1;
                     break;
 
                 case PlayUiState.Tutorial:
-                    _statusLight.BackgroundColor = Colors.Orange;
+                    _statusLight1.BackgroundColor = Colors.Orange;
                  //   _lblStatement.Text = text ?? "Tutorial";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.FeedbackCorrect:
-                    _statusLight.BackgroundColor = Colors.LimeGreen;
+                    _statusLight1.BackgroundColor = Colors.LimeGreen;
                //     _lblStatement.Text = text ?? "✅";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.FeedbackWrong:
-                    _statusLight.BackgroundColor = Colors.IndianRed;
+                    _statusLight1.BackgroundColor = Colors.IndianRed;
                  //   _lblStatement.Text = text ?? "❌";
                  //   _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.Disabled:
                 default:
-                    _statusLight.BackgroundColor = Colors.Gray;
+                    _statusLight1.BackgroundColor = Colors.Gray;
                //     _lblStatement.Text = text ?? "";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
             }
-
+            _statusLight2.BackgroundColor= _statusLight1.BackgroundColor;
            // return Task.CompletedTask;
         }
 
@@ -657,8 +667,9 @@ namespace GestureSample.Views.Tests
             {
                 Progress = 0,
                 Opacity = 1,
-                HeightRequest = 20,
+                HeightRequest = 55,
                 WidthRequest = 220,
+                IsVisible = false,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center
             };
@@ -677,9 +688,11 @@ namespace GestureSample.Views.Tests
             VerticalStackLayout vsl = new()
         {
            // statusRow,
-                
-_lblStatement
+              
             };
+
+            if (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
+                vsl.Add(_lblStatement);
 
             vsl.HorizontalOptions = LayoutOptions.Center;
             vsl.Padding = 15;
@@ -871,8 +884,22 @@ _lblStatement
 
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                vsl.Add(_statusLight);
-                vsl.Add(_pianoPressProgress);  
+                _lblStatement.WidthRequest = 220;// _pianoPressProgress.Width;
+                _pianoPressProgress.HeightRequest = 55;
+                _lblStatement.HorizontalOptions = LayoutOptions.Fill;
+                _lblStatement.HorizontalTextAlignment = TextAlignment.Center;
+                HorizontalStackLayout statusRow = new()
+                {
+                    Spacing = 10,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.End,
+                    Children = { _statusLight1, _pianoPressProgress, _lblStatement, _statusLight2 }
+                };
+                vsl.VerticalOptions = LayoutOptions.End;
+                vsl.Add(statusRow );
+                //vsl.Add(_pianoPressProgress);
+                //vsl.Add(_lblStatement);
+                //vsl.Add(_statusLight);
             }
             grid.Add(vsl);
 
