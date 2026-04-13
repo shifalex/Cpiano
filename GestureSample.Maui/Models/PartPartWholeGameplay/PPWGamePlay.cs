@@ -58,6 +58,15 @@ namespace GestureSample.Maui.Models
             }
             return null;
         }
+
+        public PPWObject GenerateTriadBySum(int sum, int? addend1Min = null, int? addend1Max = null)
+        {
+            Random r = new();
+            int addend1 = addend1Min.HasValue && addend1Max.HasValue? r.Next((int)addend1Min,(int)addend1Max+1) :r.Next(1,sum);
+            return new PPWObject(addend1, sum - addend1, sum);
+
+        }
+
         public int _tasksMade = 0;
         public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
