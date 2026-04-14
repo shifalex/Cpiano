@@ -1,7 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
-using MongoDB.Driver.Core.Operations;
 
 namespace GestureSample.Maui.Models
 {
@@ -183,7 +182,7 @@ namespace GestureSample.Maui.Models
 
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
 
-        public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
+        public BitArrayGamePlay(GameConfig config) : base(config)
         {
             ArrayQuestionType = config.UIQuestionType;
             BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
@@ -193,22 +192,22 @@ namespace GestureSample.Maui.Models
 
         }
 
-        public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        public override async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
         {
             bool result = CheckOnly(pianoKeyboard.ToBitArray());
             _status = result ? Statement.True : Statement.False;
-            if(result)
+            IncrementGuessNumber();
+
+            if (result)
+            {
                 _prevBitArrayAnswer = pianoKeyboard.ToBitArray().ToArray();
+            }
 
+            GameCompletionResult? completion = result
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
 
-            await _view.UpdateView();
-            _view.IsEnabled = false;
-            await Task.Delay(Config.SecondsTillNextExercise * 1000);
-
-            _status = Statement.Neutral;
-            await _view.UpdateView();
-            _view.IsEnabled = true;
-            return result;
+            return CreateCheckResult(result, completion: completion);
         }
 
         public bool CheckOnly(bool[] bitArrayAnswer)
@@ -260,7 +259,7 @@ namespace GestureSample.Maui.Models
             return (from, length);
         }
 
-        public override void GenerateExercise()
+        public override async Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -276,15 +275,12 @@ namespace GestureSample.Maui.Models
             //ApplyBitArrayStepExtrasIfNeeded(step);
 
             // 4) Persist + snapshot + UI
-            SaveQuestionToDb();
+            BeginExercise();
+            await EnsureGameInitializedAsync();
+            await SaveQuestionToDbAsync();
             SnapshotPrev();
-            _view.UpdateView(true);
-
-            if (CurrentOperation == Operation.MoveBy)
-            {
-                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";
-                _view.AddToLblAction(" " + strDir + " BY " + moveByLength.ToString());
-            }
+            await SaveState();
+            return CreateGeneratedExerciseResult();
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
@@ -393,7 +389,22 @@ namespace GestureSample.Maui.Models
             BuildCorrectAnswer();
         }*/
 
-        private void SaveQuestionToDb()
+        protected override ExerciseGenerationResult CreateGeneratedExerciseResult()
+        {
+            string actionText = CurrentOperation.ToDString();
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";
+                actionText += " " + strDir + " BY " + moveByLength;
+            }
+
+            return new ExerciseGenerationResult
+            {
+                ActionText = actionText
+            };
+        }
+
+        private async Task SaveQuestionToDbAsync()
         {
             Data.SQLite.KeyboardQuestion s = new()
             {
@@ -410,7 +421,7 @@ namespace GestureSample.Maui.Models
                 s.length = length;
             }
 
-            _keyboardQuestionRepository.SaveAsync(s);
+            await _keyboardQuestionRepository.SaveAsync(s);
         }
 
         private void SnapshotPrev()

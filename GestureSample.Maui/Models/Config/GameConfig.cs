@@ -219,62 +219,90 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
 
     public class GameConfig
     {
-        public class Operations
+        public static class Operations
         {
-            public static List<Operation> Logical = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.Not };
-            public static List<Operation> Arithmetic = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
-            public static List<Operation> BitArray = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
-            public static List<Operation> LogicalDual = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.SUMM };
+            public static List<Operation> Logical { get; } = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.Not };
+            public static List<Operation> Arithmetic { get; } = new() { Operation.Sum, Operation.Multiplication, Operation.Divide, Operation.Minus };
+            public static List<Operation> BitArray { get; } = new() { Operation.Copy, Operation.Quantity, Operation.SequenceRTL, Operation.SequenceLTR, Operation.Split, Operation.MoveBy, Operation.Mirror, Operation.Not };
+            public static List<Operation> LogicalDual { get; } = new() { Operation.Or, Operation.And, Operation.ExclusiveOr, Operation.SUMM };
         }
 
+        private int minAddend = 0;
+        private int maxAddend = 5;
+        private int minAddend2 = 0;
+        private int maxAddend2 = 5;
+        private PPWObject? _defaultTriad;
+
+        public GameConfig()
+        {
+            // DefaultTriad is computed lazily when first used.
+        }
+
+        // Plan / identity
         public ExercisePlan? Plan { get; set; } = null;
+        public string GameName { get; set; } = "";
 
-
-        public string GameName = "";
-        // Properties with default values
+        // Core rules
         public bool IsHistory { get; set; } = false;
         public bool IsHistorySymetrical { get; set; } = false;
-        private int minAddend = 0, maxAddend = 5, minAddend2 = 0, maxAddend2 = 5;
-        public int MinAddend { get { return minAddend; } set { minAddend = value; minAddend2 = value; } }
-        public int MaxAddend { get { return maxAddend; } set { maxAddend = value; maxAddend2 = value; } }
-        public int MinAddend2 { get { return minAddend2; } set { minAddend2 = value; } }
-        public int MaxAddend2 { get { return maxAddend2; } set { maxAddend2 = value; } }
+        public int MinAddend { get => minAddend; set { minAddend = value; minAddend2 = value; } }
+        public int MaxAddend { get => maxAddend; set { maxAddend = value; maxAddend2 = value; } }
+        public int MinAddend2 { get => minAddend2; set => minAddend2 = value; }
+        public int MaxAddend2 { get => maxAddend2; set => maxAddend2 = value; }
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
-        public bool isLargerAddend1 { get; set; } = false;
-        public bool OnlyThrougTen = false;
-        public bool OnlyToTen = false;
-        public bool isHelpEntries = false;
-        public bool isHelpThroughTen = false;
-        public bool isOnlySequence = true;
-        public bool isOnlyKeyboard = false;
-        public bool ShowPrev = false;
+        public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
+        public List<Operation> OperationList { get; set; } = new() { Operation.Sum };
+        public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
 
-        public List<int> addendsList = new();
-        public List<int> addendsListSecond = null;
-
+        // Presentation / question style
+        public UIQuestionType UIQuestionType { get; set; } = UIQuestionType.ThreeTexts;
         public bool EnforceOperationLabel { get; set; } = false;
         public bool FromNumToNum { get; set; } = false;
+        public bool ShowPrev { get; set; } = false;
+        public bool IncludeTutorials { get; set; } = false;
 
+        // Exercise generation
+        public bool isLargerAddend1 { get; set; } = false;
+        public bool OnlyThrougTen { get; set; } = false;
+        public bool OnlyToTen { get; set; } = false;
+        public bool isHelpEntries { get; set; } = false;
+        public bool isHelpThroughTen { get; set; } = false;
+        public bool isOnlySequence { get; set; } = true;
+        public bool isOnlyKeyboard { get; set; } = false;
+        public bool OnlyCloseTriad { get; set; } = false;
+        public int RepeatingTimesOfTriad { get; set; } = 1;
+        public int RepeatingTimesOfSum { get; set; } = 1;
+
+        // Readability aliases that preserve the existing config surface.
+        public bool PreferLargerAddend1 { get => isLargerAddend1; set => isLargerAddend1 = value; }
+        public bool OnlyThroughTen { get => OnlyThrougTen; set => OnlyThrougTen = value; }
+        public bool HelpEntries { get => isHelpEntries; set => isHelpEntries = value; }
+        public bool HelpThroughTen { get => isHelpThroughTen; set => isHelpThroughTen = value; }
+        public bool OnlySequence { get => isOnlySequence; set => isOnlySequence = value; }
+        public bool KeyboardOnly { get => isOnlyKeyboard; set => isOnlyKeyboard = value; }
+
+        // Input / pacing
         public int SecondsTillHideExercise { get; set; } = -1;
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
-        public int RepeatingTimesOfTriad { get; set; } = 1;
-        public int RepeatingTimesOfSum { get; set; } = 1;
-        public bool OnlyCloseTriad { get; set; } = false;
 
-        public bool IncludeTutorials { get; set; } = false;
-
+        // Targets / constraints
+        public int NumberOfTasksToWin { get; set; } = -1;
+        public int NumberOfMistakesToLose { get; set; } = -1;
         public bool DenyStrangeOrSameGroups { get; set; } = false;
-
         public bool TwoKeybordsOnOne { get; set; } = false;
-
         public Direction? WhichHand { get; set; } = null;
         public bool IsOnlyOneHand { get; set; } = false;
         public bool IsSpecialColor { get; set; } = false;
 
-        // DefaultTriad is computed lazily from the current configuration when first requested.
-        private PPWObject? _defaultTriad;
+        // Optional value pools
+        public List<int> addendsList { get; set; } = new();
+        public List<int>? addendsListSecond { get; set; } = null;
+
+        // Nested configuration
+        public KeyboardConfig? KeyboardConfig { get; set; } = null;
+
         public PPWObject DefaultTriad
         {
             get
@@ -290,31 +318,22 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
 
         private PPWObject ComputeDefaultTriad()
         {
-            // compute based on the (already-initialized) properties
-            // adjust conditions to match desired logic
             if (OnlyThrougTen && MaxSum > 10)
                 return new PPWObject(8, 7, 15);
-            if(maxAddend2<2)
+            if (maxAddend2 < 2)
                 return new PPWObject(2, 1, 3);
             return new PPWObject(3, 2, 5);
         }
 
-        public int NumberOfTasksToWin { get; set; } = -1;
-        public int NumberOfMistakesToLose { get; set; } = -1;
-
-        public UIQuestionType UIQuestionType = UIQuestionType.ThreeTexts;
-        
-        public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
-        public List<Operation> OperationList = new() { Operation.Sum };
-        public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
-        // Nested configuration with defaults
-        public KeyboardConfig KeyboardConfig { get; set; } = null;
-        public GameConfig()
-        {
-            // No eager DefaultTriad initialization here; DefaultTriad is computed lazily when first used.
-        }
-
-
+        // Readability helpers for gameplay and UI code
+        public bool HasExercisePlan => Plan?.Steps?.Count > 0;
+        public bool HasKeyboard => KeyboardConfig != null;
+        public bool HasTaskGoal => NumberOfTasksToWin > -1;
+        public bool HasMistakeLimit => NumberOfMistakesToLose > -1;
+        public bool UsesQuestionPreview => SecondsTillHideExercise > 0;
+        public bool DelaysInput => SecondsTillAllowInput > 0;
+        public int EffectiveMinAddend2 => MinAddend2 == PPWGamePlay.NAN ? MinAddend : MinAddend2;
+        public int EffectiveMaxAddend2 => MaxAddend2 == PPWGamePlay.NAN ? MaxAddend : MaxAddend2;
     }
 
 
