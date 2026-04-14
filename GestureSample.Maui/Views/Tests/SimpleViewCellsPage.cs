@@ -1,6 +1,8 @@
 ﻿using GestureSample.Debugging;
 using GestureSample.Maui;
 using GestureSample.Maui.Models;
+using GestureSample.Maui.Views;
+using GestureSample.Views;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
@@ -38,7 +40,7 @@ namespace GestureSample.Views.Tests
 
         private PlayUiState _currentUiState = PlayUiState.ReadyForInput;
 
-        private void ApplyUiStateAsync(PlayUiState state, string? text = null)
+        private void ApplyUiState(PlayUiState state, string? text = null)
         {
             _currentUiState = state;
 
@@ -85,6 +87,93 @@ namespace GestureSample.Views.Tests
            // return Task.CompletedTask;
         }
 
+        private void SetPlayUiState(PlayUiState state, string? text = null)
+        {
+            ApplyUiState(state, text);
+        }
+
+        private void SetKeyboardInteractionEnabled(bool enabled)
+        {
+            if (_pianoKeyboard == null)
+                return;
+
+            _pianoKeyboard.IsEnabled = enabled;
+            if (_pianoKeyboard.BtnInit != null)
+                _pianoKeyboard.BtnInit.IsEnabled = enabled;
+        }
+
+        private void SetPageInteractionEnabled(bool enabled)
+        {
+            SetKeyboardInteractionEnabled(enabled);
+
+            if (_btnNext != null && _btnCheck != null && _btnCheck.IsVisible)
+            {
+                _btnNext.IsEnabled = enabled ? (_gamePlay.GuessNumber > 0) : false;
+                _btnCheck.IsEnabled = enabled;
+                if (_btnHelp != null) _btnHelp.IsEnabled = enabled;
+                if (enabled) _lblStatement.Text = Statement.Neutral;
+            }
+        }
+
+        private PlayUiState GetExerciseUiState(bool newExercise)
+        {
+            if (_tutorialRunning)
+                return PlayUiState.Tutorial;
+
+            if (!newExercise)
+                return PlayUiState.ReadyForInput;
+
+            if (_config.SecondsTillAllowInput > 0 || _config.SecondsTillHideExercise > 0)
+                return PlayUiState.Question;
+
+            return PlayUiState.ReadyForInput;
+        }
+
+        private void ApplyExerciseUiState(bool newExercise)
+        {
+            SetPlayUiState(GetExerciseUiState(newExercise));
+        }
+
+        private void ApplyFeedbackUiState(bool isCorrect)
+        {
+            SetPlayUiState(isCorrect ? PlayUiState.FeedbackCorrect : PlayUiState.FeedbackWrong);
+        }
+
+        private void RestoreReadyForInputState()
+        {
+            if (_tutorialRunning)
+                return;
+
+            if (_config.SecondsTillAllowInput > 0 && _isKeyboard && _pianoKeyboard != null && !_pianoKeyboard.IsEnabled)
+            {
+                SetPlayUiState(PlayUiState.Question);
+                return;
+            }
+
+            SetPlayUiState(PlayUiState.ReadyForInput);
+        }
+
+        private async Task RunTutorialAsync(KeyboardOverlayHost host)
+        {
+            if (_tutorialRunning || host == null)
+                return;
+
+            _tutorialRunning = true;
+            SetPlayUiState(PlayUiState.Tutorial);
+            host.SetTutorialMode(true);
+
+            try
+            {
+                await Tutorial(host);
+            }
+            finally
+            {
+                host.SetTutorialMode(false);
+                _tutorialRunning = false;
+                RestoreReadyForInputState();
+            }
+        }
+
         private readonly GameConfig _config;
 
         private bool _isKeyboard { get { return _config.KeyboardConfig != null; } }
@@ -109,22 +198,11 @@ namespace GestureSample.Views.Tests
             get => _pianoKeyboard?.IsEnabled ?? true;
             set
             {
-                if (_pianoKeyboard != null) { _pianoKeyboard.IsEnabled = value;
-                    _pianoKeyboard.BtnInit.IsEnabled = value;
-                }
-                if (_btnNext != null && _btnCheck != null && _btnCheck.IsVisible)
-                {
-                    _btnNext.IsEnabled = value ? (_gamePlay.GuessNumber > 0) : false;
-                    _btnCheck.IsEnabled = value;
-                    _btnHelp.IsEnabled = value;
-                    //if(_btnPrev!=null) 
-                    //    _btnPrev.IsEnabled = value;
-                    if (value) _lblStatement.Text = Statement.Neutral;
-                }
+                SetPageInteractionEnabled(value);
                 if(value)
-                    ApplyUiStateAsync(PlayUiState.ReadyForInput);
+                    SetPlayUiState(PlayUiState.ReadyForInput);
                 else
-                    ApplyUiStateAsync(PlayUiState.Disabled);
+                    SetPlayUiState(PlayUiState.Disabled);
 
             }
         }
@@ -168,6 +246,8 @@ namespace GestureSample.Views.Tests
         private PPWObject _currentPPW;
         private PPWObject _currentPPWEnabled;
         private PPWObject _previousPPW = null;
+        private ExerciseGenerationResult? _lastGeneratedExercise;
+        private bool _hasLoadedInitialExercise = false;
 
         private Command _cmdNext = null;
         private Command _cmdCheck = null;
@@ -181,13 +261,10 @@ namespace GestureSample.Views.Tests
             timer.Interval = TimeSpan.FromSeconds(1);
             timer.Tick += (s, e) =>
             {
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await UpdateStatement();
-                });
+                MainThread.BeginInvokeOnMainThread(UpdateStatement);
             };
         }
-        private async Task UpdateStatement()
+        private void UpdateStatement()
         {
             //Console.WriteLine("Updating statement. Current status: {0}", _gamePlay.Status);
             string text = _gamePlay.Status;
@@ -216,16 +293,21 @@ namespace GestureSample.Views.Tests
         public bool BtnNextEnabled { get => _btnNextEnabled; }*/
         #region view updating
 
-        public async Task AddToLblAction(string text)
+        public void AddToLblAction(string text)
         {
             _lblAction.Text += text;
         }
 
-        public async Task UpdateView(bool newExercise = false)
+        public async Task UpdateView(bool newExercise = false, bool applyUiState = true, ExerciseGenerationResult? generatedExercise = null)
         {
             if (_tutorialRunning) return;
 
-            await UpdateStatement();
+            UpdateStatement();
+            if (applyUiState)
+                ApplyExerciseUiState(newExercise);
+
+            if (generatedExercise != null)
+                _lastGeneratedExercise = generatedExercise;
 
             List<Task> tasks = new();
 
@@ -245,7 +327,7 @@ namespace GestureSample.Views.Tests
                 if(_gamePlay.addend2 == PPWGamePlay.NAN) _txtAddend2.Text = "";
                 if(_gamePlay.Sum == PPWGamePlay.NAN) _txtSum.Text = "";
             }
-            if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
+            if (newExercise && _config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
                 leftHandCanvas.IsVisible = true; rightHandCanvas.IsVisible = true;
                 if (_config.SecondsTillHideExercise > 0)
@@ -255,11 +337,11 @@ namespace GestureSample.Views.Tests
                 }
             }
 
-            if (_config.SecondsTillAllowInput > 0)
+            if (newExercise && _config.SecondsTillAllowInput > 0)
             {
                 if (_btnNext != null) { _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise; Console.WriteLine(" _gamePlay.GuessNumber: {0}", _gamePlay.GuessNumber); }
 
-                tasks.Add(DisableTemporeryKeyboard(_pianoKeyboard, _config.SecondsTillAllowInput));
+                tasks.Add(DelayKeyboardInputAsync(_config.SecondsTillAllowInput));
             }
 
             if (newExercise)
@@ -372,10 +454,7 @@ namespace GestureSample.Views.Tests
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                             if (_config.IncludeTutorials)
                             {
-                                _tutorialRunning = true;
-                                _taskMainHost.SetTutorialMode(true);
-                                try { await Tutorial(_taskMainHost); }
-                                finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; }
+                                await RunTutorialAsync(_taskMainHost);
                             }
                         }
                     }
@@ -399,7 +478,7 @@ namespace GestureSample.Views.Tests
                 {
                     _pianoKeyboard.initColors = _pianoKeyboard.ToBitArray();
                 }
-                if (_lblAction != null) _lblAction.Text = _gamePlay.CurrentOperation.ToDString();
+                if (_lblAction != null) _lblAction.Text = _lastGeneratedExercise?.ActionText ?? _gamePlay.CurrentOperation.ToDString();
                 if (_isKeyboard && !_config.FromNumToNum)
                 {
                     _pianoKeyboard.PianoInit();
@@ -510,11 +589,18 @@ namespace GestureSample.Views.Tests
             obj.IsVisible = false;
         }
 
-        public static async Task DisableTemporeryKeyboard(Grid pianoKeyboard, int seconds)
+        private async Task DelayKeyboardInputAsync(int seconds)
         {
-            pianoKeyboard.IsEnabled = false;
-            await Task.Delay(seconds * 1000);
-            pianoKeyboard.IsEnabled = true;
+            SetKeyboardInteractionEnabled(false);
+            try
+            {
+                await Task.Delay(seconds * 1000);
+            }
+            finally
+            {
+                SetKeyboardInteractionEnabled(true);
+                RestoreReadyForInputState();
+            }
         }
 
 
@@ -542,17 +628,17 @@ namespace GestureSample.Views.Tests
             }
             InitializeGamePlay();
             InitializeUI();
-
-
-
-            _gamePlay.GenerateExercise();
-
-
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+
+            if (!_hasLoadedInitialExercise)
+            {
+                _hasLoadedInitialExercise = true;
+                await GenerateNextExerciseAsync();
+            }
 
            /* await ApplyUiStateAsync(PlayUiState.Question);
             await Task.Delay(1000);
@@ -564,11 +650,21 @@ namespace GestureSample.Views.Tests
         }
         private void InitializeGamePlay()
         {
-            _gamePlay = new PPWGamePlay(this, _config);
-            if (_config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow)
-                _gamePlay = new BitArrayGamePlay(this, _config);
+            _gamePlay = CreateGamePlay();
             _cmdCheck = new Command(CheckGamePlay);
-            _cmdNext = new Command(GenerateNextExercise);
+            _cmdNext = new Command(async () => await GenerateNextExerciseAsync());
+        }
+
+        private PPWGamePlay CreateGamePlay()
+        {
+            return _config.UIQuestionType switch
+            {
+                UIQuestionType.LogicalKeyboards => new BitArrayGamePlay(_config),
+                UIQuestionType.CanvasesHands => new BitArrayGamePlay(_config),
+                UIQuestionType.DecompositionGame => new DecompositionGamePlay(_config),
+                _ when _config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow => new BitArrayGamePlay(_config),
+                _ => new PPWGamePlay(_config)
+            };
         }
 
         private async void CheckGamePlay()
@@ -578,30 +674,21 @@ namespace GestureSample.Views.Tests
 
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                bool isCorrect = await _gamePlay.CheckAsync(_pianoKeyboard);
-                if (isCorrect) GenerateNextExercise();
+                ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(_pianoKeyboard);
+                await HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
 
             }
             else
             {
                 try
                 {
-                    if (await _gamePlay.Check(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text)))
-                    {
-                        _previousPPW = new PPWObject(Convert.ToInt32(_txtAddend1.Text), Convert.ToInt32(_txtAddend2.Text), Convert.ToInt32(_txtSum.Text));
-                        if (_config.NumberOfTasksToWin < 0)//TODO: Check if ok to remove or change condition
-                        {
-                            _txtAddend1.IsEnabled = false; _txtAddend2.IsEnabled = false; _txtSum.IsEnabled = false;
-                            await Task.Delay(_config.SecondsTillNextExercise * 1000);
-                            _txtAddend1.IsEnabled = true; _txtAddend2.IsEnabled = true; _txtSum.IsEnabled = true;
-                        }
-                        if (!_gamePlay.GameOver) GenerateNextExercise();
-                    }
-                    else
-                    {
-                        Console.WriteLine("Wrong answer");
-                        await Task.Delay(_config.SecondsTillNextExercise * 1000);
-                    }
+                    PPWObject submittedAnswer = new(
+                        Convert.ToInt32(_txtAddend1.Text),
+                        Convert.ToInt32(_txtAddend2.Text),
+                        Convert.ToInt32(_txtSum.Text));
+
+                    ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(submittedAnswer.Addend1, submittedAnswer.Addend2, submittedAnswer.Sum);
+                    await HandleCheckResultAsync(checkResult, isKeyboardSubmission: false, onCorrect: () => _previousPPW = submittedAnswer);
                 }
                 catch
                 {
@@ -610,9 +697,115 @@ namespace GestureSample.Views.Tests
             }
         }
 
-        private void GenerateNextExercise()
+        private async Task HandleCheckResultAsync(ExerciseCheckResult checkResult, bool isKeyboardSubmission, Action? onCorrect = null)
         {
-            _gamePlay.GenerateExercise();
+            await UpdateView(applyUiState: false);
+
+            if (checkResult.IsCorrect)
+            {
+                onCorrect?.Invoke();
+            }
+
+            if (!checkResult.IsWrongInput)
+            {
+                ApplyFeedbackUiState(checkResult.IsCorrect);
+            }
+            else
+            {
+                RestoreReadyForInputState();
+            }
+
+            await ApplyPostCheckDelayAsync(checkResult, isKeyboardSubmission);
+
+            if (checkResult.Completion != null)
+            {
+                await HandleGameCompletionAsync(checkResult.Completion);
+            }
+            else if (checkResult.IsCorrect && !_gamePlay.GameOver)
+            {
+                await GenerateNextExerciseAsync();
+            }
+            else if (isKeyboardSubmission)
+            {
+                _pianoKeyboard.PianoInit();
+                RestoreReadyForInputState();
+            }
+            else
+            {
+                RestoreReadyForInputState();
+            }
+        }
+
+        private async Task ApplyPostCheckDelayAsync(ExerciseCheckResult checkResult, bool isKeyboardSubmission)
+        {
+            if (!checkResult.ShouldDelayFeedback)
+                return;
+
+            if (isKeyboardSubmission)
+            {
+                SetPageInteractionEnabled(false);
+                try
+                {
+                    await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                }
+                finally
+                {
+                    SetPageInteractionEnabled(true);
+                }
+
+                return;
+            }
+
+            bool shouldDelay = !checkResult.IsCorrect || _config.NumberOfTasksToWin < 0;
+            if (!shouldDelay)
+                return;
+
+            bool shouldDisableTextInputs = checkResult.IsCorrect && _config.NumberOfTasksToWin < 0;
+            if (shouldDisableTextInputs)
+            {
+                SetTextInputsEnabled(false);
+            }
+
+            try
+            {
+                await Task.Delay(_config.SecondsTillNextExercise * 1000);
+            }
+            finally
+            {
+                if (shouldDisableTextInputs)
+                {
+                    SetTextInputsEnabled(true);
+                }
+            }
+        }
+
+        private async Task HandleGameCompletionAsync(GameCompletionResult completion)
+        {
+            SetPageInteractionEnabled(false);
+            SetPlayUiState(PlayUiState.Disabled);
+
+            Task winLoseTask = completion.IsWin
+                ? Statement.Win(completion.Duration)
+                : Statement.Lose();
+
+            var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
+            Application.Current.MainPage = newMainPage;
+            Task navigationTask = newMainPage.Navigation.PushAsync(new ShowDataXaml(false, completion.GameId));
+
+            await Task.WhenAll(winLoseTask, navigationTask);
+        }
+
+        private void SetTextInputsEnabled(bool enabled)
+        {
+            if (_txtAddend1 != null) EntryEnabled(_txtAddend1, enabled);
+            if (_txtAddend2 != null) EntryEnabled(_txtAddend2, enabled);
+            if (_txtSum != null) EntryEnabled(_txtSum, enabled);
+        }
+
+        private async Task GenerateNextExerciseAsync()
+        {
+            ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
+            await UpdateView(true, generatedExercise: generatedExercise);
             if (_isKeyboard)
             {
                 if (_config.FromNumToNum)
@@ -805,7 +998,6 @@ namespace GestureSample.Views.Tests
 
             if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
             {
-                _gamePlay = new BitArrayGamePlay(this, _config);
                 vsl.Add(InitLogicalKeyboardsUI());
                 vsl.Padding = 0;
                 vsl.Spacing = 0;
@@ -870,7 +1062,6 @@ namespace GestureSample.Views.Tests
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
             {
-                _gamePlay = new BitArrayGamePlay(this, _config);
                 vsl.Add(InitCanvasComponentsUI());
 
 
@@ -919,6 +1110,11 @@ namespace GestureSample.Views.Tests
                     _pianoKeyboard = (PianoKeyboard)new PianoKeyboardReadOnly(_config.KeyboardConfig);
                 }
 
+                if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)
+                {
+                    syncKeyboard.CheckCompletedAsync = checkResult => HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
+                }
+
                 // Always host the keyboard inside an overlay host so we can run tutorials on-demand
                 _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
                 grid.Add(_taskMainHost);
@@ -946,17 +1142,10 @@ namespace GestureSample.Views.Tests
                     if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
                     if (_taskMainHost == null) return;
                     if (_gamePlay is not BitArrayGamePlay) return;
-
-                    _tutorialRunning = true;
                     
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
-                    _tutorialRunning = true;
-                    ApplyUiStateAsync(PlayUiState.Tutorial);
-                    _taskMainHost.SetTutorialMode(true);
-                    try { await Tutorial(_taskMainHost); }
-                    finally { _taskMainHost.SetTutorialMode(false); _tutorialRunning = false; ApplyUiStateAsync(PlayUiState.ReadyForInput); }
-                    _tutorialRunning = false;
+                    await RunTutorialAsync(_taskMainHost);
                 };
 
                 Grid overlayButtons = new()
@@ -1033,10 +1222,15 @@ namespace GestureSample.Views.Tests
             pc.Items.Add("Level 3");
             pc.Items.Add("Level 4");
 
-            _gamePlay = new DecompositionGamePlay(this, _config, lblStats, pc);
-
-            pc.SelectedIndex = 1;
-            pc.SelectedIndexChanged += ((DecompositionGamePlay)_gamePlay).SelectedIndexChanged;
+            if (_gamePlay is DecompositionGamePlay decompositionGamePlay)
+            {
+                decompositionGamePlay.AttachDashboard(lblStats, pc);
+                pc.SelectedIndexChanged += async (_, __) =>
+                {
+                    ExerciseGenerationResult generatedExercise = await decompositionGamePlay.OnLevelSelectedAsync(pc.SelectedIndex);
+                    await UpdateView(true, generatedExercise: generatedExercise);
+                };
+            }
 
 
             vslDecompositionDashboard.Add(pc);
@@ -1049,7 +1243,6 @@ namespace GestureSample.Views.Tests
         private VerticalStackLayout InitLogicalKeyboardsUI()
         {
             VerticalStackLayout vsl = new();
-            _gamePlay = new BitArrayGamePlay(this, _config);
             _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,

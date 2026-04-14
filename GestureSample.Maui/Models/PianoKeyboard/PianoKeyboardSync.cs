@@ -8,13 +8,13 @@ namespace GestureSample.Maui.Models
         protected int _seconds_pressed = 0;
         protected virtual bool IS_WHOLE_TIMER { get; }
         protected virtual int SECONDS_TO_ANSWER { get; }
+        public Func<ExerciseCheckResult, Task>? CheckCompletedAsync { get; set; }
 
 
 
         int[] pressCounter;
         private readonly ProgressBar _pressProgress;
         private DateTime? _pressStartUtc;
-        private CancellationTokenSource? _holdCts;
         private bool _isChecking = false;
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
@@ -121,19 +121,12 @@ namespace GestureSample.Maui.Models
             // Hide progress immediately so feedback can appear on lblStatus
             ResetProgressVisual();
 
-            bool isCorrect = await _gamePlay.CheckAsync(this);
+            ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
 
             for (int i = 0; i < pressCounter.Length; i++)
                 pressCounter[i] = 0;
-
-            if (isCorrect && !_gamePlay.GameOver)
-            {
-                _gamePlay.GenerateExercise();
-            }
-            else
-            {
-                PianoInit();
-            }
+            if (CheckCompletedAsync != null)
+                await CheckCompletedAsync(checkResult);
 
             _isChecking = false;
             timer.Start();

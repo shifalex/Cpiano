@@ -1,11 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
-using GestureSample.Views;
-using GestureSample.Maui.Views;
-using GestureSample.Views.Tests;
-using Microsoft.Maui.Controls;
-using static SQLite.SQLite3;
 
 namespace GestureSample.Maui.Models
 {
@@ -24,7 +19,7 @@ namespace GestureSample.Maui.Models
 
         public int _questionNumber = 0;
         protected int _questionsWrong = 0;
-        private bool _lastQuestionWrong = false;
+        protected bool _lastQuestionWrong = false;
 
         protected Data.SQLite.Game _gameData;
         public virtual int Sum { get; set; }
@@ -71,12 +66,11 @@ namespace GestureSample.Maui.Models
         public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
 
-        protected readonly SimpleViewCellsPage _view;
-
         public GameConfig Config;
 
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
+        private bool _gameInitialized = false;
 
         // plan runtime
         private int _planStepIndex = 0;
@@ -86,9 +80,6 @@ namespace GestureSample.Maui.Models
 
         // snapshot of last question (PPW form)
         private (int a1, int a2, int s, Operation op, VariableTypes vt)? _prevPPWQuestion;
-        private (int a1, int a2, int s)? _prevPPWAnswer; // if you ever want it
-
-
         protected ExercisePlanStep? CurrentPlanStep
         {
             get
@@ -137,13 +128,13 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
+        public PPWGamePlay(GameConfig config)
         {
 
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
-            _view = view; Config = config;
-            CurrentOperation = Config.OperationList[0];
+            Config = config;
+            CurrentOperation = Config.OperationList.Count > 0 ? Config.OperationList[0] : Operation.Sum;
 
              _gameData = new()
              {
@@ -151,9 +142,9 @@ namespace GestureSample.Maui.Models
                  Id = GameId,
                  GameName = config.GameName,
                  Config = config
-             };
-            _gameRepository.SaveAsync(_gameData);
-
+            };
+            _planSeed = Config?.Plan?.Seed ?? Environment.TickCount;
+            _planRandom = new Random(_planSeed);
 
 
             GeneratePossibleTriadsSet();
@@ -161,8 +152,19 @@ namespace GestureSample.Maui.Models
 
             //SaveState();
         }
+
+        protected async Task EnsureGameInitializedAsync()
+        {
+            if (_gameInitialized)
+                return;
+
+            await _gameRepository.SaveAsync(_gameData);
+            _gameInitialized = true;
+        }
+
         protected async Task SaveState(int resultStatus =-1)
         {
+            await EnsureGameInitializedAsync();
 
             QuestionAnswer s = new()
             {
@@ -182,109 +184,163 @@ namespace GestureSample.Maui.Models
 
     private bool IsCorrectInput()
         {
-            int minAddend2 = Config.MinAddend2 == NAN ? Config.MinAddend : Config.MinAddend2;
-            int maxAddend2 = Config.MaxAddend2 == NAN ? Config.MaxAddend : Config.MaxAddend2;
+            int minAddend2 = Config.EffectiveMinAddend2;
+            int maxAddend2 = Config.EffectiveMaxAddend2;
             if (addend1 > Config.MaxAddend || addend1 < Config.MinAddend || addend2 > maxAddend2 || addend2 < minAddend2 || Sum > Config.MaxSum || Sum < Config.MinSum)
                 return false;
             return true;
         }
 
+        protected void BeginExercise()
+        {
+            _status = Statement.Neutral;
+            _guessNumber = 0;
+            _questionNumber++;
+        }
+
+        protected void IncrementGuessNumber()
+        {
+            _guessNumber++;
+        }
+
+        protected virtual ExerciseGenerationResult CreateGeneratedExerciseResult()
+        {
+            return new ExerciseGenerationResult
+            {
+                ActionText = CurrentOperation.ToDString()
+            };
+        }
+
+        protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null)
+        {
+            return new ExerciseCheckResult
+            {
+                IsCorrect = isCorrect,
+                IsWrongInput = isWrongInput,
+                Status = _status,
+                Completion = completion
+            };
+        }
+
+        protected async Task<GameCompletionResult?> RegisterSuccessfulAttemptAsync(int resultStatus = 1, Func<Task>? onSuccess = null)
+        {
+            _tasksMade++;
+            await SaveState(resultStatus);
+            _lastQuestionWrong = false;
+
+            if (onSuccess != null)
+                await onSuccess();
+
+            return await PersistGameProgressAsync();
+        }
+
+        protected async Task<GameCompletionResult?> RegisterFailedAttemptAsync(int resultStatus = 0, Func<Task>? onFailure = null)
+        {
+            _losesMade++;
+            await SaveState(resultStatus);
+            if (!_lastQuestionWrong)
+            {
+                _questionsWrong++;
+                _lastQuestionWrong = true;
+            }
+
+            if (onFailure != null)
+                await onFailure();
+
+            return await PersistGameProgressAsync();
+        }
+
+        protected async Task<GameCompletionResult?> PersistGameProgressAsync()
+        {
+            await EnsureGameInitializedAsync();
+
+            bool isWin = Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0);
+            bool isLose = Config.NumberOfMistakesToLose == _losesMade;
+            bool isGameOver = isWin || isLose;
+
+            if (isGameOver)
+            {
+                _gameData.FinalStatus = isWin ? 1 : 0;
+                _gameData.TimeEnd = DateTime.Now;
+                _gameData.Wins = _questionNumber;
+                _gameData.Losses = _questionsWrong;
+                GameOver = true;
+                await _gameRepository.UpdateAsync(_gameData);
+
+                return new GameCompletionResult
+                {
+                    GameId = GameId,
+                    IsWin = isWin,
+                    Duration = DateTime.Now.Subtract(StartTime)
+                };
+            }
+
+            _gameData.TimeEnd = DateTime.Now;
+            _gameData.Wins = _tasksMade;
+            _gameData.Losses = _losesMade;
+            await _gameRepository.UpdateAsync(_gameData);
+            return null;
+        }
 
 
-        public virtual async Task<bool> CheckAsync()
+
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync()
         {
             if (!IsCorrectInput())
             {
                 _status = Statement.WrongInput;
-                addend1 = oldA1; addend2 = oldA2; Sum = oldS;
-                await _view.UpdateView();
-                return false;
+                addend1 = oldA1;
+                addend2 = oldA2;
+                Sum = oldS;
+                return CreateCheckResult(isCorrect: false, isWrongInput: true);
             }
-            else
-            {
-                _guessNumber++;
-                _status = CurrentOperation switch
-                {
-                    Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
-                    //GameType.Logic => Statement.True,
-                    Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
-                    _ => Statement.True
-                };
-                if (Config.IsHistory && _status == Statement.True &&
-                    (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
-                    (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any())))
-                    _status = Statement.New;
 
-                if (_status == Statement.True)
+            IncrementGuessNumber();
+            _status = CurrentOperation switch
+            {
+                Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
+                Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
+                _ => Statement.True
+            };
+
+            if (Config.IsHistory && _status == Statement.True &&
+                (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
+                (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any())))
+            {
+                _status = Statement.New;
+            }
+
+            GameCompletionResult? completion = null;
+            if (_status == Statement.True)
+            {
+                completion = await RegisterSuccessfulAttemptAsync(onSuccess: async () =>
                 {
-                    _tasksMade++;
-                    await SaveState(1);
-                    _lastQuestionWrong = false;
                     if (Config.IsHistory)
                     {
                         RemoveItemToHistory(addend1, addend2, Sum);
                     }
 
-                }
-                if (_status == Statement.False || _status == Statement.New)
-                {
-                    _losesMade++;
-                    await SaveState(_status == Statement.New ? 2 : 0);
-                    if (!_lastQuestionWrong)
-                    {
-                        _questionsWrong++;
-                        _lastQuestionWrong = true;
-                    }
-                    addend1 = oldA1; addend2 = oldA2; Sum = oldS;
-                }
-                if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
-                {
-                    _gameData.FinalStatus = (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0)) ? 1 : 0;
-                    _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _questionNumber;
-                    _gameData.Losses = _questionsWrong;
-                    GameOver = true;
-                    /*    if (PossibleTriads.Count == 0)
-                    {
-                    _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
-                        GeneratePossibleTriadsSet();
-                        AllHistory.Clear(); Config.VariableTypes = (Config.VariableTypes == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
-                        StartTime = DateTime.Now;
-                    
-                    }*/
-                    await _gameRepository.UpdateAsync(_gameData);
-
-                    var winLoseTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                    {
-                        if (_gameData.FinalStatus == 0)
-                            await Statement.Lose();
-                        else
-                            await Statement.Win(DateTime.Now.Subtract(StartTime));
-                    });
-
-                    var navigationTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                    {
-                        Console.WriteLine("trying to move to ShowDataXaml");
-                        var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
-                        Application.Current.MainPage = newMainPage;
-                        await newMainPage.Navigation.PushAsync(new ShowDataXaml(false, GameId));
-                    });
-
-                    // Start both concurrently and await both to finish
-                    await Task.WhenAll(winLoseTask, navigationTask);
-                }
-                else
-                {
-                    _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _tasksMade;
-                    _gameData.Losses = _losesMade;
-                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    await _gameRepository.UpdateAsync(_gameData);
-                    await _view.UpdateView();
-                }
-                return _status == Statement.True;
+                    await Task.CompletedTask;
+                });
             }
 
+            if (_status == Statement.False || _status == Statement.New)
+            {
+                completion = await RegisterFailedAttemptAsync(_status == Statement.New ? 2 : 0, onFailure: async () =>
+                {
+                    addend1 = oldA1;
+                    addend2 = oldA2;
+                    Sum = oldS;
+                    await Task.CompletedTask;
+                });
+            }
+
+            return CreateCheckResult(isCorrect: _status == Statement.True, completion: completion);
+        }
+
+        public virtual async Task<bool> CheckAsync()
+        {
+            return (await EvaluateAsync()).IsCorrect;
         }
 
         public virtual bool IsCloseEnough(PianoKeyboard keyboard, int allowedDifferences = 1)
@@ -313,35 +369,51 @@ namespace GestureSample.Maui.Models
         }
 
         int oldA1, oldA2, oldS;
-        public virtual async Task<bool> Check(int a1, int a2, int s)
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
         {
             oldA1 = addend1; oldA2 = addend2; oldS = Sum;
             if(addend1 == NAN) addend1 = a1; 
             if(addend2 == NAN) addend2 = a2;
             if (Sum == NAN) Sum = s;
-            bool result = await CheckAsync();
-            return result;
+            return await EvaluateAsync();
         }
 
-        public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        public virtual async Task<bool> Check(int a1, int a2, int s)
+        {
+            return (await EvaluateAsync(a1, a2, s)).IsCorrect;
+        }
+
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
         {
             int keyboardSum = Sum;
             if (Sum == NAN && (pianoKeyboard.Addend1>=0 && pianoKeyboard.Addend2>=0)) {
                if( pianoKeyboard.Addend1 == addend1 && pianoKeyboard.Addend2 == addend2)
                  keyboardSum = pianoKeyboard.Sum; //if the sum is not set, it is set to the sum of addends
                 else
-                    keyboardSum = pianoKeyboard.Sum == Config.MinSum ? ++Config.MinSum : Config.MinSum;
+                    keyboardSum = GetAlternateValidSum(pianoKeyboard.Sum);
             }
-            bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
-            
-            _view.IsEnabled = false;
-            await Task.Delay(Config.SecondsTillNextExercise * 1000);
-             _view.IsEnabled = true;
+            ExerciseCheckResult result = await EvaluateAsync(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
             Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
-            return b;
+            return result;
         }
 
-        public virtual void GenerateExercise()
+        private int GetAlternateValidSum(int excludedSum)
+        {
+            if (Config.MinSum != excludedSum)
+                return Config.MinSum;
+
+            if (Config.MaxSum != excludedSum)
+                return Config.MaxSum;
+
+            return excludedSum;
+        }
+
+        public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        {
+            return (await EvaluateAsync(pianoKeyboard)).IsCorrect;
+        }
+
+        public virtual async Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -351,12 +423,9 @@ namespace GestureSample.Maui.Models
             ResolveQuestionSource(r, step);
 
             // runtime bookkeeping (same as your current pattern)
-            _status = Statement.Neutral;
-            _guessNumber = 0;
-            _questionNumber++;
-
-            SaveState();
-            _view.UpdateView(true);
+            BeginExercise();
+            await SaveState();
+            return CreateGeneratedExerciseResult();
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
@@ -665,8 +734,8 @@ namespace GestureSample.Maui.Models
         {
             PossibleTriads.Clear();
             int minAddend = Config.MinAddend, maxAddend = Config.MaxAddend, minSum = Config.MinSum, maxSum = Config.MaxSum;
-            int minAddend2 = Config.MinAddend2 == NAN ? minAddend : Config.MinAddend2;
-            int maxAddend2 = Config.MaxAddend2 == NAN ? maxAddend : Config.MaxAddend2;
+            int minAddend2 = Config.EffectiveMinAddend2;
+            int maxAddend2 = Config.EffectiveMaxAddend2;
 
             for (int i = minAddend; i <= maxAddend; i++)
                 for (int j = minAddend2; j <= (Config.IsHistorySymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
