@@ -67,7 +67,7 @@ namespace GestureSample.Maui.Models
         
         //private readonly Data.RealmService _realmService;
 
-        protected async void SaveState(int eventType, int key, int row = 0)
+        protected async Task SaveStateAsync(int eventType, int key, int row = 0, double? relativeX = null, double? relativeY = null)
         {
 
 /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
@@ -84,10 +84,53 @@ After:
                 KeyNumber = key,
                 Row = row,
                 EventType = eventType,
+                RelativeX = relativeX,
+                RelativeY = relativeY,
                 GameId= _gamePlay.GameId.ToString(),
                 QuestionNumber = _gamePlay._questionNumber
             };// = new ();
             await _keyEventRepository.SaveAsync(keyEvent);
+        }
+
+        private static double Clamp01(double value)
+        {
+            if (value < 0)
+                return 0;
+            if (value > 1)
+                return 1;
+            return value;
+        }
+
+        private static (double? relativeX, double? relativeY) GetRelativeTouch(MR.Gestures.DownUpEventArgs e, MR.Gestures.Button sender)
+        {
+            double width = e.ViewPosition.Width > 0 ? e.ViewPosition.Width : sender.Width;
+            double height = e.ViewPosition.Height > 0 ? e.ViewPosition.Height : sender.Height;
+
+            if (width <= 0 || height <= 0)
+                return (null, null);
+
+            if (e.Touches == null || e.Touches.Length == 0)
+                return (null, null);
+
+            int touchIndex = 0;
+            if (e.TriggeringTouches != null && e.TriggeringTouches.Length > 0)
+            {
+                touchIndex = Math.Clamp(e.TriggeringTouches[0], 0, e.Touches.Length - 1);
+            }
+
+            var touch = e.Touches[touchIndex];
+            double x = touch.X;
+            double y = touch.Y;
+
+            if (e.ViewPosition.X > 0 && x >= e.ViewPosition.X)
+            {
+                x -= e.ViewPosition.X;
+            }
+            if (e.ViewPosition.Y > 0 && y >= e.ViewPosition.Y)
+            {
+                y -= e.ViewPosition.Y;
+            }
+            return (Clamp01(x / width), Clamp01(y / height));
         }
 
         public PianoKeyboard(PPWGamePlay gamePlay, Microsoft.Maui.Controls.Label lblTimer,
@@ -479,19 +522,17 @@ After:
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
             int keyNumber = 0;
             int row = 0;
-            for(int j=0; j<_pianoConfig.Rows; j++)
-            for (int i = 0; i < btnKeys.Length; i++)
+            int keyIndex = Array.IndexOf(btnKeys, sender);
+            if (keyIndex >= 0)
             {
-                    if (btnKeys[i] == sender)
-                    {
-                        keyNumber = i + 1;
-                        row = j;
-                    }
+                keyNumber = keyIndex + 1;
+                row = _pianoConfig.KeysInRow > 0 ? keyIndex / _pianoConfig.KeysInRow : 0;
             }
+
+            (double? relativeX, double? relativeY) = GetRelativeTouch(e, sender);
             if (prevColor != sender.BackgroundColor)
             {
-                //TODO: add all the x and y of the touches on the keyboard to different db table using e.Touches[0] - will be needed for the touching patterns. Make it a seperate event of touch the grid which doesn't interfere
-                SaveState(isDown ? 1 : 0, keyNumber, row);
+                await SaveStateAsync(isDown ? 1 : 0, keyNumber, row, relativeX, relativeY);
             }
         }
     }

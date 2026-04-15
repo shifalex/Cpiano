@@ -215,6 +215,13 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         FeedbackWrong,
         Disabled
     }
+
+    public enum NumericInputMode
+    {
+        Auto,
+        AppKeypad,
+        SystemKeyboard
+    }
     #endregion
 
     public class GameConfig
@@ -261,6 +268,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool FromNumToNum { get; set; } = false;
         public bool ShowPrev { get; set; } = false;
         public bool IncludeTutorials { get; set; } = false;
+        public NumericInputMode NumericInputMode { get; set; } = NumericInputMode.AppKeypad;
 
         // Exercise generation
         public bool isLargerAddend1 { get; set; } = false;

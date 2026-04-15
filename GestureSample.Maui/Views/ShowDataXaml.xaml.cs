@@ -33,10 +33,12 @@ namespace GestureSample.Views
         private readonly QuestionAnswerRepository _questionAnswerRepository;
         private Maui.Data.SQLite.User _currentUser;
         private bool _isTeacher = false;
+        private readonly ToolbarItem _backToolbarItem;
 
         public ShowDataXaml(bool forTeacher=false, Guid? gameId = null)
         {
            InitializeComponent();
+            Title = "Data";
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
@@ -65,6 +67,14 @@ namespace GestureSample.Views
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+            _backToolbarItem = new ToolbarItem
+            {
+                Text = "Back",
+                Priority = 0,
+                Order = ToolbarItemOrder.Primary,
+                Command = new Command(async () => await NavigateBackAsync())
+            };
+            ToolbarItems.Add(_backToolbarItem);
             UserPicker.IsVisible = false;
             if ( gameId == null /*&& forTeacher*/ && ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name == "Alex")
             {
@@ -121,16 +131,31 @@ namespace GestureSample.Views
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"Could not load users: {ex.Message}", "OK");
+                _isTeacher = false;
+                _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                await DisplayAlert("Error", $"Could not load users from Supabase. Showing local data instead.\n{ex.Message}", "OK");
                 UserPicker.IsVisible = false;
+                ShowData(null);
             }
         }
 
         public async void ShowData(Guid? gameId=null)
         {
             Console.WriteLine(_currentUser.Name);
-            GameIdentifiers = await (_isTeacher? Maui.Data.SupaBase.SupabaseService.GetAllByUserAsync(_currentUser.Id) // SupabaseService.GetGamesOfUser(_currentUser)
-                : _gameRepository.GetAllByUserAsync(_currentUser.Id));
+            try
+            {
+                GameIdentifiers = await (_isTeacher
+                    ? Maui.Data.SupaBase.SupabaseService.GetAllByUserAsync(_currentUser.Id)
+                    : _gameRepository.GetAllByUserAsync(_currentUser.Id));
+            }
+            catch (Exception ex)
+            {
+                _isTeacher = false;
+                _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                UserPicker.IsVisible = false;
+                await DisplayAlert("Supabase", $"Could not load remote data. Showing local data instead.\n{ex.Message}", "OK");
+                GameIdentifiers = await _gameRepository.GetAllByUserAsync(_currentUser.Id);
+            }
             Console.WriteLine("Loading Identifiers finished");
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
             {
@@ -200,9 +225,20 @@ namespace GestureSample.Views
             if (selectedIdentifier != null)
             {
                 Console.WriteLine(selectedIdentifier.ToString()+" {0}", (Guid)selectedIdentifier);
-                //gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
-                gameStats = await (_isTeacher ? Maui.Data.SupaBase.SupabaseService.GetAnswersByQueryAsync((Guid)selectedIdentifier) // SupabaseService.GetGamesOfUser(_currentUser)
-                : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier));
+                try
+                {
+                    gameStats = await (_isTeacher
+                        ? Maui.Data.SupaBase.SupabaseService.GetAnswersByQueryAsync((Guid)selectedIdentifier)
+                        : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier));
+                }
+                catch (Exception ex)
+                {
+                    _isTeacher = false;
+                    _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                    UserPicker.IsVisible = false;
+                    await DisplayAlert("Supabase", $"Could not load remote answers. Showing local data instead.\n{ex.Message}", "OK");
+                    gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
+                }
                 Console.WriteLine("Rows: {0}",gameStats.Count);
 
 
@@ -346,7 +382,18 @@ namespace GestureSample.Views
             isSaveVisible = false;
             btnSave.IsVisible = isSaveVisible;
 
-            await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
+                await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
+        }
+
+        private async Task NavigateBackAsync()
+        {
+            if (Navigation?.NavigationStack?.Count > 1)
+            {
+                await Navigation.PopAsync();
+                return;
+            }
+
+            Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
         }
     }
 }

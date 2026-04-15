@@ -14,8 +14,120 @@ namespace GestureSample.Maui.Data
 
         public async Task<List<KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(Guid? selectedIdentifier)
         {
-            return await _database.Table<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier.ToString()).ToListAsync();
+            if (!selectedIdentifier.HasValue)
+                return new List<KeyboardQuestion>();
 
+            string gameId = selectedIdentifier.Value.ToString();
+            return await _database.Table<KeyboardQuestion>()
+                .Where(state => state.GameId == gameId)
+                .ToListAsync();
+
+        }
+
+        public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus)
+        {
+            List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
+                .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
+                .ToListAsync();
+
+            if (questions.Count == 0)
+                return null;
+
+            int nextAttemptNumber = questions.Max(question => question.AttemptNumber) + 1;
+            KeyboardQuestion pendingQuestion = questions
+                .Where(question => question.AttemptNumber == 0)
+                .OrderByDescending(question => question.QuestionID)
+                .FirstOrDefault();
+
+            if (pendingQuestion != null)
+            {
+                pendingQuestion.AttemptNumber = nextAttemptNumber;
+                pendingQuestion.SubmittedKeyboard = submittedKeyboard?.ToArray();
+                pendingQuestion.SubmittedTime = submittedTime;
+                pendingQuestion.ResultStatus = resultStatus;
+                await _database.UpdateAsync(pendingQuestion);
+                return pendingQuestion;
+            }
+
+            KeyboardQuestion sourceQuestion = questions
+                .OrderByDescending(question => question.QuestionID)
+                .First();
+
+            KeyboardQuestion attemptQuestion = CloneAttemptQuestion(sourceQuestion, nextAttemptNumber, submittedKeyboard, submittedTime, resultStatus, wasTutorialUsed: false);
+            await _database.InsertAsync(attemptQuestion);
+            return attemptQuestion;
+        }
+
+        public async Task MarkTutorialUsedAsync(string gameId, int questionNumber)
+        {
+            List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
+                .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
+                .ToListAsync();
+
+            if (questions.Count == 0)
+                return;
+
+            KeyboardQuestion pendingQuestion = questions
+                .Where(question => question.AttemptNumber == 0)
+                .OrderByDescending(question => question.QuestionID)
+                .FirstOrDefault();
+
+            if (pendingQuestion != null)
+            {
+                if (pendingQuestion.WasTutorialUsed)
+                    return;
+
+                pendingQuestion.WasTutorialUsed = true;
+                await _database.UpdateAsync(pendingQuestion);
+                return;
+            }
+
+            KeyboardQuestion sourceQuestion = questions
+                .OrderByDescending(question => question.AttemptNumber)
+                .ThenByDescending(question => question.QuestionID)
+                .First();
+
+            KeyboardQuestion pendingClone = CloneAttemptQuestion(
+                sourceQuestion,
+                attemptNumber: 0,
+                submittedKeyboard: null,
+                submittedTime: null,
+                resultStatus: 0,
+                wasTutorialUsed: true);
+
+            await _database.InsertAsync(pendingClone);
+        }
+
+        private static KeyboardQuestion CloneAttemptQuestion(
+            KeyboardQuestion sourceQuestion,
+            int attemptNumber,
+            bool[] submittedKeyboard,
+            DateTime? submittedTime,
+            int resultStatus,
+            bool wasTutorialUsed)
+        {
+            return new KeyboardQuestion
+            {
+                QuestionNumber = sourceQuestion.QuestionNumber,
+                AttemptNumber = attemptNumber,
+                GameId = sourceQuestion.GameId,
+                Time = sourceQuestion.Time,
+                UserId = sourceQuestion.UserId,
+                ResultStatus = resultStatus,
+                WasTutorialUsed = wasTutorialUsed,
+                aboveNumber = sourceQuestion.aboveNumber,
+                length = sourceQuestion.length,
+                MoveByLength = sourceQuestion.MoveByLength,
+                KeyboardRows = sourceQuestion.KeyboardRows,
+                KeyboardKeysInRow = sourceQuestion.KeyboardKeysInRow,
+                keyboard1 = sourceQuestion.keyboard1?.ToArray(),
+                keyboard2 = sourceQuestion.keyboard2?.ToArray(),
+                dir = sourceQuestion.dir,
+                MoveByDirection = sourceQuestion.MoveByDirection,
+                Op = sourceQuestion.Op,
+                SubmittedKeyboard = submittedKeyboard?.ToArray(),
+                SubmittedTime = submittedTime
+            };
         }
 
     }

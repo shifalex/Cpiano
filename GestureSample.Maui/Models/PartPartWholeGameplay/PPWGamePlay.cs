@@ -162,9 +162,10 @@ namespace GestureSample.Maui.Models
             _gameInitialized = true;
         }
 
-        protected async Task SaveState(int resultStatus =-1)
+        protected async Task SaveState(int resultStatus =-1, bool syncAfterSave = true)
         {
             await EnsureGameInitializedAsync();
+            await MarkGameAsDirtyAsync();
 
             QuestionAnswer s = new()
             {
@@ -180,7 +181,31 @@ namespace GestureSample.Maui.Models
             };
             await _questionAnswerRepository.SaveAsync(s);
             qaState = s ;
+            if (syncAfterSave)
+                await TrySyncSupabaseStateAsync();
     }
+
+        protected async Task MarkGameAsDirtyAsync()
+        {
+            _gameData.WasSynced = false;
+            await _gameRepository.UpdateAsync(_gameData);
+        }
+
+        protected async Task TrySyncSupabaseStateAsync()
+        {
+            try
+            {
+                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                if (activeUser == null)
+                    return;
+
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUnsyncedGamesAndRelatedDataAsync(activeUser);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Supabase sync skipped: {ex.Message}");
+            }
+        }
 
     private bool IsCorrectInput()
         {
@@ -211,6 +236,11 @@ namespace GestureSample.Maui.Models
             };
         }
 
+        protected virtual Task PersistGeneratedExerciseAsync()
+        {
+            return SaveState(syncAfterSave: false);
+        }
+
         protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null)
         {
             return new ExerciseCheckResult
@@ -225,7 +255,7 @@ namespace GestureSample.Maui.Models
         protected async Task<GameCompletionResult?> RegisterSuccessfulAttemptAsync(int resultStatus = 1, Func<Task>? onSuccess = null)
         {
             _tasksMade++;
-            await SaveState(resultStatus);
+            await SaveState(resultStatus, syncAfterSave: false);
             _lastQuestionWrong = false;
 
             if (onSuccess != null)
@@ -237,7 +267,7 @@ namespace GestureSample.Maui.Models
         protected async Task<GameCompletionResult?> RegisterFailedAttemptAsync(int resultStatus = 0, Func<Task>? onFailure = null)
         {
             _losesMade++;
-            await SaveState(resultStatus);
+            await SaveState(resultStatus, syncAfterSave: false);
             if (!_lastQuestionWrong)
             {
                 _questionsWrong++;
@@ -266,6 +296,7 @@ namespace GestureSample.Maui.Models
                 _gameData.Losses = _questionsWrong;
                 GameOver = true;
                 await _gameRepository.UpdateAsync(_gameData);
+                await TrySyncSupabaseStateAsync();
 
                 return new GameCompletionResult
                 {
@@ -413,7 +444,7 @@ namespace GestureSample.Maui.Models
             return (await EvaluateAsync(pianoKeyboard)).IsCorrect;
         }
 
-        public virtual async Task<ExerciseGenerationResult> GenerateExerciseAsync()
+        public virtual Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -424,8 +455,12 @@ namespace GestureSample.Maui.Models
 
             // runtime bookkeeping (same as your current pattern)
             BeginExercise();
-            await SaveState();
-            return CreateGeneratedExerciseResult();
+            ExerciseGenerationResult generatedExercise = CreateGeneratedExerciseResult();
+            return Task.FromResult(new ExerciseGenerationResult
+            {
+                ActionText = generatedExercise.ActionText,
+                PersistenceTask = PersistGeneratedExerciseAsync()
+            });
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
@@ -711,6 +746,25 @@ namespace GestureSample.Maui.Models
                     factors[0] = PossibleTriads[currentTriadIndex].Addend1;//GenerateNewAddend(factors[2]);
                     factors[1] = PossibleTriads[currentTriadIndex].Addend2;//factors[2] - factors[0];
                     return factors;
+                }
+
+                if (Config.OnlyCloseTriad && !IsFirstGuess)
+                {
+                    List<PPWObject> closeTriads = PossibleTriads
+                        .Where(item =>
+                            item.Addend1 == this.addend1 &&
+                            Math.Abs(item.Addend2 - this.addend2) <= 2 &&
+                            !(item.Addend1 == this.addend1 && item.Addend2 == this.addend2))
+                        .ToList();
+
+                    if (closeTriads.Count > 0)
+                    {
+                        PPWObject chosenTriad = closeTriads[r.Next(closeTriads.Count)];
+                        factors[0] = chosenTriad.Addend1;
+                        factors[1] = chosenTriad.Addend2;
+                        factors[2] = chosenTriad.Sum;
+                        return factors;
+                    }
                 }
 
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);

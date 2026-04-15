@@ -2,6 +2,7 @@ using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
+using GestureSample.Maui;
 using SQLite;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -159,19 +160,36 @@ namespace GestureSample.Views
             List<MainItem> mainItems = new();
             if (questionList.Any())
             {
-                foreach (KeyboardQuestion q in questionList)
+                int displayIndex = 0;
+                foreach (var questionGroup in questionList
+                    .GroupBy(item => item.QuestionNumber)
+                    .OrderBy(group => group.Key))
                 {
-                    q.RowBackgroundColor = q.QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
-                    mainItems.Add(new() { 
-                        Question= q,
-                        SubItems = gamePresses.Where(item => item.QuestionNumber == q.QuestionNumber).ToList()
-                    });
-                    /*if(states[i].Op == Maui.Operation.Divide || states[i].Op == Maui.Operation.Minus)
+                    List<KeyboardQuestion> orderedAttempts = questionGroup
+                        .OrderBy(item => item.AttemptNumber == 0 ? int.MaxValue : item.AttemptNumber)
+                        .ThenBy(item => item.QuestionID)
+                        .ToList();
+
+                    List<KeyEvent> combinedEvents = gamePresses
+                        .Where(item => item.QuestionNumber == questionGroup.Key)
+                        .OrderBy(item => item.EventTime)
+                        .ThenBy(item => item.id)
+                        .ToList();
+
+                    foreach (KeyboardQuestion q in orderedAttempts)
                     {
-                        int oldSum = states[i].Sum; Color oldSumColor = states[i].SumColor;
-                        states[i].Sum = states[i].Addend1; states[i].SumColor = states[i].Addend1Color;
-                        states[i].Addend1 = oldSum; states[i].Addend1Color = oldSumColor;
-                    }*/
+                        List<KeyEvent> attemptEvents = ResolveAttemptEvents(q, orderedAttempts, combinedEvents);
+
+                        q.RowBackgroundColor = displayIndex % 2 == 0 ? Colors.White : Colors.LightGray;
+                        displayIndex++;
+
+                        mainItems.Add(new()
+                        {
+                            Question = q,
+                            SubItems = attemptEvents,
+                            CombinedSubItems = combinedEvents
+                        });
+                    }
                 }
                
             }
@@ -212,7 +230,8 @@ namespace GestureSample.Views
             var picker = sender as Picker;
             if (picker.SelectedIndex != -1)
             {
-                await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);
+                CurrentGame = GameIdentifiersFiltered[picker.SelectedIndex];
+                await LoadStatesToGrid(CurrentGame.Id);
             }
 
         }
@@ -221,33 +240,121 @@ namespace GestureSample.Views
             if (sender is Button button && button.BindingContext is MainItem item)
             {
                 item.IsSubCollectionVisible = !item.IsSubCollectionVisible;
+            }
+        }
 
-                // Set HeightRequest manually for debugging
-                var parentLayout = (Grid)button.Parent.Parent;
-                var subCollection = parentLayout.FindByName<CollectionView>("SubCollection");
+        private async void OnReplayClicked(object sender, EventArgs e)
+        {
+            if (sender is not Button button || button.BindingContext is not MainItem item)
+                return;
 
-                subCollection.HeightRequest = item.IsSubCollectionVisible ? 200 : 10;
+            KeyboardConfig keyboardConfig = CurrentGame?.Config?.KeyboardConfig ?? new KeyboardConfig();
+            await OpenReplayPageAsync(new KeyboardReplayPage(
+                item.ReplayTitle,
+                item.SubItems,
+                item.Question,
+                keyboardConfig));
+        }
 
-            }/*
+        private async void OnReplayAllClicked(object sender, EventArgs e)
+        {
+            if (sender is not Button button || button.BindingContext is not MainItem item || !item.HasCombinedReplay)
+                return;
 
-            if (sender is Button button && button.CommandParameter is MainItem item)
+            KeyboardConfig keyboardConfig = CurrentGame?.Config?.KeyboardConfig ?? new KeyboardConfig();
+            await OpenReplayPageAsync(new KeyboardReplayPage(
+                item.CombinedReplayTitle,
+                item.CombinedSubItems,
+                item.Question,
+                keyboardConfig));
+        }
+
+        private async Task OpenReplayPageAsync(Page replayPage)
+        {
+            if (Navigation?.NavigationStack?.Count > 0)
             {
-                // Find the parent VerticalStackLayout and the SubCollection
-                var parentLayout = (VerticalStackLayout)button.Parent;
-                var subCollection = parentLayout.FindByName<CollectionView>("StateList");
+                await Navigation.PushAsync(replayPage);
+                return;
+            }
 
-                // Toggle visibility
-                subCollection.IsVisible = !subCollection.IsVisible;
+            Application.Current.MainPage = new NavigationPage(replayPage);
+        }
 
-                // Update button text
-                button.Text = subCollection.IsVisible ? "Collapse Items" : "Expand Items";
-
-                // Set the sub-collection items
-                if (subCollection.ItemsSource == null)
+        private async void OnSyncClicked(object sender, EventArgs e)
+        {
+            try
+            {
+                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                if (activeUser == null)
                 {
-                    subCollection.ItemsSource = item.SubItems;
+                    await DisplayAlert("Sync", "No active user for sync.", "OK");
+                    return;
                 }
-            }*/
+
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(activeUser);
+                await DisplayAlert("Sync", "Keyboard tables synced with Supabase.", "OK");
+
+                if (CurrentGame != null)
+                    await LoadStatesToGrid(CurrentGame.Id);
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Sync Error", ex.Message, "OK");
+            }
+        }
+
+        private static List<KeyEvent> ResolveAttemptEvents(
+            KeyboardQuestion question,
+            IReadOnlyList<KeyboardQuestion> orderedAttempts,
+            List<KeyEvent> combinedEvents)
+        {
+            if (combinedEvents.Count == 0)
+                return new List<KeyEvent>();
+
+            bool hasAttemptScopedEvents = combinedEvents.Any(item => item.AttemptNumber > 0);
+            if (hasAttemptScopedEvents && question.AttemptNumber > 0)
+            {
+                List<KeyEvent> scopedEvents = combinedEvents
+                    .Where(item => item.AttemptNumber == question.AttemptNumber)
+                    .ToList();
+
+                if (HasReplayStrokeData(scopedEvents))
+                    return scopedEvents;
+            }
+
+            int attemptIndex = -1;
+            for (int i = 0; i < orderedAttempts.Count; i++)
+            {
+                if (ReferenceEquals(orderedAttempts[i], question) || orderedAttempts[i].QuestionID == question.QuestionID)
+                {
+                    attemptIndex = i;
+                    break;
+                }
+            }
+
+            if (attemptIndex < 0)
+                attemptIndex = 0;
+
+            DateTime lowerBound = attemptIndex > 0
+                ? orderedAttempts[attemptIndex - 1].SubmittedTime ?? orderedAttempts[attemptIndex - 1].Time
+                : question.Time;
+            DateTime upperBound = question.SubmittedTime ?? question.Time;
+
+            List<KeyEvent> timeSlicedEvents = combinedEvents
+                .Where(item => item.EventTime > lowerBound && item.EventTime <= upperBound.AddMilliseconds(10))
+                .ToList();
+
+            if (HasReplayStrokeData(timeSlicedEvents))
+                return timeSlicedEvents;
+
+            return hasAttemptScopedEvents && question.AttemptNumber > 0
+                ? combinedEvents.Where(item => item.AttemptNumber == question.AttemptNumber).ToList()
+                : combinedEvents;
+        }
+
+        private static bool HasReplayStrokeData(List<KeyEvent> events)
+        {
+            return events.Any(item => item.EventType == 0 || item.EventType == 1 || item.EventType == 3);
         }
     }
 
@@ -255,6 +362,33 @@ namespace GestureSample.Views
     {
         public KeyboardQuestion Question { get; set; }
         public List<KeyEvent> SubItems { get; set; }
+        public List<KeyEvent> CombinedSubItems { get; set; }
+        public bool HasReplay => SubItems != null && SubItems.Count > 0;
+        public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
+        public bool HasTimingSummary => !string.IsNullOrWhiteSpace(TimingSummaryText);
+        public string ReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - {Question.AttemptText}";
+        public string CombinedReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - All Trials";
+
+        public string TimingSummaryText
+        {
+            get
+            {
+                if (Question == null)
+                    return string.Empty;
+
+                List<string> parts = new();
+
+                DateTime? replayStart = GetReplayStartTime();
+                if (replayStart.HasValue)
+                    parts.Add($"Start: {FormatDuration(replayStart.Value - Question.Time)}");
+
+                DateTime? answerTime = GetAnswerTime();
+                if (answerTime.HasValue)
+                    parts.Add($"Answer: {FormatDuration(answerTime.Value - Question.Time)}");
+
+                return string.Join("  |  ", parts);
+            }
+        }
 
         private bool _isSubCollectionVisible;
         public bool IsSubCollectionVisible
@@ -263,13 +397,13 @@ namespace GestureSample.Views
             set
             {
                 _isSubCollectionVisible = value;
-                SubGridHeight = value ? 200 : 10; // Adjust height based on visibility
+                SubGridHeight = value ? 260 : 0;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ButtonText)); // Notify UI to update ButtonText
             }
         }
 
-        private double _subGridHeight = 10; // Default collapsed height
+        private double _subGridHeight = 0;
         public double SubGridHeight
         {
             get => _subGridHeight;
@@ -280,7 +414,53 @@ namespace GestureSample.Views
             }
         }
 
-        public string ButtonText => IsSubCollectionVisible ? "Collapse Items" : "Expand Items";
+        public string ButtonText => IsSubCollectionVisible ? "Hide Events" : "Show Events";
+
+        private DateTime? GetReplayStartTime()
+        {
+            if (SubItems == null || SubItems.Count == 0)
+                return null;
+
+            KeyEvent firstTouch = SubItems
+                .Where(item => item.EventType == 1)
+                .OrderBy(item => item.EventTime)
+                .FirstOrDefault();
+
+            firstTouch ??= SubItems
+                .Where(item => item.EventType != 2 && item.EventType != 3)
+                .OrderBy(item => item.EventTime)
+                .FirstOrDefault();
+
+            firstTouch ??= SubItems.OrderBy(item => item.EventTime).FirstOrDefault();
+            return firstTouch?.EventTime;
+        }
+
+        private DateTime? GetAnswerTime()
+        {
+            if (Question?.SubmittedTime != null)
+                return Question.SubmittedTime.Value;
+
+            if (SubItems == null || SubItems.Count == 0)
+                return null;
+
+            KeyEvent checkEvent = SubItems
+                .Where(item => item.EventType == 2)
+                .OrderBy(item => item.EventTime)
+                .FirstOrDefault();
+
+            return checkEvent?.EventTime;
+        }
+
+        private static string FormatDuration(TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero)
+                duration = TimeSpan.Zero;
+
+            if (duration.TotalMinutes >= 1)
+                return duration.ToString(@"m\:ss\.fff");
+
+            return $"{duration.TotalSeconds:0.000}s";
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null) =>

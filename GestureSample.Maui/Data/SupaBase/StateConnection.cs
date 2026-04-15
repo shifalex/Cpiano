@@ -41,6 +41,17 @@ namespace GestureSample.Maui.Data.SupaBase
             Console.WriteLine("Updated all 'Game' records: WasSynced set to false (0).");
             await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedTime", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "MoveByLength", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "MoveByDirectionJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardRows", "INTEGER NOT NULL DEFAULT 1").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardKeysInRow", "INTEGER NOT NULL DEFAULT 10").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "WasTutorialUsed", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
         }
 
@@ -62,6 +73,23 @@ namespace GestureSample.Maui.Data.SupaBase
                // Database.CreateTableAsync<T>().Wait();
                 //Console.WriteLine($"Table '{typeof(T).Name}' created successfully.");
                 Console.WriteLine($"table {typeof(T).Name} initialization failed: {ex.Message}");
+            }
+        }
+
+        private static async Task EnsureColumnAsync(string tableName, string columnName, string columnDefinition)
+        {
+            try
+            {
+                List<SQLiteConnection.ColumnInfo> columns = await Instance.Database.GetTableInfoAsync(tableName).ConfigureAwait(false);
+                if (columns.Any(column => column.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase)))
+                    return;
+
+                await Instance.Database.ExecuteAsync($"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};").ConfigureAwait(false);
+                Console.WriteLine($"Column '{columnName}' added to '{tableName}'.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Column '{columnName}' on '{tableName}' initialization failed: {ex.Message}");
             }
         }
     }

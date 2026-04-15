@@ -17,14 +17,19 @@ namespace GestureSample.Maui.Data.SupaBase
         [PrimaryKey, AutoIncrement]
         public int QuestionID { get; set; }
         public int QuestionNumber { get; set; }
+        public int AttemptNumber { get; set; } = 0;
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
         public Guid UserId { get; set; } = Guid.Empty;
         public int ResultStatus { get; set; } = 0;
+        public bool WasTutorialUsed { get; set; } = false;
 
 
         public int? aboveNumber { get; set; }
         public int? length { get; set; }
+        public int? MoveByLength { get; set; }
+        public int KeyboardRows { get; set; } = 1;
+        public int KeyboardKeysInRow { get; set; } = 10;
 
         [Ignore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
@@ -39,6 +44,10 @@ namespace GestureSample.Maui.Data.SupaBase
         public bool[] keyboard2 { get; set; }
         [Ignore]
         public Direction dir { get; set; } 
+        [Ignore]
+        public Direction MoveByDirection { get; set; } = Direction.Right;
+        [Ignore]
+        public bool[] SubmittedKeyboard { get; set; }
 
         // Serialize GameConfig as JSON for storage
         [Column("ConfigJson")]
@@ -73,6 +82,22 @@ namespace GestureSample.Maui.Data.SupaBase
             get => JsonSerializer.Serialize(dir);
             set => dir = value != null ? JsonSerializer.Deserialize<Direction>(value) : Direction.Right;
         }
+
+        [Column("SubmittedKeyboardJson")]
+        public string SubmittedKeyboardJson
+        {
+            get => JsonSerializer.Serialize(SubmittedKeyboard);
+            set => SubmittedKeyboard = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+
+        [Column("MoveByDirectionJson")]
+        public string MoveByDirectionJson
+        {
+            get => JsonSerializer.Serialize(MoveByDirection);
+            set => MoveByDirection = value != null ? JsonSerializer.Deserialize<Direction>(value) : Direction.Right;
+        }
+
+        public DateTime? SubmittedTime { get; set; }
 
 
     }

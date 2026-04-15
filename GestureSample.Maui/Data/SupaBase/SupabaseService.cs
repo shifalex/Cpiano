@@ -183,7 +183,11 @@ private static readonly SupabaseClient _supabase = new(
 
         public static async Task<List<SQLite.KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(Guid? selectedIdentifier)
         {
-            var result = await _supabase.From<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier.ToString()).Get();
+            if (!selectedIdentifier.HasValue)
+                return new List<SQLite.KeyboardQuestion>();
+
+            string gameId = selectedIdentifier.Value.ToString();
+            var result = await _supabase.From<KeyboardQuestion>().Where(state => state.GameId == gameId).Get();
 
             LogInfo("Retrived states");
             return result.Models.Select(q => ConvertFrom<SupaBase.KeyboardQuestion, SQLite.KeyboardQuestion>(q)).ToList();
@@ -310,9 +314,9 @@ private static readonly SupabaseClient _supabase = new(
                 await _supabase.From<SupaBase.Game>().Upsert(remoteGameBatch);
                 LogInfo($"Upserted {remoteGameBatch.Count} games to SupaBase.");
 
-                // 4. Insert related QuestionAnswer records for each newly upserted game.
+                // 4. Replace related game rows so repeated syncs stay safe.
                 var newGameIds = unsyncedGames.Select(g => g.Id).ToList();
-                await InsertQuestionAnswersForNewGamesAsync(newGameIds);
+                await ReplaceRelatedDataForGamesAsync(newGameIds);
 
                 LogInfo("Finished SyncUnsyncedGamesAndRelatedDataAsync successfully.");
 
@@ -455,38 +459,83 @@ private static readonly SupabaseClient _supabase = new(
             }
         }*/
 
-        /// <summary>
-        /// Syncs Question Answers.
-        /// </summary>
-        private static async Task InsertQuestionAnswersForNewGamesAsync(List<Guid> gameIds)
+        private static async Task ReplaceRelatedDataForGamesAsync(List<Guid> gameIds)
         {
-            var qaRepo = ServiceHelper.GetService<QuestionAnswerRepository>();
             foreach (var gameId in gameIds)
             {
-                try
-                {
-                    var localQAs = await qaRepo.GetAnswersByQueryAsync(gameId);
-                    if (localQAs.Any())
-                    {
-                        // Convert each local QuestionAnswer (SQLite.QuestionAnswer) to SupaBase.QuestionAnswer.
-                        var supabaseQAs = localQAs
-                            .Select(qa => ConvertFrom<SQLite.QuestionAnswer, SupaBase.QuestionAnswer>(qa))
-                            .ToList();
-
-                        // Batch insert the converted QuestionAnswer records.
-                        await _supabase.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
-                        LogInfo($"Inserted {supabaseQAs.Count} SupaBase QuestionAnswer records for Game {gameId}.");
-                    }
-                    else
-                    {
-                        LogInfo($"No local QuestionAnswer records for Game {gameId}.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogError($"Error inserting QuestionAnswer records for Game {gameId}.", ex);
-                }
+                await ReplaceQuestionAnswersForGameAsync(gameId);
+                await ReplaceKeyboardQuestionsForGameAsync(gameId);
+                await ReplaceKeyEventsForGameAsync(gameId);
             }
+        }
+
+        private static async Task ReplaceQuestionAnswersForGameAsync(Guid gameId)
+        {
+            var qaRepo = ServiceHelper.GetService<QuestionAnswerRepository>();
+            var localQAs = await qaRepo.GetAnswersByQueryAsync(gameId);
+
+            await _supabase.From<SupaBase.QuestionAnswer>()
+                .Where(state => state.GameId == gameId)
+                .Delete();
+
+            if (!localQAs.Any())
+            {
+                LogInfo($"No local QuestionAnswer records for Game {gameId}.");
+                return;
+            }
+
+            var supabaseQAs = localQAs
+                .Select(qa => ConvertFrom<SQLite.QuestionAnswer, SupaBase.QuestionAnswer>(qa))
+                .ToList();
+
+            await _supabase.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
+            LogInfo($"Inserted {supabaseQAs.Count} SupaBase QuestionAnswer records for Game {gameId}.");
+        }
+
+        private static async Task ReplaceKeyboardQuestionsForGameAsync(Guid gameId)
+        {
+            var keyboardQuestionRepo = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            var localQuestions = await keyboardQuestionRepo.GetKeyboardQuestionByQueryAsync(gameId);
+
+            await _supabase.From<SupaBase.KeyboardQuestion>()
+                .Where(state => state.GameId == gameId.ToString())
+                .Delete();
+
+            if (!localQuestions.Any())
+            {
+                LogInfo($"No local KeyboardQuestion records for Game {gameId}.");
+                return;
+            }
+
+            var supabaseQuestions = localQuestions
+                .Select(question => ConvertFrom<SQLite.KeyboardQuestion, SupaBase.KeyboardQuestion>(question))
+                .ToList();
+
+            await _supabase.From<SupaBase.KeyboardQuestion>().Insert(supabaseQuestions);
+            LogInfo($"Inserted {supabaseQuestions.Count} SupaBase KeyboardQuestion records for Game {gameId}.");
+        }
+
+        private static async Task ReplaceKeyEventsForGameAsync(Guid gameId)
+        {
+            var keyEventRepo = ServiceHelper.GetService<KeyEventRepository>();
+            var localEvents = await keyEventRepo.GetKeyEventsByQueryAsync(gameId);
+
+            await _supabase.From<SupaBase.KeyEvent>()
+                .Where(state => state.GameId == gameId.ToString())
+                .Delete();
+
+            if (!localEvents.Any())
+            {
+                LogInfo($"No local KeyEvent records for Game {gameId}.");
+                return;
+            }
+
+            var supabaseEvents = localEvents
+                .Select(keyEvent => ConvertFrom<SQLite.KeyEvent, SupaBase.KeyEvent>(keyEvent))
+                .ToList();
+
+            await _supabase.From<SupaBase.KeyEvent>().Insert(supabaseEvents);
+            LogInfo($"Inserted {supabaseEvents.Count} SupaBase KeyEvent records for Game {gameId}.");
         }
 
         /// <summary>

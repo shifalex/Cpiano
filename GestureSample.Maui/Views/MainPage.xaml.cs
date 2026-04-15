@@ -422,7 +422,6 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -514,6 +513,7 @@ namespace GestureSample.Views
         GameName = "Shift by - Two Fingers",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
+        QuestionOrder = QuestionOrder.CyclicalMixed,
         OnlyToTen = false,
         isOnlySequence = false,
         isOnlyKeyboard = true,
@@ -522,6 +522,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
 
             KeysInRow = 6
         }
@@ -531,6 +532,7 @@ namespace GestureSample.Views
         GameName = "Shift by - Structure",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
         OperationList = new() {Operation.MoveBy },
+        QuestionOrder = QuestionOrder.CyclicalMixed,
         OnlyToTen = false,
         isOnlySequence = false,
         isOnlyKeyboard = true,
@@ -538,6 +540,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
 
             KeysInRow = 8
         }
@@ -620,6 +623,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -634,6 +638,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -658,6 +663,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -680,6 +686,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -695,6 +702,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            IsHelpNeeded = true,
             
             KeysInRow = 6
         },
@@ -726,6 +734,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            IsHelpNeeded = true,
             KeysInRow = 6
         },
          Plan = new ExercisePlan
@@ -1215,6 +1224,8 @@ namespace GestureSample.Views
         GameName = "Cyclical Right",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalRight,
+        MaxSum = 10,
+        OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -1237,6 +1248,8 @@ namespace GestureSample.Views
         GameName = "Cyclical Left",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.CyclicalLeft,
+        MaxSum = 10,
+        OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -1798,6 +1811,21 @@ namespace GestureSample.Views
         NumberOfMistakesToLose=3,
         EnforceOperationLabel=true
     })),
+    new PageConfig("X : ", "Benchmarks", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Multiplication Benchmarks",
+        OperationList = new() { Operation.Multiplication },
+        MinAddend = 2,
+        MaxAddend = 12,
+        MaxAddend2 = 12,
+        MinSum = 4,
+        MaxSum = 144,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        OnlyCloseTriad = true,
+        DefaultTriad = new PPWObject(6, 6, 36),
+        ShowPrev = true,
+        EnforceOperationLabel = true
+    })),
     new PageConfig("+-X:- mixed advanced ", "Level 1 - Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName =  "Mixed - Level 1",
@@ -1966,6 +1994,8 @@ namespace GestureSample.Views
             public Func<Page> PageConstructor { get; }
 
             public bool IsLargeScreenOnly { get; }
+            //public bool HasTutorial => Parent == "One operation" && PageConstructor != null;
+            public string DisplayTitle => Title;
 
             public PageConfig(string parent, string title, Func<Page> pageConstructor, bool largeScreenOnly = false)
             {
