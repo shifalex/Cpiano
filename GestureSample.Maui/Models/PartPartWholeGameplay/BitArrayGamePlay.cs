@@ -63,12 +63,27 @@ namespace GestureSample.Maui.Models
             if (new QuestionOrder[] { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }
                 .Contains(Config.QuestionOrder))
             {
+                int maxKey = Math.Min(Config.MaxSum, keys);
                 aboveNumber = _nextArrowAboveNumber;
                 if (Config.QuestionOrder == QuestionOrder.CyclicalRight) dir = Direction.Right;
                 else if (Config.QuestionOrder == QuestionOrder.CyclicalLeft) dir = Direction.Left;
                 else if (Config.QuestionOrder == QuestionOrder.CyclicalMixed && Config.OnlyToTen)
                 { if(aboveNumber == keys) dir = Direction.Left; else if (aboveNumber == 1) dir = Direction.Right;
                  length = r.Next(1, dir == Direction.Right ? (keys - aboveNumber + 1) : (aboveNumber+1));
+                }
+
+                if (Config.OnlyToTen)
+                {
+                    if (dir == Direction.Right && aboveNumber >= maxKey)
+                        aboveNumber = 1;
+                    else if (dir == Direction.Left && aboveNumber <= 1)
+                        aboveNumber = maxKey;
+
+                    int maxLength = dir == Direction.Right
+                        ? Math.Max(1, maxKey - aboveNumber)
+                        : Math.Max(1, aboveNumber - 1);
+
+                    length = r.Next(1, maxLength + 1);
                 }
 
                 if (dir == Direction.Left && _prevDir == Direction.Right)
@@ -78,8 +93,19 @@ namespace GestureSample.Maui.Models
                 if (aboveNumber == 0) { aboveNumber = keys; }
 
                 _prevDir = dir;
-                _nextArrowAboveNumber = ((dir == Direction.Right ? (aboveNumber + length) : (aboveNumber - length)) + keys) % keys;
-                if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = keys; }
+                if (Config.OnlyToTen)
+                {
+                    _nextArrowAboveNumber = dir == Direction.Right ? aboveNumber + length : aboveNumber - length;
+                    if (_nextArrowAboveNumber <= 1)
+                        _nextArrowAboveNumber = maxKey;
+                    else if (_nextArrowAboveNumber >= maxKey)
+                        _nextArrowAboveNumber = 1;
+                }
+                else
+                {
+                    _nextArrowAboveNumber = ((dir == Direction.Right ? (aboveNumber + length) : (aboveNumber - length)) + keys) % keys;
+                    if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = keys; }
+                }
             }
 
             // FromLeft / ToLeft handling (triads sequence)
@@ -181,6 +207,7 @@ namespace GestureSample.Maui.Models
 
 
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly KeyEventRepository _keyEventRepository;
 
         public BitArrayGamePlay(GameConfig config) : base(config)
         {
@@ -188,19 +215,34 @@ namespace GestureSample.Maui.Models
             BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
             BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _chainSeed = Config?.Plan?.Seed ?? Environment.TickCount;
 
         }
 
         public override async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
         {
-            bool result = CheckOnly(pianoKeyboard.ToBitArray());
+            bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
+            bool result = CheckOnly(submittedKeyboard);
             _status = result ? Statement.True : Statement.False;
             IncrementGuessNumber();
+            DateTime submittedTime = DateTime.Now;
+            var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
+                GameId.ToString(),
+                _questionNumber,
+                submittedKeyboard,
+                submittedTime,
+                result ? 1 : 0);
+
+            if (savedAttempt != null)
+            {
+                await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
+                await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
+            }
 
             if (result)
             {
-                _prevBitArrayAnswer = pianoKeyboard.ToBitArray().ToArray();
+                _prevBitArrayAnswer = submittedKeyboard.ToArray();
             }
 
             GameCompletionResult? completion = result
@@ -259,7 +301,7 @@ namespace GestureSample.Maui.Models
             return (from, length);
         }
 
-        public override async Task<ExerciseGenerationResult> GenerateExerciseAsync()
+        public override Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -276,11 +318,20 @@ namespace GestureSample.Maui.Models
 
             // 4) Persist + snapshot + UI
             BeginExercise();
+            SnapshotPrev();
+            ExerciseGenerationResult generatedExercise = CreateGeneratedExerciseResult();
+            return Task.FromResult(new ExerciseGenerationResult
+            {
+                ActionText = generatedExercise.ActionText,
+                PersistenceTask = PersistGeneratedExerciseAsync()
+            });
+        }
+
+        protected override async Task PersistGeneratedExerciseAsync()
+        {
             await EnsureGameInitializedAsync();
             await SaveQuestionToDbAsync();
-            SnapshotPrev();
-            await SaveState();
-            return CreateGeneratedExerciseResult();
+            await SaveState(syncAfterSave: false);
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
@@ -342,21 +393,30 @@ namespace GestureSample.Maui.Models
             {
                 GenerateNonArrowExercise(r);
                 BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
-                quantity = BitArrayCorrectAnswer!=null?SumArray(BitArrayCorrectAnswer):SumArray(BitArrayQuestion);
-                DevLog.Write("Question is\t\t: "+ string.Join("", BitArrayQuestion.Cast<bool>().Select(b => b ? "1" : "0")));
-                DevLog.Write("Correct answer is\t: "+ string.Join("", BitArrayCorrectAnswer.Cast<bool>().Select(b => b ? "1" : "0")));
+                bool hasCanonicalCorrectAnswer = BitArrayCorrectAnswer != null;
+                quantity = hasCanonicalCorrectAnswer ? SumArray(BitArrayCorrectAnswer) : SumArray(BitArrayQuestion);
+                DevLog.Write("Question is\t\t: "+ FormatBits(BitArrayQuestion));
+                DevLog.Write("Correct answer is\t: "+ FormatBits(BitArrayCorrectAnswer));
                 DevLog.Write("Is it ok?\t\t\t: "+(!(
-                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) && CurrentOperation != Operation.Copy) ||
+                    (Config.isOnlyKeyboard && hasCanonicalCorrectAnswer && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) && CurrentOperation != Operation.Copy) ||
                     (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2) == 0)))).ToString());
 
             }
             while ( quantity < Config.MinSum ||
                     quantity > Config.MaxSum ||
-                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer)&& CurrentOperation!=Operation.Copy) ||
+                    (Config.isOnlyKeyboard && BitArrayCorrectAnswer != null && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer)&& CurrentOperation!=Operation.Copy) ||
                     (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2)==0)) ||
                     (CurrentOperation == Operation.SUMM &&
                     SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length)
                     );
+        }
+
+        private static string FormatBits(bool[]? bits)
+        {
+            if (bits == null || bits.Length == 0)
+                return "-";
+
+            return string.Join("", bits.Select(bit => bit ? "1" : "0"));
         }
 
         private bool AreOverlapingSets(bool[] arr1, bool[] arr2)
@@ -404,6 +464,19 @@ namespace GestureSample.Maui.Models
             };
         }
 
+        public bool[] GetTutorialQuestionBits()
+        {
+            return BitArrayQuestion?.ToArray() ?? Array.Empty<bool>();
+        }
+
+        public bool[] GetTutorialAnswerBits()
+        {
+            if (BitArrayCorrectAnswer == null)
+                BuildCorrectAnswer();
+
+            return BitArrayCorrectAnswer?.ToArray() ?? GetTutorialQuestionBits();
+        }
+
         private async Task SaveQuestionToDbAsync()
         {
             Data.SQLite.KeyboardQuestion s = new()
@@ -412,13 +485,23 @@ namespace GestureSample.Maui.Models
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
                 keyboard1 = BitArrayQuestion,
-                keyboard2 = BitArrayQuestion2
+                keyboard2 = BitArrayQuestion2,
+                Op = CurrentOperation,
+                dir = dir,
+                KeyboardRows = Config.KeyboardConfig?.Rows ?? 1,
+                KeyboardKeysInRow = Config.KeyboardConfig?.KeysInRow ?? BitArrayQuestion.Length
             };
 
             if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
             {
                 s.aboveNumber = aboveNumber;
                 s.length = length;
+            }
+
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                s.MoveByLength = moveByLength;
+                s.MoveByDirection = moveBydir;
             }
 
             await _keyboardQuestionRepository.SaveAsync(s);

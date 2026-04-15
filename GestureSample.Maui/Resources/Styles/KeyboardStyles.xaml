@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Color x:Key="NumericKeypadSurfaceColor">#E9EDF2</Color>
+    <Color x:Key="NumericKeypadSurfaceBorderColor">#CCD3DB</Color>
+
+    <Color x:Key="NumericKeypadDigitButtonColor">#F9FBFD</Color>
+    <Color x:Key="NumericKeypadDigitButtonPressedColor">#E6EBF1</Color>
+    <Color x:Key="NumericKeypadDigitTextColor">#1F2937</Color>
+
+    <Color x:Key="NumericKeypadActionButtonColor">#D8DEE6</Color>
+    <Color x:Key="NumericKeypadActionButtonPressedColor">#C7CFD8</Color>
+    <Color x:Key="NumericKeypadActionTextColor">#1F2937</Color>
+
+    <Color x:Key="NumericKeypadSubmitButtonColor">#2AA36B</Color>
+    <Color x:Key="NumericKeypadSubmitButtonPressedColor">#218A5A</Color>
+    <Color x:Key="NumericKeypadSubmitTextColor">#FFFFFF</Color>
+
+    <Style x:Key="NumericKeypadSurfaceStyle" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadSurfaceColor}" />
+        <Setter Property="Stroke" Value="{StaticResource NumericKeypadSurfaceBorderColor}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape">
+            <Setter.Value>
+                <RoundRectangle CornerRadius="18" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Padding" Value="10" />
+    </Style>
+
+    <Style x:Key="NumericKeypadDigitButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadDigitButtonColor}" />
+        <Setter Property="TextColor" Value="{StaticResource NumericKeypadDigitTextColor}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="HeightRequest" Value="54" />
+        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinimumHeightRequest" Value="54" />
+        <Setter Property="MinimumWidthRequest" Value="54" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadDigitButtonPressedColor}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
+    <Style x:Key="NumericKeypadActionButtonStyle" TargetType="Button" BasedOn="{StaticResource NumericKeypadDigitButtonStyle}">
+        <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadActionButtonColor}" />
+        <Setter Property="TextColor" Value="{StaticResource NumericKeypadActionTextColor}" />
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadActionButtonPressedColor}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
+    <Style x:Key="NumericKeypadSubmitButtonStyle" TargetType="Button" BasedOn="{StaticResource NumericKeypadDigitButtonStyle}">
+        <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadSubmitButtonColor}" />
+        <Setter Property="TextColor" Value="{StaticResource NumericKeypadSubmitTextColor}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="HeightRequest" Value="50" />
+        <Setter Property="MinimumHeightRequest" Value="50" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="BackgroundColor" Value="{StaticResource NumericKeypadSubmitButtonPressedColor}" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

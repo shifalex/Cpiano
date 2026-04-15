@@ -1,79 +1,206 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:GestureSample.Maui.Models"
-				x:Class="GestureSample.Views.ShowDataXamlKeyboard">
-    <Grid>
-        <!-- Define Row Definitions -->
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <!-- For Pickers -->
-            <RowDefinition Height="Auto" />
-            <!-- For Header Grid -->
-            <RowDefinition Height="*" />
-            <!-- For CollectionView -->
-        </Grid.RowDefinitions>
+             x:Class="GestureSample.Views.ShowDataXamlKeyboard">
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout Grid.Row="0" Padding="10,10,10,0" Spacing="8">
+            <Picker x:Name="DatePicker"
+                    Title="Select a Date"
+                    SelectedIndexChanged="OnDatePickerSelectedIndexChanged"
+                    FontFamily="Courier New" />
+            <HorizontalStackLayout Spacing="8">
+                <Picker x:Name="GamePicker"
+                        Title="Select a Game"
+                        SelectedIndexChanged="OnPickerSelectedIndexChanged"
+                        FontFamily="Courier New"
+                        HorizontalOptions="FillAndExpand" />
+                <Button Text="Sync"
+                        Clicked="OnSyncClicked"
+                        HorizontalOptions="End" />
+            </HorizontalStackLayout>
+        </VerticalStackLayout>
 
-        <!-- Pickers -->
-        <StackLayout Orientation="Vertical" Grid.Row="0" Padding="10,10,10,0">
-            <Picker x:Name="DatePicker" Title="Select a Date" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged" FontFamily="Courier New"/>
-            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged" FontFamily="Courier New"/>
-        </StackLayout>
-
-        <!-- Header Grid -->
-        <Grid Grid.Row="1" ColumnDefinitions="45,90,15,220" Padding="5" BackgroundColor="MediumPurple" HorizontalOptions="FillAndExpand">
-            <Label Grid.Column="0" Text="#" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="1" Text="Seconds" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="3" Text="Question" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-        </Grid>
-
-        <CollectionView x:Name="Questions" ItemsSource="{Binding MainItems}" Grid.Row="2">
+        <CollectionView x:Name="Questions" Grid.Row="1" Margin="0,8,0,0">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Grid >
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition x:Name="SubGridRow" Height="{Binding SubGridHeight}" />
-                        </Grid.RowDefinitions>
-                        <HorizontalStackLayout Grid.Row="0"  Padding="20" Margin="10" >
-                            <!-- Main Item Label -->
-                            <Label Text="{Binding Question.QuestionNumber}" FontAttributes="Bold" Padding="10" />
-                            <local:PianoKeyboardReadOnly HeightRequest="150" x:Name="MyKeyboard" Keys="{Binding Question.keyboard1}" AboveNumber="{Binding Question.aboveNumber}" ArrowLength="{Binding Question.length}" Direction="{Binding Question.dir}" >
-                                
-                                
-                            </local:PianoKeyboardReadOnly>
-                            <!-- Toggle Button -->
-                            <Button Text="{Binding ButtonText}" Clicked="OnToggleSubgridClicked" />
-                        </HorizontalStackLayout>
-                        <!-- Sub-CollectionView -->
-                        <CollectionView Grid.Row="1"
-                                        x:Name="SubCollection"
-                ItemsSource="{Binding SubItems}"
-                IsVisible="{Binding IsSubCollectionVisible}"
-                HeightRequest="{Binding SubGridHeight}"
-                Margin="0,10,0,10"
-                >
-                            <CollectionView.ItemTemplate>
-                                <DataTemplate>
-                                    <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" BackgroundColor="{Binding RowBackgroundColor}" VerticalOptions="FillAndExpand">
-                                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
-                                            <Label Grid.Column="0" Text="{Binding id}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                                            <Label Grid.Column="1" Text="{Binding EventTime}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="2" Text="{Binding EventType}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="3" Text="{Binding KeyNumber}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="4" Text="{Binding Row}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                        </Grid>
-                                    </Frame>
-                                </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
-                    </Grid>
+                    <Frame BorderColor="LightGray"
+                           CornerRadius="8"
+                           Padding="10"
+                           Margin="10,6"
+                           BackgroundColor="{Binding Question.RowBackgroundColor}">
+                        <VerticalStackLayout Spacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" ColumnSpacing="8">
+                                <Label Grid.Column="0"
+                                       Text="{Binding Question.QuestionNumber}"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center" />
+                                <BoxView Grid.Column="1"
+                                         WidthRequest="12"
+                                         HeightRequest="12"
+                                         CornerRadius="6"
+                                         Color="{Binding Question.ResultLightColor}"
+                                         VerticalOptions="Center" />
+                                <Label Grid.Column="2"
+                                       Text="{Binding Question.ResultStatusText}"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center"
+                                       LineBreakMode="NoWrap" />
+                                <Button Grid.Column="3"
+                                        Text="Replay"
+                                        Clicked="OnReplayClicked"
+                                        IsEnabled="{Binding HasReplay}" />
+                                <Button Grid.Column="4"
+                                        Text="Replay All"
+                                        Clicked="OnReplayAllClicked"
+                                        IsVisible="{Binding HasCombinedReplay}"
+                                        IsEnabled="{Binding HasCombinedReplay}" />
+                                <Button Grid.Column="5"
+                                        Text="{Binding ButtonText}"
+                                        Clicked="OnToggleSubgridClicked" />
+                            </Grid>
+
+                            <Label Text="{Binding Question.AttemptText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="NoWrap" />
+
+                            <Label Text="{Binding Question.TutorialStatusText}"
+                                   FontSize="12"
+                                   TextColor="DarkOrange"
+                                   FontAttributes="Bold"
+                                   LineBreakMode="NoWrap"
+                                   IsVisible="{Binding Question.WasTutorialUsed}" />
+
+                            <Label Text="{Binding Question.QuestionCodeText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="WordWrap" />
+
+                            <Label Text="{Binding TimingSummaryText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding HasTimingSummary}" />
+
+                            <VerticalStackLayout Spacing="4"
+                                                 IsVisible="{Binding Question.ShowCombinedArrowKeyboard}">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0"
+                                           Text="{Binding Question.CombinedArrowKeyboardLabel}"
+                                           FontAttributes="Bold"
+                                           FontSize="12"
+                                           VerticalOptions="Center" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Question.SubmittedTimeText}"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Center"
+                                           FontSize="12"
+                                           IsVisible="{Binding Question.HasSubmittedKeyboard}" />
+                                </Grid>
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.CombinedArrowKeyboardColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           AboveNumber="{Binding Question.aboveNumber}"
+                                                           ArrowLength="{Binding Question.length}"
+                                                           Direction="{Binding Question.dir}"
+                                                           HorizontalOptions="Fill" />
+                                <Label Text="{Binding Question.CombinedArrowLegendText}"
+                                       FontSize="11"
+                                       TextColor="DimGray"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.ShowSeparateQuestionKeyboard}">
+                                <Label Text="Q"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView Keys="{Binding Question.keyboard1}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           AboveNumber="{Binding Question.aboveNumber}"
+                                                           ArrowLength="{Binding Question.length}"
+                                                           Direction="{Binding Question.dir}" />
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.HasVisibleSecondQuestionKeyboard}">
+                                <Label Text="Q2"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView Keys="{Binding Question.keyboard2}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}" />
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.ShowSeparateSubmittedKeyboard}">
+                                <Label Text="A"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView Keys="{Binding Question.SubmittedKeyboard}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}" />
+                                <Label Text="{Binding Question.SubmittedTimeText}"
+                                       VerticalOptions="Center"
+                                       FontSize="12"
+                                       LineBreakMode="NoWrap" />
+                            </HorizontalStackLayout>
+
+                            <CollectionView x:Name="SubCollection"
+                                            ItemsSource="{Binding SubItems}"
+                                            IsVisible="{Binding IsSubCollectionVisible}"
+                                            HeightRequest="{Binding SubGridHeight}">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Frame BorderColor="Gray"
+                                               CornerRadius="5"
+                                               Padding="4"
+                                               Margin="2">
+                                            <Grid ColumnDefinitions="88,58,42,42,48,48"
+                                                  ColumnSpacing="6">
+                                                <Label Grid.Column="0"
+                                                       Text="{Binding EventTimeText}"
+                                                       FontSize="12"
+                                                       VerticalOptions="Center" />
+                                                <Label Grid.Column="1"
+                                                       Text="{Binding EventTypeText}"
+                                                       FontSize="12"
+                                                       VerticalOptions="Center" />
+                                                <Label Grid.Column="2"
+                                                       Text="{Binding KeyNumber}"
+                                                       FontSize="12"
+                                                       HorizontalTextAlignment="Center"
+                                                       VerticalOptions="Center" />
+                                                <Label Grid.Column="3"
+                                                       Text="{Binding Row}"
+                                                       FontSize="12"
+                                                       HorizontalTextAlignment="Center"
+                                                       VerticalOptions="Center" />
+                                                <Label Grid.Column="4"
+                                                       Text="{Binding RelativeXText}"
+                                                       FontSize="12"
+                                                       HorizontalTextAlignment="Center"
+                                                       VerticalOptions="Center" />
+                                                <Label Grid.Column="5"
+                                                       Text="{Binding RelativeYText}"
+                                                       FontSize="12"
+                                                       HorizontalTextAlignment="Center"
+                                                       VerticalOptions="Center" />
+                                            </Grid>
+                                        </Frame>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                        </VerticalStackLayout>
+                    </Frame>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-
-
-
     </Grid>
 </ContentPage>

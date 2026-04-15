@@ -588,17 +588,27 @@ namespace GestureSample.Maui.Models
         /// <param name="array">Must be the size of the piano buttons</param>
         public void PianoInit(Boolean[] array)
         {
-            for (int i = 0; i < btnKeys.Length; i++)
+            int limit = Math.Min(btnKeys.Length, array?.Length ?? 0);
+            for (int i = 0; i < limit; i++)
             {
                 btnKeys[i].BackgroundColor = (array[i]) ? COLOR_PRESSED : COLOR_FREE;
+            }
+            for (int i = limit; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].BackgroundColor = COLOR_FREE;
             }
             SaveColors();
         }
         public void PianoInit(Color[] array)
         {
-            for (int i = 0; i < btnKeys.Length; i++)
+            int limit = Math.Min(btnKeys.Length, array?.Length ?? 0);
+            for (int i = 0; i < limit; i++)
             {
                 btnKeys[i].BackgroundColor = array[i];
+            }
+            for (int i = limit; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].BackgroundColor = COLOR_FREE;
             }
             SaveColors();
         }

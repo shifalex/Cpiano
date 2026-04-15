@@ -11,6 +11,8 @@ namespace GestureSample.Maui.Models
 {
     public sealed class KeyboardOverlayHost : Grid
     {
+        public const float DefaultStaticOverlayAlpha = 0.5f;
+
         private sealed class PatternDrawable : IDrawable
         {
             public int[]? AnimTargets;   // same length as AnimBits
@@ -21,13 +23,15 @@ namespace GestureSample.Maui.Models
 
             // animation / tutorial layer
             public bool[] AnimBits { get; set; } = Array.Empty<bool>();
+            public bool[] SpawnBits { get; set; } = Array.Empty<bool>();
 
             public float AnimShiftKeys { get; set; } = 0f;
             public int? CursorIndex { get; set; } = null;
 
             // tuning
-            public float StaticAlpha { get; set; } = 0.5f;
+            public float StaticAlpha { get; set; } = DefaultStaticOverlayAlpha;
             public float AnimAlpha { get; set; } = 0.5f;
+            public float SpawnAlpha { get; set; } = 0.5f;
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -55,6 +59,8 @@ namespace GestureSample.Maui.Models
                 DrawAnimBits(
                     canvas
                 );
+
+                DrawSpawnBits(canvas);
 
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
             }
@@ -145,6 +151,27 @@ namespace GestureSample.Maui.Models
                 }
             }
 
+            void DrawSpawnBits(ICanvas canvas)
+            {
+                if (SpawnBits == null || SpawnBits.Length == 0)
+                    return;
+
+                canvas.FillColor = Colors.Yellow.WithAlpha(SpawnAlpha);
+                canvas.StrokeColor = Colors.Yellow.WithAlpha(SpawnAlpha + 0.2f);
+                canvas.StrokeSize = 2;
+
+                int n = Math.Min(SpawnBits.Length, KeyRects.Length);
+
+                for (int i = 0; i < n; i++)
+                {
+                    if (!SpawnBits[i]) continue;
+
+                    RectF r = KeyRects[i];
+                    canvas.FillRoundedRectangle(r, 6);
+                    canvas.DrawRoundedRectangle(r, 6);
+                }
+            }
+
 
 
         }
@@ -199,6 +226,23 @@ namespace GestureSample.Maui.Models
             _inputShield.ZIndex = 999999;
         }
 
+        public void SetStaticOverlayAlpha(float alpha)
+        {
+            _patternDrawable.StaticAlpha = Math.Clamp(alpha, 0f, 1f);
+            Keyboard.InvalidateOverlay();
+        }
+
+        public Task FadeStaticOverlayAlphaAsync(float targetAlpha, uint ms, string animName = "StaticOverlayAlpha")
+        {
+            float startAlpha = _patternDrawable.StaticAlpha;
+            float endAlpha = Math.Clamp(targetAlpha, 0f, 1f);
+
+            return RunProgressAnimation(animName, ms, t =>
+            {
+                _patternDrawable.StaticAlpha = startAlpha + ((endAlpha - startAlpha) * t);
+            });
+        }
+
 
 
         // persistent question / answer state
@@ -236,6 +280,7 @@ namespace GestureSample.Maui.Models
         public void SetAnimBits(bool[] bits)
         {
             _patternDrawable.AnimBits = bits ?? Array.Empty<bool>();
+            _patternDrawable.SpawnBits = Array.Empty<bool>();
             _patternDrawable.AnimShiftKeys = 0f;
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
@@ -247,6 +292,9 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimBits = Array.Empty<bool>();
             _patternDrawable.AnimTargets = Array.Empty<int>();
             _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.AnimAlpha = 0.5f;
+            _patternDrawable.SpawnBits = Array.Empty<bool>();
+            _patternDrawable.SpawnAlpha = 0.5f;
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
         }
@@ -416,6 +464,135 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             Keyboard.InvalidateOverlay();
         }
 
+        public async Task PulseBitsAsync(
+            bool[] bits,
+            uint fadeInMs = 300,
+            uint holdMs = 1800,
+            uint fadeOutMs = 300,
+            string animName = "TutPulse")
+        {
+            TrySyncOverlay();
+
+            bits ??= Array.Empty<bool>();
+            if (bits.Length == 0)
+                return;
+
+            _patternDrawable.AnimBits = bits;
+            _patternDrawable.AnimTargets = BuildShiftTargets(bits, 0);
+            _patternDrawable.AnimProgress = 1f;
+            _patternDrawable.AnimAlpha = 0f;
+            _patternDrawable.CursorIndex = null;
+            Keyboard.InvalidateOverlay();
+
+            await RunProgressAnimation(animName + "_in", fadeInMs, t =>
+            {
+                _patternDrawable.AnimAlpha = 0.55f * t;
+            });
+
+            await Task.Delay((int)holdMs);
+
+            await RunProgressAnimation(animName + "_out", fadeOutMs, t =>
+            {
+                _patternDrawable.AnimAlpha = 0.55f * (1f - t);
+            });
+
+            ClearAnim();
+        }
+
+        public async Task AnimateCursorSequenceAsync(
+            IReadOnlyList<int> indices,
+            int rounds = 2,
+            uint stepMs = 260,
+            uint holdMs = 140)
+        {
+            TrySyncOverlay();
+
+            if (indices == null || indices.Count == 0)
+                return;
+
+            _patternDrawable.AnimBits = Array.Empty<bool>();
+            _patternDrawable.AnimTargets = Array.Empty<int>();
+            _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.CursorAlpha = 0.7f;
+
+            for (int round = 0; round < rounds; round++)
+            {
+                _patternDrawable.CursorIndex = indices[0];
+                Keyboard.InvalidateOverlay();
+                await Task.Delay((int)holdMs);
+
+                for (int i = 1; i < indices.Count; i++)
+                {
+                    await AnimateCursor(indices[i - 1], indices[i], stepMs);
+                    _patternDrawable.CursorIndex = indices[i];
+                    Keyboard.InvalidateOverlay();
+                    await Task.Delay((int)holdMs);
+                }
+
+                _patternDrawable.CursorIndex = null;
+                Keyboard.InvalidateOverlay();
+                await Task.Delay(120);
+            }
+        }
+
+        public async Task AnimateCyclicalStatesAsync(
+            bool[] bits,
+            int shiftBy1,
+            int rounds = 2,
+            int stepsPerRound = -1,
+            uint fadeMs = 110,
+            uint holdMs = 140)
+        {
+            TrySyncOverlay();
+
+            bits ??= Array.Empty<bool>();
+            if (bits.Length == 0)
+                return;
+
+            if (stepsPerRound <= 0)
+                stepsPerRound = bits.Length;
+
+            bool[] current = bits.ToArray();
+
+            for (int round = 0; round < rounds; round++)
+            {
+                for (int step = 0; step < stepsPerRound; step++)
+                {
+                    _patternDrawable.AnimBits = BuildCyclicalMovingBits(current, shiftBy1);
+                    _patternDrawable.AnimTargets = BuildCyclicalStepTargets(current, shiftBy1);
+                    _patternDrawable.SpawnBits = BuildCyclicalSpawnBits(current, shiftBy1);
+                    _patternDrawable.AnimProgress = 0f;
+                    _patternDrawable.CursorIndex = null;
+                    _patternDrawable.AnimAlpha = 0.55f;
+                    _patternDrawable.SpawnAlpha = 0f;
+                    Keyboard.InvalidateOverlay();
+
+                    await RunProgressAnimation($"Cyclical_{round}_{step}_move", fadeMs, t =>
+                    {
+                        _patternDrawable.AnimAlpha = 0.55f;
+                        _patternDrawable.AnimProgress = t;
+                        _patternDrawable.SpawnAlpha = 0.55f * t;
+                    });
+
+                    _patternDrawable.AnimProgress = 1f;
+                    _patternDrawable.AnimAlpha = 0.55f;
+                    _patternDrawable.SpawnAlpha = 0.55f;
+                    Keyboard.InvalidateOverlay();
+                    await Task.Delay((int)holdMs);
+
+                    current = ShiftOnceCyclical(current, shiftBy1);
+                }
+            }
+
+            await RunProgressAnimation("Cyclical_end", Math.Max(220u, fadeMs / 5), t =>
+            {
+                _patternDrawable.AnimAlpha = 0.55f * (1f - t);
+                _patternDrawable.SpawnAlpha = 0.55f * (1f - t);
+            });
+
+            ClearAnim();
+        }
+
         public async Task Animate(
      bool[] bits,
      Operation op,
@@ -553,6 +730,83 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             }
 
             return next;
+        }
+
+        public static bool[] ShiftOnceCyclical(bool[] bits, int shiftBy1)
+        {
+            int n = bits.Length;
+            var next = new bool[n];
+            if (n == 0)
+                return next;
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!bits[i]) continue;
+                int j = (i + shiftBy1 + n) % n;
+                next[j] = true;
+            }
+
+            return next;
+        }
+
+        private static int[] BuildCyclicalStepTargets(bool[] bits, int shiftBy1)
+        {
+            int n = bits.Length;
+            var dest = Enumerable.Range(0, n).ToArray();
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!bits[i])
+                    continue;
+
+                int j = i + shiftBy1;
+                if ((uint)j < (uint)n)
+                    dest[i] = j;
+            }
+
+            return dest;
+        }
+
+        private static bool[] BuildCyclicalMovingBits(bool[] bits, int shiftBy1)
+        {
+            int n = bits.Length;
+            var moving = new bool[n];
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!bits[i])
+                    continue;
+
+                int j = i + shiftBy1;
+                if ((uint)j < (uint)n)
+                    moving[i] = true;
+            }
+
+            return moving;
+        }
+
+        private static bool[] BuildCyclicalSpawnBits(bool[] bits, int shiftBy1)
+        {
+            int n = bits.Length;
+            var spawn = new bool[n];
+
+            if (n == 0)
+                return spawn;
+
+            for (int i = 0; i < n; i++)
+            {
+                if (!bits[i])
+                    continue;
+
+                int j = i + shiftBy1;
+                if ((uint)j >= (uint)n)
+                {
+                    int wrapped = (j + n) % n;
+                    spawn[wrapped] = true;
+                }
+            }
+
+            return spawn;
         }
 
         private static int[] BuildShiftTargets(bool[] bits, int shiftByK)
