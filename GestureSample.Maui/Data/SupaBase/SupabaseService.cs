@@ -248,6 +248,7 @@ private static readonly SupabaseClient _supabase = new(
             catch (Exception ex)
             {
                 LogError("Error in SyncUserDataAsync", ex);
+                throw;
             }
         }
 

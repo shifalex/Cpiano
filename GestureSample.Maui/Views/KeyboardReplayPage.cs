@@ -13,6 +13,7 @@ namespace GestureSample.Views
         private readonly Button _replayButton;
         private readonly bool[] _initialState;
         private readonly KeyboardQuestion? _question;
+        private readonly bool[]? _finalReplayState;
         private readonly Dictionary<int, BoxView> _activeMarkers = new();
         private readonly Dictionary<int, Stack<int>> _activeMarkerTokensByKey = new();
         private readonly Color[] _markerPalette =
@@ -31,11 +32,13 @@ namespace GestureSample.Views
             string title,
             IReadOnlyList<KeyEvent> events,
             KeyboardQuestion? question = null,
-            KeyboardConfig? keyboardConfig = null)
+            KeyboardConfig? keyboardConfig = null,
+            bool[]? finalReplayState = null)
         {
             Title = title;
             _events = events?.OrderBy(item => item.EventTime).ThenBy(item => item.id).ToList() ?? new List<KeyEvent>();
             _question = question;
+            _finalReplayState = finalReplayState?.ToArray();
 
             KeyboardConfig replayConfig = question?.CreateKeyboardConfig() ?? keyboardConfig ?? new KeyboardConfig();
 
@@ -141,13 +144,13 @@ namespace GestureSample.Views
                         await Task.Delay(delay);
                     }
 
-                    ApplyEvent(state, keyEvent, highlightPressedKeys: false);
+                    ApplyEvent(state, keyEvent, highlightPressedKeys: true);
                     previousTime = keyEvent.EventTime;
                     currentAttemptNumber = keyEvent.AttemptNumber;
                 }
 
                 ClearActiveMarkers();
-                RenderReplayState(state, highlightPressedKeys: true);
+                RenderReplayState(GetFinalReplayState(state), highlightPressedKeys: true);
                 await Task.Delay(500);
             }
             finally
@@ -230,6 +233,27 @@ namespace GestureSample.Views
                 colors[i] = Colors.White;
 
             _replayKeyboard.PianoInit(colors);
+        }
+
+        private bool[] GetFinalReplayState(bool[] fallbackState)
+        {
+            if (_finalReplayState != null && _finalReplayState.Length > 0)
+            {
+                bool[] finalState = new bool[_replayKeyboard.KeyCount];
+                int length = Math.Min(finalState.Length, _finalReplayState.Length);
+                Array.Copy(_finalReplayState, finalState, length);
+                return finalState;
+            }
+
+            if (_question?.HasSubmittedKeyboard == true && _question.SubmittedKeyboard != null)
+            {
+                bool[] finalState = new bool[_replayKeyboard.KeyCount];
+                int length = Math.Min(finalState.Length, _question.SubmittedKeyboard.Length);
+                Array.Copy(_question.SubmittedKeyboard, finalState, length);
+                return finalState;
+            }
+
+            return fallbackState.ToArray();
         }
 
         private VerticalStackLayout BuildPromptLayout()

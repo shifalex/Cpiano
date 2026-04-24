@@ -32,6 +32,8 @@ namespace GestureSample.Maui.Models
             public float StaticAlpha { get; set; } = DefaultStaticOverlayAlpha;
             public float AnimAlpha { get; set; } = 0.5f;
             public float SpawnAlpha { get; set; } = 0.5f;
+            public Color AnimColor { get; set; } = Colors.Yellow;
+            public Color SpawnColor { get; set; } = Colors.Yellow;
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -132,8 +134,8 @@ namespace GestureSample.Maui.Models
                 if (AnimBits == null || AnimTargets == null)
                     return;
 
-                canvas.FillColor = Colors.Yellow.WithAlpha(AnimAlpha);
-                canvas.StrokeColor = Colors.Yellow.WithAlpha(AnimAlpha + 0.2f);
+                canvas.FillColor = AnimColor.WithAlpha(AnimAlpha);
+                canvas.StrokeColor = AnimColor.WithAlpha(Math.Min(1f, AnimAlpha + 0.2f));
                 canvas.StrokeSize = 2;
 
                 int n = Math.Min(AnimBits.Length, KeyRects.Length);
@@ -156,8 +158,8 @@ namespace GestureSample.Maui.Models
                 if (SpawnBits == null || SpawnBits.Length == 0)
                     return;
 
-                canvas.FillColor = Colors.Yellow.WithAlpha(SpawnAlpha);
-                canvas.StrokeColor = Colors.Yellow.WithAlpha(SpawnAlpha + 0.2f);
+                canvas.FillColor = SpawnColor.WithAlpha(SpawnAlpha);
+                canvas.StrokeColor = SpawnColor.WithAlpha(Math.Min(1f, SpawnAlpha + 0.2f));
                 canvas.StrokeSize = 2;
 
                 int n = Math.Min(SpawnBits.Length, KeyRects.Length);
@@ -293,8 +295,10 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimTargets = Array.Empty<int>();
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.AnimAlpha = 0.5f;
+            _patternDrawable.AnimColor = Colors.Yellow;
             _patternDrawable.SpawnBits = Array.Empty<bool>();
             _patternDrawable.SpawnAlpha = 0.5f;
+            _patternDrawable.SpawnColor = Colors.Yellow;
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
         }
@@ -471,6 +475,17 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             uint fadeOutMs = 300,
             string animName = "TutPulse")
         {
+            await PulseBitsAsync(bits, Colors.Yellow, fadeInMs, holdMs, fadeOutMs, animName);
+        }
+
+        public async Task PulseBitsAsync(
+            bool[] bits,
+            Color color,
+            uint fadeInMs = 300,
+            uint holdMs = 1800,
+            uint fadeOutMs = 300,
+            string animName = "TutPulse")
+        {
             TrySyncOverlay();
 
             bits ??= Array.Empty<bool>();
@@ -481,6 +496,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             _patternDrawable.AnimTargets = BuildShiftTargets(bits, 0);
             _patternDrawable.AnimProgress = 1f;
             _patternDrawable.AnimAlpha = 0f;
+            _patternDrawable.AnimColor = color;
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
 

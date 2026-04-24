@@ -84,7 +84,7 @@ namespace GestureSample.Views
                 }
                 else
                 {
-                    if (game.Config?.KeyboardConfig != null)
+                    if (ShowDataRoutingHelper.ShouldUseKeyboardData(game.Config))
                         GameDates.Add(new DateWraper(game.TimeStart.Date));
                 }
 
@@ -187,7 +187,11 @@ namespace GestureSample.Views
                         {
                             Question = q,
                             SubItems = attemptEvents,
-                            CombinedSubItems = combinedEvents
+                            CombinedSubItems = combinedEvents,
+                            CombinedFinalKeyboard = orderedAttempts
+                                .LastOrDefault(item => item.HasSubmittedKeyboard)?
+                                .SubmittedKeyboard?
+                                .ToArray()
                         });
                     }
                 }
@@ -214,7 +218,7 @@ namespace GestureSample.Views
                         GameIdentifiers[i].TimeStart.Month == ((DateWraper)DatePicker.SelectedItem).Date.Month &&
                         GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day
                             )
-                        if (GameIdentifiers[i].Config?.KeyboardConfig != null)
+                        if (ShowDataRoutingHelper.ShouldUseKeyboardData(GameIdentifiers[i].Config))
                             GameIdentifiersFiltered.Add(GameIdentifiers[i]);
                 }
             }
@@ -253,7 +257,8 @@ namespace GestureSample.Views
                 item.ReplayTitle,
                 item.SubItems,
                 item.Question,
-                keyboardConfig));
+                keyboardConfig,
+                item.Question?.SubmittedKeyboard));
         }
 
         private async void OnReplayAllClicked(object sender, EventArgs e)
@@ -266,7 +271,8 @@ namespace GestureSample.Views
                 item.CombinedReplayTitle,
                 item.CombinedSubItems,
                 item.Question,
-                keyboardConfig));
+                keyboardConfig,
+                item.CombinedFinalKeyboard));
         }
 
         private async Task OpenReplayPageAsync(Page replayPage)
@@ -277,7 +283,8 @@ namespace GestureSample.Views
                 return;
             }
 
-            Application.Current.MainPage = new NavigationPage(replayPage);
+            AddModalCloseButton(replayPage);
+            await Navigation.PushModalAsync(new NavigationPage(replayPage));
         }
 
         private async void OnSyncClicked(object sender, EventArgs e)
@@ -292,6 +299,7 @@ namespace GestureSample.Views
                 }
 
                 await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(activeUser);
+                await RefreshCurrentGameFromSupabaseAsync();
                 await DisplayAlert("Sync", "Keyboard tables synced with Supabase.", "OK");
 
                 if (CurrentGame != null)
@@ -301,6 +309,30 @@ namespace GestureSample.Views
             {
                 await DisplayAlert("Sync Error", ex.Message, "OK");
             }
+        }
+
+        private async Task RefreshCurrentGameFromSupabaseAsync()
+        {
+            if (CurrentGame == null)
+                return;
+
+            List<KeyboardQuestion> remoteQuestions = await GestureSample.Maui.Data.SupaBase.SupabaseService.GetKeyboardQuestionByQueryAsync(CurrentGame.Id);
+            List<KeyEvent> remoteKeyEvents = await GestureSample.Maui.Data.SupaBase.SupabaseService.GetKeyEventsByQueryAsync(CurrentGame.Id);
+
+            await _keyboardQuestionRepository.ReplaceForGameAsync(CurrentGame.Id.ToString(), remoteQuestions);
+            await _keyEventRepository.ReplaceForGameAsync(CurrentGame.Id.ToString(), remoteKeyEvents);
+        }
+
+        private static void AddModalCloseButton(Page replayPage)
+        {
+            if (replayPage.ToolbarItems.Any(item => item.Text == "Close"))
+                return;
+
+            replayPage.ToolbarItems.Add(new ToolbarItem
+            {
+                Text = "Close",
+                Command = new Command(async () => await replayPage.Navigation.PopModalAsync())
+            });
         }
 
         private static List<KeyEvent> ResolveAttemptEvents(
@@ -363,6 +395,7 @@ namespace GestureSample.Views
         public KeyboardQuestion Question { get; set; }
         public List<KeyEvent> SubItems { get; set; }
         public List<KeyEvent> CombinedSubItems { get; set; }
+        public bool[] CombinedFinalKeyboard { get; set; }
         public bool HasReplay => SubItems != null && SubItems.Count > 0;
         public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
         public bool HasTimingSummary => !string.IsNullOrWhiteSpace(TimingSummaryText);

@@ -238,6 +238,56 @@
         Straight,
         Rounded
     }
+
+    [Flags]
+    public enum KeyboardFeatureFlags
+    {
+        None = 0,
+        ShowNumbersOnKeys = 1,
+        ImposeEdges = 2,
+        ImposeSerialization = 4,
+        WithoutZero = 8,
+        AllowRemoval = 16,
+        KeyboardOnlyForHelp = 32,
+        KeyboardAsQuestion = 64,
+        ArrowQuestion = 128,
+        Multicolor = 256,
+        HelpAvailable = 512,
+        PermutationTraceColors = 1024
+    }
+
+    [Flags]
+    public enum ArrowFeatureFlags
+    {
+        None = 0,
+        DynamicLength = 1,
+        Rounded = 2
+    }
+
+    [Flags]
+    public enum KeyboardAudioFeatureFlags
+    {
+        None = 0,
+        NumberVoice = 1,
+        SingleVoice = 2,
+        MultipleVoices = 4
+    }
+
+    public enum PpwKeyboardSeedMode
+    {
+        None = 0,
+        VisiblePartPressed = 1,
+        WholePressed = 2,
+        VisiblePartsColored = 3
+    }
+
+    public enum KeyboardColorInteractionMode
+    {
+        Default = 0,
+        AddSecondColor = 1,
+        RemoveWithRed = 2
+    }
+
     public class KeyboardConfig
     {
 
@@ -245,38 +295,145 @@
         public SyncType SyncType { get; set; } = 0;
         public int TextBoxesQuantity { get; set; } = 0;
         public int Rows { get; set; } = 1;
-        public bool ShowNumbersOnKeys { get; set; } = false;
+        public KeyboardFeatureFlags KeyboardFeatures { get; set; } = KeyboardFeatureFlags.WithoutZero;
+        public ArrowFeatureFlags ArrowFeatures { get; set; } = ArrowFeatureFlags.None;
+        public KeyboardAudioFeatureFlags AudioFeatures { get; set; } = KeyboardAudioFeatureFlags.None;
+        public bool ShowNumbersOnKeys
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ShowNumbersOnKeys);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ShowNumbersOnKeys
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ShowNumbersOnKeys;
+        }
 
         public int KeysInRow { get; set; } = 10;
-        public bool ImposeEdges { get; set; } = false;
-        public bool ImposeSerealization { get; set; } = false;
-        public bool WithoutZero { get; set; } = true;
-        public bool AllowRemoval { get; set; } = false;
+        public bool ImposeEdges
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ImposeEdges);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ImposeEdges
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ImposeEdges;
+        }
+        public bool ImposeSerealization
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ImposeSerialization);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ImposeSerialization
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ImposeSerialization;
+        }
+        public bool WithoutZero
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.WithoutZero);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.WithoutZero
+                : KeyboardFeatures & ~KeyboardFeatureFlags.WithoutZero;
+        }
+        public bool AllowRemoval
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.AllowRemoval);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.AllowRemoval
+                : KeyboardFeatures & ~KeyboardFeatureFlags.AllowRemoval;
+        }
 
         public int AddendsNum { get; set; } = 2;
 
-        public bool KeyboardOnlyForHelp { get; set; } = false;
-        public bool KeyboardAsAQuestion { get; set; } = false;
+        public bool KeyboardOnlyForHelp
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.KeyboardOnlyForHelp);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.KeyboardOnlyForHelp
+                : KeyboardFeatures & ~KeyboardFeatureFlags.KeyboardOnlyForHelp;
+        }
+        public bool KeyboardAsAQuestion
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.KeyboardAsQuestion);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.KeyboardAsQuestion
+                : KeyboardFeatures & ~KeyboardFeatureFlags.KeyboardAsQuestion;
+        }
 
         public int SecondsPressingToAnswer { get; set; } = 2;
 
         public int[] DummiesArray = null;
         public int LeftAddendIndex { get; set; } = 0;
 
-        public bool IsArrow { get; set; } = false;
+        public bool IsArrow
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ArrowQuestion);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ArrowQuestion
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ArrowQuestion;
+        }
 
-        public bool IsMulticolor { get; set; } = false;
-        public ArrowType ArrowType { get; set; } = ArrowType.Straight;
-        public bool? IsArrowLengthDynamic { get; set; } = false;
+        public bool IsMulticolor
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.Multicolor);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.Multicolor
+                : KeyboardFeatures & ~KeyboardFeatureFlags.Multicolor;
+        }
+        public ArrowType ArrowType
+        {
+            get => ArrowFeatures.HasFlag(ArrowFeatureFlags.Rounded) ? ArrowType.Rounded : ArrowType.Straight;
+            set => ArrowFeatures = value == ArrowType.Rounded
+                ? ArrowFeatures | ArrowFeatureFlags.Rounded
+                : ArrowFeatures & ~ArrowFeatureFlags.Rounded;
+        }
+        public bool? IsArrowLengthDynamic
+        {
+            get => ArrowFeatures.HasFlag(ArrowFeatureFlags.DynamicLength);
+            set => ArrowFeatures = value == true
+                ? ArrowFeatures | ArrowFeatureFlags.DynamicLength
+                : ArrowFeatures & ~ArrowFeatureFlags.DynamicLength;
+        }
 
         public int[] WeightsArray = null;
         public List<List<int>> DependancyArray = null;
+        public bool UseDynamicMultiplicationWeights { get; set; } = false;
+        public int MaskThirdArrowAfterCycleCount { get; set; } = 0;
+        public bool UseFullHandTutorial { get; set; } = false;
+        public PpwKeyboardSeedMode PpwKeyboardSeedMode { get; set; } = PpwKeyboardSeedMode.None;
+        public KeyboardColorInteractionMode ColorInteractionMode { get; set; } = KeyboardColorInteractionMode.Default;
+        public bool EnableColorDrag { get; set; } = false;
 
-        public bool IsNumberVoice { get; set; } = false;
-        public bool IsVoice { get; set; } = false;
-        public bool IsVoices { get; set; } = false;
+        public bool IsNumberVoice
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.NumberVoice);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.NumberVoice
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.NumberVoice;
+        }
+        public bool IsVoice
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.SingleVoice);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.SingleVoice
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.SingleVoice;
+        }
+        public bool IsVoices
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.MultipleVoices);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.MultipleVoices
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.MultipleVoices;
+        }
 
-        public bool IsHelpNeeded { get; set; } = false;
+        public bool IsHelpNeeded
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.HelpAvailable);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.HelpAvailable
+                : KeyboardFeatures & ~KeyboardFeatureFlags.HelpAvailable;
+        }
+
+        public bool UsePermutationTraceColors
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.PermutationTraceColors);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.PermutationTraceColors
+                : KeyboardFeatures & ~KeyboardFeatureFlags.PermutationTraceColors;
+        }
 
     }
 }

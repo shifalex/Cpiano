@@ -35,6 +35,8 @@ namespace GestureSample.Maui.Models
         public bool IsFirstGuess { get; set; } = true;
 
         protected int _currentTriadIndex = 0;
+        protected int? _dynamicKeyboardWeightValue;
+        protected int? _dynamicKeyboardExpectedPressCount;
 
         public PPWObject GenerateSecondaryTriad(int sum, int? addend1Min=null, int? addend1Max = null)
         {
@@ -241,6 +243,51 @@ namespace GestureSample.Maui.Models
             return SaveState(syncAfterSave: false);
         }
 
+        public virtual Color[]? GetInitialKeyboardColors()
+        {
+            if (Config?.KeyboardConfig == null)
+                return null;
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            Color[] keyboardColors = Enumerable.Repeat(Colors.White, keyCount).ToArray();
+
+            switch (Config.KeyboardConfig.PpwKeyboardSeedMode)
+            {
+                case PpwKeyboardSeedMode.VisiblePartPressed:
+                    FillColorRange(keyboardColors, GetVisibleKnownAddendValue(), Colors.Yellow);
+                    return keyboardColors;
+
+                case PpwKeyboardSeedMode.WholePressed:
+                    FillColorRange(keyboardColors, Sum == NAN ? 0 : Sum, Colors.Yellow);
+                    return keyboardColors;
+
+                case PpwKeyboardSeedMode.VisiblePartsColored:
+                    if (addend1 != NAN)
+                        FillColorRange(keyboardColors, addend1, Colors.Yellow);
+                    if (addend2 != NAN)
+                        FillColorRange(keyboardColors, addend2, Colors.LightGreen, addend1 == NAN ? 0 : addend1);
+                    return keyboardColors;
+
+                default:
+                    return null;
+            }
+        }
+
+        private static void FillColorRange(Color[] keyboardColors, int count, Color color, int startIndex = 0)
+        {
+            int safeStart = Math.Max(0, startIndex);
+            int safeEnd = Math.Min(keyboardColors.Length, safeStart + Math.Max(0, count));
+
+            for (int i = safeStart; i < safeEnd; i++)
+            {
+                keyboardColors[i] = color;
+            }
+        }
+
         protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null)
         {
             return new ExerciseCheckResult
@@ -416,6 +463,16 @@ namespace GestureSample.Maui.Models
 
         public virtual async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
         {
+            if (UsesSeededPpwKeyboardStage())
+            {
+                return await EvaluateSeededPpwKeyboardStageAsync(pianoKeyboard);
+            }
+
+            if (UsesDynamicKeyboardMultiplication())
+            {
+                return await EvaluateDynamicKeyboardMultiplicationAsync(pianoKeyboard);
+            }
+
             int keyboardSum = Sum;
             if (Sum == NAN && (pianoKeyboard.Addend1>=0 && pianoKeyboard.Addend2>=0)) {
                if( pianoKeyboard.Addend1 == addend1 && pianoKeyboard.Addend2 == addend2)
@@ -426,6 +483,120 @@ namespace GestureSample.Maui.Models
             ExerciseCheckResult result = await EvaluateAsync(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
             Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
             return result;
+        }
+
+        private bool UsesSeededPpwKeyboardStage()
+        {
+            return Config?.KeyboardConfig != null &&
+                   Config.KeyboardConfig.PpwKeyboardSeedMode != PpwKeyboardSeedMode.None;
+        }
+
+        private bool HasSingleMissingAddendQuestion()
+        {
+            return Sum != NAN &&
+                   ((addend1 == NAN && addend2 != NAN) ||
+                    (addend2 == NAN && addend1 != NAN));
+        }
+
+        private int GetVisibleKnownAddendValue()
+        {
+            if (addend1 != NAN && addend2 == NAN)
+                return addend1;
+
+            if (addend2 != NAN && addend1 == NAN)
+                return addend2;
+
+            return 0;
+        }
+
+        private int GetMissingAddendValue()
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return 0;
+
+            return Sum - GetVisibleKnownAddendValue();
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateSeededPpwKeyboardStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = Config.KeyboardConfig.PpwKeyboardSeedMode switch
+            {
+                PpwKeyboardSeedMode.VisiblePartPressed => EvaluateVisiblePartKeyboardStage(pianoKeyboard),
+                PpwKeyboardSeedMode.WholePressed => EvaluateWholePressedKeyboardStage(pianoKeyboard),
+                _ => false
+            };
+
+            _status = isCorrect ? Statement.True : Statement.False;
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private bool EvaluateVisiblePartKeyboardStage(PianoKeyboard pianoKeyboard)
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return false;
+
+            int visiblePart = GetVisibleKnownAddendValue();
+            int missingPart = GetMissingAddendValue();
+
+            if (Config.KeyboardConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor)
+            {
+                return pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart &&
+                       pianoKeyboard.GetColorCount(Colors.LightGreen) == missingPart;
+            }
+
+            int totalPressed = pianoKeyboard.GetNonFreeColorCount();
+            return totalPressed == Sum && Math.Max(0, totalPressed - visiblePart) == missingPart;
+        }
+
+        private bool EvaluateWholePressedKeyboardStage(PianoKeyboard pianoKeyboard)
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return false;
+
+            int visiblePart = GetVisibleKnownAddendValue();
+            int missingPart = GetMissingAddendValue();
+
+            if (Config.KeyboardConfig.ColorInteractionMode != KeyboardColorInteractionMode.RemoveWithRed)
+            {
+                return pianoKeyboard.GetNonFreeColorCount() == Sum &&
+                       pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart;
+            }
+
+            return pianoKeyboard.GetColorCount(Colors.Red) == missingPart &&
+                   pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart;
+        }
+
+        private bool UsesDynamicKeyboardMultiplication()
+        {
+            return CurrentOperation == Operation.Multiplication &&
+                   Config?.KeyboardConfig?.UseDynamicMultiplicationWeights == true &&
+                   _dynamicKeyboardWeightValue.HasValue &&
+                   _dynamicKeyboardExpectedPressCount.HasValue;
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateDynamicKeyboardMultiplicationAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            int pressedKeysCount = pianoKeyboard.ToBitArray().Count(bit => bit);
+            bool isCorrect =
+                pianoKeyboard.Sum == Sum &&
+                pressedKeysCount == _dynamicKeyboardExpectedPressCount.Value;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
         }
 
         private int GetAlternateValidSum(int excludedSum)
@@ -510,40 +681,105 @@ namespace GestureSample.Maui.Models
             // pick factor set depending on operation
             int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)?factors = FactorsMultiplication: factors = Factors;
 
+            ConfigureDynamicKeyboardMultiplicationWeights(r, factors);
+
             if (Config.isLargerAddend1 && factors[0] < factors[1])
             {
                 int temp = factors[0];
                 factors[0] = factors[1];
                 factors[1] = temp;
             }
-            // Decide which value becomes NAN based on Config.VariableTypes
-            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
-
-            switch (Config.VariableTypes)
-            {
-                case VariableTypes.OneCanBeSum:
-                case VariableTypes.OneNoSum:
-                    factors[n] = NAN;
-                    break;
-
-                case VariableTypes.SumOnly:
-                    factors[2] = NAN;
-                    break;
-
-                case VariableTypes.TwoNoSum:
-                    factors[0] = NAN;
-                    factors[1] = NAN;
-                    break;
-
-                default:
-                    for (int i = 0; i < 3; i++)
-                        if (i != n) factors[i] = NAN;
-                    break;
-            }
+            foreach (int index in ChooseHiddenValueIndexes(r))
+                factors[index] = NAN;
 
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
+
+        private void ConfigureDynamicKeyboardMultiplicationWeights(Random r, int[] factors)
+        {
+            _dynamicKeyboardWeightValue = null;
+            _dynamicKeyboardExpectedPressCount = null;
+
+            if (CurrentOperation != Operation.Multiplication ||
+                Config?.KeyboardConfig?.UseDynamicMultiplicationWeights != true ||
+                factors == null ||
+                factors.Length < 3)
+            {
+                return;
+            }
+
+            bool useFirstFactorAsWeight = r.Next(2) == 0;
+            _dynamicKeyboardWeightValue = useFirstFactorAsWeight ? factors[0] : factors[1];
+            _dynamicKeyboardExpectedPressCount = useFirstFactorAsWeight ? factors[1] : factors[0];
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            Config.KeyboardConfig.WeightsArray = Enumerable.Repeat(_dynamicKeyboardWeightValue.Value, keyCount).ToArray();
+            Config.KeyboardConfig.ShowNumbersOnKeys = true;
+        }
+
+        private List<int> ChooseHiddenValueIndexes(Random r)
+        {
+            List<int[]> candidates = new();
+            int hiddenCount = Math.Clamp(Config.HiddenValueCount, 0, 3);
+
+            if (hiddenCount == 0)
+                return new List<int>();
+
+            for (int mask = 1; mask < 8; mask++)
+            {
+                List<int> indexes = new();
+                for (int i = 0; i < 3; i++)
+                {
+                    if ((mask & (1 << i)) != 0)
+                        indexes.Add(i);
+                }
+
+                if (indexes.Count != hiddenCount)
+                    continue;
+
+                if (!indexes.All(IsHiddenTargetAllowed))
+                    continue;
+
+                if (Config.KeepsSumVisible && indexes.Contains(2))
+                    continue;
+
+                if (Config.KeepsAtLeastOneAddendVisible && indexes.Contains(0) && indexes.Contains(1))
+                    continue;
+
+                candidates.Add(indexes.ToArray());
+            }
+
+            if (candidates.Count == 0)
+            {
+                return Config.VariableTypes switch
+                {
+                    VariableTypes.SumOnly => new List<int> { 2 },
+                    VariableTypes.TwoNoSum => new List<int> { 0, 1 },
+                    VariableTypes.Three => new List<int> { r.Next(2) == 0 ? 1 : 0, 2 },
+                    VariableTypes.OneCanBeSum => new List<int> { r.Next(3) },
+                    _ => new List<int> { r.Next(2) }
+                };
+            }
+
+            return candidates[r.Next(candidates.Count)].ToList();
+        }
+
+        private bool IsHiddenTargetAllowed(int index)
+        {
+            MissingValueTargetFlags target = index switch
+            {
+                0 => MissingValueTargetFlags.Addend1,
+                1 => MissingValueTargetFlags.Addend2,
+                _ => MissingValueTargetFlags.Sum
+            };
+
+            return Config.AllowedMissingValueTargets.HasFlag(target);
         }
 
         private void RestorePrevPPWQuestion()
@@ -748,8 +984,35 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }
 
+                if (IsFirstGuess)
+                {
+                    factors[0] = Config.DefaultTriad.Addend1;
+                    factors[1] = Config.DefaultTriad.Addend2;
+                    factors[2] = Config.DefaultTriad.Sum;
+
+                    IsFirstGuess = false;
+                    addend1 = factors[0];
+                    addend2 = factors[1];
+                    Sum = factors[2];
+
+                    if (IsCorrectInput())
+                        return factors;
+                }
+
                 if (Config.OnlyCloseTriad && !IsFirstGuess)
                 {
+                    PPWObject? benchmarkTriad = IsMultiplicationBenchmarkSequenceMode()
+                        ? GetPreferredBenchmarkMultiplicationTriad()
+                        : null;
+
+                    if (benchmarkTriad != null)
+                    {
+                        factors[0] = benchmarkTriad.Addend1;
+                        factors[1] = benchmarkTriad.Addend2;
+                        factors[2] = benchmarkTriad.Sum;
+                        return factors;
+                    }
+
                     List<PPWObject> closeTriads = PossibleTriads
                         .Where(item =>
                             item.Addend1 == this.addend1 &&
@@ -774,6 +1037,60 @@ namespace GestureSample.Maui.Models
 
                 return factors;
             }
+        }
+
+        private bool IsMultiplicationBenchmarkSequenceMode()
+        {
+            return string.Equals(Config?.GameName, "Multiplication Benchmarks", StringComparison.Ordinal);
+        }
+
+        private PPWObject? GetPreferredBenchmarkMultiplicationTriad()
+        {
+            int benchmarkStepIndex = Math.Max(0, _questionNumber - 2);
+            bool changeFirstMultiplier = benchmarkStepIndex % 2 == 0;
+            int preferredDelta = GetBenchmarkPreferredDelta(benchmarkStepIndex);
+
+            IEnumerable<PPWObject> candidates = PossibleTriads.Where(item =>
+                !(item.Addend1 == this.addend1 && item.Addend2 == this.addend2));
+
+            if (changeFirstMultiplier)
+            {
+                candidates = candidates.Where(item =>
+                    item.Addend2 == this.addend2 &&
+                    Math.Abs(item.Addend1 - this.addend1) <= 2);
+            }
+            else
+            {
+                candidates = candidates.Where(item =>
+                    item.Addend1 == this.addend1 &&
+                    Math.Abs(item.Addend2 - this.addend2) <= 2);
+            }
+
+            return OrderBenchmarkCandidates(
+                    candidates,
+                    candidate => changeFirstMultiplier
+                        ? candidate.Addend1 - this.addend1
+                        : candidate.Addend2 - this.addend2,
+                    preferredDelta)
+                .FirstOrDefault();
+        }
+
+        private static int GetBenchmarkPreferredDelta(int benchmarkStepIndex)
+        {
+            int[] preferredDeltas = { 1, 1, -1, 2, 2 };
+            return preferredDeltas[benchmarkStepIndex % preferredDeltas.Length];
+        }
+
+        private static IEnumerable<PPWObject> OrderBenchmarkCandidates(
+            IEnumerable<PPWObject> candidates,
+            Func<PPWObject, int> getDelta,
+            int preferredDelta)
+        {
+            return candidates
+                .OrderBy(candidate => getDelta(candidate) == preferredDelta ? 0 : 1)
+                .ThenBy(candidate => Math.Sign(getDelta(candidate)) == Math.Sign(preferredDelta) ? 0 : 1)
+                .ThenBy(candidate => Math.Abs(getDelta(candidate) - preferredDelta))
+                .ThenBy(candidate => Math.Abs(getDelta(candidate)));
         }
 
 

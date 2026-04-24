@@ -32,6 +32,10 @@ namespace GestureSample.Maui.Models
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
         private readonly KeyEventRepository _keyEventRepository;
+        private int? _draggingKeyIndex;
+        private Color _draggingKeyColor = Colors.Transparent;
+        protected virtual Color TraceSecondColor => SECOND_COLOR.WithAlpha(0.82f);
+        protected virtual Color TraceThirdColor => THIRD_COLOR.WithAlpha(0.7f);
 
         protected virtual void AddDummies()
         {
@@ -159,6 +163,8 @@ After:
 
             }
             AddDummies();
+            Panning += OnKeyboardPanning;
+            Panned += OnKeyboardPanned;
 
 
             // Add an image to your Resources/Images folder, e.g., "reset.png" (ensure Build Action: MauiImage)
@@ -353,6 +359,49 @@ After:
             AddDummies();
         }
 
+        public new void PianoInit(bool[] array)
+        {
+            base.PianoInit(array);
+            RecalculateKeyboardStateFromColors();
+            AddDummies();
+        }
+
+        public new void PianoInit(Color[] array)
+        {
+            base.PianoInit(array);
+            RecalculateKeyboardStateFromColors();
+            AddDummies();
+        }
+
+        private void RecalculateKeyboardStateFromColors()
+        {
+            _addend1 = 0;
+            _addend2 = 0;
+
+            if (_patterns)
+            {
+                setAddendsByPattern();
+            }
+            else
+            {
+                for (int i = 0; i < btnKeys.Length; i++)
+                {
+                    if (btnKeys[i].BackgroundColor != COLOR_FREE)
+                    {
+                        if (i >= btnKeys.Length / 2)
+                            _addend2++;
+                        else
+                            _addend1++;
+                    }
+                }
+            }
+
+            OnPropertyChanged(nameof(Addend1));
+            OnPropertyChanged(nameof(Addend2));
+            OnPropertyChanged(nameof(Sum));
+            SaveColors();
+        }
+
         //Spatial
         protected virtual void setAddendsByPattern()
         {
@@ -413,8 +462,141 @@ After:
                     }
             }
         }
+
+        protected bool UsePermutationTraceColors()
+        {
+            return Config.UsePermutationTraceColors;
+        }
+
+        private bool UsesSecondColorEntryMode()
+        {
+            return _pianoConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor;
+        }
+
+        private bool UsesRedRemovalMode()
+        {
+            return _pianoConfig.ColorInteractionMode == KeyboardColorInteractionMode.RemoveWithRed;
+        }
+
+        private bool EnablesColorDrag()
+        {
+            return _pianoConfig.EnableColorDrag;
+        }
+
+        private bool TryBeginColorDrag(MR.Gestures.Button sender)
+        {
+            if (!EnablesColorDrag())
+                return false;
+
+            Color color = sender.BackgroundColor;
+            if (color == COLOR_FREE || color == REMOVE_COLOR)
+                return false;
+
+            int keyIndex = Array.IndexOf(btnKeys, sender);
+            if (keyIndex < 0)
+                return false;
+
+            _draggingKeyIndex = keyIndex;
+            _draggingKeyColor = color;
+            return true;
+        }
+
+        protected bool ColorsMatch(Color a, Color b)
+        {
+            return Math.Abs(a.Red - b.Red) < 0.01f &&
+                   Math.Abs(a.Green - b.Green) < 0.01f &&
+                   Math.Abs(a.Blue - b.Blue) < 0.01f &&
+                   Math.Abs(a.Alpha - b.Alpha) < 0.01f;
+        }
+
+        protected bool IsPermutationSecondTrace(Color color)
+        {
+            return ColorsMatch(color, TraceSecondColor);
+        }
+
+        protected bool IsPermutationThirdTrace(Color color)
+        {
+            return ColorsMatch(color, TraceThirdColor);
+        }
+
+        protected void AdvancePermutationTraceColors(MR.Gestures.Button? exempt = null)
+        {
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                MR.Gestures.Button button = btnKeys[i];
+                if (button == exempt)
+                    continue;
+
+                if (button.BackgroundColor == COLOR_PRESSED)
+                {
+                    button.BackgroundColor = TraceSecondColor;
+                }
+                else if (IsPermutationSecondTrace(button.BackgroundColor))
+                {
+                    button.BackgroundColor = TraceThirdColor;
+                }
+                else if (IsPermutationThirdTrace(button.BackgroundColor))
+                {
+                    button.BackgroundColor = COLOR_FREE;
+                }
+            }
+        }
+
+        protected void SetPermutationTracePressed(MR.Gestures.Button sender)
+        {
+            AdvancePermutationTraceColors(sender);
+            sender.BackgroundColor = COLOR_PRESSED;
+        }
+
+        protected void ReleasePermutationTracePressed(MR.Gestures.Button sender)
+        {
+            if (sender.BackgroundColor != COLOR_PRESSED)
+                return;
+
+            sender.BackgroundColor = TraceSecondColor;
+        }
+
         protected virtual bool InnerKeyDown(MR.Gestures.Button sender)
         {
+            if (TryBeginColorDrag(sender))
+            {
+                return false;
+            }
+
+            if (UsePermutationTraceColors())
+            {
+                SetPermutationTracePressed(sender);
+                return false;
+            }
+
+            if (UsesRedRemovalMode())
+            {
+                if (sender.BackgroundColor == COLOR_PRESSED)
+                {
+                    sender.BackgroundColor = REMOVE_COLOR;
+                }
+                else if (sender.BackgroundColor == REMOVE_COLOR)
+                {
+                    sender.BackgroundColor = COLOR_PRESSED;
+                }
+
+                return false;
+            }
+
+            if (UsesSecondColorEntryMode())
+            {
+                if (sender.BackgroundColor == COLOR_FREE)
+                {
+                    sender.BackgroundColor = SECOND_COLOR;
+                }
+                else if (sender.BackgroundColor == SECOND_COLOR)
+                {
+                    sender.BackgroundColor = COLOR_FREE;
+                }
+
+                return false;
+            }
+
             if (Config.IsMulticolor)
             {
                 if (sender.BackgroundColor == COLOR_FREE)
@@ -439,6 +621,15 @@ After:
 
         protected virtual bool InnerKeyUp(MR.Gestures.Button sender)
         {
+            if (UsesRedRemovalMode() || UsesSecondColorEntryMode() || _draggingKeyIndex.HasValue)
+            {
+                return true;
+            }
+
+            if (UsePermutationTraceColors())
+            {
+                ReleasePermutationTracePressed(sender);
+            }
 
             if (Convert.ToInt32(sender.CommandParameter) > 5)
                 _addend2 = (sender.BackgroundColor != COLOR_PRESSED) ? _addend2 - 1 : _addend2 + 1;
@@ -451,6 +642,62 @@ After:
 
 
             return true;
+        }
+
+        private void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
+        {
+            if (!_draggingKeyIndex.HasValue || !EnablesColorDrag() || e.Touches == null || e.Touches.Length == 0)
+                return;
+
+            int targetIndex = GetKeyIndexAt(e.Touches[0]);
+            if (targetIndex < 0 || targetIndex == _draggingKeyIndex.Value)
+                return;
+
+            if (btnKeys[targetIndex].BackgroundColor != COLOR_FREE)
+                return;
+
+            btnKeys[targetIndex].BackgroundColor = _draggingKeyColor;
+            btnKeys[_draggingKeyIndex.Value].BackgroundColor = COLOR_FREE;
+            _draggingKeyIndex = targetIndex;
+            RecalculateKeyboardStateFromColors();
+        }
+
+        private void OnKeyboardPanned(object? sender, MR.Gestures.PanEventArgs e)
+        {
+            _draggingKeyIndex = null;
+            _draggingKeyColor = Colors.Transparent;
+        }
+
+        private int GetKeyIndexAt(Point touch)
+        {
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                if (IsOver(touch, btnKeys[i]))
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private static (double x, double y) GetAbsolutePosition(View view)
+        {
+            double x = view.X;
+            double y = view.Y;
+
+            while (view.Parent is View parentView)
+            {
+                view = parentView;
+                x += view.X;
+                y += view.Y;
+            }
+
+            return (x, y);
+        }
+
+        private static bool IsOver(Point touch, View view)
+        {
+            (double viewX, double viewY) = GetAbsolutePosition(view);
+            return new Rect(viewX, viewY, view.Width, view.Height).Contains(touch);
         }
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)

@@ -3,6 +3,7 @@ using GestureSample.Views.Tests;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;
+using GestureSample.Maui.Views.CustomStages;
 using GestureSample.Views;
 using GestureSample.Maui.Models;
 namespace GestureSample.Views
@@ -17,6 +18,7 @@ namespace GestureSample.Views
             new PageConfig(null, "->", null, true),
             new PageConfig(null, "+ -", null),
             new PageConfig(null, "X : ", null),
+            new PageConfig(null, "Weighted Keyboard", null, true),
             new PageConfig(null, "+-X:- mixed advanced ", null),
             new PageConfig(null, "&& ||", null, true),
             new PageConfig(null, "Data", null),
@@ -24,13 +26,19 @@ namespace GestureSample.Views
             new PageConfig(null, string.Format("Switch User({0})",ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name),  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
 
             new PageConfig(null, "Tutorial", null, true),
+            new PageConfig(null, "Custom stages", null),
+
+            new PageConfig("Custom stages", "PPW Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.PPWScheme)),
+            new PageConfig("Custom stages", "Arrow Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Arrow)),
+            new PageConfig("Custom stages", "Logical Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Logical)),
+            new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
 
             //OLD MENU
             //
             //
             new PageConfig(null, "new Keyboard", null),
             new PageConfig(null, "new Number", null),
-            new PageConfig(null, "Bits", null),
+           // new PageConfig(null, "Bits", null),
 
 
             new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
@@ -309,6 +317,73 @@ namespace GestureSample.Views
         }
     })),
 
+    new PageConfig("new Keyboard", "PPW to Keyboard - Add Missing Part", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW to Keyboard - Add Missing Part",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartPressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.AddSecondColor
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW to Keyboard - Remove From Whole", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW to Keyboard - Remove From Whole",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.WholePressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.RemoveWithRed
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW Help - Move Colored Parts", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW Help - Move Colored Parts",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.SumOnly,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeyboardOnlyForHelp = true,
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartsColored,
+            EnableColorDrag = true
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW Help - Add And Move Missing Part", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW Help - Add And Move Missing Part",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeyboardOnlyForHelp = true,
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartPressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.AddSecondColor,
+            EnableColorDrag = true
+        }
+    })),
+
     /*new PageConfig("new Keyboard", "Sync decomposition dummies spatial less then 5 ON", () => new SimpleViewCellsPage(new GameConfig
     {
          MinAddend=1,
@@ -504,6 +579,23 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             IsHelpNeeded = true,
+            KeysInRow = 6
+        }
+    })),
+
+    new PageConfig("One operation", "Group By Color", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group by color",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = false,
+        OnlyToTen = true,
+        MinSum = 2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
             KeysInRow = 6
         }
     })),
@@ -969,7 +1061,7 @@ namespace GestureSample.Views
         }
     })),
 
-    new PageConfig("Tutorial", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Weighted Keyboard", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number",
         UIQuestionType = UIQuestionType.OneText,
@@ -984,7 +1076,7 @@ namespace GestureSample.Views
         }
     })),
 
-    new PageConfig("Tutorial", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Weighted Keyboard", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Weighted one number binary bit array",
         UIQuestionType = UIQuestionType.OneText,
@@ -995,6 +1087,28 @@ namespace GestureSample.Views
 
             TextBoxesQuantity = 1,
             WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
+            ShowNumbersOnKeys = true
+        }
+    })),
+
+    new PageConfig("Weighted Keyboard", "Weighted Multiplication", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted Multiplication",
+        UIQuestionType = UIQuestionType.OneText,
+        MinAddend = 2,
+        MaxAddend = 10,
+        MinAddend2 = 2,
+        MaxAddend2 = 10,
+        MinSum = 4,
+        MaxSum = 100,
+        OperationList = new() { Operation.Multiplication },
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
+            UseDynamicMultiplicationWeights = true,
             ShowNumbersOnKeys = true
         }
     })),
@@ -1177,7 +1291,8 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            UsePermutationTraceColors = true
         }
     })),
     new PageConfig("Tutorial", "+- Till 20 with sync keyboard help", () => new SimpleViewCellsPage(new GameConfig
@@ -1229,7 +1344,8 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            UsePermutationTraceColors = true
         }
     })),
     /*new PageConfig("->", "Cyclical Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
@@ -1447,6 +1563,18 @@ namespace GestureSample.Views
             IsArrow = true
         }
     })),
+    new PageConfig("->", "-> -> ?", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From Left Missing Third",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            MaskThirdArrowAfterCycleCount = 4
+        }
+    })),
     new PageConfig("->", "<- <-", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName =  "To Left",
@@ -1468,7 +1596,8 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
             IsArrow = true,
             ShowNumbersOnKeys = true,
-            ArrowType=ArrowType.Rounded
+            ArrowType=ArrowType.Rounded,
+            UsePermutationTraceColors = true
         }
     })),
     new PageConfig("->", "To Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
@@ -1482,7 +1611,8 @@ namespace GestureSample.Views
             IsArrow = true,
             ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=1
+            SecondsPressingToAnswer=1,
+            UsePermutationTraceColors = true
         } 
     })),
             #endregion
@@ -1822,7 +1952,7 @@ namespace GestureSample.Views
         MaxSum = 144,
         VariableTypes = VariableTypes.OneCanBeSum,
         OnlyCloseTriad = true,
-        DefaultTriad = new PPWObject(6, 6, 36),
+        DefaultTriad = new PPWObject(2, 5, 10),
         ShowPrev = true,
         EnforceOperationLabel = true
     })),

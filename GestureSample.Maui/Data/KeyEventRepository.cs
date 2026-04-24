@@ -52,5 +52,31 @@ namespace GestureSample.Maui.Data
             return _database.InsertAsync(keyEvent);
         }
 
+        public async Task ReplaceForGameAsync(string gameId, IEnumerable<KeyEvent> keyEvents)
+        {
+            await _database.ExecuteAsync("DELETE FROM KeyEvent WHERE GameId = ?", gameId);
+
+            if (keyEvents == null)
+                return;
+
+            foreach (KeyEvent keyEvent in keyEvents.OrderBy(item => item.EventTime).ThenBy(item => item.id))
+            {
+                KeyEvent localKeyEvent = new()
+                {
+                    GameId = keyEvent.GameId,
+                    QuestionNumber = keyEvent.QuestionNumber,
+                    AttemptNumber = keyEvent.AttemptNumber,
+                    EventType = keyEvent.EventType,
+                    KeyNumber = keyEvent.KeyNumber,
+                    Row = keyEvent.Row,
+                    EventTime = keyEvent.EventTime,
+                    RelativeX = keyEvent.RelativeX,
+                    RelativeY = keyEvent.RelativeY
+                };
+
+                await _database.InsertAsync(localKeyEvent);
+            }
+        }
+
     }
 }

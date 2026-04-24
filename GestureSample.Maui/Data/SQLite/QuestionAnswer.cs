@@ -69,5 +69,41 @@ namespace GestureSample.Maui.Data.SQLite
         public double? TimeOnTask { get { if (StartTime == null) return null; return ((TimeSpan)(Time - StartTime)).TotalSeconds; } }
         public int SerialNumber { get; set; }
         public string OpDString { get; set; }
+        public List<ShowQuestionAnswerPartRow> HelperRows { get; set; } = new();
+        public bool HasHelperRows => HelperRows.Count > 0;
+
+        public void SetHelperParts(IEnumerable<QuestionAnswerPart>? parts)
+        {
+            HelperRows = parts?
+                .GroupBy(item => item.RowIndex)
+                .OrderBy(group => group.Key)
+                .Select(group => new ShowQuestionAnswerPartRow
+                {
+                    Parts = group
+                        .OrderBy(item => item.ColumnIndex)
+                        .Select(item => new ShowQuestionAnswerPartItem
+                        {
+                            ValueText = item.ValueText,
+                            BackgroundColor = item.IsEnabled ? Colors.White : Color.FromArgb("#F1F1F1"),
+                            TextColor = item.IsEnabled ? Colors.Black : Colors.Gray
+                        })
+                        .ToList()
+                })
+                .Where(row => row.Parts.Count > 0)
+                .ToList()
+                ?? new List<ShowQuestionAnswerPartRow>();
+        }
+    }
+
+    public class ShowQuestionAnswerPartRow
+    {
+        public List<ShowQuestionAnswerPartItem> Parts { get; set; } = new();
+    }
+
+    public class ShowQuestionAnswerPartItem
+    {
+        public string ValueText { get; set; } = string.Empty;
+        public Color BackgroundColor { get; set; } = Colors.White;
+        public Color TextColor { get; set; } = Colors.Black;
     }
 }

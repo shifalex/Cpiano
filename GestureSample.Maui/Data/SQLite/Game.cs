@@ -5,7 +5,6 @@ using Microsoft.Maui.Platform;
 using MongoDB.Driver.Core.Operations;
 using SQLite;
 using Supabase.Postgrest.Models;
-using System.Text.Json;
 //using Realms;
 
 namespace GestureSample.Maui.Data.SQLite
@@ -127,8 +126,8 @@ namespace GestureSample.Maui.Data.SQLite
         [Column("ConfigJson")]
         public string ConfigJson
         {
-            get => Config != null ? JsonSerializer.Serialize(Config) : null;
-            set => Config = value != null ? JsonSerializer.Deserialize<GameConfig>(value) : null;
+            get => Config != null ? GameConfigJson.Serialize(Config) : null;
+            set => Config = value != null ? GameConfigJson.Deserialize(value) : null;
         }
 
         //public Color[] KeysPressed { get; set; }

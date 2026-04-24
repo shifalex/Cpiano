@@ -137,6 +137,60 @@ namespace GestureSample.Maui.Models
 
         protected override bool InnerKeyDown(MR.Gestures.Button sender)
         {
+            if (_pianoConfig.IsMulticolor)
+            {
+                if (!IS_WHOLE_TIMER)
+                {
+                    _seconds_pressed = 0;
+                    _pressStartUtc = null;
+                    _pressProgress.Progress = 0;
+                }
+
+                if (sender.BackgroundColor == COLOR_FREE)
+                    sender.BackgroundColor = COLOR_PRESSED;
+                else if (sender.BackgroundColor == COLOR_PRESSED)
+                    sender.BackgroundColor = SECOND_COLOR;
+                else if (sender.BackgroundColor == SECOND_COLOR)
+                    sender.BackgroundColor = COLOR_FREE;
+                else
+                    sender.BackgroundColor = COLOR_FREE;
+
+                bool hadPressedBeforeColor = AnyPressed();
+                if (!hadPressedBeforeColor)
+                    _pressStartUtc = DateTime.UtcNow;
+
+                return true;
+            }
+
+            if (UsePermutationTraceColors())
+            {
+                if (sender.BackgroundColor == COLOR_PRESSED)
+                {
+                    pressCounter[Convert.ToInt32(sender.CommandParameter) - 1]++;
+                    return true;
+                }
+
+                if (!IS_WHOLE_TIMER)
+                {
+                    _seconds_pressed = 0;
+                    _pressStartUtc = null;
+                    _pressProgress.Progress = 0;
+                }
+
+                bool hadPressedBeforeTrace = AnyPressed();
+                SetPermutationTracePressed(sender);
+
+                if (Convert.ToInt32(sender.CommandParameter) > 5)
+                    _addend2++;
+                else
+                    _addend1++;
+
+                if (!hadPressedBeforeTrace)
+                    _pressStartUtc = DateTime.UtcNow;
+
+                return true;
+            }
+
             if (sender.BackgroundColor == COLOR_PRESSED) { pressCounter[Convert.ToInt32(sender.CommandParameter) - 1]++; return true; }
             if(!IS_WHOLE_TIMER)
             {
@@ -162,6 +216,45 @@ namespace GestureSample.Maui.Models
         }
         protected override bool InnerKeyUp(MR.Gestures.Button sender)
         {
+            if (_pianoConfig.IsMulticolor)
+            {
+                return true;
+            }
+
+            if (UsePermutationTraceColors())
+            {
+                if (sender.BackgroundColor != COLOR_PRESSED)
+                {
+                    if (pressCounter[Convert.ToInt32(sender.CommandParameter) - 1] > 0)
+                        pressCounter[Convert.ToInt32(sender.CommandParameter) - 1]--;
+                    return true;
+                }
+
+                if (!IS_WHOLE_TIMER)
+                {
+                    _seconds_pressed = 0;
+                    _pressStartUtc = null;
+                    _pressProgress.Progress = 0;
+                }
+
+                ReleasePermutationTracePressed(sender);
+
+                if (Convert.ToInt32(sender.CommandParameter) > 5)
+                    _addend2--;
+                else
+                    _addend1--;
+
+                if (_addend1 < 0) _addend1 = 0;
+                if (_addend2 < 0) _addend2 = 0;
+
+                if (!AnyPressed())
+                {
+                    ResetProgressVisual();
+                }
+
+                return true;
+            }
+
             if (sender.BackgroundColor == COLOR_FREE)
             {
                if(pressCounter[Convert.ToInt32(sender.CommandParameter)-1] > 0) pressCounter[Convert.ToInt32(sender.CommandParameter)-1]--; return true;
