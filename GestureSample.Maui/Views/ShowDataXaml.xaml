@@ -37,24 +37,56 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate>
                     <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" BackgroundColor="{Binding RowBackgroundColor}">
-                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand">
-                            <Label Grid.Column="0" Text="{Binding QuestionNumber}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding TimeColor}">
+                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60"
+                              RowDefinitions="Auto,Auto"
+                              Padding="2"
+                              HorizontalOptions="FillAndExpand">
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding QuestionNumber}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Frame Grid.Row="0" Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding TimeColor}">
                                 <Label Text="{Binding TimeOnTask, StringFormat='{}{0:0.00 }'}" HorizontalOptions="Center" VerticalOptions="Center" />
                             </Frame>
-                            <!-- Additional Columns -->
-                            <Label Grid.Column="2" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend1Color}">
+                            <Label Grid.Row="0" Grid.Column="2" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Frame Grid.Row="0" Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend1Color}">
                                 <Label Text="{Binding Addend1}" HorizontalOptions="Center" VerticalOptions="Center" />
                             </Frame>
-                            <Label Grid.Column="4" Text="{Binding OpDString}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Frame Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend2Color}">
+                            <Label Grid.Row="0" Grid.Column="4" Text="{Binding OpDString}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Frame Grid.Row="0" Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend2Color}">
                                 <Label Text="{Binding Addend2}" HorizontalOptions="Center" VerticalOptions="Center" />
                             </Frame>
-                            <Label Grid.Column="6" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding SumColor}">
+                            <Label Grid.Row="0" Grid.Column="6" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Frame Grid.Row="0" Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding SumColor}">
                                 <Label Text="{Binding Sum}" HorizontalOptions="Center" VerticalOptions="Center" />
                             </Frame>
+
+                            <VerticalStackLayout Grid.Row="1"
+                                                 Grid.Column="3"
+                                                 Grid.ColumnSpan="5"
+                                                 Margin="0,6,0,0"
+                                                 Spacing="4"
+                                                 IsVisible="{Binding HasHelperRows}"
+                                                 BindableLayout.ItemsSource="{Binding HelperRows}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <HorizontalStackLayout HorizontalOptions="Center"
+                                                               Spacing="4"
+                                                               BindableLayout.ItemsSource="{Binding Parts}">
+                                            <BindableLayout.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Frame BorderColor="Black"
+                                                           CornerRadius="5"
+                                                           Padding="2"
+                                                           BackgroundColor="{Binding BackgroundColor}">
+                                                        <Label Text="{Binding ValueText}"
+                                                               TextColor="{Binding TextColor}"
+                                                               HorizontalOptions="Center"
+                                                               VerticalOptions="Center" />
+                                                    </Frame>
+                                                </DataTemplate>
+                                            </BindableLayout.ItemTemplate>
+                                        </HorizontalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
                         </Grid>
                     </Frame>
                 </DataTemplate>

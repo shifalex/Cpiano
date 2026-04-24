@@ -51,9 +51,12 @@ public static class MauiProgram
         //builder.Services.AddSingleton<IUserRepository, SupabaseUserRepository>();
 
         builder.Services.AddTransient<QuestionAnswerRepository>();
+        builder.Services.AddTransient<QuestionAnswerPartRepository>();
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
         builder.Services.AddTransient<KeyEventRepository>();
+        builder.Services.AddTransient<CustomStageDefinitionRepository>();
+        builder.Services.AddTransient<CustomStageFlowDefinitionRepository>();
         Console.WriteLine("c");
 
         var mauiApp = builder.Build();

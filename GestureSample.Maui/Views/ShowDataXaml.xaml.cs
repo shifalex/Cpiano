@@ -31,6 +31,7 @@ namespace GestureSample.Views
         private readonly UserRepository _userRepo;
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
+        private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
         private Maui.Data.SQLite.User _currentUser;
         private bool _isTeacher = false;
         private readonly ToolbarItem _backToolbarItem;
@@ -66,6 +67,7 @@ namespace GestureSample.Views
             _userRepo = ServiceHelper.GetService<UserRepository>();
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
+            _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             _backToolbarItem = new ToolbarItem
             {
@@ -174,6 +176,12 @@ namespace GestureSample.Views
             GameIdentifiers.Reverse();
             //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
+            if (gameId != null && CurrentGame != null && ShowDataRoutingHelper.ShouldUseKeyboardData(CurrentGame.Config))
+            {
+                await OpenKeyboardDataPageAsync(CurrentGame.Id);
+                return;
+            }
+
             LoadDates();
              LoadGames();
             if(gameId !=null)
@@ -222,6 +230,7 @@ namespace GestureSample.Views
             btnSave.IsVisible = isSaveVisible;
 
             List<QuestionAnswer> gameStats = new();
+            Dictionary<int, List<QuestionAnswerPart>> helperPartsByQuestion = new();
             if (selectedIdentifier != null)
             {
                 Console.WriteLine(selectedIdentifier.ToString()+" {0}", (Guid)selectedIdentifier);
@@ -241,6 +250,14 @@ namespace GestureSample.Views
                 }
                 Console.WriteLine("Rows: {0}",gameStats.Count);
 
+                if (!_isTeacher)
+                {
+                    List<QuestionAnswerPart> helperParts = await _questionAnswerPartRepository.GetByGameAsync((Guid)selectedIdentifier);
+                    helperPartsByQuestion = helperParts
+                        .GroupBy(item => item.QuestionNumber)
+                        .ToDictionary(group => group.Key, group => group.ToList());
+                }
+
 
             }
             List<ShowState> states = new ();
@@ -248,6 +265,8 @@ namespace GestureSample.Views
             foreach (var state in gameStats)
             {
                 ShowState s = new(state);
+                if (helperPartsByQuestion.TryGetValue(s.QuestionNumber, out List<QuestionAnswerPart>? questionParts))
+                    s.SetHelperParts(questionParts);
                 Color color = Colors.LightGray;
                 if (s.Sum == PPWGamePlay.NAN || s.Addend1 == PPWGamePlay.NAN || s.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
                 {
@@ -342,9 +361,32 @@ namespace GestureSample.Views
             var picker = sender as Picker;
             if (picker.SelectedIndex != -1)
             {
-                 await LoadStatesToGrid(GameIdentifiers[picker.SelectedIndex].Id);                
+                Game selectedGame = GameIdentifiersFiltered[picker.SelectedIndex];
+                if (ShowDataRoutingHelper.ShouldUseKeyboardData(selectedGame.Config))
+                {
+                    await OpenKeyboardDataPageAsync(selectedGame.Id);
+                    return;
+                }
+
+                await LoadStatesToGrid(selectedGame.Id);                
             }
             
+        }
+
+        private async Task OpenKeyboardDataPageAsync(Guid gameId)
+        {
+            ShowDataXamlKeyboard keyboardPage = new(gameId)
+            {
+                BindingContext = BindingContext
+            };
+
+            if (Navigation?.NavigationStack?.Count > 0)
+            {
+                await Navigation.PushAsync(keyboardPage);
+                return;
+            }
+
+            Application.Current.MainPage = new NavigationPage(keyboardPage);
         }
 
         private  void OnUserPickerSelectedIndexChanged(object sender, EventArgs e)

@@ -158,6 +158,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Split,
         [Description("GROUP -><-to CENTER")]
         Centrelize,
+        [Description("GROUP BY COLOR")]
+        GroupByColor,
         [Description("SHIFT")]
         MoveBy,
         [Description("MIRROR")]
@@ -222,6 +224,73 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         AppKeypad,
         SystemKeyboard
     }
+
+    [Flags]
+    public enum PresentationFeatureFlags
+    {
+        None = 0,
+        EnforceOperationLabel = 1,
+        FromNumToNum = 2,
+        ShowPrevious = 4,
+        Tutorials = 8,
+        HelpEntries = 16,
+        HelpThroughTen = 32
+    }
+
+    [Flags]
+    public enum TenBoundaryMode
+    {
+        None = 0,
+        ToTen = 1,
+        ThroughTen = 2
+    }
+
+    [Flags]
+    public enum BitArrayGenerationFlags
+    {
+        None = 0,
+        SequenceOnly = 1,
+        KeyboardOnly = 2
+    }
+
+    [Flags]
+    public enum GroupCombinationMode
+    {
+        None = 0,
+        Overlapping = 1,
+        Strange = 2,
+        OneInsideAnother = 4,
+        Same = 8,
+        Empty = 16
+    }
+
+    [Flags]
+    public enum LogicalKeyboardLayoutFlags
+    {
+        None = 0,
+        CombinedOnSingleKeyboard = 1,
+        OneHandOnly = 2,
+        SpecialColor = 4
+    }
+
+    [Flags]
+    public enum MissingValueTargetFlags
+    {
+        None = 0,
+        Addend1 = 1,
+        Addend2 = 2,
+        Sum = 4,
+        Addends = Addend1 | Addend2,
+        All = Addends | Sum
+    }
+
+    [Flags]
+    public enum MissingValueConstraintFlags
+    {
+        None = 0,
+        KeepSumVisible = 1,
+        KeepAtLeastOneAddendVisible = 2
+    }
     #endregion
 
     public class GameConfig
@@ -242,6 +311,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
 
         public GameConfig()
         {
+            ApplyVariableType(VariableTypes.TwoNoSum);
             // DefaultTriad is computed lazily when first used.
         }
 
@@ -258,32 +328,102 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int MaxAddend2 { get => maxAddend2; set => maxAddend2 = value; }
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
-        public VariableTypes VariableTypes { get; set; } = VariableTypes.TwoNoSum;
+        public MissingValueTargetFlags AllowedMissingValueTargets { get; set; } = MissingValueTargetFlags.Addends;
+        public MissingValueConstraintFlags MissingValueConstraints { get; set; } = MissingValueConstraintFlags.None;
+        public int HiddenValueCount { get; set; } = 2;
+        public VariableTypes VariableTypes
+        {
+            get => InferVariableType();
+            set => ApplyVariableType(value);
+        }
         public List<Operation> OperationList { get; set; } = new() { Operation.Sum };
         public QuestionOrder QuestionOrder { get; set; } = QuestionOrder.Random;
 
         // Presentation / question style
         public UIQuestionType UIQuestionType { get; set; } = UIQuestionType.ThreeTexts;
-        public bool EnforceOperationLabel { get; set; } = false;
-        public bool FromNumToNum { get; set; } = false;
-        public bool ShowPrev { get; set; } = false;
-        public bool IncludeTutorials { get; set; } = false;
+        public PresentationFeatureFlags PresentationFeatures { get; set; } = PresentationFeatureFlags.None;
+        public bool EnforceOperationLabel
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.EnforceOperationLabel);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.EnforceOperationLabel
+                : PresentationFeatures & ~PresentationFeatureFlags.EnforceOperationLabel;
+        }
+        public bool FromNumToNum
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.FromNumToNum);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.FromNumToNum
+                : PresentationFeatures & ~PresentationFeatureFlags.FromNumToNum;
+        }
+        public bool ShowPrev
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.ShowPrevious);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.ShowPrevious
+                : PresentationFeatures & ~PresentationFeatureFlags.ShowPrevious;
+        }
+        public bool IncludeTutorials
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.Tutorials);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.Tutorials
+                : PresentationFeatures & ~PresentationFeatureFlags.Tutorials;
+        }
         public NumericInputMode NumericInputMode { get; set; } = NumericInputMode.AppKeypad;
 
         // Exercise generation
         public bool isLargerAddend1 { get; set; } = false;
-        public bool OnlyThrougTen { get; set; } = false;
-        public bool OnlyToTen { get; set; } = false;
-        public bool isHelpEntries { get; set; } = false;
-        public bool isHelpThroughTen { get; set; } = false;
-        public bool isOnlySequence { get; set; } = true;
-        public bool isOnlyKeyboard { get; set; } = false;
+        public TenBoundaryMode TenBoundaryModes { get; set; } = TenBoundaryMode.None;
+        public BitArrayGenerationFlags BitArrayGeneration { get; set; } = BitArrayGenerationFlags.SequenceOnly;
+        public bool isHelpEntries
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.HelpEntries);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.HelpEntries
+                : PresentationFeatures & ~PresentationFeatureFlags.HelpEntries;
+        }
+        public bool isHelpThroughTen
+        {
+            get => PresentationFeatures.HasFlag(PresentationFeatureFlags.HelpThroughTen);
+            set => PresentationFeatures = value
+                ? PresentationFeatures | PresentationFeatureFlags.HelpThroughTen
+                : PresentationFeatures & ~PresentationFeatureFlags.HelpThroughTen;
+        }
+        public bool isOnlySequence
+        {
+            get => BitArrayGeneration.HasFlag(BitArrayGenerationFlags.SequenceOnly);
+            set => BitArrayGeneration = value
+                ? BitArrayGeneration | BitArrayGenerationFlags.SequenceOnly
+                : BitArrayGeneration & ~BitArrayGenerationFlags.SequenceOnly;
+        }
+        public bool isOnlyKeyboard
+        {
+            get => BitArrayGeneration.HasFlag(BitArrayGenerationFlags.KeyboardOnly);
+            set => BitArrayGeneration = value
+                ? BitArrayGeneration | BitArrayGenerationFlags.KeyboardOnly
+                : BitArrayGeneration & ~BitArrayGenerationFlags.KeyboardOnly;
+        }
         public bool OnlyCloseTriad { get; set; } = false;
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public int RepeatingTimesOfSum { get; set; } = 1;
 
         // Readability aliases that preserve the existing config surface.
         public bool PreferLargerAddend1 { get => isLargerAddend1; set => isLargerAddend1 = value; }
+        public bool OnlyThrougTen
+        {
+            get => TenBoundaryModes.HasFlag(TenBoundaryMode.ThroughTen);
+            set => TenBoundaryModes = value
+                ? TenBoundaryModes | TenBoundaryMode.ThroughTen
+                : TenBoundaryModes & ~TenBoundaryMode.ThroughTen;
+        }
+        public bool OnlyToTen
+        {
+            get => TenBoundaryModes.HasFlag(TenBoundaryMode.ToTen);
+            set => TenBoundaryModes = value
+                ? TenBoundaryModes | TenBoundaryMode.ToTen
+                : TenBoundaryModes & ~TenBoundaryMode.ToTen;
+        }
         public bool OnlyThroughTen { get => OnlyThrougTen; set => OnlyThrougTen = value; }
         public bool HelpEntries { get => isHelpEntries; set => isHelpEntries = value; }
         public bool HelpThroughTen { get => isHelpThroughTen; set => isHelpThroughTen = value; }
@@ -298,11 +438,43 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         // Targets / constraints
         public int NumberOfTasksToWin { get; set; } = -1;
         public int NumberOfMistakesToLose { get; set; } = -1;
-        public bool DenyStrangeOrSameGroups { get; set; } = false;
-        public bool TwoKeybordsOnOne { get; set; } = false;
+        public GroupCombinationMode AllowedGroupCombinations { get; set; } = GroupCombinationMode.None;
+        public LogicalKeyboardLayoutFlags LogicalKeyboardLayout { get; set; } = LogicalKeyboardLayoutFlags.None;
+        public bool DenyStrangeOrSameGroups
+        {
+            get => AllowedGroupCombinations != GroupCombinationMode.None &&
+                   !AllowedGroupCombinations.HasFlag(GroupCombinationMode.Strange) &&
+                   !AllowedGroupCombinations.HasFlag(GroupCombinationMode.Same);
+            set
+            {
+                if (value)
+                    AllowedGroupCombinations = GroupCombinationMode.Overlapping | GroupCombinationMode.OneInsideAnother;
+                else if (AllowedGroupCombinations == (GroupCombinationMode.Overlapping | GroupCombinationMode.OneInsideAnother))
+                    AllowedGroupCombinations = GroupCombinationMode.None;
+            }
+        }
+        public bool TwoKeybordsOnOne
+        {
+            get => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.CombinedOnSingleKeyboard);
+            set => LogicalKeyboardLayout = value
+                ? LogicalKeyboardLayout | LogicalKeyboardLayoutFlags.CombinedOnSingleKeyboard
+                : LogicalKeyboardLayout & ~LogicalKeyboardLayoutFlags.CombinedOnSingleKeyboard;
+        }
         public Direction? WhichHand { get; set; } = null;
-        public bool IsOnlyOneHand { get; set; } = false;
-        public bool IsSpecialColor { get; set; } = false;
+        public bool IsOnlyOneHand
+        {
+            get => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.OneHandOnly);
+            set => LogicalKeyboardLayout = value
+                ? LogicalKeyboardLayout | LogicalKeyboardLayoutFlags.OneHandOnly
+                : LogicalKeyboardLayout & ~LogicalKeyboardLayoutFlags.OneHandOnly;
+        }
+        public bool IsSpecialColor
+        {
+            get => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.SpecialColor);
+            set => LogicalKeyboardLayout = value
+                ? LogicalKeyboardLayout | LogicalKeyboardLayoutFlags.SpecialColor
+                : LogicalKeyboardLayout & ~LogicalKeyboardLayoutFlags.SpecialColor;
+        }
 
         // Optional value pools
         public List<int> addendsList { get; set; } = new();
@@ -342,6 +514,90 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool DelaysInput => SecondsTillAllowInput > 0;
         public int EffectiveMinAddend2 => MinAddend2 == PPWGamePlay.NAN ? MinAddend : MinAddend2;
         public int EffectiveMaxAddend2 => MaxAddend2 == PPWGamePlay.NAN ? MaxAddend : MaxAddend2;
+
+        public bool KeepsSumVisible => MissingValueConstraints.HasFlag(MissingValueConstraintFlags.KeepSumVisible);
+        public bool KeepsAtLeastOneAddendVisible => MissingValueConstraints.HasFlag(MissingValueConstraintFlags.KeepAtLeastOneAddendVisible);
+        public bool UsesCombinedLogicalKeyboard => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.CombinedOnSingleKeyboard);
+        public bool RestrictsLogicalKeyboardToOneHand => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.OneHandOnly);
+        public bool UsesSpecialLogicalKeyboardColors => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.SpecialColor);
+        public bool RequiresBothAddendsInput => HiddenValueCount == 2 && AllowedMissingValueTargets == MissingValueTargetFlags.Addends;
+
+        public bool TryGetLegacyVariableType(out VariableTypes variableType)
+        {
+            if (HiddenValueCount == 1 && AllowedMissingValueTargets == MissingValueTargetFlags.All)
+            {
+                variableType = VariableTypes.OneCanBeSum;
+                return true;
+            }
+
+            if (HiddenValueCount == 1 && AllowedMissingValueTargets == MissingValueTargetFlags.Addends)
+            {
+                variableType = VariableTypes.OneNoSum;
+                return true;
+            }
+
+            if (HiddenValueCount == 1 && AllowedMissingValueTargets == MissingValueTargetFlags.Sum)
+            {
+                variableType = VariableTypes.SumOnly;
+                return true;
+            }
+
+            if (HiddenValueCount == 2 && AllowedMissingValueTargets == MissingValueTargetFlags.Addends)
+            {
+                variableType = VariableTypes.TwoNoSum;
+                return true;
+            }
+
+            if (HiddenValueCount == 2 &&
+                AllowedMissingValueTargets == MissingValueTargetFlags.All &&
+                MissingValueConstraints.HasFlag(MissingValueConstraintFlags.KeepAtLeastOneAddendVisible))
+            {
+                variableType = VariableTypes.Three;
+                return true;
+            }
+
+            variableType = default;
+            return false;
+        }
+
+        private VariableTypes InferVariableType()
+        {
+            return TryGetLegacyVariableType(out VariableTypes variableType)
+                ? variableType
+                : VariableTypes.OneCanBeSum;
+        }
+
+        private void ApplyVariableType(VariableTypes value)
+        {
+            switch (value)
+            {
+                case VariableTypes.OneCanBeSum:
+                    AllowedMissingValueTargets = MissingValueTargetFlags.All;
+                    HiddenValueCount = 1;
+                    MissingValueConstraints = MissingValueConstraintFlags.None;
+                    break;
+                case VariableTypes.OneNoSum:
+                    AllowedMissingValueTargets = MissingValueTargetFlags.Addends;
+                    HiddenValueCount = 1;
+                    MissingValueConstraints = MissingValueConstraintFlags.None;
+                    break;
+                case VariableTypes.SumOnly:
+                    AllowedMissingValueTargets = MissingValueTargetFlags.Sum;
+                    HiddenValueCount = 1;
+                    MissingValueConstraints = MissingValueConstraintFlags.None;
+                    break;
+                case VariableTypes.TwoNoSum:
+                    AllowedMissingValueTargets = MissingValueTargetFlags.Addends;
+                    HiddenValueCount = 2;
+                    MissingValueConstraints = MissingValueConstraintFlags.None;
+                    break;
+                default:
+                    AllowedMissingValueTargets = MissingValueTargetFlags.All;
+                    HiddenValueCount = 2;
+                    MissingValueConstraints = MissingValueConstraintFlags.KeepAtLeastOneAddendVisible;
+                    break;
+            }
+        }
     }
 
 

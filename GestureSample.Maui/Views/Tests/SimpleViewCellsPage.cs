@@ -1,6 +1,7 @@
 ﻿using GestureSample.Debugging;
 using GestureSample.Maui;
 using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Models;
 using GestureSample.Maui.Views;
 using GestureSample.Views;
@@ -113,14 +114,20 @@ namespace GestureSample.Views.Tests
             if (_btnEquationHelp != null)
                 _btnEquationHelp.IsEnabled = enabled;
 
-            if (_btnNext != null && _btnCheck != null && _btnCheck.IsVisible)
-            {
-                _btnNext.IsEnabled = enabled ? (_gamePlay.GuessNumber > 0) : false;
+            if (_btnHelp != null)
+                _btnHelp.IsEnabled = enabled;
+
+            if (_btnPrev != null)
+                _btnPrev.IsEnabled = enabled && _previousPPW != null;
+
+            if (_btnPrevBelow != null)
+                _btnPrevBelow.IsEnabled = enabled && _previousPPW != null;
+
+            if (_btnNext != null)
+                _btnNext.IsEnabled = enabled && _btnCheck != null && _btnCheck.IsVisible ? (_gamePlay.GuessNumber > 0) : false;
+
+            if (_btnCheck != null && _btnCheck.IsVisible)
                 _btnCheck.IsEnabled = enabled;
-                if (_btnHelp != null) _btnHelp.IsEnabled = enabled;
-                if (_btnPrev != null) _btnPrev.IsEnabled = enabled && _previousPPW != null;
-                if (_btnPrevBelow != null) _btnPrevBelow.IsEnabled = enabled && _previousPPW != null;
-            }
         }
 
         private PlayUiState GetExerciseUiState(bool newExercise)
@@ -283,6 +290,9 @@ namespace GestureSample.Views.Tests
 
         // Added field for tutorial hand drawable view
         private GraphicsView handGraphicsView;
+        private HandDrawable _tutorialHandDrawable;
+        private bool _tutorialHandIsLeft;
+        private Grid _rootGrid;
 
         private readonly int FONT_SIZE_DEFAULT = 18;
         private readonly int TASK_WIDTH = 180;//TODO: if phone then make smaller and make answer keyboard only notSync
@@ -295,6 +305,9 @@ namespace GestureSample.Views.Tests
         private Entry _txtAddend2;
         private Entry _txtSum;
         private Label _lblAction;
+        private HorizontalStackLayout _logicalColorActionLayout;
+        private Label _logicalColorLeftArrow;
+        private Label _logicalColorRightArrow;
         private NumericKeypadView _numericKeypad;
         private BoxView _hr;
         private Entry[] txt;
@@ -345,6 +358,7 @@ namespace GestureSample.Views.Tests
         private Label _prevEqualsLabel;
         private const double EquationHelpRowSpacing = 16;
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
 
         //VerticalStackLayout _vsl;
         protected IDispatcherTimer timer;
@@ -730,7 +744,7 @@ namespace GestureSample.Views.Tests
                         _txtSum.IsEnabled ? 1 : 0);
 
                 }
-                if (_config.isHelpEntries || _config.isHelpThroughTen)
+                if (_config.HelpEntries || _config.HelpThroughTen)
                     for (int i = 0; i < txt.Length; i++)
                         txt[i].Text = "";
                 if (_config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
@@ -757,7 +771,7 @@ namespace GestureSample.Views.Tests
                         txt[0].Text = secondary.Addend2.ToString();
                     }
                 }
-                    if (_config.isHelpThroughTen)
+                    if (_config.HelpThroughTen)
                 {
                     txt[1].IsEnabled = true;
                     //if (_gamePlay.addend1 != PPWGamePlay.NAN)
@@ -792,18 +806,31 @@ namespace GestureSample.Views.Tests
                         OrderEntries(_hzlEquation, _txtAddend1, _txtSum);
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
-                    if (_config.TwoKeybordsOnOne)
+                    UpdateLogicalActionVisual((BitArrayGamePlay)_gamePlay);
+                    if (_config.UsesCombinedLogicalKeyboard)
                     {
 
                         _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion
     .Concat(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2).ToArray());
-                        if (_config.IsSpecialColor)
+                        if (_config.UsesSpecialLogicalKeyboardColors)
                             _keyboardTask1.SpecialColors();
                         _keyboardTask1.SetNoBorderBetweenRows();
                         _keyboardTask2.IsVisible = false;
                     }
                     else
                     {
+                        if (((BitArrayGamePlay)_gamePlay).CurrentOperation == Operation.GroupByColor)
+                        {
+                            _keyboardTask2.IsVisible = false;
+                            _keyboardTask1.HeightRequest = PIANO_HEIGHT2;
+                            _keyboardTask1.PianoInit(
+                                ((BitArrayGamePlay)_gamePlay).BitArrayQuestion,
+                                ((BitArrayGamePlay)_gamePlay).BitArrayQuestion2,
+                                Colors.Yellow,
+                                Colors.LightGreen);
+                        }
+                        else
+                        {
                         _keyboardTask2.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion2);
                         if (GameConfig.Operations.LogicalDual.Contains(((BitArrayGamePlay)_gamePlay).CurrentOperation))
                         {
@@ -818,16 +845,17 @@ namespace GestureSample.Views.Tests
                             _keyboardTask2.HeightRequest = PIANO_HEIGHT1;
                         }
                         _keyboardTask1.PianoInit(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
-                        if (_config.isOnlyKeyboard)//TODO: move to init method
+                        if (_config.KeyboardOnly)//TODO: move to init method
                             _keyboardTask1.IsVisible = false;
-                        if (_taskMainHost != null && (_config.IncludeTutorials || _config.isOnlyKeyboard))
+                        if (_taskMainHost != null && (_config.IncludeTutorials || _config.KeyboardOnly))
                         {
-                            if (_config.isOnlyKeyboard)
+                            if (_config.KeyboardOnly)
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                             if (_config.IncludeTutorials)
                             {
                                 await RunRecordedKeyboardTutorialAsync(_taskMainHost);
                             }
+                        }
                         }
                     }
                 }
@@ -840,12 +868,17 @@ namespace GestureSample.Views.Tests
 
                 if (_config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow)
                 {
+                    BitArrayGamePlay arrowGamePlay = (BitArrayGamePlay)_gamePlay;
                     _pianoKeyboard.RemoveArrows();
-                    Console.WriteLine("aboveNumver: {0}, length: {1}", ((BitArrayGamePlay)_gamePlay).aboveNumber, ((BitArrayGamePlay)_gamePlay).length);
+                    Console.WriteLine("aboveNumver: {0}, length: {1}", arrowGamePlay.aboveNumber, arrowGamePlay.length);
                     _pianoKeyboard.BackgroundColor = ShouldCycleArrowBackground()
                         ? GetArrowBackgroundColor()
                         : Colors.Black;
-                    _pianoKeyboard.AddArrow(((BitArrayGamePlay)_gamePlay).dir, ((BitArrayGamePlay)_gamePlay).aboveNumber, ((BitArrayGamePlay)_gamePlay).length);
+                    _pianoKeyboard.AddArrow(
+                        arrowGamePlay.dir,
+                        arrowGamePlay.aboveNumber,
+                        arrowGamePlay.length,
+                        labelTextOverride: arrowGamePlay.GetCurrentArrowLabelText());
                     //if (aboveNumber == 10) { _pianoKeyboard.AddArrow(dir, 0/*, _gamePlay.Sum*/); }
 
                 }
@@ -861,7 +894,8 @@ namespace GestureSample.Views.Tests
                 RefreshPreviousPreview();
                 if (_isKeyboard && !_config.FromNumToNum)
                 {
-                    _pianoKeyboard.PianoInit();
+                    if (!ApplyConfiguredKeyboardSeedState())
+                        _pianoKeyboard.PianoInit();
                 }
                 if (tasks.Count > 0) _ = Task.WhenAll(tasks);
 
@@ -1153,13 +1187,13 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null)
                 return;
 
-            if (targetEntry == _txtAddend1 && _config.VariableTypes == VariableTypes.TwoNoSum && IsEntryEditable(_txtAddend2))
+            if (targetEntry == _txtAddend1 && _config.RequiresBothAddendsInput && IsEntryEditable(_txtAddend2))
             {
                 SelectNumericEntry(_txtAddend2);
                 return;
             }
 
-            if (targetEntry == _txtSum || targetEntry == _txtAddend2 || _config.VariableTypes != VariableTypes.TwoNoSum)
+            if (targetEntry == _txtSum || targetEntry == _txtAddend2 || !_config.RequiresBothAddendsInput)
             {
                 CheckGamePlay();
                 return;
@@ -1182,7 +1216,141 @@ namespace GestureSample.Views.Tests
                    _config.QuestionOrder == QuestionOrder.CyclicalMixed;
         }
 
-       async Task Tutorial(KeyboardOverlayHost koh)
+        private bool UsesFullHandTutorial()
+        {
+            return _config.KeyboardConfig?.UseFullHandTutorial == true &&
+                   _pianoKeyboard?.KeyButtons?.Count >= 5;
+        }
+
+        private void EnsureTutorialHandOverlay(bool isLeftHand)
+        {
+            if (_rootGrid == null)
+                return;
+
+            if (handGraphicsView == null || _tutorialHandDrawable == null || _tutorialHandIsLeft != isLeftHand)
+            {
+                _tutorialHandIsLeft = isLeftHand;
+                _tutorialHandDrawable = new HandDrawable(isLeftHand)
+                {
+                    Bits = new[] { 1, 1, 1, 1, 1 },
+                    Position = new PointF(0, 0),
+                    Opacity = 0f
+                };
+
+                handGraphicsView = new GraphicsView
+                {
+                    Drawable = _tutorialHandDrawable,
+                    HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Fill,
+                    InputTransparent = true,
+                    ZIndex = 100
+                };
+            }
+            else
+            {
+                handGraphicsView.Drawable = _tutorialHandDrawable;
+            }
+
+            if (!_rootGrid.Children.Contains(handGraphicsView))
+            {
+                _rootGrid.Add(handGraphicsView);
+                Grid.SetRowSpan(handGraphicsView, _rootGrid.RowDefinitions.Count);
+                Grid.SetColumnSpan(handGraphicsView, _rootGrid.ColumnDefinitions.Count);
+            }
+        }
+
+        private PointF GetPointRelativeToRoot(VisualElement element, double xOffset = 0, double yOffset = 0)
+        {
+            double x = xOffset;
+            double y = yOffset;
+
+            VisualElement current = element;
+            while (current != null && current != _rootGrid)
+            {
+                x += current.X + current.TranslationX;
+                y += current.Y + current.TranslationY;
+                current = current.Parent as VisualElement;
+            }
+
+            return new PointF((float)x, (float)y);
+        }
+
+        private async Task RunFullHandTutorialAsync(bool[] questionBits)
+        {
+            if (_pianoKeyboard == null || _rootGrid == null || questionBits == null || questionBits.Length == 0)
+                return;
+
+            var activeIndices = questionBits
+                .Select((value, index) => new { value, index })
+                .Where(x => x.value)
+                .Select(x => x.index)
+                .ToList();
+
+            if (activeIndices.Count == 0)
+            {
+                if (handGraphicsView != null && _tutorialHandDrawable != null)
+                {
+                    _tutorialHandDrawable.Opacity = 1f;
+                    PointF downPoint = new((float)(_tutorialHandDrawable.Position.X), (float)(_rootGrid.Height + 40));
+                    await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, downPoint, TimeSpan.FromMilliseconds(260));
+                    await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(180));
+                }
+                return;
+            }
+
+            int keyCount = _pianoKeyboard.KeyButtons.Count;
+            bool isLeftHand = activeIndices.Average() < ((keyCount - 1) / 2.0);
+            EnsureTutorialHandOverlay(isLeftHand);
+            if (handGraphicsView == null || _tutorialHandDrawable == null)
+                return;
+
+            await Task.Delay(40);
+
+            int windowSize = Math.Min(5, keyCount);
+            int centerIndex = (activeIndices.First() + activeIndices.Last()) / 2;
+            int windowStart = Math.Clamp(centerIndex - (windowSize / 2), 0, Math.Max(0, keyCount - windowSize));
+            int windowEnd = Math.Min(keyCount - 1, windowStart + windowSize - 1);
+
+            int[] targetBits = new int[5];
+            for (int i = 0; i < windowSize; i++)
+            {
+                int sourceIndex = windowStart + i;
+                bool isActive = sourceIndex < questionBits.Length && questionBits[sourceIndex];
+                int handIndex = isLeftHand ? (windowSize - 1 - i) : i;
+                targetBits[handIndex] = isActive ? 1 : 0;
+            }
+
+            var startButton = _pianoKeyboard.KeyButtons[windowStart];
+            var endButton = _pianoKeyboard.KeyButtons[windowEnd];
+            PointF startPoint = GetPointRelativeToRoot(startButton, startButton.Width / 2, 0);
+            PointF endPoint = GetPointRelativeToRoot(endButton, endButton.Width / 2, 0);
+            PointF keyboardTop = GetPointRelativeToRoot(startButton, 0, 0);
+
+            float desiredWidth = Math.Max(150f, endPoint.X - startPoint.X + (float)startButton.Width * 1.2f);
+            float desiredHeight = Math.Max(120f, desiredWidth * 0.7f);
+            float targetX = ((startPoint.X + endPoint.X) / 2f) - (desiredWidth / 2f);
+            float targetY = keyboardTop.Y - desiredHeight * 0.12f;
+
+            _tutorialHandDrawable.DesiredWidth = desiredWidth;
+            _tutorialHandDrawable.DesiredHeight = desiredHeight;
+            _tutorialHandDrawable.Bits = new[] { 1, 1, 1, 1, 1 };
+            _tutorialHandDrawable.Opacity = 1f;
+
+            PointF riseStart = new(targetX, (float)(_rootGrid.Height + desiredHeight));
+            PointF target = new(targetX, targetY);
+            _tutorialHandDrawable.Position = riseStart;
+            handGraphicsView.Invalidate();
+
+            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(520));
+            await Task.Delay(120);
+            _tutorialHandDrawable.Bits = targetBits;
+            handGraphicsView.Invalidate();
+            await Task.Delay(900);
+            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, riseStart, TimeSpan.FromMilliseconds(320));
+            await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(160));
+        }
+
+        async Task Tutorial(KeyboardOverlayHost koh)
         {
             var gp = (BitArrayGamePlay)_gamePlay;
             bool[] tutorialAnswer = gp.GetTutorialAnswerBits();
@@ -1191,6 +1359,20 @@ namespace GestureSample.Views.Tests
 
             koh.SyncOverlay();
             await koh.EnsureOverlaySyncedAsync();
+
+            if (UsesFullHandTutorial())
+            {
+                await koh.FadeStaticOverlayAlphaAsync(0.22f, 180, "TutStaticDimIn");
+                try
+                {
+                    await RunFullHandTutorialAsync(gp.GetTutorialQuestionBits());
+                }
+                finally
+                {
+                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 180, "TutStaticDimOut");
+                }
+                return;
+            }
 
             if (UsesCyclicalTutorial())
             {
@@ -1229,6 +1411,21 @@ namespace GestureSample.Views.Tests
                 try
                 {
                     await koh.PulseBitsAsync(tutorialAnswer, fadeInMs: 280, holdMs: 2200, fadeOutMs: 380);
+                }
+                finally
+                {
+                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 220, "TutStaticDimOut");
+                }
+                return;
+            }
+
+            if (gp.CurrentOperation == Operation.GroupByColor)
+            {
+                await koh.FadeStaticOverlayAlphaAsync(0.18f, 220, "TutStaticDimIn");
+                try
+                {
+                    await koh.PulseBitsAsync(gp.GetPrimaryColorTargetBits(), Colors.Yellow, fadeInMs: 280, holdMs: 900, fadeOutMs: 260, animName: "TutColorLeft");
+                    await koh.PulseBitsAsync(gp.GetSecondaryColorTargetBits(), Colors.LightGreen, fadeInMs: 280, holdMs: 900, fadeOutMs: 260, animName: "TutColorRight");
                 }
                 finally
                 {
@@ -1293,6 +1490,27 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private void UpdateLogicalActionVisual(BitArrayGamePlay gp)
+        {
+            if (_lblAction == null || _logicalColorActionLayout == null || gp == null)
+                return;
+
+            if (gp.CurrentOperation != Operation.GroupByColor)
+            {
+                _lblAction.IsVisible = true;
+                _logicalColorActionLayout.IsVisible = false;
+                _lblAction.Text = gp.CurrentOperation.ToDString();
+                return;
+            }
+
+            _lblAction.IsVisible = false;
+            _logicalColorActionLayout.IsVisible = true;
+
+            bool primaryLeft = gp.IsPrimaryColorAssignedToLeft;
+            _logicalColorLeftArrow.TextColor = primaryLeft ? Colors.Yellow : Colors.LightGreen;
+            _logicalColorRightArrow.TextColor = primaryLeft ? Colors.LightGreen : Colors.Yellow;
+        }
+
         private Color GetArrowBackgroundColor()
         {
             int groupIndex = Math.Max(0, (_gamePlay._questionNumber - 1) / 3);
@@ -1324,6 +1542,7 @@ namespace GestureSample.Views.Tests
             Title = config.GameName;
             _config = config;
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             if (_config.NumberOfTasksToWin > -1)
             {
                 TimerInit();
@@ -1561,7 +1780,8 @@ namespace GestureSample.Views.Tests
                 ? Statement.Win(completion.Duration)
                 : Statement.Lose();
 
-            Application.Current.MainPage = new NavigationPage(new ShowDataXaml(false, completion.GameId));
+            Page dataPage = await ShowDataRoutingHelper.CreatePageForGameAsync(completion.GameId);
+            Application.Current.MainPage = new NavigationPage(dataPage);
             await winLoseTask;
         }
 
@@ -1576,7 +1796,9 @@ namespace GestureSample.Views.Tests
         private async Task GenerateNextExerciseAsync()
         {
             ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
+            _pianoKeyboard?.RefreshKeyCaptions();
             await UpdateView(true, generatedExercise: generatedExercise);
+            await PersistVisibleQuestionPartsAsync();
             if (generatedExercise.PersistenceTask != null)
                 await generatedExercise.PersistenceTask;
             if (_isKeyboard)
@@ -1587,11 +1809,85 @@ namespace GestureSample.Views.Tests
                 {
                     _pianoKeyboard.IsEnabled = true;
                 }
-                else
-                {
-                    _pianoKeyboard.PianoInit();
-                }
             }
+        }
+
+        private bool ApplyConfiguredKeyboardSeedState()
+        {
+            if (!_isKeyboard || _pianoKeyboard == null)
+                return false;
+
+            Color[]? initialColors = _gamePlay.GetInitialKeyboardColors();
+            if (initialColors == null || initialColors.Length == 0)
+                return false;
+
+            _pianoKeyboard.PianoInit(initialColors);
+            return true;
+        }
+
+        private async Task PersistVisibleQuestionPartsAsync()
+        {
+            if (_questionAnswerPartRepository == null)
+                return;
+
+            await _questionAnswerPartRepository.ReplaceForQuestionAsync(
+                _gamePlay.GameId.ToString(),
+                _gamePlay._questionNumber,
+                BuildVisibleQuestionParts());
+        }
+
+        private List<QuestionAnswerPart> BuildVisibleQuestionParts()
+        {
+            List<QuestionAnswerPart> parts = new();
+            if (!_isThreeTexts || txt == null || txt.Length == 0)
+                return parts;
+
+            void AddPart(Entry? entry, int rowIndex, int columnIndex)
+            {
+                if (entry == null || !entry.IsVisible)
+                    return;
+
+                string valueText = entry.Text?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(valueText))
+                    return;
+
+                parts.Add(new QuestionAnswerPart
+                {
+                    RowIndex = rowIndex,
+                    ColumnIndex = columnIndex,
+                    ValueText = valueText,
+                    IsEnabled = entry.IsEnabled
+                });
+            }
+
+            if (_config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
+            {
+                AddPart(txt.ElementAtOrDefault(0), 0, 0);
+                AddPart(txt.ElementAtOrDefault(1), 0, 1);
+                return parts;
+            }
+
+            if (_config.UIQuestionType == UIQuestionType.ThreeAddends)
+            {
+                AddPart(txt.ElementAtOrDefault(0), 0, 0);
+                return parts;
+            }
+
+            if (_config.HelpEntries || _config.HelpThroughTen)
+            {
+                AddPart(txt.ElementAtOrDefault(0), 0, 0);
+                AddPart(txt.ElementAtOrDefault(1), 0, 1);
+            }
+
+            if (_config.HelpEntries || _config.HelpThroughTen)
+            {
+                AddPart(txt.ElementAtOrDefault(2), 1, 0);
+                AddPart(txt.ElementAtOrDefault(3), 1, 1);
+                AddPart(txt.ElementAtOrDefault(4), 1, 2);
+                AddPart(txt.ElementAtOrDefault(5), 1, 3);
+            }
+
+            return parts;
         }
 
 
@@ -1614,6 +1910,7 @@ namespace GestureSample.Views.Tests
                 new ColumnDefinition()
             }
             };
+            _rootGrid = grid;
 
             grid.Add(new BoxView
             {
@@ -1718,7 +2015,7 @@ namespace GestureSample.Views.Tests
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
                     };
-                    if (_config.isHelpThroughTen)
+                    if (_config.HelpThroughTen)
                     {
                         txt[0].IsEnabled = false;
                         txt[1].IsEnabled = false;
@@ -1744,12 +2041,12 @@ namespace GestureSample.Views.Tests
                         _txtAddend2.WidthRequest = TASK_WIDTH / 3;
                     }
 
-                    if (_config.isHelpEntries || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
+                    if (_config.HelpEntries || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                     if (_config.UIQuestionType != UIQuestionType.TwoLinesTwoAddends)
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtSum } });
 
-                    if (_config.isHelpThroughTen)
+                    if (_config.HelpThroughTen)
                     {
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[0], txt[1] } });
                         //vsl.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { lbl2, txt[3] , lbl4 } });
@@ -1760,7 +2057,7 @@ namespace GestureSample.Views.Tests
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, txt[0], _txtAddend2 } });
                     else
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
-                    if (_config.isHelpEntries)
+                    if (_config.HelpEntries)
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
                 }
 
@@ -1835,58 +2132,7 @@ namespace GestureSample.Views.Tests
                 if (_config.IncludeTutorials)
                 {
                     Debug.WriteLine("Starting tutorial hand animation...");
-
-
-
-
-
-                    // create the drawable
-                    var hand = new HandDrawable(isLeftHand: false)
-                    {
-                        Bits = new[] { 1, 1, 1, 1, 1 },
-                        Position = new PointF(0, 0),
-                        Opacity = 0f
-                    };
-
-                    // create a full-screen overlay GraphicsView so hand coordinates are page-relative
-                    handGraphicsView ??= new GraphicsView
-                    {
-                        Drawable = hand,
-                        HorizontalOptions = LayoutOptions.Fill,
-                        VerticalOptions = LayoutOptions.Fill,
-                        //BackgroundColor = Colors.Red.WithAlpha(0.30f),
-                        InputTransparent = true, // let touches pass through
-                        // ensure it renders above other content
-                        ZIndex = 100
-                    };
-
-
-
-                    // add overlay to grid (span all rows/columns so it floats above everything)
-                    if (!grid.Children.Contains(handGraphicsView))
-                    {
-                        grid.Add(handGraphicsView);
-                        Grid.SetRowSpan(handGraphicsView, grid.RowDefinitions.Count);
-                        Grid.SetColumnSpan(handGraphicsView, grid.ColumnDefinitions.Count);
-                    }
-
-                    // Wait for layout (size) then center the hand and force redraw
-                    void OnSizeChanged(object? s, EventArgs e)
-                    {
-                        if (handGraphicsView.Width > 0 && handGraphicsView.Height > 0)
-                        {
-                            hand.Position = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
-                            handGraphicsView.Invalidate();
-                            handGraphicsView.SizeChanged -= OnSizeChanged;
-                        }
-                    }
-                    handGraphicsView.SizeChanged += OnSizeChanged;
-
-
-                    // Wait a short time for layout to settle so overlay has a valid size, then animate to center
-                    // await Task.Delay(50);
-                    var target = new PointF((float)(handGraphicsView.Width / 2.0), (float)(handGraphicsView.Height / 2.0));
-                    //   await hand.ShowMoveHideAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(8000), TimeSpan.FromMilliseconds(2500));
+                    EnsureTutorialHandOverlay(isLeftHand: false);
                 }
             }
             if (_config.UIQuestionType == UIQuestionType.CanvasesHands)
@@ -2098,16 +2344,39 @@ namespace GestureSample.Views.Tests
                 FontSize = 40,
                 TextColor = Colors.Black
             };
+            _logicalColorLeftArrow = new Label
+            {
+                Text = "\u2190",
+                FontSize = 34,
+                TextColor = Colors.Yellow,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+            _logicalColorRightArrow = new Label
+            {
+                Text = "\u2192",
+                FontSize = 34,
+                TextColor = Colors.LightGreen,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+            _logicalColorActionLayout = new HorizontalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                Spacing = 26,
+                IsVisible = false,
+                Children = { _logicalColorLeftArrow, _logicalColorRightArrow }
+            };
             KeyboardConfig config1 = new KeyboardConfig
             {
                 Rows = 1,
                 KeysInRow = _config.KeyboardConfig.KeysInRow
             };
-            if (_config.TwoKeybordsOnOne) config1.Rows = 2;
+            if (_config.UsesCombinedLogicalKeyboard) config1.Rows = 2;
             _keyboardTask1 = new PianoKeyboardReadOnly(config1)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = (_config.TwoKeybordsOnOne) ? (PIANO_HEIGHT2 * 2) + 5 : PIANO_HEIGHT2
+                HeightRequest = (_config.UsesCombinedLogicalKeyboard) ? (PIANO_HEIGHT2 * 2) + 5 : PIANO_HEIGHT2
             };
 
             _task2Host = new KeyboardOverlayHost(_keyboardTask2);
@@ -2116,7 +2385,12 @@ namespace GestureSample.Views.Tests
 
             //vsl.Add(_keyboardTask2);
             vsl.Add(_task2Host);
-            vsl.Add(_lblAction);
+            vsl.Add(new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                Spacing = 2,
+                Children = { _lblAction, _logicalColorActionLayout }
+            });
             vsl.Add(_task1Host);//vsl.Add(_keyboardTask1);
             return vsl;
         }
@@ -2307,7 +2581,7 @@ namespace GestureSample.Views.Tests
             };
             _txtAddend1.Completed += (sender, e) =>
             {
-                if (_config.VariableTypes != VariableTypes.TwoNoSum)
+                if (!_config.RequiresBothAddendsInput)
                     CheckGamePlay();
                 else
                     _txtAddend2.Focus();

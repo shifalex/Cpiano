@@ -98,6 +98,41 @@ namespace GestureSample.Maui.Data
             await _database.InsertAsync(pendingClone);
         }
 
+        public async Task ReplaceForGameAsync(string gameId, IEnumerable<KeyboardQuestion> questions)
+        {
+            await _database.ExecuteAsync("DELETE FROM KeyboardQuestion WHERE GameId = ?", gameId);
+
+            if (questions == null)
+                return;
+
+            foreach (KeyboardQuestion question in questions.OrderBy(item => item.QuestionNumber).ThenBy(item => item.AttemptNumber).ThenBy(item => item.Time))
+            {
+                KeyboardQuestion localQuestion = CloneAttemptQuestion(
+                    question,
+                    question.AttemptNumber,
+                    question.SubmittedKeyboard,
+                    question.SubmittedTime,
+                    question.ResultStatus,
+                    question.WasTutorialUsed);
+
+                localQuestion.QuestionID = 0;
+                localQuestion.Time = question.Time;
+                localQuestion.UserId = question.UserId;
+                localQuestion.aboveNumber = question.aboveNumber;
+                localQuestion.length = question.length;
+                localQuestion.MoveByLength = question.MoveByLength;
+                localQuestion.KeyboardRows = question.KeyboardRows;
+                localQuestion.KeyboardKeysInRow = question.KeyboardKeysInRow;
+                localQuestion.keyboard1 = question.keyboard1?.ToArray();
+                localQuestion.keyboard2 = question.keyboard2?.ToArray();
+                localQuestion.dir = question.dir;
+                localQuestion.MoveByDirection = question.MoveByDirection;
+                localQuestion.Op = question.Op;
+
+                await _database.InsertAsync(localQuestion);
+            }
+        }
+
         private static KeyboardQuestion CloneAttemptQuestion(
             KeyboardQuestion sourceQuestion,
             int attemptNumber,

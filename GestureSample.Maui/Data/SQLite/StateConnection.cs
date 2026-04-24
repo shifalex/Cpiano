@@ -36,9 +36,12 @@ namespace GestureSample.Maui.Data.SQLite
             Console.WriteLine($"Database created successfully");
 
             await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
+            await CreateTableAsync<QuestionAnswerPart>().ConfigureAwait(false);
             await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
             await CreateTableAsync<Game>().ConfigureAwait(false);
             await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
+            await CreateTableAsync<CustomStageDefinition>().ConfigureAwait(false);
+            await CreateTableAsync<CustomStageFlowDefinition>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
