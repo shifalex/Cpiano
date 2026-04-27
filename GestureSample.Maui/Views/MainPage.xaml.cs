@@ -1071,11 +1071,26 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
 
             TextBoxesQuantity = 1,
+            SecondsPressingToAnswer=-2,
             WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
             ShowNumbersOnKeys = true
         }
     })),
+     new PageConfig("Weighted Keyboard", "Weighted one number binary bit array -EASY", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted one number binary bit array",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =32, MaxAddend=16,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
 
+            TextBoxesQuantity = 1,
+            WeightsArray = new[] { 16,8,4,2,1, 1, 2, 4,8,16 },
+            SecondsPressingToAnswer=-1,
+            ShowNumbersOnKeys = true
+        }
+    })),
     new PageConfig("Weighted Keyboard", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Weighted one number binary bit array",
@@ -1087,6 +1102,31 @@ namespace GestureSample.Views
 
             TextBoxesQuantity = 1,
             WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
+            SecondsPressingToAnswer=-2,
+            ShowNumbersOnKeys = true
+        }
+    })),
+      new PageConfig("Weighted Keyboard", "Weighted Multiplication -EASY", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted Multiplication",
+        UIQuestionType = UIQuestionType.OneText,
+        MinAddend = 2,
+        MaxAddend = 10,
+        MinAddend2 = 2,
+        MaxAddend2 = 5,
+        MinSum = 4,
+        MaxSum = 25,
+        OperationList = new() { Operation.Multiplication },
+        DefaultTriad = new PPWObject(2, 2, 4),
+        VariableTypes = VariableTypes.TwoNoSum,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            SecondsPressingToAnswer=-1,
+            WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
+            UseDynamicMultiplicationWeights = true,
             ShowNumbersOnKeys = true
         }
     })),
@@ -1102,11 +1142,14 @@ namespace GestureSample.Views
         MinSum = 4,
         MaxSum = 100,
         OperationList = new() { Operation.Multiplication },
+        DefaultTriad = new PPWObject(2, 2, 4),
+        VariableTypes = VariableTypes.TwoNoSum,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
 
             TextBoxesQuantity = 1,
+            SecondsPressingToAnswer=-1,
             WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
             UseDynamicMultiplicationWeights = true,
             ShowNumbersOnKeys = true
@@ -1560,7 +1603,9 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            SecondsPressingToAnswer=-1,
+            UsePermutationTraceColors = true
         }
     })),
     new PageConfig("->", "-> -> ?", () => new SimpleViewCellsPage(new GameConfig
@@ -1572,6 +1617,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             IsArrow = true,
+            SecondsPressingToAnswer=-1,
             MaskThirdArrowAfterCycleCount = 4
         }
     })),
@@ -1583,7 +1629,9 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            SecondsPressingToAnswer=-1,
+            UsePermutationTraceColors = true
         }
     })),
     new PageConfig("->", "From Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
@@ -1674,6 +1722,30 @@ namespace GestureSample.Views
         RepeatingTimesOfTriad = 2,
         NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
+    })),
+    new PageConfig("+ -", "PPW -> + -> - same triad", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW -> + -> - same triad",
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        OperationList = new() { Operation.Sum, Operation.Minus },
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        EnforceOperationLabel = true,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        Plan = new ExercisePlan
+        {
+            Steps = new()
+            {
+                new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Minus, OpMode = PlanOpMode.Fixed }
+            },
+            Loop = true
+        }
     })),
     new PageConfig("+ -", "Level 1   - Sum<10", () => new SimpleViewCellsPage(new GameConfig
     {
