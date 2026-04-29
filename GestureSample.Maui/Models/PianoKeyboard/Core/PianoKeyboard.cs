@@ -1,6 +1,7 @@
 ﻿using MR.Gestures;
 using MvvmCross.Base;
 using GestureSample.Maui.Data;
+using GestureSample.Maui.Data.SQLite;
 using Microsoft.Maui.Layouts;
 
 
@@ -27,15 +28,34 @@ namespace GestureSample.Maui.Models
 
 
         protected readonly KeyboardConfig _pianoConfig;
+        public event Action? HeadingTapped;
 
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
         private readonly KeyEventRepository _keyEventRepository;
+        private readonly VisibilityChangeEventRepository _visibilityChangeEventRepository;
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
         protected virtual Color TraceSecondColor => SECOND_COLOR.WithAlpha(0.82f);
         protected virtual Color TraceThirdColor => THIRD_COLOR.WithAlpha(0.7f);
+        private Microsoft.Maui.Controls.Entry? _headerResultEntry;
+        private bool _headerResultInitiallyVisible;
+        private bool _headerResultVisible;
+
+        private void EnsureAllKeyTextIsBlack()
+        {
+            if (btnKeys == null)
+                return;
+
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                btnKeys[i].TextColor = Colors.Black;
+                btnKeys[i].Opacity = 1;
+            }
+
+            NormalizeAllPianoKeyVisuals();
+        }
 
         protected virtual void AddDummies()
         {
@@ -46,19 +66,24 @@ namespace GestureSample.Maui.Models
                 if (_pianoConfig.DummiesArray != null && dummiesArray.Length > i && dummiesArray[i] > -1)
                 {
                     //btnKeys[i].Opacity = 0.5;
-                    btnKeys[i].IsEnabled = false;
+                    btnKeys[i].IsEnabled = true;
+                    btnKeys[i].InputTransparent = true;
+                    btnKeys[i].TextColor = Colors.Black;
                     btnKeys[i].BackgroundColor = dummiesArray[i] == 1 ? COLOR_PRESSED : COLOR_FREE;
                 }
                 else
                 {
                     btnKeys[i].Opacity = 1;
                     btnKeys[i].IsEnabled = true;
+                    btnKeys[i].InputTransparent = false;
+                    btnKeys[i].TextColor = Colors.Black;
                     btnKeys[i].BackgroundColor = colors[i];
                 }
                 // btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
                 // btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
 
             }
+            EnsureAllKeyTextIsBlack();
         }
 
         //TODO: add constructor for 20 keys and for keyboard questions
@@ -144,6 +169,7 @@ After:
             _soundService =  ServiceHelper.GetService<SoundService>();
             _soundService.Mode = pianoConfig.IsVoice?2:1;//TODO:make an enum
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
+            _visibilityChangeEventRepository = ServiceHelper.GetService<VisibilityChangeEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
@@ -228,6 +254,8 @@ After:
             if (textBoxesQuantity > 0)
             {
                 Microsoft.Maui.Controls.Entry[] a_array = new Microsoft.Maui.Controls.Entry[3];
+                bool canToggleSumHeaderVisibility = CanToggleSumHeaderVisibility(textBoxesQuantity);
+                bool canToggleFromHeader = CanToggleAnswerTimePanelFromHeader() && !canToggleSumHeaderVisibility;
                 for (int i = 0; i < a_array.Length; i++)
                 {
                     a_array[i] = new()
@@ -242,11 +270,21 @@ After:
                         VerticalOptions = LayoutOptions.Center,
                         BindingContext = this
                     };
+
+                    if (canToggleFromHeader)
+                        a_array[i].GestureRecognizers.Add(CreateHeaderTapGesture());
                 }
                 a_array[0].IsVisible = textBoxesQuantity >= 2; a_array[0].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend1));
                 a_array[1].IsVisible = textBoxesQuantity >= 2; a_array[1].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Addend2));
                 a_array[2].IsVisible = textBoxesQuantity == 1 || textBoxesQuantity == 3;
                 a_array[2].SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, nameof(Sum));
+                _headerResultInitiallyVisible = a_array[2].IsVisible;
+                _headerResultVisible = _headerResultInitiallyVisible;
+                _headerResultEntry = a_array[2];
+                if (canToggleSumHeaderVisibility)
+                {
+                    _headerResultEntry.GestureRecognizers.Add(CreateHeaderResultVisibilityTapGesture());
+                }
 
                 Microsoft.Maui.Controls.HorizontalStackLayout hzl = new()
                 {
@@ -257,15 +295,25 @@ After:
                     a_array[1]
                 };
                 hzl.HorizontalOptions = LayoutOptions.Center;
+                hzl.VerticalOptions = LayoutOptions.Center;
+                if (canToggleFromHeader)
+                    hzl.GestureRecognizers.Add(CreateHeaderTapGesture());
                 Microsoft.Maui.Controls.Grid g = new();
                 g.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });
-                g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
                 g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Star) });
-                g.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(85) });
-                g.Add(hzl, 1); 
-                this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
+                g.Add(hzl, 0, 0);
                 g.HorizontalOptions = LayoutOptions.Fill;
-                this.Add(g, 0);
+                g.VerticalOptions = LayoutOptions.Start;
+                g.InputTransparent = !canToggleFromHeader;
+                if (canToggleFromHeader)
+                    g.GestureRecognizers.Add(CreateHeaderTapGesture());
+                g.ZIndex = 50;
+                if (canToggleFromHeader)
+                    g.SetBinding(Microsoft.Maui.Controls.Grid.PaddingProperty, new Binding(nameof(Padding), source: this));
+                Microsoft.Maui.Controls.Grid.SetRow(g, 0);
+                Microsoft.Maui.Controls.Grid.SetColumn(g, 0);
+                Microsoft.Maui.Controls.Grid.SetColumnSpan(g, ColumnDefinitions.Count);
+                Children.Add(g);
             }
             else
             {
@@ -327,11 +375,67 @@ After:
 
                 // the grid must allow children to spill out (needed only once)
                 IsClippedToBounds = false;*/
-                this.SetColumnSpan(g, pianoConfig.KeysInRow + 1);
                 g.HorizontalOptions = LayoutOptions.Fill;
-                this.Add(g, 0);
+                g.VerticalOptions = LayoutOptions.Start;
+                Microsoft.Maui.Controls.Grid.SetRow(g, 0);
+                Microsoft.Maui.Controls.Grid.SetColumn(g, 0);
+                Microsoft.Maui.Controls.Grid.SetColumnSpan(g, ColumnDefinitions.Count);
+                Children.Add(g);
 
             }
+        }
+
+        private bool CanToggleAnswerTimePanelFromHeader()
+        {
+            return _pianoConfig.AllowAnswerTimePanelToggleFromKeyboardHeader;
+        }
+
+        private bool CanToggleSumHeaderVisibility(int textBoxesQuantity)
+        {
+            return _pianoConfig.AllowSumHeaderVisibilityToggle &&
+                   (textBoxesQuantity == 1 || textBoxesQuantity == 3);
+        }
+
+        private TapGestureRecognizer CreateHeaderTapGesture()
+        {
+            TapGestureRecognizer tapRecognizer = new();
+            tapRecognizer.Tapped += (_, _) => HeadingTapped?.Invoke();
+            return tapRecognizer;
+        }
+
+        private TapGestureRecognizer CreateHeaderResultVisibilityTapGesture()
+        {
+            TapGestureRecognizer tapRecognizer = new();
+            tapRecognizer.Tapped += async (_, _) => await ToggleHeaderResultVisibilityAsync("HeaderResultTap");
+            return tapRecognizer;
+        }
+
+        private async Task ToggleHeaderResultVisibilityAsync(string source)
+        {
+            if (!_headerResultInitiallyVisible || _headerResultEntry == null)
+                return;
+
+            bool previousVisibility = _headerResultVisible;
+            bool nextVisibility = !previousVisibility;
+            _headerResultVisible = nextVisibility;
+            _headerResultEntry.IsVisible = nextVisibility;
+
+            if (_visibilityChangeEventRepository == null)
+                return;
+
+            VisibilityChangeEvent visibilityEvent = new()
+            {
+                GameId = _gamePlay.GameId.ToString(),
+                QuestionNumber = _gamePlay._questionNumber,
+                EventTime = DateTime.Now,
+                Target = "HeaderResult",
+                WasVisible = previousVisibility,
+                IsVisible = nextVisibility,
+                WasInitiallyVisible = _headerResultInitiallyVisible,
+                Source = source
+            };
+
+            await _visibilityChangeEventRepository.SaveAsync(visibilityEvent);
         }
 
         public virtual void PianoInit()
@@ -344,6 +448,7 @@ After:
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
+                btnKeys[i].TextColor = Colors.Black;
                 btnKeys[i].BackgroundColor = initColors[i]?COLOR_PRESSED:COLOR_FREE;
                 if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
                 {
@@ -357,6 +462,7 @@ After:
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             SaveColors();
             AddDummies();
+            EnsureAllKeyTextIsBlack();
         }
 
         public new void PianoInit(bool[] array)
@@ -400,6 +506,7 @@ After:
             OnPropertyChanged(nameof(Addend2));
             OnPropertyChanged(nameof(Sum));
             SaveColors();
+            EnsureAllKeyTextIsBlack();
         }
 
         //Spatial
@@ -465,7 +572,7 @@ After:
 
         protected bool UsePermutationTraceColors()
         {
-            return Config.UsePermutationTraceColors;
+            return false;
         }
 
         private bool UsesSecondColorEntryMode()
@@ -732,6 +839,9 @@ After:
             
             if (!IsEnabled) { return; }
             MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
+            sender.TextColor = Colors.Black;
+            sender.Opacity = 1;
+            NormalizePianoKeyVisual(sender);
             Color prevColor = sender.BackgroundColor;
             if ((isDown ? InnerKeyDown(sender) : InnerKeyUp(sender)) && _patterns)
             {
@@ -763,9 +873,10 @@ After:
                 if (stopCorrectSound)
                         _soundService.StopVoiceAsync(12);
             }
-            
+
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
+            EnsureAllKeyTextIsBlack();
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
             int keyNumber = 0;
             int row = 0;
@@ -781,6 +892,12 @@ After:
             {
                 await SaveStateAsync(isDown ? 1 : 0, keyNumber, row, relativeX, relativeY);
             }
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                NormalizePianoKeyVisual(sender);
+                EnsureAllKeyTextIsBlack();
+            });
         }
     }
 }

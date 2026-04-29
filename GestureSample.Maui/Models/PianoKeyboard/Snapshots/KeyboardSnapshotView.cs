@@ -2,6 +2,11 @@ namespace GestureSample.Maui.Models
 {
     public sealed class KeyboardSnapshotView : ContentView
     {
+        public KeyboardSnapshotView()
+        {
+            InputTransparent = true;
+        }
+
         public static readonly BindableProperty KeysProperty =
             BindableProperty.Create(nameof(Keys), typeof(bool[]), typeof(KeyboardSnapshotView), default(bool[]), propertyChanged: OnSnapshotChanged);
 
@@ -131,6 +136,7 @@ namespace GestureSample.Maui.Models
                 MinimumWidthRequest = Compact ? compactWidth : regularWidth,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true,
                 Scale = 1,
                 Margin = hasArrow ? new Thickness(0, 4, 0, 0) : Thickness.Zero
             };

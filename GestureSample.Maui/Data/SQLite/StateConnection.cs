@@ -40,6 +40,8 @@ namespace GestureSample.Maui.Data.SQLite
             await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
             await CreateTableAsync<Game>().ConfigureAwait(false);
             await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
+            await CreateTableAsync<TimerChangeEvent>().ConfigureAwait(false);
+            await CreateTableAsync<VisibilityChangeEvent>().ConfigureAwait(false);
             await CreateTableAsync<CustomStageDefinition>().ConfigureAwait(false);
             await CreateTableAsync<CustomStageFlowDefinition>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);

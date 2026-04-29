@@ -55,6 +55,8 @@ public static class MauiProgram
         builder.Services.AddTransient<KeyboardQuestionRepository>();
         builder.Services.AddTransient<GameRepository>();
         builder.Services.AddTransient<KeyEventRepository>();
+        builder.Services.AddTransient<TimerChangeEventRepository>();
+        builder.Services.AddTransient<VisibilityChangeEventRepository>();
         builder.Services.AddTransient<CustomStageDefinitionRepository>();
         builder.Services.AddTransient<CustomStageFlowDefinitionRepository>();
         Console.WriteLine("c");

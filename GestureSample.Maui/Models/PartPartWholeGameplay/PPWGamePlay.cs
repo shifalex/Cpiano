@@ -225,6 +225,11 @@ namespace GestureSample.Maui.Models
             _questionNumber++;
         }
 
+        public void ResetStatusToNeutral()
+        {
+            _status = Statement.Neutral;
+        }
+
         protected void IncrementGuessNumber()
         {
             _guessNumber++;
@@ -657,6 +662,8 @@ namespace GestureSample.Maui.Models
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevPPWQuestion.HasValue)
                 {
                     RestorePrevPPWQuestion();
+                    if (step.OpMode == PlanOpMode.Fixed)
+                        CurrentOperation = step.Operation;
                     return;
                 }
 
@@ -986,17 +993,23 @@ namespace GestureSample.Maui.Models
 
                 if (IsFirstGuess)
                 {
-                    factors[0] = Config.DefaultTriad.Addend1;
-                    factors[1] = Config.DefaultTriad.Addend2;
-                    factors[2] = Config.DefaultTriad.Sum;
+                    if (Config.DefaultTriad != null &&
+                        Config.DefaultTriad.Addend1 * Config.DefaultTriad.Addend2 == Config.DefaultTriad.Sum)
+                    {
+                        factors[0] = Config.DefaultTriad.Addend1;
+                        factors[1] = Config.DefaultTriad.Addend2;
+                        factors[2] = Config.DefaultTriad.Sum;
+
+                        IsFirstGuess = false;
+                        addend1 = factors[0];
+                        addend2 = factors[1];
+                        Sum = factors[2];
+
+                        if (IsCorrectInput())
+                            return factors;
+                    }
 
                     IsFirstGuess = false;
-                    addend1 = factors[0];
-                    addend2 = factors[1];
-                    Sum = factors[2];
-
-                    if (IsCorrectInput())
-                        return factors;
                 }
 
                 if (Config.OnlyCloseTriad && !IsFirstGuess)
