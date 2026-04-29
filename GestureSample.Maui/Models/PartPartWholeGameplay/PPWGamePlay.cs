@@ -72,6 +72,8 @@ namespace GestureSample.Maui.Models
 
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly KeyEventRepository _keyEventRepository;
         private bool _gameInitialized = false;
 
         // plan runtime
@@ -135,6 +137,8 @@ namespace GestureSample.Maui.Models
 
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
+            _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             Config = config;
             CurrentOperation = Config.OperationList.Count > 0 ? Config.OperationList[0] : Operation.Sum;
 
@@ -243,9 +247,12 @@ namespace GestureSample.Maui.Models
             };
         }
 
-        protected virtual Task PersistGeneratedExerciseAsync()
+        protected virtual async Task PersistGeneratedExerciseAsync()
         {
-            return SaveState(syncAfterSave: false);
+            await SaveState(syncAfterSave: false);
+
+            if (ShouldPersistKeyboardQuestion())
+                await SaveKeyboardQuestionToDbAsync();
         }
 
         public virtual Color[]? GetInitialKeyboardColors()
@@ -280,6 +287,76 @@ namespace GestureSample.Maui.Models
                 default:
                     return null;
             }
+        }
+
+        public virtual bool[]? GetInitialKeyboardState()
+        {
+            Color[]? initialColors = GetInitialKeyboardColors();
+            if (initialColors == null || initialColors.Length == 0)
+                return null;
+
+            bool[] state = new bool[initialColors.Length];
+            for (int i = 0; i < initialColors.Length; i++)
+                state[i] = initialColors[i] != Colors.White && initialColors[i] != Colors.Transparent;
+
+            return state.Any(bit => bit) ? state : null;
+        }
+
+        public virtual string? GetKeyboardQuestionPromptText()
+        {
+            if (Config?.UIQuestionType == UIQuestionType.OneText)
+            {
+                if (Sum != NAN)
+                    return Sum.ToString();
+                if (addend1 != NAN)
+                    return addend1.ToString();
+                if (addend2 != NAN)
+                    return addend2.ToString();
+            }
+
+            if (addend1 != NAN || addend2 != NAN || Sum != NAN)
+            {
+                string left = addend1 == NAN ? "?" : addend1.ToString();
+                string right = addend2 == NAN ? "?" : addend2.ToString();
+                string total = Sum == NAN ? "?" : Sum.ToString();
+                string op = CurrentOperation.ToDString();
+                return $"{left} {op} {right} = {total}";
+            }
+
+            return null;
+        }
+
+        protected virtual bool ShouldPersistKeyboardQuestion()
+        {
+            return Config?.KeyboardConfig != null &&
+                   !Config.KeyboardConfig.KeyboardOnlyForHelp;
+        }
+
+        protected virtual async Task SaveKeyboardQuestionToDbAsync()
+        {
+            if (_keyboardQuestionRepository == null || Config?.KeyboardConfig == null)
+                return;
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            var question = new Data.SQLite.KeyboardQuestion
+            {
+                GameId = GameId.ToString(),
+                QuestionNumber = _questionNumber,
+                Time = DateTime.Now,
+                Op = CurrentOperation,
+                KeyboardRows = Math.Max(1, Config.KeyboardConfig.Rows),
+                KeyboardKeysInRow = Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : keyCount,
+                ShowNumbersOnKeys = Config.KeyboardConfig.ShowNumbersOnKeys,
+                KeyboardWeights = Config.KeyboardConfig.WeightsArray?.ToArray(),
+                InitialKeyboardState = GetInitialKeyboardState(),
+                QuestionPromptText = GetKeyboardQuestionPromptText()
+            };
+
+            await _keyboardQuestionRepository.SaveAsync(question);
         }
 
         private static void FillColorRange(Color[] keyboardColors, int count, Color color, int startIndex = 0)
@@ -486,6 +563,7 @@ namespace GestureSample.Maui.Models
                     keyboardSum = GetAlternateValidSum(pianoKeyboard.Sum);
             }
             ExerciseCheckResult result = await EvaluateAsync(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), result.IsCorrect, DateTime.Now);
             Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
             return result;
         }
@@ -534,6 +612,7 @@ namespace GestureSample.Maui.Models
             };
 
             _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -596,6 +675,7 @@ namespace GestureSample.Maui.Models
                 pressedKeysCount == _dynamicKeyboardExpectedPressCount.Value;
 
             _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -618,6 +698,25 @@ namespace GestureSample.Maui.Models
         public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
         {
             return (await EvaluateAsync(pianoKeyboard)).IsCorrect;
+        }
+
+        private async Task SaveKeyboardAttemptSnapshotAsync(bool[] submittedKeyboard, bool isCorrect, DateTime submittedTime)
+        {
+            if (!ShouldPersistKeyboardQuestion() || _keyboardQuestionRepository == null || _keyEventRepository == null)
+                return;
+
+            var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
+                GameId.ToString(),
+                _questionNumber,
+                submittedKeyboard,
+                submittedTime,
+                isCorrect ? 1 : 0);
+
+            if (savedAttempt == null)
+                return;
+
+            await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
+            await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
         }
 
         public virtual Task<ExerciseGenerationResult> GenerateExerciseAsync()

@@ -84,7 +84,9 @@ namespace GestureSample.Maui.Data.SQLite
         {
             string status = FinalStatus switch { 0 => "Lose", 1 => "WIN!", _ => "" };
             string time = (TimeEnd - TimeStart).ToFormattedString("mm:ss");
-            string formattedGameName = GameName?.Replace("Level ", "L").Replace("Multiplication", "X:") ?? string.Empty;
+            string formattedGameName = GetEffectiveDisplayName()
+                .Replace("Level ", "L")
+                .Replace("Multiplication", "X:");
 
             string prefix = $"{index.ToString().PadLeft(3)} {TimeStart:t} ";
             string suffix = $"{status} {time} {Wins - Losses}/{Wins}".PadLeft(14);
@@ -115,6 +117,24 @@ namespace GestureSample.Maui.Data.SQLite
 
             //string displayString = TruncateFormattedGameName(formattedGameName, prefix, suffix, Device.GetNamedSize(NamedSize.Default, typeof(Label)), 350);
             //return displayString;
+        }
+
+        public string GetEffectiveDisplayName()
+        {
+            if (Config?.FromNumToNum == true)
+                return "From num to num";
+
+            if (Config?.KeyboardConfig?.UseDynamicMultiplicationWeights == true)
+                return "Weighted Multiplication";
+
+            if (Config?.KeyboardConfig?.WeightsArray != null &&
+                Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                Config.UIQuestionType == UIQuestionType.OneText)
+            {
+                return "Weighted Abacus";
+            }
+
+            return GameName ?? string.Empty;
         }
 
 

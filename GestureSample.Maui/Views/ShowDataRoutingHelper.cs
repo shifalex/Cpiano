@@ -18,19 +18,19 @@ namespace GestureSample.Views
             return new ShowDataChooserPage(forTeacher, selectedGameId);
         }
 
-        public static Page CreatePageForGame(Game? game, bool forTeacher = false, bool showSelectors = false)
+        public static Page CreatePageForGame(Game? game, bool forTeacher = false, bool showSelectors = false, bool sortNewestFirst = true)
         {
             if (game != null && ShouldUseKeyboardData(game.Config))
-                return new ShowDataXamlKeyboard(game.Id, showSelectors);
+                return new ShowDataXamlKeyboard(game.Id, showSelectors, sortNewestFirst);
 
-            return new ShowDataXaml(forTeacher, game?.Id, showSelectors);
+            return new ShowDataXaml(forTeacher, game?.Id, showSelectors, sortNewestFirst);
         }
 
-        public static async Task<Page> CreatePageForGameAsync(Guid gameId, bool forTeacher = false, bool showSelectors = false)
+        public static async Task<Page> CreatePageForGameAsync(Guid gameId, bool forTeacher = false, bool showSelectors = false, bool sortNewestFirst = true)
         {
             GameRepository gameRepository = ServiceHelper.GetService<GameRepository>();
             Game? game = await gameRepository.GetByIdAsync(gameId);
-            return CreatePageForGame(game, forTeacher, showSelectors);
+            return CreatePageForGame(game, forTeacher, showSelectors, sortNewestFirst);
         }
     }
 }

@@ -34,13 +34,16 @@ namespace GestureSample.Views
         private readonly bool _showSelectors;
         private readonly ToolbarItem _dataToolbarItem;
         private readonly ToolbarItem _gamesToolbarItem;
+        private readonly ToolbarItem _sortToolbarItem;
         private Guid? _currentSelectedGameId;
         private DateTime? _currentSelectedDate;
-        public ShowDataXamlKeyboard(Guid? gameId = null, bool showSelectors = true)
+        private bool _sortNewestFirst = true;
+        public ShowDataXamlKeyboard(Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true)
         {
             InitializeComponent();
             Title = "Keyboard Data";
             _showSelectors = showSelectors;
+            _sortNewestFirst = sortNewestFirst;
             _currentSelectedGameId = gameId;
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
@@ -63,6 +66,15 @@ namespace GestureSample.Views
             };
             if (!_showSelectors)
                 ToolbarItems.Add(_gamesToolbarItem);
+            _sortToolbarItem = new ToolbarItem
+            {
+                Text = GetSortToolbarText(),
+                Priority = 2,
+                Order = ToolbarItemOrder.Primary,
+                Command = new Command(async () => await ToggleSortAsync())
+            };
+            if (_showSelectors)
+                ToolbarItems.Add(_sortToolbarItem);
 
             PickerPanel.IsVisible = _showSelectors;
             ShowData(gameId);
@@ -95,7 +107,7 @@ namespace GestureSample.Views
                 _currentSelectedDate = CurrentGame.TimeStart.Date;
             }
 
-            GameIdentifiers.Reverse();
+            ApplySort();
 
             if (_showSelectors)
             {
@@ -210,7 +222,6 @@ namespace GestureSample.Views
             List<MainItem> mainItems = new();
             if (questionList.Any())
             {
-                int displayIndex = 0;
                 foreach (var questionGroup in questionList
                     .GroupBy(item => item.QuestionNumber)
                     .OrderBy(group => group.Key))
@@ -229,9 +240,6 @@ namespace GestureSample.Views
                     foreach (KeyboardQuestion q in orderedAttempts)
                     {
                         List<KeyEvent> attemptEvents = ResolveAttemptEvents(q, orderedAttempts, combinedEvents);
-
-                        q.RowBackgroundColor = displayIndex % 2 == 0 ? Colors.White : Colors.LightGray;
-                        displayIndex++;
 
                         mainItems.Add(new()
                         {
@@ -252,9 +260,25 @@ namespace GestureSample.Views
                         });
                     }
                 }
-               
+
+                mainItems = (_sortNewestFirst
+                    ? mainItems
+                        .OrderByDescending(item => item.Question?.QuestionNumber ?? 0)
+                        .ThenByDescending(item => item.Question == null ? int.MinValue : item.Question.AttemptNumber == 0 ? int.MaxValue : item.Question.AttemptNumber)
+                        .ThenByDescending(item => item.Question?.QuestionID ?? 0)
+                    : mainItems
+                        .OrderBy(item => item.Question?.QuestionNumber ?? 0)
+                        .ThenBy(item => item.Question == null ? int.MaxValue : item.Question.AttemptNumber == 0 ? int.MaxValue : item.Question.AttemptNumber)
+                        .ThenBy(item => item.Question?.QuestionID ?? 0))
+                    .ToList();
+
+                for (int i = 0; i < mainItems.Count; i++)
+                    mainItems[i].Question.RowBackgroundColor = i % 2 == 0 ? Colors.White : Colors.LightGray;
             }
-            Questions.ItemsSource = mainItems;
+            Questions.ItemsSource = null;
+            Questions.ItemsSource = new ObservableCollection<MainItem>(mainItems);
+            if (mainItems.Count > 0)
+                Questions.ScrollTo(0, position: ScrollToPosition.Start, animate: false);
             //StateList.ItemsSource = gamePresses;
         }
 
@@ -322,14 +346,6 @@ namespace GestureSample.Views
             }
 
         }
-        private void OnToggleSubgridClicked(object sender, EventArgs e)
-        {
-            if (sender is Button button && button.BindingContext is MainItem item)
-            {
-                item.IsSubCollectionVisible = !item.IsSubCollectionVisible;
-            }
-        }
-
         private async void OnReplayClicked(object sender, EventArgs e)
         {
             if (sender is not Button button || button.BindingContext is not MainItem item)
@@ -500,6 +516,40 @@ namespace GestureSample.Views
             await _keyEventRepository.ReplaceForGameAsync(CurrentGame.Id.ToString(), remoteKeyEvents);
         }
 
+        private void ApplySort()
+        {
+            GameIdentifiers = (_sortNewestFirst
+                ? GameIdentifiers.OrderByDescending(game => game.TimeStart)
+                : GameIdentifiers.OrderBy(game => game.TimeStart))
+                .ToList();
+        }
+
+        private async Task ToggleSortAsync()
+        {
+            _sortNewestFirst = !_sortNewestFirst;
+            _sortToolbarItem.Text = GetSortToolbarText();
+
+            if (CurrentGame != null)
+            {
+                _currentSelectedGameId = CurrentGame.Id;
+                _currentSelectedDate = CurrentGame.TimeStart.Date;
+            }
+
+            if (GameIdentifiers.Count > 0)
+            {
+                ApplySort();
+                if (_showSelectors)
+                {
+                    await LoadDates();
+                    LoadGames();
+                }
+                if (CurrentGame != null)
+                    await LoadStatesToGrid(CurrentGame.Id);
+            }
+        }
+
+        private string GetSortToolbarText() => _sortNewestFirst ? "Newest" : "Oldest";
+
         private static void AddModalCloseButton(Page replayPage)
         {
             if (replayPage.ToolbarItems.Any(item => item.Text == "Close"))
@@ -636,20 +686,6 @@ namespace GestureSample.Views
                 return string.Join("  |  ", parts);
             }
         }
-
-        private bool _isSubCollectionVisible;
-        public bool IsSubCollectionVisible
-        {
-            get => _isSubCollectionVisible;
-            set
-            {
-                _isSubCollectionVisible = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ButtonText)); // Notify UI to update ButtonText
-            }
-        }
-
-        public string ButtonText => IsSubCollectionVisible ? "Hide Events" : "Show Events";
 
         private DateTime? GetReplayStartTime()
         {

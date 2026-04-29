@@ -45,6 +45,12 @@ namespace GestureSample.Maui.Data.SQLite
             await CreateTableAsync<CustomStageDefinition>().ConfigureAwait(false);
             await CreateTableAsync<CustomStageFlowDefinition>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondarySum", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondarySumEnabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
@@ -56,6 +62,10 @@ namespace GestureSample.Maui.Data.SQLite
             await EnsureColumnAsync("KeyboardQuestion", "KeyboardKeysInRow", "INTEGER NOT NULL DEFAULT 10").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "WasTutorialUsed", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "ShowNumbersOnKeys", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionPromptText", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardWeightsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "InitialKeyboardStateJson", "TEXT").ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
             //await MigrateAndResetWasSyncedAsync();
         }

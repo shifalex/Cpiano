@@ -30,6 +30,8 @@ namespace GestureSample.Maui.Data.SQLite
         public int? MoveByLength { get; set; }
         public int KeyboardRows { get; set; } = 1;
         public int KeyboardKeysInRow { get; set; } = 10;
+        public bool ShowNumbersOnKeys { get; set; } = false;
+        public string? QuestionPromptText { get; set; }
 
         [Ignore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
@@ -48,6 +50,10 @@ namespace GestureSample.Maui.Data.SQLite
         public Direction MoveByDirection { get; set; } = Direction.Right;
         [Ignore]
         public bool[] SubmittedKeyboard { get; set; }
+        [Ignore]
+        public int[]? KeyboardWeights { get; set; }
+        [Ignore]
+        public bool[]? InitialKeyboardState { get; set; }
 
         // Serialize GameConfig as JSON for storage
         [Column("ConfigJson")]
@@ -90,6 +96,20 @@ namespace GestureSample.Maui.Data.SQLite
             set => SubmittedKeyboard = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
         }
 
+        [Column("KeyboardWeightsJson")]
+        public string KeyboardWeightsJson
+        {
+            get => JsonSerializer.Serialize(KeyboardWeights);
+            set => KeyboardWeights = value != null ? JsonSerializer.Deserialize<int[]>(value) : null;
+        }
+
+        [Column("InitialKeyboardStateJson")]
+        public string InitialKeyboardStateJson
+        {
+            get => JsonSerializer.Serialize(InitialKeyboardState);
+            set => InitialKeyboardState = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+
         [Column("MoveByDirectionJson")]
         public string MoveByDirectionJson
         {
@@ -106,6 +126,12 @@ namespace GestureSample.Maui.Data.SQLite
         public bool HasSecondQuestionKeyboard => keyboard2 != null && keyboard2.Length > 0;
 
         [Ignore]
+        public bool HasQuestionKeyboard => keyboard1 != null && keyboard1.Length > 0;
+
+        [Ignore]
+        public bool HasInitialKeyboardState => InitialKeyboardState != null && InitialKeyboardState.Length > 0;
+
+        [Ignore]
         public bool HasVisibleSecondQuestionKeyboard =>
             HasSecondQuestionKeyboard && GameConfig.Operations.LogicalDual.Contains(Op);
 
@@ -119,13 +145,22 @@ namespace GestureSample.Maui.Data.SQLite
         public bool HasArrowPrompt => aboveNumber.HasValue && length.HasValue;
 
         [Ignore]
+        public bool HasPromptText => !string.IsNullOrWhiteSpace(QuestionPromptText);
+
+        [Ignore]
         public bool ShowCombinedArrowKeyboard => HasArrowPrompt;
 
         [Ignore]
-        public bool ShowSeparateQuestionKeyboard => !ShowCombinedArrowKeyboard;
+        public bool ShowSeparateQuestionKeyboard => !ShowCombinedArrowKeyboard && HasQuestionKeyboard;
 
         [Ignore]
         public bool ShowSeparateSubmittedKeyboard => !ShowCombinedArrowKeyboard && HasSubmittedKeyboard;
+
+        [Ignore]
+        public bool ShowPrimaryQuestionKeyboard => ShowSeparateQuestionKeyboard && !HasInitialKeyboardState;
+
+        [Ignore]
+        public bool ShowInitialKeyboardPreview => !ShowCombinedArrowKeyboard && HasInitialKeyboardState;
 
         [Ignore]
         public string CombinedArrowKeyboardLabel => HasSubmittedKeyboard ? "Q+A" : "Q";
@@ -193,6 +228,11 @@ namespace GestureSample.Maui.Data.SQLite
                     parts.Add("2 keyboards");
                 }
 
+                if (HasPromptText)
+                {
+                    parts.Add($"Prompt {QuestionPromptText}");
+                }
+
                 return string.Join("  |  ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
             }
         }
@@ -232,7 +272,9 @@ namespace GestureSample.Maui.Data.SQLite
             return new KeyboardConfig
             {
                 KeysInRow = Math.Max(1, keysInRow),
-                Rows = Math.Max(1, rows)
+                Rows = Math.Max(1, rows),
+                ShowNumbersOnKeys = ShowNumbersOnKeys || (KeyboardWeights != null && KeyboardWeights.Length > 0),
+                WeightsArray = KeyboardWeights?.ToArray()
             };
         }
 

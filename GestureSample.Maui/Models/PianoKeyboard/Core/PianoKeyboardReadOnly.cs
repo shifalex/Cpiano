@@ -699,6 +699,8 @@ namespace GestureSample.Maui.Models
             {
                 btnKeys[i].Text = GetKeyDisplayText(i);
             }
+
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
 
         protected void NormalizeAllPianoKeyVisuals()
@@ -712,6 +714,19 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        protected void ScheduleNormalizeAllPianoKeyVisuals()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                NormalizeAllPianoKeyVisuals();
+
+                Dispatcher?.DispatchDelayed(TimeSpan.FromMilliseconds(40), () =>
+                {
+                    NormalizeAllPianoKeyVisuals();
+                });
+            });
+        }
+
         protected void NormalizePianoKeyVisual(MR.Gestures.Button button)
         {
             button.TextColor = Colors.Black;
@@ -720,6 +735,8 @@ namespace GestureSample.Maui.Models
 #if IOS
             if (button.Handler?.PlatformView is UIButton nativeButton)
             {
+                nativeButton.Highlighted = false;
+                nativeButton.Selected = false;
                 nativeButton.SetTitleColor(UIColor.Black, UIControlState.Normal);
                 nativeButton.SetTitleColor(UIColor.Black, UIControlState.Highlighted);
                 nativeButton.SetTitleColor(UIColor.Black, UIControlState.Disabled);
@@ -736,6 +753,26 @@ namespace GestureSample.Maui.Models
                     configuration.BaseForegroundColor = UIColor.Black;
                     nativeButton.Configuration = configuration;
                 }
+
+                nativeButton.ConfigurationUpdateHandler = updateButton =>
+                {
+                    updateButton.Highlighted = false;
+                    updateButton.Selected = false;
+                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Normal);
+                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Highlighted);
+                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Disabled);
+                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Selected);
+                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Focused);
+                    updateButton.TintColor = UIColor.Black;
+                    updateButton.Alpha = 1;
+
+                    if (updateButton.Configuration != null)
+                    {
+                        UIButtonConfiguration cfg = updateButton.Configuration;
+                        cfg.BaseForegroundColor = UIColor.Black;
+                        updateButton.Configuration = cfg;
+                    }
+                };
             }
 #endif
         }
@@ -761,6 +798,7 @@ namespace GestureSample.Maui.Models
                 btnKeys[i].BackgroundColor = COLOR_FREE;
             }
             SaveColors();
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
         public void PianoInit(Color[] array)
         {
@@ -774,6 +812,7 @@ namespace GestureSample.Maui.Models
                 btnKeys[i].BackgroundColor = COLOR_FREE;
             }
             SaveColors();
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
         public void PianoInit(bool[] primaryArray, bool[] secondaryArray, Color primaryColor, Color secondaryColor)
         {
@@ -792,6 +831,7 @@ namespace GestureSample.Maui.Models
             }
 
             SaveColors();
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
         public void Random()
         {
@@ -802,6 +842,7 @@ namespace GestureSample.Maui.Models
                 btnKeys[i].BackgroundColor = (r.Next(2) == 1) ? COLOR_PRESSED : COLOR_FREE;
             }
             SaveColors();
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
 
         public bool[] ToBitArray()

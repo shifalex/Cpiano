@@ -98,6 +98,42 @@ namespace GestureSample.Maui.Data
             await _database.InsertAsync(pendingClone);
         }
 
+        public async Task UpdatePendingDisplayMetadataAsync(
+            string gameId,
+            int questionNumber,
+            string? questionPromptText,
+            bool showNumbersOnKeys,
+            int[]? keyboardWeights,
+            bool[]? initialKeyboardState,
+            bool[]? questionKeyboard = null,
+            int? keyboardRows = null,
+            int? keyboardKeysInRow = null)
+        {
+            KeyboardQuestion? pendingQuestion = await _database.Table<KeyboardQuestion>()
+                .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
+                .OrderByDescending(state => state.AttemptNumber)
+                .ThenByDescending(state => state.QuestionID)
+                .FirstOrDefaultAsync();
+
+            if (pendingQuestion == null)
+                return;
+
+            pendingQuestion.QuestionPromptText = string.IsNullOrWhiteSpace(questionPromptText)
+                ? pendingQuestion.QuestionPromptText
+                : questionPromptText;
+            pendingQuestion.ShowNumbersOnKeys = showNumbersOnKeys;
+            pendingQuestion.KeyboardWeights = keyboardWeights?.ToArray();
+            pendingQuestion.InitialKeyboardState = initialKeyboardState?.ToArray();
+            if (questionKeyboard != null && questionKeyboard.Length > 0)
+                pendingQuestion.keyboard1 = questionKeyboard.ToArray();
+            if (keyboardRows.HasValue && keyboardRows.Value > 0)
+                pendingQuestion.KeyboardRows = keyboardRows.Value;
+            if (keyboardKeysInRow.HasValue && keyboardKeysInRow.Value > 0)
+                pendingQuestion.KeyboardKeysInRow = keyboardKeysInRow.Value;
+
+            await _database.UpdateAsync(pendingQuestion);
+        }
+
         public async Task ReplaceForGameAsync(string gameId, IEnumerable<KeyboardQuestion> questions)
         {
             await _database.ExecuteAsync("DELETE FROM KeyboardQuestion WHERE GameId = ?", gameId);
@@ -123,11 +159,15 @@ namespace GestureSample.Maui.Data
                 localQuestion.MoveByLength = question.MoveByLength;
                 localQuestion.KeyboardRows = question.KeyboardRows;
                 localQuestion.KeyboardKeysInRow = question.KeyboardKeysInRow;
+                localQuestion.ShowNumbersOnKeys = question.ShowNumbersOnKeys;
+                localQuestion.QuestionPromptText = question.QuestionPromptText;
                 localQuestion.keyboard1 = question.keyboard1?.ToArray();
                 localQuestion.keyboard2 = question.keyboard2?.ToArray();
                 localQuestion.dir = question.dir;
                 localQuestion.MoveByDirection = question.MoveByDirection;
                 localQuestion.Op = question.Op;
+                localQuestion.KeyboardWeights = question.KeyboardWeights?.ToArray();
+                localQuestion.InitialKeyboardState = question.InitialKeyboardState?.ToArray();
 
                 await _database.InsertAsync(localQuestion);
             }
@@ -155,11 +195,15 @@ namespace GestureSample.Maui.Data
                 MoveByLength = sourceQuestion.MoveByLength,
                 KeyboardRows = sourceQuestion.KeyboardRows,
                 KeyboardKeysInRow = sourceQuestion.KeyboardKeysInRow,
+                ShowNumbersOnKeys = sourceQuestion.ShowNumbersOnKeys,
+                QuestionPromptText = sourceQuestion.QuestionPromptText,
                 keyboard1 = sourceQuestion.keyboard1?.ToArray(),
                 keyboard2 = sourceQuestion.keyboard2?.ToArray(),
                 dir = sourceQuestion.dir,
                 MoveByDirection = sourceQuestion.MoveByDirection,
                 Op = sourceQuestion.Op,
+                KeyboardWeights = sourceQuestion.KeyboardWeights?.ToArray(),
+                InitialKeyboardState = sourceQuestion.InitialKeyboardState?.ToArray(),
                 SubmittedKeyboard = submittedKeyboard?.ToArray(),
                 SubmittedTime = submittedTime
             };

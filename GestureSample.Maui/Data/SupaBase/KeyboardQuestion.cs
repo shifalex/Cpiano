@@ -30,6 +30,8 @@ namespace GestureSample.Maui.Data.SupaBase
         public int? MoveByLength { get; set; }
         public int KeyboardRows { get; set; } = 1;
         public int KeyboardKeysInRow { get; set; } = 10;
+        public bool ShowNumbersOnKeys { get; set; } = false;
+        public string? QuestionPromptText { get; set; }
 
         [Ignore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
@@ -48,6 +50,10 @@ namespace GestureSample.Maui.Data.SupaBase
         public Direction MoveByDirection { get; set; } = Direction.Right;
         [Ignore]
         public bool[] SubmittedKeyboard { get; set; }
+        [Ignore]
+        public int[]? KeyboardWeights { get; set; }
+        [Ignore]
+        public bool[]? InitialKeyboardState { get; set; }
 
         // Serialize GameConfig as JSON for storage
         [Column("ConfigJson")]
@@ -88,6 +94,20 @@ namespace GestureSample.Maui.Data.SupaBase
         {
             get => JsonSerializer.Serialize(SubmittedKeyboard);
             set => SubmittedKeyboard = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+
+        [Column("KeyboardWeightsJson")]
+        public string KeyboardWeightsJson
+        {
+            get => JsonSerializer.Serialize(KeyboardWeights);
+            set => KeyboardWeights = value != null ? JsonSerializer.Deserialize<int[]>(value) : null;
+        }
+
+        [Column("InitialKeyboardStateJson")]
+        public string InitialKeyboardStateJson
+        {
+            get => JsonSerializer.Serialize(InitialKeyboardState);
+            set => InitialKeyboardState = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
         }
 
         [Column("MoveByDirectionJson")]

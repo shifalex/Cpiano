@@ -37,14 +37,17 @@ namespace GestureSample.Views
         private readonly bool _showSelectors;
         private readonly ToolbarItem _backToolbarItem;
         private readonly ToolbarItem _gamesToolbarItem;
+        private readonly ToolbarItem _sortToolbarItem;
         private Guid? _currentSelectedGameId;
         private DateTime? _currentSelectedDate;
+        private bool _sortNewestFirst = true;
 
-        public ShowDataXaml(bool forTeacher=false, Guid? gameId = null, bool showSelectors = true)
+        public ShowDataXaml(bool forTeacher=false, Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true)
         {
            InitializeComponent();
             Title = "Data";
             _showSelectors = showSelectors;
+            _sortNewestFirst = sortNewestFirst;
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
@@ -91,6 +94,15 @@ namespace GestureSample.Views
             };
             if (!_showSelectors)
                 ToolbarItems.Add(_gamesToolbarItem);
+            _sortToolbarItem = new ToolbarItem
+            {
+                Text = GetSortToolbarText(),
+                Priority = 2,
+                Order = ToolbarItemOrder.Primary,
+                Command = new Command(async () => await ToggleSortAsync())
+            };
+            if (_showSelectors)
+                ToolbarItems.Add(_sortToolbarItem);
 
             PickerPanel.IsVisible = _showSelectors;
             HeaderGrid.IsVisible = _showSelectors;
@@ -197,7 +209,7 @@ namespace GestureSample.Views
                 _currentSelectedDate = CurrentGame.TimeStart.Date;
             }
 
-            GameIdentifiers.Reverse();
+            ApplySort();
             //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
             if (gameId != null && CurrentGame != null && ShowDataRoutingHelper.ShouldUseKeyboardData(CurrentGame.Config))
@@ -347,6 +359,11 @@ namespace GestureSample.Views
             }
             if (states.Any())
             {
+                states = (_sortNewestFirst
+                    ? states.OrderByDescending(item => item.Time).ThenByDescending(item => item.QuestionNumber)
+                    : states.OrderBy(item => item.Time).ThenBy(item => item.QuestionNumber))
+                    .ToList();
+
                 for (int i = 0; i < states.Count; i++)
                 {
                     states[i].RowBackgroundColor = states[i].QuestionNumber % 2 == 0 ? Colors.LightGray : Colors.White;
@@ -449,6 +466,40 @@ namespace GestureSample.Views
 
             Application.Current.MainPage = new NavigationPage(keyboardPage);
         }
+
+        private void ApplySort()
+        {
+            GameIdentifiers = (_sortNewestFirst
+                ? GameIdentifiers.OrderByDescending(game => game.TimeStart)
+                : GameIdentifiers.OrderBy(game => game.TimeStart))
+                .ToList();
+        }
+
+        private async Task ToggleSortAsync()
+        {
+            _sortNewestFirst = !_sortNewestFirst;
+            _sortToolbarItem.Text = GetSortToolbarText();
+
+            if (CurrentGame != null)
+            {
+                _currentSelectedGameId = CurrentGame.Id;
+                _currentSelectedDate = CurrentGame.TimeStart.Date;
+            }
+
+            if (GameIdentifiers.Count > 0)
+            {
+                ApplySort();
+                if (_showSelectors)
+                {
+                    LoadDates();
+                    LoadGames();
+                }
+                if (CurrentGame != null)
+                    await LoadStatesToGrid(CurrentGame.Id);
+            }
+        }
+
+        private string GetSortToolbarText() => _sortNewestFirst ? "Newest" : "Oldest";
 
         private  void OnUserPickerSelectedIndexChanged(object sender, EventArgs e)
         {
