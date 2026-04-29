@@ -596,7 +596,30 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
             IsHelpNeeded = true,
             IsMulticolor = true,
+            GroupByColorAllowSameSideTargets = true,
             KeysInRow = 6
+        }
+    })),
+
+    new PageConfig("One operation", "Group By Color - 3 colors", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group by color - 3 colors",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
+        OnlyToTen = true,
+        MinSum = 2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            GroupByColorColorCount = 3,
+            GroupByColorCounts = new[] { 2, 1, 1 },
+            GroupByColorAllowSameSideTargets = true,
+            GroupByColorKeepOuterColorsOnSides = true,
+            GroupByColorKeepBlueInMiddle = true
         }
     })),
 
@@ -980,9 +1003,9 @@ namespace GestureSample.Views
         }
     })),
 
-            new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig("Data", "Show Data",  () => new ShowDataChooserPage { BindingContext = new ViewModels.MarksViewModel() }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
-            new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }, true),
+            new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataChooserPage { BindingContext = new ViewModels.MarksViewModel() }, true),
             new PageConfig("Data", "Show Personal Record",  () => new RecordsUser { BindingContext = new ViewModels.MarksViewModel() }),
 
             // Views
@@ -1056,12 +1079,29 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-
-            TextBoxesQuantity = 1
+            TextBoxesQuantity = 1,
+            AllowSumHeaderVisibilityToggle = true
         }
     })),
 
-    new PageConfig("Weighted Keyboard", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Weighted Keyboard", "Weighted one number Abacus -Transperent", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =99, MaxAddend=98,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            SecondsPressingToAnswer=2,
+            WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
+            ShowNumbersOnKeys = true,
+            AllowSumHeaderVisibilityToggle = true
+        }
+    })),
+
+    new PageConfig("Weighted Keyboard", "Weighted one number Abacus -Blind", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number",
         UIQuestionType = UIQuestionType.OneText,
@@ -1073,7 +1113,8 @@ namespace GestureSample.Views
             TextBoxesQuantity = 1,
             SecondsPressingToAnswer=-2,
             WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
-            ShowNumbersOnKeys = true
+            ShowNumbersOnKeys = true,
+            AllowSumHeaderVisibilityToggle = true
         }
     })),
      new PageConfig("Weighted Keyboard", "Weighted one number binary bit array -EASY", () => new SimpleViewCellsPage(new GameConfig
@@ -1100,7 +1141,6 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            TextBoxesQuantity = 1,
             WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
             SecondsPressingToAnswer=-2,
             ShowNumbersOnKeys = true
@@ -1148,7 +1188,6 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            TextBoxesQuantity = 1,
             SecondsPressingToAnswer=-1,
             WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
             UseDynamicMultiplicationWeights = true,
@@ -1600,6 +1639,21 @@ namespace GestureSample.Views
         GameName = "From Left",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.FromLeft,
+        OnlyToTen = true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            SecondsPressingToAnswer=-1,
+            UsePermutationTraceColors = true
+        }
+    })),
+    new PageConfig("->", "-> -> Only Through", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "From Left Only Through",
+        UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        OnlyThrougTen = true, MaxAddend = 10,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -1626,6 +1680,7 @@ namespace GestureSample.Views
         GameName =  "To Left",
         UIQuestionType=UIQuestionType.OnlyKeyboard,
         QuestionOrder = QuestionOrder.ToLeft,
+        OnlyToTen = true,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
@@ -1904,7 +1959,22 @@ namespace GestureSample.Views
         NumberOfTasksToWin=20,
         NumberOfMistakesToLose=3
     })),*/
-    new PageConfig("+ -", "Level 3.3 - free practice", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("+ -", "Level 3.3 - Only through till 100", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 3.3",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 12,
+        MaxAddend = 89,
+        MinAddend2 = 2,
+        MaxAddend2 = 89,
+        MaxSum=100,
+        OnlyThrougTen = true,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 1,
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
+    })),
+    new PageConfig("+ -", "Level 3.4 - free practice", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.4",
         MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum

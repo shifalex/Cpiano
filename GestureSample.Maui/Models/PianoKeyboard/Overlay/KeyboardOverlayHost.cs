@@ -15,6 +15,19 @@ namespace GestureSample.Maui.Models
 
         private sealed class PatternDrawable : IDrawable
         {
+            public sealed class MultiAnimGroup
+            {
+                public bool[] Bits { get; set; } = Array.Empty<bool>();
+                public int[] Targets { get; set; } = Array.Empty<int>();
+                public Color Color { get; set; } = Colors.Yellow;
+            }
+
+            public sealed class MultiSpawnGroup
+            {
+                public bool[] Bits { get; set; } = Array.Empty<bool>();
+                public Color Color { get; set; } = Colors.Yellow;
+            }
+
             public int[]? AnimTargets;   // same length as AnimBits
             public float AnimProgress;   // 0..1
 
@@ -34,6 +47,8 @@ namespace GestureSample.Maui.Models
             public float SpawnAlpha { get; set; } = 0.5f;
             public Color AnimColor { get; set; } = Colors.Yellow;
             public Color SpawnColor { get; set; } = Colors.Yellow;
+            public List<MultiAnimGroup> MultiAnimGroups { get; set; } = new();
+            public List<MultiSpawnGroup> MultiSpawnGroups { get; set; } = new();
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -131,20 +146,36 @@ namespace GestureSample.Maui.Models
 
             void DrawAnimBits(ICanvas canvas)
             {
+                if (MultiAnimGroups.Count > 0)
+                {
+                    foreach (MultiAnimGroup group in MultiAnimGroups)
+                        DrawSingleAnimGroup(canvas, group.Bits, group.Targets, group.Color);
+
+                    return;
+                }
+
                 if (AnimBits == null || AnimTargets == null)
                     return;
 
-                canvas.FillColor = AnimColor.WithAlpha(AnimAlpha);
-                canvas.StrokeColor = AnimColor.WithAlpha(Math.Min(1f, AnimAlpha + 0.2f));
+                DrawSingleAnimGroup(canvas, AnimBits, AnimTargets, AnimColor);
+            }
+
+            void DrawSingleAnimGroup(ICanvas canvas, bool[] bits, int[]? targets, Color color)
+            {
+                if (bits == null || targets == null)
+                    return;
+
+                canvas.FillColor = color.WithAlpha(AnimAlpha);
+                canvas.StrokeColor = color.WithAlpha(Math.Min(1f, AnimAlpha + 0.2f));
                 canvas.StrokeSize = 2;
 
-                int n = Math.Min(AnimBits.Length, KeyRects.Length);
+                int n = Math.Min(bits.Length, KeyRects.Length);
 
                 for (int i = 0; i < n; i++)
                 {
-                    if (!AnimBits[i]) continue;
+                    if (!bits[i]) continue;
 
-                    int target = AnimTargets[i];
+                    int target = targets[i];
                     float current = i + (target - i) * AnimProgress;
 
                     RectF r = RectForFractionalIndex(current);
@@ -155,18 +186,34 @@ namespace GestureSample.Maui.Models
 
             void DrawSpawnBits(ICanvas canvas)
             {
+                if (MultiSpawnGroups.Count > 0)
+                {
+                    foreach (MultiSpawnGroup group in MultiSpawnGroups)
+                        DrawSingleSpawnGroup(canvas, group.Bits, group.Color);
+
+                    return;
+                }
+
                 if (SpawnBits == null || SpawnBits.Length == 0)
                     return;
 
-                canvas.FillColor = SpawnColor.WithAlpha(SpawnAlpha);
-                canvas.StrokeColor = SpawnColor.WithAlpha(Math.Min(1f, SpawnAlpha + 0.2f));
+                DrawSingleSpawnGroup(canvas, SpawnBits, SpawnColor);
+            }
+
+            void DrawSingleSpawnGroup(ICanvas canvas, bool[] bits, Color color)
+            {
+                if (bits == null || bits.Length == 0)
+                    return;
+
+                canvas.FillColor = color.WithAlpha(SpawnAlpha);
+                canvas.StrokeColor = color.WithAlpha(Math.Min(1f, SpawnAlpha + 0.2f));
                 canvas.StrokeSize = 2;
 
-                int n = Math.Min(SpawnBits.Length, KeyRects.Length);
+                int n = Math.Min(bits.Length, KeyRects.Length);
 
                 for (int i = 0; i < n; i++)
                 {
-                    if (!SpawnBits[i]) continue;
+                    if (!bits[i]) continue;
 
                     RectF r = KeyRects[i];
                     canvas.FillRoundedRectangle(r, 6);
@@ -299,8 +346,138 @@ namespace GestureSample.Maui.Models
             _patternDrawable.SpawnBits = Array.Empty<bool>();
             _patternDrawable.SpawnAlpha = 0.5f;
             _patternDrawable.SpawnColor = Colors.Yellow;
+            _patternDrawable.MultiAnimGroups.Clear();
+            _patternDrawable.MultiSpawnGroups.Clear();
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
+        }
+
+        public async Task AnimatePackedGroupsAsync(
+            IReadOnlyList<(bool[] Bits, bool[] TargetBits, Color Color)> groups,
+            uint moveMs = 900,
+            uint holdMs = 480,
+            uint fadeOutMs = 180,
+            string animName = "TutMultiGroup")
+        {
+            TrySyncOverlay();
+            if (groups == null || groups.Count == 0)
+                return;
+
+            List<(bool[] Bits, bool[] TargetBits, Color Color)> normalizedGroups = groups
+                .Where(group => group.Bits != null && group.Bits.Length > 0 && group.TargetBits != null)
+                .ToList();
+
+            _patternDrawable.MultiAnimGroups = new();
+            foreach ((bool[] Bits, bool[] TargetBits, Color Color) group in normalizedGroups)
+            {
+                int activeCount = group.Bits.Count(bit => bit);
+                if (activeCount == 0)
+                    continue;
+
+                int[] targets = BuildExplicitTargets(group.Bits, group.TargetBits);
+
+                _patternDrawable.MultiAnimGroups.Add(new PatternDrawable.MultiAnimGroup
+                {
+                    Bits = group.Bits,
+                    Targets = targets,
+                    Color = group.Color
+                });
+            }
+
+            if (_patternDrawable.MultiAnimGroups.Count == 0)
+                return;
+
+            _patternDrawable.MultiSpawnGroups.Clear();
+            _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.AnimAlpha = 0.55f;
+            _patternDrawable.SpawnAlpha = 0f;
+            _patternDrawable.CursorIndex = null;
+            Keyboard.InvalidateOverlay();
+
+            await RunProgressAnimation(animName + "_move", moveMs, t =>
+            {
+                _patternDrawable.AnimProgress = t;
+                _patternDrawable.AnimAlpha = 0.55f;
+            });
+
+            _patternDrawable.MultiSpawnGroups = new();
+            foreach ((bool[] Bits, bool[] TargetBits, Color Color) group in normalizedGroups)
+            {
+                if (group.Bits.Count(bit => bit) == 0)
+                    continue;
+
+                _patternDrawable.MultiSpawnGroups.Add(new PatternDrawable.MultiSpawnGroup
+                {
+                    Bits = group.TargetBits.ToArray(),
+                    Color = group.Color
+                });
+            }
+
+            _patternDrawable.AnimProgress = 1f;
+            _patternDrawable.AnimAlpha = 0.55f;
+            _patternDrawable.SpawnAlpha = 0.55f;
+            Keyboard.InvalidateOverlay();
+
+            await Task.Delay((int)holdMs);
+
+            await RunProgressAnimation(animName + "_out", fadeOutMs, t =>
+            {
+                _patternDrawable.AnimAlpha = 0.55f * (1f - t);
+                _patternDrawable.SpawnAlpha = 0.55f * (1f - t);
+            });
+
+            ClearAnim();
+        }
+
+        private static int[] BuildExplicitTargets(bool[] bits, bool[] targetBits)
+        {
+            int n = bits.Length;
+            int[] dest = Enumerable.Range(0, n).ToArray();
+
+            List<int> sourceIndices = new();
+            List<int> targetIndices = new();
+
+            for (int i = 0; i < n; i++)
+            {
+                if (bits[i])
+                    sourceIndices.Add(i);
+
+                if (i < targetBits.Length && targetBits[i])
+                    targetIndices.Add(i);
+            }
+
+            int pairCount = Math.Min(sourceIndices.Count, targetIndices.Count);
+            for (int i = 0; i < pairCount; i++)
+                dest[sourceIndices[i]] = targetIndices[i];
+
+            return dest;
+        }
+
+        private static bool[] BuildPackedLeftBits(bool[] bits, int startOffset = 0)
+        {
+            bool[] packed = new bool[bits.Length];
+            int count = bits.Count(bit => bit);
+
+            for (int i = 0; i < count && startOffset + i < packed.Length; i++)
+                packed[startOffset + i] = true;
+
+            return packed;
+        }
+
+        private static bool[] BuildPackedRightBits(bool[] bits, int rightOffset = 0)
+        {
+            bool[] packed = new bool[bits.Length];
+            int count = bits.Count(bit => bit);
+
+            for (int i = 0; i < count && i < packed.Length; i++)
+            {
+                int targetIndex = packed.Length - 1 - rightOffset - i;
+                if (targetIndex < 0)
+                    break;
+                packed[targetIndex] = true;
+            }
+
+            return packed;
         }
 
 
@@ -615,6 +792,16 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
      int shiftByK = 0,
      uint ms = 450)
         {
+            await Animate(bits, op, Colors.Yellow, shiftByK, ms);
+        }
+
+        public async Task Animate(
+     bool[] bits,
+     Operation op,
+     Color color,
+     int shiftByK = 0,
+     uint ms = 450)
+        {
             TrySyncOverlay();
 
             bits ??= Array.Empty<bool>();
@@ -626,6 +813,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             _patternDrawable.AnimTargets = BuildTargets(bits, op, shiftByK);
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
+            _patternDrawable.AnimColor = color;
 
             //_patternView.IsVisible = true;
             //_patternView.OpacOpacity = 1;
@@ -834,25 +1022,25 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             return dest;
         }
 
-        private static int[] BuildPackLeft(bool[] bits)
+        private static int[] BuildPackLeft(bool[] bits, int startOffset = 0)
         {
             int n = bits.Length;
             var dest = new int[n];
 
-            int write = 0;
+            int write = startOffset;
             for (int i = 0; i < n; i++)
                 dest[i] = bits[i] ? write++ : i;
 
             return dest;
         }
 
-        private static int[] BuildPackRight(bool[] bits)
+        private static int[] BuildPackRight(bool[] bits, int rightOffset = 0)
         {
             int n = bits.Length;
             var dest = new int[n];
 
             int count = bits.Count(b => b);
-            int write = n - count;
+            int write = n - rightOffset - count;
 
             for (int i = 0; i < n; i++)
                 dest[i] = bits[i] ? write++ : i;

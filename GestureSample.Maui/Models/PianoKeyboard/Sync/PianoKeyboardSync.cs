@@ -6,15 +6,19 @@ namespace GestureSample.Maui.Models
     {
         protected IDispatcherTimer timer;
         protected int _seconds_pressed = 0;
-        protected virtual bool IS_WHOLE_TIMER { get; }
-        protected virtual int SECONDS_TO_ANSWER { get; }
+        private int _secondsPressingToAnswerSetting;
+        private int _secondsToAnswer;
+        protected virtual bool IS_WHOLE_TIMER => _secondsPressingToAnswerSetting < 0;
+        protected virtual int SECONDS_TO_ANSWER => _secondsToAnswer;
         public Func<ExerciseCheckResult, Task>? CheckCompletedAsync { get; set; }
+        public virtual bool SupportsAnswerTimeTuner => true;
+        public int AnswerTimeSetting => _secondsPressingToAnswerSetting;
 
 
 
         int[] pressCounter;
-        private readonly ProgressBar _pressProgress;
-        private DateTime? _pressStartUtc;
+        protected readonly ProgressBar _pressProgress;
+        protected DateTime? _pressStartUtc;
         private bool _isChecking = false;
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
@@ -25,9 +29,9 @@ namespace GestureSample.Maui.Models
             //_pressProgress.Opacity = 0;
             //TODO:REALLY NOT SURE WHERE IS THE CORRECT PLACE FOR THIS - it should be in the gui - piano should give only text
             //_lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
-            SECONDS_TO_ANSWER = pianoConfig.SecondsPressingToAnswer* (pianoConfig.SecondsPressingToAnswer>0? 1: -1);
-            IS_WHOLE_TIMER = pianoConfig.SecondsPressingToAnswer < 0;
-            _pressProgress.ProgressColor = IS_WHOLE_TIMER ? Colors.Orange : Colors.DodgerBlue;
+            _secondsPressingToAnswerSetting = pianoConfig.SecondsPressingToAnswer;
+            _secondsToAnswer = Math.Abs(_secondsPressingToAnswerSetting);
+            UpdateProgressColor();
             pressCounter  = new int[NUMBER_OF_KEYS + 1];
             TimerInit();
             timer.Start();
@@ -40,12 +44,17 @@ namespace GestureSample.Maui.Models
                 return string.Format("00:0{0}", SECONDS_TO_ANSWER - _seconds_pressed);
             }
         }
-        private bool AnyPressed()
+        protected bool AnyPressed()
         {
             return !(_addend1 == 0 && _addend2 == 0);
         }
 
-        private void ResetProgressVisual()
+        protected virtual bool HasActiveTimedAnswer()
+        {
+            return AnyPressed();
+        }
+
+        protected void ResetProgressVisual()
         {
             _pressStartUtc = null;
             //_seconds_pressed = 0;
@@ -63,6 +72,20 @@ namespace GestureSample.Maui.Models
             _pressProgress.IsVisible = true;
             _pressProgress.Opacity = 1;
             _lblTimer.IsVisible = false;
+        }
+
+        private void UpdateProgressColor()
+        {
+            _pressProgress.ProgressColor = IS_WHOLE_TIMER ? Colors.Orange : Colors.DodgerBlue;
+        }
+
+        public virtual void UpdateAnswerTimeSetting(int secondsPressingToAnswer)
+        {
+            _secondsPressingToAnswerSetting = secondsPressingToAnswer;
+            _secondsToAnswer = Math.Abs(secondsPressingToAnswer);
+            _pianoConfig.SecondsPressingToAnswer = secondsPressingToAnswer;
+            UpdateProgressColor();
+            ResetSyncState();
         }
         protected virtual void TimerInit()
         {
@@ -84,7 +107,7 @@ namespace GestureSample.Maui.Models
                         return;
                     }
 
-                    if (!AnyPressed())
+                    if (!HasActiveTimedAnswer())
                     {
                         ResetProgressVisual();
                         return;
@@ -116,15 +139,13 @@ namespace GestureSample.Maui.Models
 
             _isChecking = true;
             timer.Stop();
-            IsEnabled = false;
+            IsEnabled = true;
+            InputTransparent = true;
 
             // Hide progress immediately so feedback can appear on lblStatus
             ResetProgressVisual();
 
             ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
-
-            for (int i = 0; i < pressCounter.Length; i++)
-                pressCounter[i] = 0;
             if (CheckCompletedAsync != null)
                 await CheckCompletedAsync(checkResult);
 
@@ -132,6 +153,23 @@ namespace GestureSample.Maui.Models
             timer.Start();
         }
 
+        public override void PianoInit()
+        {
+            base.PianoInit();
+            ResetSyncState();
+        }
+
+        private void ResetSyncState()
+        {
+            _seconds_pressed = 0;
+            _pressStartUtc = null;
+            _isChecking = false;
+            InputTransparent = false;
+            for (int i = 0; i < pressCounter.Length; i++)
+                pressCounter[i] = 0;
+
+            ResetProgressVisual();
+        }
 
         //ArrayList<MR.Gestures.Button> twicePressedKeys = new();
 

@@ -1,11 +1,35 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
+using Microsoft.Maui.Graphics;
 
 namespace GestureSample.Maui.Models
 {
+    internal sealed class GroupByColorStep
+    {
+        public GroupByColorStep(bool[] bits, Color color, Direction direction, bool[]? targetBits = null)
+        {
+            Bits = bits;
+            Color = color;
+            Direction = direction;
+            TargetBits = targetBits ?? bits;
+        }
+
+        public bool[] Bits { get; }
+        public Color Color { get; }
+        public Direction Direction { get; }
+        public bool[] TargetBits { get; }
+    }
+
     internal class BitArrayGamePlay : PPWGamePlay
     {
+        private static readonly Color[] GroupByColorPalette =
+        {
+            Colors.Yellow,
+            Colors.LightGreen,
+            Colors.DeepSkyBlue
+        };
+
         private int _nextArrowAboveNumber = 1;
         private Direction _prevDir = Direction.Right;
         public Direction dir = Direction.Right;
@@ -19,6 +43,10 @@ namespace GestureSample.Maui.Models
         private int _completedStagedArrowCycles;
         private bool _isCurrentStagedArrowMasked;
         private bool _isCurrentStagedArrowRevealed;
+        private bool[]? _stagedArrowFirstBits;
+        private bool[]? _stagedArrowSecondBits;
+        private readonly List<bool[]> _groupByColorQuestionGroups = new();
+        private readonly List<Direction> _groupByColorTargetDirections = new();
 
         public List<int> triads = new();
 
@@ -28,7 +56,14 @@ namespace GestureSample.Maui.Models
             var r = new Random();
             var (fromIndex, lengthIndexes) = PrepareArrowFields(r);
             SetBitArrayForArrow(fromIndex, lengthIndexes);
+            CaptureStagedArrowOverlayState();
             Console.WriteLine("above number:{0}", aboveNumber);
+        }
+
+        private bool UsesStagedArrowFlow()
+        {
+            return Config?.QuestionOrder == QuestionOrder.FromLeft ||
+                   Config?.QuestionOrder == QuestionOrder.ToLeft;
         }
 
         private bool UsesMaskedThirdStagedArrow()
@@ -39,12 +74,14 @@ namespace GestureSample.Maui.Models
 
         private void AdvanceStagedArrowCycleState(bool isNewCycle)
         {
-            if (!UsesMaskedThirdStagedArrow())
+            if (!UsesStagedArrowFlow())
             {
                 _currentStagedArrowStepIndex = 0;
                 _completedStagedArrowCycles = 0;
                 _isCurrentStagedArrowMasked = false;
                 _isCurrentStagedArrowRevealed = false;
+                _stagedArrowFirstBits = null;
+                _stagedArrowSecondBits = null;
                 return;
             }
 
@@ -60,7 +97,14 @@ namespace GestureSample.Maui.Models
                 _currentStagedArrowStepIndex++;
             }
 
+            if (_currentStagedArrowStepIndex <= 1)
+            {
+                _stagedArrowFirstBits = null;
+                _stagedArrowSecondBits = null;
+            }
+
             _isCurrentStagedArrowMasked =
+                UsesMaskedThirdStagedArrow() &&
                 _currentStagedArrowStepIndex == 3 &&
                 _completedStagedArrowCycles >= Config.KeyboardConfig.MaskThirdArrowAfterCycleCount;
             _isCurrentStagedArrowRevealed = false;
@@ -72,6 +116,66 @@ namespace GestureSample.Maui.Models
                 return "?";
 
             return length > -1 ? length.ToString() : null;
+        }
+
+        private void CaptureStagedArrowOverlayState()
+        {
+            if (!UsesStagedArrowFlow() || BitArrayQuestion == null)
+                return;
+
+            if (_currentStagedArrowStepIndex == 1)
+            {
+                _stagedArrowFirstBits = BitArrayQuestion.ToArray();
+                _stagedArrowSecondBits = null;
+            }
+            else if (_currentStagedArrowStepIndex == 2)
+            {
+                _stagedArrowSecondBits = BitArrayQuestion.ToArray();
+            }
+        }
+
+        public Color?[]? GetStagedArrowTraceOverlayColors()
+        {
+            if (!UsesStagedArrowFlow() ||
+                Config?.KeyboardConfig?.UsePermutationTraceColors != true ||
+                BitArrayQuestion == null)
+            {
+                return null;
+            }
+
+            Color?[] overlayColors = new Color?[BitArrayQuestion.Length];
+
+            if (_currentStagedArrowStepIndex >= 2 && _stagedArrowFirstBits != null)
+                PaintOverlayBits(overlayColors, _stagedArrowFirstBits, Colors.LightGreen);
+
+            return overlayColors;
+        }
+
+        public Color?[]? GetStagedArrowSecondaryTraceOverlayColors()
+        {
+            if (!UsesStagedArrowFlow() ||
+                Config?.KeyboardConfig?.UsePermutationTraceColors != true ||
+                BitArrayQuestion == null)
+            {
+                return null;
+            }
+
+            Color?[] overlayColors = new Color?[BitArrayQuestion.Length];
+
+            if (_currentStagedArrowStepIndex >= 3 && _stagedArrowSecondBits != null)
+                PaintOverlayBits(overlayColors, _stagedArrowSecondBits, Colors.DeepSkyBlue);
+
+            return overlayColors;
+        }
+
+        private static void PaintOverlayBits(Color?[] overlayColors, bool[] bits, Color color)
+        {
+            int limit = Math.Min(overlayColors.Length, bits.Length);
+            for (int i = 0; i < limit; i++)
+            {
+                if (bits[i])
+                    overlayColors[i] = color;
+            }
         }
 
         private (int fromIndex, int lengthIndexes) PrepareArrowFields(Random r)
@@ -96,6 +200,9 @@ namespace GestureSample.Maui.Models
             else
             {
                 int[] factors = Factors;
+                addend1 = factors[0];
+                addend2 = factors[1];
+                Sum = factors[2];
                 aboveNumber = factors[0] % keys;
                 do length = factors[1] % Math.Min(Config.MaxAddend2+1, keys); while (length+aboveNumber > Config.MaxSum);
                 if (length == 0)
@@ -165,6 +272,9 @@ namespace GestureSample.Maui.Models
                 {
                     (int firstSegmentLength, int secondSegmentLength) = ResolveStagedArrowSegments(keys);
                     int sum = addend1 + addend2;
+                    addend1 = firstSegmentLength;
+                    addend2 = secondSegmentLength;
+                    Sum = sum;
                     triads.Add(0);
                     triads.Add(firstSegmentLength);
                     triads.Add(secondSegmentLength);
@@ -249,6 +359,7 @@ namespace GestureSample.Maui.Models
 
         public bool[] BitArrayQuestion { get; set; }
         public bool[] BitArrayQuestion2 { get; set; }
+        public bool[]? BitArrayQuestion3 { get; set; }
         private bool[] BitArrayCorrectAnswer { get; set; }
 
         private bool[]? _prevBitArrayQuestion;
@@ -328,16 +439,13 @@ namespace GestureSample.Maui.Models
 
         private async Task<ExerciseCheckResult> EvaluateGroupByColorAsync(PianoKeyboard pianoKeyboard)
         {
-            bool[] primaryAnswer = pianoKeyboard.GetBitsForColor(Colors.Yellow);
-            bool[] secondaryAnswer = pianoKeyboard.GetBitsForColor(Colors.LightGreen);
-            bool result = ArraysEqual(primaryAnswer, GetPrimaryColorTargetBits()) &&
-                          ArraysEqual(secondaryAnswer, GetSecondaryColorTargetBits());
+            bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
+            bool result = CheckOnly(submittedKeyboard);
 
             _status = result ? Statement.True : Statement.False;
             IncrementGuessNumber();
 
             DateTime submittedTime = DateTime.Now;
-            bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
             var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
                 GameId.ToString(),
                 _questionNumber,
@@ -667,22 +775,92 @@ namespace GestureSample.Maui.Models
 
         public bool[] GetPrimaryColorTargetBits()
         {
-            if (CurrentOperation != Operation.GroupByColor)
-                return Array.Empty<bool>();
-
-            return IsPrimaryColorAssignedToLeft
-                ? BuildLeftPackedBits(BitArrayQuestion)
-                : BuildRightPackedBits(BitArrayQuestion);
+            return GetGroupByColorTargetBits(0);
         }
 
         public bool[] GetSecondaryColorTargetBits()
         {
+            return GetGroupByColorTargetBits(1);
+        }
+
+        public bool[] GetTertiaryColorTargetBits()
+        {
+            return GetGroupByColorTargetBits(2);
+        }
+
+        public Color[] GetGroupByColorQuestionColors()
+        {
+            if (CurrentOperation != Operation.GroupByColor || _groupByColorQuestionGroups.Count == 0)
+                return Array.Empty<Color>();
+
+            Color[] colors = Enumerable.Repeat(Colors.White, BitArrayQuestion.Length).ToArray();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                bool[] bits = _groupByColorQuestionGroups[i];
+                Color color = GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)];
+                int limit = Math.Min(colors.Length, bits.Length);
+                for (int keyIndex = 0; keyIndex < limit; keyIndex++)
+                {
+                    if (bits[keyIndex])
+                        colors[keyIndex] = color;
+                }
+            }
+
+            return colors;
+        }
+
+        public IReadOnlyList<GroupByColorStep> GetGroupByColorTutorialSteps()
+        {
+            List<GroupByColorStep> steps = new();
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                steps.Add(new GroupByColorStep(
+                    _groupByColorQuestionGroups[i],
+                    GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)],
+                    _groupByColorTargetDirections.Count > i ? _groupByColorTargetDirections[i] : Direction.Left,
+                    i < targets.Count ? targets[i] : Array.Empty<bool>()));
+            }
+
+            return OrderGroupByColorStepsByTargetPosition(steps);
+        }
+
+        public IReadOnlyList<GroupByColorStep> GetGroupByColorMissionArrows()
+        {
+            List<GroupByColorStep> steps = new();
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                steps.Add(new GroupByColorStep(
+                    i < targets.Count ? targets[i] : Array.Empty<bool>(),
+                    GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)],
+                    _groupByColorTargetDirections.Count > i ? _groupByColorTargetDirections[i] : Direction.Left,
+                    i < targets.Count ? targets[i] : Array.Empty<bool>()));
+            }
+
+            return OrderGroupByColorStepsByTargetPosition(steps);
+        }
+
+        private static IReadOnlyList<GroupByColorStep> OrderGroupByColorStepsByTargetPosition(IEnumerable<GroupByColorStep> steps)
+        {
+            return steps
+                .OrderBy(step =>
+                {
+                    int index = Array.FindIndex(step.TargetBits, bit => bit);
+                    return index < 0 ? int.MaxValue : index;
+                })
+                .ToList();
+        }
+
+        private bool[] GetGroupByColorTargetBits(int groupIndex)
+        {
             if (CurrentOperation != Operation.GroupByColor)
                 return Array.Empty<bool>();
 
-            return IsPrimaryColorAssignedToLeft
-                ? BuildRightPackedBits(BitArrayQuestion2)
-                : BuildLeftPackedBits(BitArrayQuestion2);
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            return groupIndex >= 0 && groupIndex < targets.Count
+                ? targets[groupIndex]
+                : Array.Empty<bool>();
         }
 
         private async Task SaveQuestionToDbAsync()
@@ -817,16 +995,111 @@ namespace GestureSample.Maui.Models
                 end = whichHand == Direction.Left ? BitArrayQuestion.Length / 2 : BitArrayQuestion.Length;
             }
 
+            _groupByColorQuestionGroups.Clear();
+            _groupByColorTargetDirections.Clear();
+            BitArrayQuestion3 = null;
+
+            int groupCount = Math.Clamp(Config.KeyboardConfig?.GroupByColorColorCount ?? 2, 2, 3);
+            if (groupCount == 3)
+            {
+                GenerateThreeColorGroupByColorExercise(r, start, end);
+            }
+            else
+            {
+                GenerateTwoColorGroupByColorExercise(r, start, end);
+            }
+
+            BitArrayQuestion = _groupByColorQuestionGroups[0];
+            BitArrayQuestion2 = _groupByColorQuestionGroups[1];
+            BitArrayQuestion3 = _groupByColorQuestionGroups.Count > 2 ? _groupByColorQuestionGroups[2] : null;
+            IsPrimaryColorAssignedToLeft = _groupByColorTargetDirections.Count > 0 &&
+                                           _groupByColorTargetDirections[0] == Direction.Left;
+        }
+
+        private void GenerateTwoColorGroupByColorExercise(Random r, int start, int end)
+        {
+            bool[] primary;
+            bool[] secondary;
             do
             {
-                BitArrayQuestion = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
-                BitArrayQuestion2 = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+                primary = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+                secondary = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
             }
-            while (SumArray(BitArrayQuestion) == 0 ||
-                   SumArray(BitArrayQuestion2) == 0 ||
-                   AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2));
+            while (SumArray(primary) == 0 ||
+                   SumArray(secondary) == 0 ||
+                   AreOverlapingSets(primary, secondary));
 
-            IsPrimaryColorAssignedToLeft = r.Next(2) == 0;
+            _groupByColorQuestionGroups.Add(primary);
+            _groupByColorQuestionGroups.Add(secondary);
+            AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
+        }
+
+        private void GenerateThreeColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 3 } configuredCounts
+                ? configuredCounts.Take(3).ToArray()
+                : new[] { 2, 1, 1 };
+
+            if (Config.KeyboardConfig?.GroupByColorKeepOuterColorsOnSides == true &&
+                Config.KeyboardConfig.GroupByColorKeepBlueInMiddle)
+            {
+                _groupByColorQuestionGroups.Add(BuildRangeBits(BitArrayQuestion.Length, start, counts[0]));
+                _groupByColorQuestionGroups.Add(BuildMiddleBlueBits(r, start, end, counts[0], counts[1], counts[2]));
+                _groupByColorQuestionGroups.Add(BuildRangeBits(BitArrayQuestion.Length, end - counts[2], counts[2]));
+            }
+            else
+            {
+                List<bool[]> groups = new();
+                while (groups.Count < 3)
+                {
+                    bool[] candidate = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+                    if (SumArray(candidate) == 0 || groups.Any(existing => AreOverlapingSets(existing, candidate)))
+                        continue;
+
+                    groups.Add(candidate);
+                }
+
+                _groupByColorQuestionGroups.AddRange(groups);
+            }
+
+            AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
+        }
+
+        private void AssignGroupByColorDirections(Random r, int groupCount)
+        {
+            bool allowSameSideTargets = Config.KeyboardConfig?.GroupByColorAllowSameSideTargets == true;
+
+            if (groupCount <= 0)
+                return;
+
+            if (!allowSameSideTargets && groupCount == 2)
+            {
+                bool firstLeft = r.Next(2) == 0;
+                _groupByColorTargetDirections.Add(firstLeft ? Direction.Left : Direction.Right);
+                _groupByColorTargetDirections.Add(firstLeft ? Direction.Right : Direction.Left);
+                return;
+            }
+
+            for (int i = 0; i < groupCount; i++)
+                _groupByColorTargetDirections.Add(r.Next(2) == 0 ? Direction.Left : Direction.Right);
+        }
+
+        private bool[] BuildMiddleBlueBits(Random r, int start, int end, int leftCount, int blueCount, int rightCount)
+        {
+            int middleStart = start + leftCount;
+            int middleEndExclusive = end - rightCount;
+            int maxStart = Math.Max(middleStart, middleEndExclusive - blueCount);
+            int from = r.Next(middleStart, maxStart + 1);
+            return BuildRangeBits(BitArrayQuestion.Length, from, blueCount);
+        }
+
+        private static bool[] BuildRangeBits(int totalLength, int from, int count)
+        {
+            bool[] bits = new bool[totalLength];
+            for (int i = 0; i < count && from + i < totalLength; i++)
+                bits[from + i] = true;
+
+            return bits;
         }
 
         private bool[] GenerateRandomSequence(Random r, int start, int end)
@@ -968,10 +1241,11 @@ namespace GestureSample.Maui.Models
                     break;
                 case Operation.GroupByColor:
                     {
-                        bool[] primaryTarget = GetPrimaryColorTargetBits();
-                        bool[] secondaryTarget = GetSecondaryColorTargetBits();
-                        for (int i = 0; i < len; i++)
-                            BitArrayCorrectAnswer[i] = primaryTarget[i] || secondaryTarget[i];
+                        foreach (bool[] target in BuildGroupByColorTargetGroups())
+                        {
+                            for (int i = 0; i < len && i < target.Length; i++)
+                                BitArrayCorrectAnswer[i] = BitArrayCorrectAnswer[i] || target[i];
+                        }
                     }
                     break;
 
@@ -1019,6 +1293,46 @@ namespace GestureSample.Maui.Models
                     BitArrayCorrectAnswer = null;
                     break;
             }
+        }
+
+        private List<bool[]> BuildGroupByColorTargetGroups()
+        {
+            List<bool[]> targets = new();
+            if (CurrentOperation != Operation.GroupByColor || _groupByColorQuestionGroups.Count == 0)
+                return targets;
+
+            int leftOffset = 0;
+            int rightOffset = 0;
+            int keyboardLength = BitArrayQuestion.Length;
+
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                bool[] source = _groupByColorQuestionGroups[i];
+                int count = SumArray(source);
+                bool[] target = new bool[keyboardLength];
+                Direction direction = _groupByColorTargetDirections.Count > i
+                    ? _groupByColorTargetDirections[i]
+                    : Direction.Left;
+
+                if (direction == Direction.Left)
+                {
+                    for (int keyIndex = 0; keyIndex < count && leftOffset + keyIndex < keyboardLength; keyIndex++)
+                        target[leftOffset + keyIndex] = true;
+
+                    leftOffset += count;
+                }
+                else
+                {
+                    for (int keyIndex = 0; keyIndex < count && rightOffset + keyIndex < keyboardLength; keyIndex++)
+                        target[keyboardLength - 1 - rightOffset - keyIndex] = true;
+
+                    rightOffset += count;
+                }
+
+                targets.Add(target);
+            }
+
+            return targets;
         }
 
         private bool[] BuildLeftPackedBits(bool[] source)

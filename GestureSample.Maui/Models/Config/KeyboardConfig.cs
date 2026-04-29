@@ -393,6 +393,13 @@
         public bool UseDynamicMultiplicationWeights { get; set; } = false;
         public int MaskThirdArrowAfterCycleCount { get; set; } = 0;
         public bool UseFullHandTutorial { get; set; } = false;
+        public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;
+        public bool AllowSumHeaderVisibilityToggle { get; set; } = false;
+        public int GroupByColorColorCount { get; set; } = 2;
+        public int[]? GroupByColorCounts { get; set; }
+        public bool GroupByColorAllowSameSideTargets { get; set; } = false;
+        public bool GroupByColorKeepOuterColorsOnSides { get; set; } = false;
+        public bool GroupByColorKeepBlueInMiddle { get; set; } = false;
         public PpwKeyboardSeedMode PpwKeyboardSeedMode { get; set; } = PpwKeyboardSeedMode.None;
         public KeyboardColorInteractionMode ColorInteractionMode { get; set; } = KeyboardColorInteractionMode.Default;
         public bool EnableColorDrag { get; set; } = false;

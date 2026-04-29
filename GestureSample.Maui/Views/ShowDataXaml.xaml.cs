@@ -34,12 +34,17 @@ namespace GestureSample.Views
         private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
         private Maui.Data.SQLite.User _currentUser;
         private bool _isTeacher = false;
+        private readonly bool _showSelectors;
         private readonly ToolbarItem _backToolbarItem;
+        private readonly ToolbarItem _gamesToolbarItem;
+        private Guid? _currentSelectedGameId;
+        private DateTime? _currentSelectedDate;
 
-        public ShowDataXaml(bool forTeacher=false, Guid? gameId = null)
+        public ShowDataXaml(bool forTeacher=false, Guid? gameId = null, bool showSelectors = true)
         {
            InitializeComponent();
             Title = "Data";
+            _showSelectors = showSelectors;
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
@@ -77,6 +82,18 @@ namespace GestureSample.Views
                 Command = new Command(async () => await NavigateBackAsync())
             };
             ToolbarItems.Add(_backToolbarItem);
+            _gamesToolbarItem = new ToolbarItem
+            {
+                Text = "Games",
+                Priority = 1,
+                Order = ToolbarItemOrder.Primary,
+                Command = new Command(async () => await NavigateToChooserAsync(CurrentGame?.Id))
+            };
+            if (!_showSelectors)
+                ToolbarItems.Add(_gamesToolbarItem);
+
+            PickerPanel.IsVisible = _showSelectors;
+            HeaderGrid.IsVisible = _showSelectors;
             UserPicker.IsVisible = false;
             if ( gameId == null /*&& forTeacher*/ && ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name == "Alex")
             {
@@ -144,6 +161,7 @@ namespace GestureSample.Views
         public async void ShowData(Guid? gameId=null)
         {
             Console.WriteLine(_currentUser.Name);
+            gameId ??= _currentSelectedGameId;
             try
             {
                 GameIdentifiers = await (_isTeacher
@@ -173,6 +191,12 @@ namespace GestureSample.Views
 
             }
 
+            if (CurrentGame != null)
+            {
+                _currentSelectedGameId = CurrentGame.Id;
+                _currentSelectedDate = CurrentGame.TimeStart.Date;
+            }
+
             GameIdentifiers.Reverse();
             //await StateConnection.Instance.Execute(string.Format("UPDATE Game SET seq = {1} WHERE id = '{0}'", GameIdentifiers[0].Id, GameIdentifiers[0].index));
 
@@ -182,17 +206,21 @@ namespace GestureSample.Views
                 return;
             }
 
-            LoadDates();
-             LoadGames();
-            if(gameId !=null)
+            if (_showSelectors)
             {
-                 await LoadStatesToGrid(gameId);
+                LoadDates();
+                LoadGames();
             }
+
+            if (gameId != null)
+                await LoadStatesToGrid(gameId);
+
             Console.WriteLine(_currentUser.Name);
         }
 
         private void LoadDates()
         {
+            GameDates.Clear();
 
             foreach (var game in GameIdentifiers)
                 
@@ -213,9 +241,20 @@ namespace GestureSample.Views
             
             //GameDates = new ObservableCollection<DateTime>(GameDates.Reverse());
             DatePicker.ItemsSource = GameDates;
-            if(GameDates.Count>0) {DatePicker.SelectedIndex = 0;
-               
+            if (GameDates.Count == 0)
+                return;
+
+            DateWraper? preferredDate = _currentSelectedDate.HasValue
+                ? GameDates.FirstOrDefault(item => item.Date.Date == _currentSelectedDate.Value.Date)
+                : null;
+
+            if (preferredDate != null)
+            {
+                DatePicker.SelectedItem = preferredDate;
+                return;
             }
+
+            DatePicker.SelectedIndex = 0;
 
             //GamePicker.ItemsSource = GameIdentifiers;
             
@@ -332,7 +371,13 @@ namespace GestureSample.Views
 
         private void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
         {
-             LoadGames();
+            if (!_showSelectors)
+                return;
+
+            if (DatePicker.SelectedItem is DateWraper selectedDate)
+                _currentSelectedDate = selectedDate.Date;
+
+            LoadGames();
         }
 
         private void LoadGames()
@@ -349,19 +394,35 @@ namespace GestureSample.Views
                 }
             }
             GamePicker.ItemsSource = GameIdentifiersFiltered;
-            if (GamePicker.Items.Count > 0)
+            if (GamePicker.Items.Count == 0)
+                return;
+
+            Game? preferredGame = _currentSelectedGameId.HasValue
+                ? GameIdentifiersFiltered.FirstOrDefault(game => game.Id == _currentSelectedGameId.Value)
+                : null;
+
+            if (preferredGame != null)
             {
-                GamePicker.SelectedIndex = 0;
-                //OnPickerSelectedIndexChanged(sender, e);
+                GamePicker.SelectedItem = preferredGame;
+                return;
             }
+
+            GamePicker.SelectedIndex = 0;
+            //OnPickerSelectedIndexChanged(sender, e);
         }
 
         private async void OnPickerSelectedIndexChanged(object sender, EventArgs e)
         {
+            if (!_showSelectors)
+                return;
+
             var picker = sender as Picker;
             if (picker.SelectedIndex != -1)
             {
                 Game selectedGame = GameIdentifiersFiltered[picker.SelectedIndex];
+                CurrentGame = selectedGame;
+                _currentSelectedGameId = selectedGame.Id;
+                _currentSelectedDate = selectedGame.TimeStart.Date;
                 if (ShowDataRoutingHelper.ShouldUseKeyboardData(selectedGame.Config))
                 {
                     await OpenKeyboardDataPageAsync(selectedGame.Id);
@@ -375,7 +436,7 @@ namespace GestureSample.Views
 
         private async Task OpenKeyboardDataPageAsync(Guid gameId)
         {
-            ShowDataXamlKeyboard keyboardPage = new(gameId)
+            ShowDataXamlKeyboard keyboardPage = new(gameId, false)
             {
                 BindingContext = BindingContext
             };
@@ -429,6 +490,12 @@ namespace GestureSample.Views
 
         private async Task NavigateBackAsync()
         {
+            if (!_showSelectors)
+            {
+                await NavigateToChooserAsync(CurrentGame?.Id);
+                return;
+            }
+
             if (Navigation?.NavigationStack?.Count > 1)
             {
                 await Navigation.PopAsync();
@@ -436,6 +503,19 @@ namespace GestureSample.Views
             }
 
             Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
+        }
+
+        private async Task NavigateToChooserAsync(Guid? gameId)
+        {
+            Page chooserPage = ShowDataRoutingHelper.CreateChooserPage(gameId);
+            if (Navigation?.NavigationStack?.Count > 0)
+            {
+                Navigation.InsertPageBefore(chooserPage, this);
+                await Navigation.PopAsync();
+                return;
+            }
+
+            Application.Current.MainPage = new NavigationPage(chooserPage);
         }
     }
 }

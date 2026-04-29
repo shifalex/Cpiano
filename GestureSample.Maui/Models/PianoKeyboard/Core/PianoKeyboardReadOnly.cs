@@ -1,6 +1,9 @@
 ﻿using Microsoft.Maui.Controls.Shapes;
 using MongoDB.Bson;
 using static Supabase.Postgrest.Constants;
+#if IOS
+using UIKit;
+#endif
 
 namespace GestureSample.Maui.Models
 {
@@ -12,6 +15,8 @@ namespace GestureSample.Maui.Models
         public event EventHandler? KeysRebuilt;
         GraphicsView? _overlayView;
         IDrawable? _overlayDrawable;
+        Microsoft.Maui.Controls.BoxView[]? _traceOverlayViews;
+        Microsoft.Maui.Controls.BoxView[]? _traceOverlaySecondaryViews;
         public GraphicsView? OverlayView => _overlayView;
 
         public Grid Arrow1; // The combined object containing the number and the arrow
@@ -72,6 +77,55 @@ namespace GestureSample.Maui.Models
         }
 
         public void InvalidateOverlay() => _overlayView?.Invalidate();
+
+        public void ClearTraceOverlay()
+        {
+            ClearOverlayViews(_traceOverlayViews);
+            ClearOverlayViews(_traceOverlaySecondaryViews);
+        }
+
+        public void SetTraceOverlayColors(Color?[]? traceOverlayColors, Color?[]? secondaryTraceOverlayColors = null)
+        {
+            ApplyOverlayColors(_traceOverlayViews, traceOverlayColors);
+            ApplyOverlayColors(_traceOverlaySecondaryViews, secondaryTraceOverlayColors);
+        }
+
+        private static void ClearOverlayViews(Microsoft.Maui.Controls.BoxView[]? overlayViews)
+        {
+            if (overlayViews == null)
+                return;
+
+            for (int i = 0; i < overlayViews.Length; i++)
+            {
+                overlayViews[i].IsVisible = false;
+                overlayViews[i].BackgroundColor = Colors.Transparent;
+            }
+        }
+
+        private static void ApplyOverlayColors(Microsoft.Maui.Controls.BoxView[]? overlayViews, Color?[]? overlayColors)
+        {
+            if (overlayViews == null)
+                return;
+
+            for (int i = 0; i < overlayViews.Length; i++)
+            {
+                Color? overlayColor = overlayColors != null && i < overlayColors.Length
+                    ? overlayColors[i]
+                    : null;
+
+                if (overlayColor is Color visibleColor)
+                {
+                    overlayViews[i].BackgroundColor = visibleColor.WithAlpha(1f);
+                    overlayViews[i].Opacity = 1;
+                    overlayViews[i].IsVisible = true;
+                }
+                else
+                {
+                    overlayViews[i].IsVisible = false;
+                    overlayViews[i].BackgroundColor = Colors.Transparent;
+                }
+            }
+        }
 
         public void FixOverlaySpan()
         {
@@ -503,6 +557,8 @@ namespace GestureSample.Maui.Models
                 this.RowDefinitions.Add(new RowDefinition() { Height = GridLength.Auto });
             }
             btnKeys = new MR.Gestures.Button[NUMBER_OF_KEYS];
+            _traceOverlayViews = new Microsoft.Maui.Controls.BoxView[NUMBER_OF_KEYS];
+            _traceOverlaySecondaryViews = new Microsoft.Maui.Controls.BoxView[NUMBER_OF_KEYS];
             for (int i = 0; i < keysInRow + (handSeperator < keysInRow ? 1 : 0); i++)
                 this.ColumnDefinitions.Add((i == handSeperator) ? new ColumnDefinition { Width = new GridLength(5) } : new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -518,6 +574,7 @@ namespace GestureSample.Maui.Models
                     btnKeys[keyIndex] = new()
                     {
                         Text = GetKeyDisplayText(keyIndex),
+                        ClassId = "PianoKeyButton",
                         TextColor = Colors.Black,
                         BackgroundColor = COLOR_FREE,  
                         CommandParameter = keyIndex + 1,
@@ -530,6 +587,79 @@ namespace GestureSample.Maui.Models
                         //r+1 
                         rows - r + (config.IsArrow ? 1 : 0)
                     );
+                    HookPianoKeyVisualNormalization(btnKeys[keyIndex]);
+
+                    VisualStateManager.SetVisualStateGroups(btnKeys[keyIndex], new VisualStateGroupList
+                    {
+                        new VisualStateGroup
+                        {
+                            Name = "CommonStates",
+                            States =
+                            {
+                                new VisualState
+                                {
+                                    Name = "Normal",
+                                    Setters =
+                                    {
+                                        new Setter { Property = MR.Gestures.Button.TextColorProperty, Value = Colors.Black },
+                                        new Setter { Property = MR.Gestures.Button.OpacityProperty, Value = 1d }
+                                    }
+                                },
+                                new VisualState
+                                {
+                                    Name = "Pressed",
+                                    Setters =
+                                    {
+                                        new Setter { Property = MR.Gestures.Button.TextColorProperty, Value = Colors.Black },
+                                        new Setter { Property = MR.Gestures.Button.OpacityProperty, Value = 1d }
+                                    }
+                                },
+                                new VisualState
+                                {
+                                    Name = "Disabled",
+                                    Setters =
+                                    {
+                                        new Setter { Property = MR.Gestures.Button.TextColorProperty, Value = Colors.Black },
+                                        new Setter { Property = MR.Gestures.Button.OpacityProperty, Value = 1d }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    int column = (i < handSeperator) ? i : i + 1;
+                    int row = rows - r + (config.IsArrow ? 1 : 0);
+                    this.Add(
+                        _traceOverlaySecondaryViews[keyIndex] = new Microsoft.Maui.Controls.BoxView
+                        {
+                            InputTransparent = true,
+                            IsVisible = false,
+                            BackgroundColor = Colors.Transparent,
+                            Margin = new Thickness(12, 40, 12, 0),
+                            HorizontalOptions = LayoutOptions.Fill,
+                            VerticalOptions = LayoutOptions.Start,
+                            HeightRequest = 14,
+                            Opacity = 1,
+                            ZIndex = 18
+                        },
+                        column,
+                        row);
+
+                    this.Add(
+                        _traceOverlayViews[keyIndex] = new Microsoft.Maui.Controls.BoxView
+                        {
+                            InputTransparent = true,
+                            IsVisible = false,
+                            BackgroundColor = Colors.Transparent,
+                            Margin = new Thickness(8, 18, 8, 0),
+                            HorizontalOptions = LayoutOptions.Fill,
+                            VerticalOptions = LayoutOptions.Start,
+                            HeightRequest = 14,
+                            Opacity = 1,
+                            ZIndex = 20
+                        },
+                        column,
+                        row);
                 }
             }
             /*if (config.ImposeEdges)
@@ -569,6 +699,51 @@ namespace GestureSample.Maui.Models
             {
                 btnKeys[i].Text = GetKeyDisplayText(i);
             }
+        }
+
+        protected void NormalizeAllPianoKeyVisuals()
+        {
+            if (btnKeys == null)
+                return;
+
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                NormalizePianoKeyVisual(btnKeys[i]);
+            }
+        }
+
+        protected void NormalizePianoKeyVisual(MR.Gestures.Button button)
+        {
+            button.TextColor = Colors.Black;
+            button.Opacity = 1;
+
+#if IOS
+            if (button.Handler?.PlatformView is UIButton nativeButton)
+            {
+                nativeButton.SetTitleColor(UIColor.Black, UIControlState.Normal);
+                nativeButton.SetTitleColor(UIColor.Black, UIControlState.Highlighted);
+                nativeButton.SetTitleColor(UIColor.Black, UIControlState.Disabled);
+                nativeButton.SetTitleColor(UIColor.Black, UIControlState.Selected);
+                nativeButton.SetTitleColor(UIColor.Black, UIControlState.Focused);
+                nativeButton.TintColor = UIColor.Black;
+                nativeButton.TintAdjustmentMode = UIViewTintAdjustmentMode.Normal;
+                nativeButton.Alpha = 1;
+                nativeButton.AdjustsImageWhenDisabled = false;
+
+                if (nativeButton.Configuration != null)
+                {
+                    UIButtonConfiguration configuration = nativeButton.Configuration;
+                    configuration.BaseForegroundColor = UIColor.Black;
+                    nativeButton.Configuration = configuration;
+                }
+            }
+#endif
+        }
+
+        private void HookPianoKeyVisualNormalization(MR.Gestures.Button button)
+        {
+            button.Loaded += (_, _) => NormalizePianoKeyVisual(button);
+            button.HandlerChanged += (_, _) => NormalizePianoKeyVisual(button);
         }
         /// <summary>
         /// Creates pressed piano

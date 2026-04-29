@@ -18,8 +18,9 @@
         private int _numbersChosen = 0;
 
         private int _seconds_pressedHS = 0;
-        protected override int SECONDS_TO_ANSWER { get; } = 2;
-        protected virtual int SECONDS_TO_ANSWER_TOTAL { get; } = 10;
+        protected override int SECONDS_TO_ANSWER => Math.Abs(AnswerTimeSetting);
+        protected virtual int SECONDS_TO_ANSWER_TOTAL => Math.Abs(AnswerTimeSetting);
+        public override bool SupportsAnswerTimeTuner => true;
 
         private bool _withoutZero;
 
@@ -52,9 +53,27 @@
                         break;
 
                 }
-                return string.Format("{0} number", text) + ((_withoutZero) ? "" : string.Format(".\nTime Left: {0} seconds", SECONDS_TO_ANSWER_TOTAL - (_seconds_pressedHS)));
+                if (AnswerTimeSetting == 0)
+                    return string.Format("{0} number", text);
+
+                int timeLeft = AnswerTimeSetting < 0
+                    ? SECONDS_TO_ANSWER_TOTAL - _seconds_pressedHS
+                    : SECONDS_TO_ANSWER - _seconds_pressed;
+
+                if (timeLeft < 0)
+                    timeLeft = 0;
+
+                return string.Format("{0} number", text) + ((_withoutZero) ? "" : string.Format(".\nTime Left: {0} seconds", timeLeft));
             }
         }
+
+        public override void UpdateAnswerTimeSetting(int secondsPressingToAnswer)
+        {
+            base.UpdateAnswerTimeSetting(secondsPressingToAnswer);
+            _seconds_pressedHS = 0;
+            _lblTimer.Text = SecondsToEnd;
+        }
+
         protected override void TimerInit()
         {
             timer = Application.Current.Dispatcher.CreateTimer();
@@ -63,6 +82,14 @@
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
+
+                    if (AnswerTimeSetting == 0)
+                    {
+                        _seconds_pressed = 0;
+                        _seconds_pressedHS = 0;
+                        _lblTimer.Text = SecondsToEnd;
+                        return;
+                    }
 
                     _seconds_pressedHS++;
 
@@ -78,7 +105,11 @@
                         _lblTimer.Text = SecondsToEnd;
                     }
 
-                    if ((_seconds_pressed >= 1 || (_seconds_pressedHS >= SECONDS_TO_ANSWER_TOTAL && !_withoutZero)))
+                    bool shouldAdvance = AnswerTimeSetting < 0
+                        ? _seconds_pressedHS >= SECONDS_TO_ANSWER_TOTAL
+                        : _seconds_pressed >= SECONDS_TO_ANSWER;
+
+                    if (shouldAdvance)
                     {
                         ImposeEdgesIfNeeded();
                         _seconds_pressed = 0;

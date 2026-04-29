@@ -6,16 +6,32 @@ namespace GestureSample.Views
 {
     public sealed class KeyboardReplayPage : ContentPage
     {
+        private sealed class ReplayFrame
+        {
+            public DateTime Timestamp { get; init; }
+            public bool[] State { get; init; } = Array.Empty<bool>();
+            public List<KeyEvent> MarkerEvents { get; init; } = new();
+            public string EventLabel { get; init; } = string.Empty;
+            public string TimerRegimeText { get; init; } = "Unknown";
+        }
+
         private readonly IReadOnlyList<KeyEvent> _events;
+        private readonly IReadOnlyList<TimerChangeEvent> _timerEvents;
         private readonly PianoKeyboardReadOnly _replayKeyboard;
         private readonly AbsoluteLayout _overlayLayer;
         private readonly Label _eventLabel;
+        private readonly Label _timerRegimeLabel;
         private readonly Button _replayButton;
+        private readonly Button _speedButton;
+        private readonly Slider _timelineSlider;
+        private readonly Label _timelineLabel;
         private readonly bool[] _initialState;
         private readonly KeyboardQuestion? _question;
         private readonly bool[]? _finalReplayState;
+        private readonly string _initialTimerRegimeText;
         private readonly Dictionary<int, BoxView> _activeMarkers = new();
         private readonly Dictionary<int, Stack<int>> _activeMarkerTokensByKey = new();
+        private readonly Dictionary<int, KeyEvent> _activeMarkerEventsByKey = new();
         private readonly Color[] _markerPalette =
         {
             Colors.OrangeRed,
@@ -27,18 +43,30 @@ namespace GestureSample.Views
         private int _nextMarkerToken;
         private bool _isPlaying;
         private bool _hasAutoPlayed;
+        private bool _slowReplayEnabled;
+        private bool _isApplyingTimelineValue;
+        private int _playbackVersion;
+        private int _currentFrameIndex;
+        private List<ReplayFrame> _replayFrames = new();
+        private List<KeyEvent>? _submitMarkerSnapshot;
+        private bool[]? _submitStateSnapshot;
+        private KeyEvent? _submitFinalKeyPressEvent;
 
         public KeyboardReplayPage(
             string title,
             IReadOnlyList<KeyEvent> events,
             KeyboardQuestion? question = null,
             KeyboardConfig? keyboardConfig = null,
-            bool[]? finalReplayState = null)
+            bool[]? finalReplayState = null,
+            string? timerRegimeText = null,
+            IReadOnlyList<TimerChangeEvent>? timerEvents = null)
         {
             Title = title;
             _events = events?.OrderBy(item => item.EventTime).ThenBy(item => item.id).ToList() ?? new List<KeyEvent>();
+            _timerEvents = timerEvents?.OrderBy(item => item.EventTime).ThenBy(item => item.Id).ToList() ?? new List<TimerChangeEvent>();
             _question = question;
             _finalReplayState = finalReplayState?.ToArray();
+            _initialTimerRegimeText = string.IsNullOrWhiteSpace(timerRegimeText) ? "Unknown" : timerRegimeText;
 
             KeyboardConfig replayConfig = question?.CreateKeyboardConfig() ?? keyboardConfig ?? new KeyboardConfig();
 
@@ -61,6 +89,15 @@ namespace GestureSample.Views
                 TextColor = Colors.Black
             };
 
+            _timerRegimeLabel = new Label
+            {
+                Text = $"Answer Time: {_initialTimerRegimeText}",
+                HorizontalOptions = LayoutOptions.Center,
+                HorizontalTextAlignment = TextAlignment.Center,
+                TextColor = Colors.DimGray,
+                FontSize = 13
+            };
+
             _replayButton = new Button
             {
                 Text = "Replay",
@@ -68,6 +105,30 @@ namespace GestureSample.Views
                 IsEnabled = _events.Count > 0
             };
             _replayButton.Clicked += async (_, _) => await ReplayAsync();
+            _speedButton = new Button
+            {
+                Text = GetSpeedButtonText(),
+                HorizontalOptions = LayoutOptions.Center
+            };
+            _speedButton.Clicked += (_, _) =>
+            {
+                _slowReplayEnabled = !_slowReplayEnabled;
+                _speedButton.Text = GetSpeedButtonText();
+            };
+            _timelineSlider = new Slider
+            {
+                Minimum = 0,
+                Maximum = 0,
+                Value = 0
+            };
+            _timelineSlider.ValueChanged += OnTimelineSliderValueChanged;
+            _timelineLabel = new Label
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                HorizontalTextAlignment = TextAlignment.Center,
+                TextColor = Colors.DimGray,
+                FontSize = 12
+            };
 
             Grid replayGrid = new();
             replayGrid.Children.Add(_replayKeyboard);
@@ -89,9 +150,21 @@ namespace GestureSample.Views
                             Text = "Replay",
                             FontAttributes = FontAttributes.Bold
                         },
+                        _timerRegimeLabel,
                         replayGrid,
                         _eventLabel,
-                        _replayButton
+                        _timelineSlider,
+                        _timelineLabel,
+                        new HorizontalStackLayout
+                        {
+                            HorizontalOptions = LayoutOptions.Center,
+                            Spacing = 12,
+                            Children =
+                            {
+                                _replayButton,
+                                _speedButton
+                            }
+                        }
                     }
                 }
             };
@@ -106,6 +179,7 @@ namespace GestureSample.Views
             if (_hasAutoPlayed || _events.Count == 0)
                 return;
 
+            EnsureReplayFramesBuilt();
             _hasAutoPlayed = true;
             await WaitForReplayKeyboardReadyAsync();
             await Task.Delay(80);
@@ -114,50 +188,226 @@ namespace GestureSample.Views
 
         private async Task ReplayAsync()
         {
-            if (_isPlaying || _events.Count == 0)
+            EnsureReplayFramesBuilt();
+
+            if (_isPlaying)
+            {
+                _playbackVersion++;
+                _isPlaying = false;
+                _replayButton.Text = "Replay";
+                return;
+            }
+
+            if (_replayFrames.Count <= 1)
                 return;
 
             _isPlaying = true;
-            _replayButton.IsEnabled = false;
+            _replayButton.Text = "Stop";
+            int playbackVersion = ++_playbackVersion;
 
             try
             {
                 await WaitForReplayKeyboardReadyAsync();
-                bool[] state = _initialState.ToArray();
-                RenderReplayState(state, highlightPressedKeys: false);
-                ClearActiveMarkers();
-
-                DateTime? previousTime = null;
-                int? currentAttemptNumber = null;
-                foreach (KeyEvent keyEvent in _events)
+                if (_currentFrameIndex >= _replayFrames.Count - 1)
                 {
-                    if (ShouldResetForAttemptBoundary(currentAttemptNumber, keyEvent.AttemptNumber))
-                    {
-                        Array.Fill(state, false);
-                        RenderReplayState(state, highlightPressedKeys: false);
-                        ClearActiveMarkers();
-                    }
-
-                    if (previousTime.HasValue)
-                    {
-                        int delay = (int)Math.Clamp((keyEvent.EventTime - previousTime.Value).TotalMilliseconds, 30, 900);
-                        await Task.Delay(delay);
-                    }
-
-                    ApplyEvent(state, keyEvent, highlightPressedKeys: true);
-                    previousTime = keyEvent.EventTime;
-                    currentAttemptNumber = keyEvent.AttemptNumber;
+                    ApplyReplayFrame(0);
                 }
 
-                ClearActiveMarkers();
-                RenderReplayState(GetFinalReplayState(state), highlightPressedKeys: true);
-                await Task.Delay(500);
+                for (int frameIndex = Math.Max(1, _currentFrameIndex + 1); frameIndex < _replayFrames.Count; frameIndex++)
+                {
+                    if (playbackVersion != _playbackVersion)
+                        return;
+
+                    ReplayFrame previousFrame = _replayFrames[Math.Max(0, frameIndex - 1)];
+                    ReplayFrame nextFrame = _replayFrames[frameIndex];
+                    int delay = (int)Math.Clamp((nextFrame.Timestamp - previousFrame.Timestamp).TotalMilliseconds, 30, 900);
+                    await Task.Delay(GetReplayDelay(delay));
+
+                    if (playbackVersion != _playbackVersion)
+                        return;
+
+                    ApplyReplayFrame(frameIndex);
+                }
+
+                await Task.Delay(GetReplayDelay(500));
             }
             finally
             {
                 _isPlaying = false;
-                _replayButton.IsEnabled = true;
+                _replayButton.Text = "Replay";
             }
+        }
+
+        private void EnsureReplayFramesBuilt()
+        {
+            if (_replayFrames.Count > 0)
+                return;
+
+            _replayFrames = BuildReplayFrames();
+            _timelineSlider.Maximum = Math.Max(0, _replayFrames.Count - 1);
+            ApplyReplayFrame(0);
+        }
+
+        private List<ReplayFrame> BuildReplayFrames()
+        {
+            List<ReplayFrame> frames = new();
+            bool[] state = _initialState.ToArray();
+            Dictionary<int, Stack<KeyEvent>> activeMarkersByKey = new();
+            string currentTimerText = _initialTimerRegimeText;
+            string currentEventLabel = _events.Count == 0 ? "No saved strokes for this question." : "Ready to replay.";
+            DateTime initialTime = _events.FirstOrDefault()?.EventTime
+                ?? _question?.Time
+                ?? DateTime.Now;
+
+            frames.Add(CreateReplayFrame(initialTime, state, activeMarkersByKey, currentEventLabel, currentTimerText));
+
+            int timerEventIndex = 0;
+            int? submittedAttemptNumber = null;
+            int? currentAttemptNumber = null;
+            bool clearOnNextAttemptInput = false;
+
+            foreach (KeyEvent keyEvent in _events)
+            {
+                if (ShouldResetForAttemptBoundary(currentAttemptNumber, keyEvent.AttemptNumber))
+                {
+                    submittedAttemptNumber = null;
+                    clearOnNextAttemptInput = true;
+                }
+
+                while (timerEventIndex < _timerEvents.Count &&
+                       _timerEvents[timerEventIndex].EventTime <= keyEvent.EventTime)
+                {
+                    currentTimerText = FormatTimerSetting(_timerEvents[timerEventIndex].NewSetting);
+                    frames.Add(CreateReplayFrame(_timerEvents[timerEventIndex].EventTime, state, activeMarkersByKey, currentEventLabel, currentTimerText));
+                    timerEventIndex++;
+                }
+
+                if (ShouldSkipPostSubmitEvent(keyEvent, submittedAttemptNumber))
+                    continue;
+
+                if (clearOnNextAttemptInput && keyEvent.EventType != 2)
+                {
+                    Array.Fill(state, false);
+                    activeMarkersByKey.Clear();
+                    clearOnNextAttemptInput = false;
+                }
+
+                currentAttemptNumber = keyEvent.AttemptNumber;
+
+                if (keyEvent.EventType == 2)
+                {
+                    submittedAttemptNumber = keyEvent.AttemptNumber;
+                    currentEventLabel = FormatEventLabel(keyEvent);
+                    frames.Add(CreateReplayFrame(keyEvent.EventTime, state, activeMarkersByKey, currentEventLabel, currentTimerText));
+                    continue;
+                }
+
+                ApplyEventToState(state, activeMarkersByKey, keyEvent);
+                currentEventLabel = FormatEventLabel(keyEvent);
+                frames.Add(CreateReplayFrame(keyEvent.EventTime, state, activeMarkersByKey, currentEventLabel, currentTimerText));
+            }
+
+            while (timerEventIndex < _timerEvents.Count)
+            {
+                currentTimerText = FormatTimerSetting(_timerEvents[timerEventIndex].NewSetting);
+                frames.Add(CreateReplayFrame(_timerEvents[timerEventIndex].EventTime, state, activeMarkersByKey, currentEventLabel, currentTimerText));
+                timerEventIndex++;
+            }
+
+            return frames;
+        }
+
+        private static ReplayFrame CreateReplayFrame(
+            DateTime timestamp,
+            bool[] state,
+            Dictionary<int, Stack<KeyEvent>> activeMarkersByKey,
+            string eventLabel,
+            string timerRegimeText)
+        {
+            return new ReplayFrame
+            {
+                Timestamp = timestamp,
+                State = state.ToArray(),
+                MarkerEvents = activeMarkersByKey
+                    .SelectMany(item => item.Value.Reverse())
+                    .OrderBy(item => item.EventTime)
+                    .ThenBy(item => item.id)
+                    .ToList(),
+                EventLabel = eventLabel,
+                TimerRegimeText = timerRegimeText
+            };
+        }
+
+        private static void ApplyEventToState(bool[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
+        {
+            int keyIndex = keyEvent.KeyNumber - 1;
+            if (keyIndex >= 0 && keyIndex < state.Length)
+            {
+                if (keyEvent.EventType == 1)
+                    state[keyIndex] = true;
+                else if (keyEvent.EventType == 0)
+                    state[keyIndex] = false;
+                else if (keyEvent.EventType == 3)
+                    Array.Fill(state, false);
+            }
+
+            switch (keyEvent.EventType)
+            {
+                case 1:
+                    if (!activeMarkersByKey.TryGetValue(keyEvent.KeyNumber, out Stack<KeyEvent>? markerStack))
+                    {
+                        markerStack = new Stack<KeyEvent>();
+                        activeMarkersByKey[keyEvent.KeyNumber] = markerStack;
+                    }
+                    markerStack.Push(keyEvent);
+                    break;
+                case 0:
+                    if (activeMarkersByKey.TryGetValue(keyEvent.KeyNumber, out Stack<KeyEvent>? removeStack) && removeStack.Count > 0)
+                    {
+                        removeStack.Pop();
+                        if (removeStack.Count == 0)
+                            activeMarkersByKey.Remove(keyEvent.KeyNumber);
+                    }
+                    break;
+                case 3:
+                    activeMarkersByKey.Clear();
+                    break;
+            }
+        }
+
+        private void ApplyReplayFrame(int frameIndex)
+        {
+            if (frameIndex < 0 || frameIndex >= _replayFrames.Count)
+                return;
+
+            ReplayFrame frame = _replayFrames[frameIndex];
+            _currentFrameIndex = frameIndex;
+
+            RenderReplayState(frame.State, highlightPressedKeys: true);
+            ClearActiveMarkers();
+            foreach (KeyEvent markerEvent in frame.MarkerEvents)
+                AddActiveMarker(markerEvent);
+
+            _eventLabel.Text = frame.EventLabel;
+            _timerRegimeLabel.Text = $"Answer Time: {frame.TimerRegimeText}";
+
+            _isApplyingTimelineValue = true;
+            _timelineSlider.Value = frameIndex;
+            _timelineLabel.Text = $"Frame {frameIndex + 1}/{_replayFrames.Count}";
+            _isApplyingTimelineValue = false;
+        }
+
+        private void OnTimelineSliderValueChanged(object? sender, ValueChangedEventArgs e)
+        {
+            if (_isApplyingTimelineValue || _replayFrames.Count == 0)
+                return;
+
+            _playbackVersion++;
+            _isPlaying = false;
+            _replayButton.Text = "Replay";
+
+            int frameIndex = (int)Math.Round(e.NewValue);
+            ApplyReplayFrame(frameIndex);
         }
 
         private static bool ShouldResetForAttemptBoundary(int? currentAttemptNumber, int nextAttemptNumber)
@@ -169,6 +419,27 @@ namespace GestureSample.Views
                 return false;
 
             return currentAttemptNumber.Value > 0 || nextAttemptNumber > 0;
+        }
+
+        private static bool ShouldSkipPostSubmitEvent(KeyEvent nextEvent, int? submittedAttemptNumber)
+        {
+            if (!submittedAttemptNumber.HasValue)
+                return false;
+
+            if (submittedAttemptNumber.Value != nextEvent.AttemptNumber)
+                return false;
+
+            return nextEvent.EventType != 2;
+        }
+
+        private int GetReplayDelay(int baseDelay)
+        {
+            return _slowReplayEnabled ? baseDelay * 3 : baseDelay;
+        }
+
+        private string GetSpeedButtonText()
+        {
+            return _slowReplayEnabled ? "Speed: Slow x3" : "Speed: Normal";
         }
 
         private async Task WaitForReplayKeyboardReadyAsync()
@@ -202,22 +473,19 @@ namespace GestureSample.Views
                    _replayKeyboard.KeyButtons.All(button => button.Width > 0 && button.Height > 0);
         }
 
-        private void ApplyEvent(bool[] state, KeyEvent keyEvent, bool highlightPressedKeys)
+        private static string FormatEventLabel(KeyEvent keyEvent)
         {
-            int keyIndex = keyEvent.KeyNumber - 1;
-            if (keyIndex >= 0 && keyIndex < state.Length)
-            {
-                if (keyEvent.EventType == 1)
-                    state[keyIndex] = true;
-                else if (keyEvent.EventType == 0)
-                    state[keyIndex] = false;
-                else if (keyEvent.EventType == 3)
-                    Array.Fill(state, false);
-            }
+            return $"{keyEvent.EventTimeText}  {keyEvent.EventTypeText}  key {keyEvent.KeyNumber}  x {keyEvent.RelativeXText}  y {keyEvent.RelativeYText}";
+        }
 
-            RenderReplayState(state, highlightPressedKeys);
-            UpdateMarkers(keyEvent);
-            _eventLabel.Text = $"{keyEvent.EventTimeText}  {keyEvent.EventTypeText}  key {keyEvent.KeyNumber}  x {keyEvent.RelativeXText}  y {keyEvent.RelativeYText}";
+        private static string FormatTimerSetting(int setting)
+        {
+            if (setting == 0)
+                return "Off";
+
+            int seconds = Math.Abs(setting);
+            string mode = setting < 0 ? "Whole Answer" : "After Last Key";
+            return $"{seconds}s | {mode}";
         }
 
         private void RenderReplayState(bool[] state, bool highlightPressedKeys)
@@ -233,27 +501,6 @@ namespace GestureSample.Views
                 colors[i] = Colors.White;
 
             _replayKeyboard.PianoInit(colors);
-        }
-
-        private bool[] GetFinalReplayState(bool[] fallbackState)
-        {
-            if (_finalReplayState != null && _finalReplayState.Length > 0)
-            {
-                bool[] finalState = new bool[_replayKeyboard.KeyCount];
-                int length = Math.Min(finalState.Length, _finalReplayState.Length);
-                Array.Copy(_finalReplayState, finalState, length);
-                return finalState;
-            }
-
-            if (_question?.HasSubmittedKeyboard == true && _question.SubmittedKeyboard != null)
-            {
-                bool[] finalState = new bool[_replayKeyboard.KeyCount];
-                int length = Math.Min(finalState.Length, _question.SubmittedKeyboard.Length);
-                Array.Copy(_question.SubmittedKeyboard, finalState, length);
-                return finalState;
-            }
-
-            return fallbackState.ToArray();
         }
 
         private VerticalStackLayout BuildPromptLayout()
@@ -361,6 +608,9 @@ namespace GestureSample.Views
                 case 0:
                     RemoveActiveMarker(keyEvent.KeyNumber);
                     break;
+                case 2:
+                    CaptureSubmitMarkerSnapshot();
+                    break;
                 case 3:
                     ClearActiveMarkers();
                     break;
@@ -384,6 +634,7 @@ namespace GestureSample.Views
             }
 
             markerStack.Push(token);
+            _activeMarkerEventsByKey[keyEvent.KeyNumber] = keyEvent;
             _overlayLayer.Children.Add(marker);
             PositionMarker(marker, keyEvent);
         }
@@ -401,7 +652,10 @@ namespace GestureSample.Views
             }
 
             if (markerStack.Count == 0)
+            {
                 _activeMarkerTokensByKey.Remove(keyNumber);
+                _activeMarkerEventsByKey.Remove(keyNumber);
+            }
         }
 
         private void ClearActiveMarkers()
@@ -413,7 +667,67 @@ namespace GestureSample.Views
 
             _activeMarkers.Clear();
             _activeMarkerTokensByKey.Clear();
+            _activeMarkerEventsByKey.Clear();
             _nextMarkerToken = 0;
+        }
+
+        private void CaptureSubmitMarkerSnapshot()
+        {
+            _submitMarkerSnapshot = _activeMarkerEventsByKey
+                .OrderBy(item => item.Value.EventTime)
+                .ThenBy(item => item.Value.id)
+                .Select(item => item.Value)
+                .ToList();
+        }
+
+        private KeyEvent? GetLatestSubmitKeyPressEvent()
+        {
+            return _submitMarkerSnapshot?
+                .OrderBy(item => item.EventTime)
+                .ThenBy(item => item.id)
+                .LastOrDefault();
+        }
+
+        private void RestoreFinalMarkers(bool[] finalState, IReadOnlyList<KeyEvent> renderedEvents, int? finalAttemptNumber)
+        {
+            ClearActiveMarkers();
+
+            if (_submitMarkerSnapshot != null && _submitMarkerSnapshot.Count > 0)
+            {
+                foreach (KeyEvent keyEvent in _submitMarkerSnapshot)
+                    AddActiveMarker(keyEvent);
+                return;
+            }
+
+            for (int keyIndex = 0; keyIndex < finalState.Length; keyIndex++)
+            {
+                if (!finalState[keyIndex])
+                    continue;
+
+                KeyEvent? finalDownEvent = renderedEvents
+                    .Where(item => item.EventType == 1 &&
+                                   item.KeyNumber == keyIndex + 1 &&
+                                   (!finalAttemptNumber.HasValue || item.AttemptNumber == finalAttemptNumber.Value))
+                    .OrderBy(item => item.EventTime)
+                    .ThenBy(item => item.id)
+                    .LastOrDefault();
+
+                if (finalDownEvent != null)
+                    AddActiveMarker(finalDownEvent);
+            }
+        }
+
+        private static KeyEvent? GetFinalKeyPressEvent(IReadOnlyList<KeyEvent> renderedEvents, bool[] finalState, int? finalAttemptNumber)
+        {
+            return renderedEvents
+                .Where(item => item.EventType == 1 &&
+                               item.KeyNumber > 0 &&
+                               item.KeyNumber <= finalState.Length &&
+                               finalState[item.KeyNumber - 1] &&
+                               (!finalAttemptNumber.HasValue || item.AttemptNumber == finalAttemptNumber.Value))
+                .OrderBy(item => item.EventTime)
+                .ThenBy(item => item.id)
+                .LastOrDefault();
         }
 
         private BoxView CreateMarker(int token)
