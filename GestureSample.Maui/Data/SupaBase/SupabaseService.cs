@@ -16,18 +16,15 @@ namespace GestureSample.Maui.Data.SupaBase
 {
     public static class SupabaseService
     {
-        
-        private static readonly string _supabaseUrl = "https://njsspracfpbyozvandph.supabase.co";
-        private static readonly string _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA";
-        private static readonly string _supabaseUserName = "alex.shifrin@mail.huji.ac.il";
-        private static readonly string _supabasePassword = "34U_2iGtnq4fA6a";
-
-private static readonly SupabaseClient _supabase = new(
-           _supabaseUrl,
-            _supabaseKey
-        );
+        private static readonly Lazy<SupabaseLocalConfig> _config = new(SupabaseLocalConfig.LoadOrThrow);
+        private static readonly Lazy<SupabaseClient> _supabase = new(() =>
+            new SupabaseClient(
+                _config.Value.Url,
+                _config.Value.AnonKey
+            ));
         // In-memory storage of the current session's JWT
         private static string? _currentJwt;
+        private static SupabaseClient Client => _supabase.Value;
 
        
         #region Logging Helpers
@@ -53,12 +50,12 @@ private static readonly SupabaseClient _supabase = new(
         public static async Task SignInWithPasswordAsync(string email, string password)
         {
             // SignIn returns a Session where session.User is null if credentials are invalid
-            var session = await _supabase.Auth.SignIn(email, password);
+            var session = await Client.Auth.SignIn(email, password);
             if (session?.User == null)
                 throw new Exception("Sign in failed: invalid credentials");
             else
             {
-                _currentJwt = _supabase.Auth.CurrentSession?.AccessToken;
+                _currentJwt = Client.Auth.CurrentSession?.AccessToken;
                 LogInfo($"Supabase JWT: {_currentJwt}");
             }
         }
@@ -68,18 +65,18 @@ private static readonly SupabaseClient _supabase = new(
         /// </summary>
         public static async Task SignOutAsync()
         {
-            await _supabase.Auth.SignOut();
+            await Client.Auth.SignOut();
         }
 
         /// <summary>
         /// Indicates whether a user is currently signed in.
         /// </summary>
-        public static bool IsSignedIn => _supabase.Auth.CurrentSession != null;
+        public static bool IsSignedIn => Client.Auth.CurrentSession != null;
 
         /// <summary>
         /// Retrieves the current session's access token (JWT), or null if not signed in.
         /// </summary>
-        public static string? AccessToken => _supabase.Auth.CurrentSession?.AccessToken;
+        public static string? AccessToken => Client.Auth.CurrentSession?.AccessToken;
 
 
         public static async Task<List<User>> GetUsersOfUser(SQLite.User user)
@@ -91,27 +88,12 @@ private static readonly SupabaseClient _supabase = new(
                 //if (!user.IsTeacher) return null;
 
 
-
-                /* await SignInWithPasswordAsync(_supabaseUserName, _supabasePassword);
-                 if (string.IsNullOrEmpty(_currentJwt))
-                     throw new InvalidOperationException("User not signed in.");
-
-                 if (string.IsNullOrEmpty(_supabase.Auth.CurrentSession?.AccessToken))
-                     throw new InvalidOperationException("User not signed in.");
-                 var options = new Supabase.Functions.Client.InvokeFunctionOptions
-                 {
-                     Headers = new Dictionary<string, string>
-         {
-             { "Authorization", $"Bearer {_currentJwt}" }
-         }
-                 };*/
-
                 var parameters = new Dictionary<string, object>
 {
     { "user_id", user.Id } // Replace userId with the actual UUID value
 };
 
-                var users = await _supabase.Rpc<List<User>>("get_users_by_classroom", parameters);
+                var users = await Client.Rpc<List<User>>("get_users_by_classroom", parameters);
                 //var users = response.Model;
 
                 //var users = await _supabase.Functions.Invoke<List<User>>("select-users-by-classroom", options: options);
@@ -132,7 +114,7 @@ private static readonly SupabaseClient _supabase = new(
             }
 
             //string userIdString = userID.Value.ToString("D"); // Use the "D" format for consistent GUID string representation
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
                 .Where(game => game.UserId == (Guid)userID)
         .Get();
@@ -144,7 +126,7 @@ private static readonly SupabaseClient _supabase = new(
         public static async Task<List<SQLite.Game>> GetRecordsByGameNamesAsync(Guid? userID, string gameName)
         {
            
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
         .Where(g => g.UserId == userID && g.FinalStatus==1)
         .Get();
@@ -160,7 +142,7 @@ private static readonly SupabaseClient _supabase = new(
                 return new List<string>();
             }
             // SELECT DISTINCT with an alias matching the property name in your class
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
         .Where(g => g.UserId == userID)
         .Get();
@@ -177,7 +159,7 @@ private static readonly SupabaseClient _supabase = new(
 
         public static async Task<List<SQLite.QuestionAnswer>> GetAnswersByQueryAsync(Guid GameId)
         {
-            var result = await _supabase.From<QuestionAnswer>().Where(state => state.GameId == GameId).Get();
+            var result = await Client.From<QuestionAnswer>().Where(state => state.GameId == GameId).Get();
             return result.Models.Select(QA => ConvertFrom<SupaBase.QuestionAnswer, SQLite.QuestionAnswer>(QA)).ToList();
         }
 
@@ -187,7 +169,7 @@ private static readonly SupabaseClient _supabase = new(
                 return new List<SQLite.KeyboardQuestion>();
 
             string gameId = selectedIdentifier.Value.ToString();
-            var result = await _supabase.From<KeyboardQuestion>().Where(state => state.GameId == gameId).Get();
+            var result = await Client.From<KeyboardQuestion>().Where(state => state.GameId == gameId).Get();
 
             LogInfo("Retrived states");
             return result.Models.Select(q => ConvertFrom<SupaBase.KeyboardQuestion, SQLite.KeyboardQuestion>(q)).ToList();
@@ -196,7 +178,7 @@ private static readonly SupabaseClient _supabase = new(
 
         public static async Task<List<SQLite.KeyEvent>> GetKeyEventsByQueryAsync(Guid GameId)
         {
-            var result = await _supabase.From<KeyEvent>().Where(state => state.GameId == GameId.ToString()).Get();
+            var result = await Client.From<KeyEvent>().Where(state => state.GameId == GameId.ToString()).Get();
             return result.Models.Select(keyEvent => ConvertFrom<SupaBase.KeyEvent, SQLite.KeyEvent>(keyEvent)).ToList(); 
         }
 
@@ -263,7 +245,7 @@ private static readonly SupabaseClient _supabase = new(
                 LogInfo("Starting SyncUserAsync.");
 
                 // Check if the user exists remotely.
-                var existingResponse = await _supabase
+                var existingResponse = await Client
                     .From<User>()
                     .Where(u => u.Id == user.Id)
                     .Get();
@@ -275,7 +257,7 @@ private static readonly SupabaseClient _supabase = new(
                 // Use Upsert so that if the record exists it will be updated,
                 // and if not, it will be inserted.
                 var SupabaseUser = ConvertFrom<SQLite.User, SupaBase.User>(user);
-                await _supabase.From<User>().Upsert(SupabaseUser);
+                await Client.From<User>().Upsert(SupabaseUser);
                 LogInfo("User record upserted.");
 
                 LogInfo("Completed SyncUserAsync.");
@@ -312,7 +294,7 @@ private static readonly SupabaseClient _supabase = new(
 
                 // 3. Batch upsert all remote games.
                 // Note: Batch upsert minimizes the number of HTTP calls.
-                await _supabase.From<SupaBase.Game>().Upsert(remoteGameBatch);
+                await Client.From<SupaBase.Game>().Upsert(remoteGameBatch);
                 LogInfo($"Upserted {remoteGameBatch.Count} games to SupaBase.");
 
                 // 4. Replace related game rows so repeated syncs stay safe.
@@ -369,7 +351,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(q => q.UserId == user.Id && IsQuestionEligibleForSync(q))
                     .ToList();
 
-                var response = await _supabase.From<KeyboardQuestion>().Get();
+                var response = await Client.From<KeyboardQuestion>().Get();
                 var remoteQuestions = response.Models;
 
                 await SyncEntitiesAsync(
@@ -405,7 +387,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(a => a.GameId == user.Id.ToString() && IsAnswerEligibleForSync(a))
                     .ToList();
 
-                var response = await _supabase.From<KeyboardAnswer>().Get();
+                var response = await Client.From<KeyboardAnswer>().Get();
                 var remoteAnswers = response.Models;
 
                 await SyncEntitiesAsync(
@@ -441,7 +423,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(e => e.GameId == user.Id.ToString() && IsKeyEventEligibleForSync(e))
                     .ToList();
 
-                var response = await _supabase.From<KeyEvent>().Get();
+                var response = await Client.From<KeyEvent>().Get();
                 var remoteEvents = response.Models;
 
                 await SyncEntitiesAsync(
@@ -475,7 +457,7 @@ private static readonly SupabaseClient _supabase = new(
             var qaRepo = ServiceHelper.GetService<QuestionAnswerRepository>();
             var localQAs = await qaRepo.GetAnswersByQueryAsync(gameId);
 
-            await _supabase.From<SupaBase.QuestionAnswer>()
+                await Client.From<SupaBase.QuestionAnswer>()
                 .Where(state => state.GameId == gameId)
                 .Delete();
 
@@ -489,7 +471,7 @@ private static readonly SupabaseClient _supabase = new(
                 .Select(qa => ConvertFrom<SQLite.QuestionAnswer, SupaBase.QuestionAnswer>(qa))
                 .ToList();
 
-            await _supabase.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
+                await Client.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
             LogInfo($"Inserted {supabaseQAs.Count} SupaBase QuestionAnswer records for Game {gameId}.");
         }
 
@@ -498,7 +480,7 @@ private static readonly SupabaseClient _supabase = new(
             var keyboardQuestionRepo = ServiceHelper.GetService<KeyboardQuestionRepository>();
             var localQuestions = await keyboardQuestionRepo.GetKeyboardQuestionByQueryAsync(gameId);
 
-            await _supabase.From<SupaBase.KeyboardQuestion>()
+                await Client.From<SupaBase.KeyboardQuestion>()
                 .Where(state => state.GameId == gameId.ToString())
                 .Delete();
 
@@ -512,7 +494,7 @@ private static readonly SupabaseClient _supabase = new(
                 .Select(question => ConvertFrom<SQLite.KeyboardQuestion, SupaBase.KeyboardQuestion>(question))
                 .ToList();
 
-            await _supabase.From<SupaBase.KeyboardQuestion>().Insert(supabaseQuestions);
+                await Client.From<SupaBase.KeyboardQuestion>().Insert(supabaseQuestions);
             LogInfo($"Inserted {supabaseQuestions.Count} SupaBase KeyboardQuestion records for Game {gameId}.");
         }
 
@@ -521,7 +503,7 @@ private static readonly SupabaseClient _supabase = new(
             var keyEventRepo = ServiceHelper.GetService<KeyEventRepository>();
             var localEvents = await keyEventRepo.GetKeyEventsByQueryAsync(gameId);
 
-            await _supabase.From<SupaBase.KeyEvent>()
+                await Client.From<SupaBase.KeyEvent>()
                 .Where(state => state.GameId == gameId.ToString())
                 .Delete();
 
@@ -535,7 +517,7 @@ private static readonly SupabaseClient _supabase = new(
                 .Select(keyEvent => ConvertFrom<SQLite.KeyEvent, SupaBase.KeyEvent>(keyEvent))
                 .ToList();
 
-            await _supabase.From<SupaBase.KeyEvent>().Insert(supabaseEvents);
+                await Client.From<SupaBase.KeyEvent>().Insert(supabaseEvents);
             LogInfo($"Inserted {supabaseEvents.Count} SupaBase KeyEvent records for Game {gameId}.");
         }
 
@@ -564,7 +546,7 @@ private static readonly SupabaseClient _supabase = new(
                 var toInsert = localData.Where(x => !remoteKeys.Contains(keySelector(x))).ToList();
                 if (toInsert.Any())
                 {
-                    await _supabase.From<T>().Insert(toInsert);
+                await Client.From<T>().Insert(toInsert);
                     LogInfo($"{typeof(T).Name}: Inserted {toInsert.Count} new record(s).");
                 }
                 else
@@ -581,7 +563,7 @@ private static readonly SupabaseClient _supabase = new(
                     var list = localData.ToList();
                     if (list.Any())
                     {
-                        await _supabase.From<T>().Upsert(list);
+                await Client.From<T>().Upsert(list);
                         LogInfo($"{typeof(T).Name}: Upserted {list.Count} record(s).");
                     }
                     else

@@ -198,3 +198,4 @@ project.lock.json
 .vs/
 **/.vs/
 /file.patch
+/GestureSample.Maui/supabase.local.json
