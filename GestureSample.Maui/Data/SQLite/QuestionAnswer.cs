@@ -20,6 +20,12 @@ namespace GestureSample.Maui.Data.SQLite
         public int Sum { get; set; }
         public int Addend1 { get; set; }
         public int Addend2 { get; set; }
+        public int SecondarySum { get; set; } = -1111;
+        public int SecondaryAddend1 { get; set; } = -1111;
+        public int SecondaryAddend2 { get; set; } = -1111;
+        public bool SecondarySumEnabled { get; set; } = false;
+        public bool SecondaryAddend1Enabled { get; set; } = false;
+        public bool SecondaryAddend2Enabled { get; set; } = false;
 
         public int ResultStatus { get; set; } = 0;
 
@@ -45,6 +51,7 @@ namespace GestureSample.Maui.Data.SQLite
 
     public class ShowState : QuestionAnswer
     {
+        private const int EmptyPpwValue = -1111;
 
         public ShowState(QuestionAnswer state)
         {
@@ -54,6 +61,12 @@ namespace GestureSample.Maui.Data.SQLite
             Sum = state.Sum;
             Addend1 = state.Addend1;
             Addend2 = state.Addend2;
+            SecondaryAddend1 = state.SecondaryAddend1;
+            SecondaryAddend2 = state.SecondaryAddend2;
+            SecondarySum = state.SecondarySum;
+            SecondaryAddend1Enabled = state.SecondaryAddend1Enabled;
+            SecondaryAddend2Enabled = state.SecondaryAddend2Enabled;
+            SecondarySumEnabled = state.SecondarySumEnabled;
             Op = state.Op;
             ResultStatus = state.ResultStatus;
             OpDString = state.Op.ToDString();
@@ -71,6 +84,19 @@ namespace GestureSample.Maui.Data.SQLite
         public string OpDString { get; set; }
         public List<ShowQuestionAnswerPartRow> HelperRows { get; set; } = new();
         public bool HasHelperRows => HelperRows.Count > 0;
+        public bool HasSecondaryPpw =>
+            SecondaryAddend1 != EmptyPpwValue ||
+            SecondaryAddend2 != EmptyPpwValue ||
+            SecondarySum != EmptyPpwValue;
+        public Color SecondaryAddend1BackgroundColor => SecondaryAddend1Enabled ? Colors.White : Color.FromArgb("#F1F1F1");
+        public Color SecondaryAddend2BackgroundColor => SecondaryAddend2Enabled ? Colors.White : Color.FromArgb("#F1F1F1");
+        public Color SecondarySumBackgroundColor => SecondarySumEnabled ? Colors.White : Color.FromArgb("#F1F1F1");
+        public Color SecondaryAddend1TextColor => SecondaryAddend1Enabled ? Colors.Black : Colors.Gray;
+        public Color SecondaryAddend2TextColor => SecondaryAddend2Enabled ? Colors.Black : Colors.Gray;
+        public Color SecondarySumTextColor => SecondarySumEnabled ? Colors.Black : Colors.Gray;
+        public string SecondaryAddend1Text => SecondaryAddend1 == EmptyPpwValue ? string.Empty : SecondaryAddend1.ToString();
+        public string SecondaryAddend2Text => SecondaryAddend2 == EmptyPpwValue ? string.Empty : SecondaryAddend2.ToString();
+        public string SecondarySumText => SecondarySum == EmptyPpwValue ? string.Empty : SecondarySum.ToString();
 
         public void SetHelperParts(IEnumerable<QuestionAnswerPart>? parts)
         {

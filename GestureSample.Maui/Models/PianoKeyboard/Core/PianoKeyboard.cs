@@ -898,6 +898,8 @@ After:
                 NormalizePianoKeyVisual(sender);
                 EnsureAllKeyTextIsBlack();
             });
+
+            ScheduleNormalizeAllPianoKeyVisuals();
         }
     }
 }

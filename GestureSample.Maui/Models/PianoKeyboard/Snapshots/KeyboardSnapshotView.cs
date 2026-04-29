@@ -2,6 +2,9 @@ namespace GestureSample.Maui.Models
 {
     public sealed class KeyboardSnapshotView : ContentView
     {
+        private bool _rebuildScheduled;
+        private string? _lastSnapshotSignature;
+
         public KeyboardSnapshotView()
         {
             InputTransparent = true;
@@ -18,6 +21,9 @@ namespace GestureSample.Maui.Models
 
         public static readonly BindableProperty RowsProperty =
             BindableProperty.Create(nameof(Rows), typeof(int), typeof(KeyboardSnapshotView), 1, propertyChanged: OnSnapshotChanged);
+
+        public static readonly BindableProperty WeightsProperty =
+            BindableProperty.Create(nameof(Weights), typeof(int[]), typeof(KeyboardSnapshotView), default(int[]), propertyChanged: OnSnapshotChanged);
 
         public static readonly BindableProperty AboveNumberProperty =
             BindableProperty.Create(nameof(AboveNumber), typeof(int?), typeof(KeyboardSnapshotView), default(int?), propertyChanged: OnSnapshotChanged);
@@ -55,6 +61,12 @@ namespace GestureSample.Maui.Models
             set => SetValue(RowsProperty, value);
         }
 
+        public int[] Weights
+        {
+            get => (int[])GetValue(WeightsProperty);
+            set => SetValue(WeightsProperty, value);
+        }
+
         public int? AboveNumber
         {
             get => (int?)GetValue(AboveNumberProperty);
@@ -83,8 +95,21 @@ namespace GestureSample.Maui.Models
         {
             if (bindable is KeyboardSnapshotView view)
             {
-                view.Rebuild();
+                view.ScheduleRebuild();
             }
+        }
+
+        private void ScheduleRebuild()
+        {
+            if (_rebuildScheduled)
+                return;
+
+            _rebuildScheduled = true;
+            Dispatcher.Dispatch(() =>
+            {
+                _rebuildScheduled = false;
+                Rebuild();
+            });
         }
 
         private void Rebuild()
@@ -107,13 +132,30 @@ namespace GestureSample.Maui.Models
             }
 
             bool hasArrow = AboveNumber.HasValue && ArrowLength.HasValue;
+            string snapshotSignature = BuildSnapshotSignature(
+                keys,
+                keyColors,
+                keysInRow,
+                rows,
+                Weights,
+                hasArrow,
+                Direction,
+                AboveNumber,
+                ArrowLength,
+                Compact);
+            if (_lastSnapshotSignature == snapshotSignature)
+                return;
+
+            _lastSnapshotSignature = snapshotSignature;
 
             KeyboardConfig config = new()
             {
                 KeysInRow = Math.Max(1, keysInRow),
                 Rows = Math.Max(1, rows),
                 IsArrow = hasArrow,
-                IsArrowLengthDynamic = hasArrow
+                IsArrowLengthDynamic = hasArrow,
+                ShowNumbersOnKeys = Weights != null && Weights.Length > 0,
+                WeightsArray = Weights?.ToArray()
             };
 
             double compactWidth = hasArrow
@@ -141,6 +183,9 @@ namespace GestureSample.Maui.Models
                 Margin = hasArrow ? new Thickness(0, 4, 0, 0) : Thickness.Zero
             };
 
+            HeightRequest = keyboard.HeightRequest;
+            MinimumHeightRequest = keyboard.HeightRequest;
+
             if (keyColors != null && keyColors.Length > 0)
                 keyboard.PianoInit(keyColors);
             else
@@ -152,6 +197,27 @@ namespace GestureSample.Maui.Models
             }
 
             Content = keyboard;
+        }
+
+        private static string BuildSnapshotSignature(
+            bool[]? keys,
+            Color[]? keyColors,
+            int keysInRow,
+            int rows,
+            int[]? weights,
+            bool hasArrow,
+            Direction direction,
+            int? aboveNumber,
+            int? arrowLength,
+            bool compact)
+        {
+            string keyBits = keys == null ? string.Empty : string.Join(string.Empty, keys.Select(bit => bit ? '1' : '0'));
+            string colorBits = keyColors == null
+                ? string.Empty
+                : string.Join('|', keyColors.Select(color => $"{color.Red:0.###},{color.Green:0.###},{color.Blue:0.###},{color.Alpha:0.###}"));
+            string weightBits = weights == null ? string.Empty : string.Join(',', weights);
+
+            return $"{keysInRow}:{rows}:{hasArrow}:{direction}:{aboveNumber}:{arrowLength}:{compact}:{keyBits}:{colorBits}:{weightBits}";
         }
     }
 }

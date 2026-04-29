@@ -20,5 +20,32 @@ namespace GestureSample.Maui.Data
             return await _database.Table<QuestionAnswer>().Where(state => state.GameId == gID).ToListAsync();
 
         }
+
+        public async Task UpdateSecondaryPpwAsync(
+            string gameId,
+            int questionNumber,
+            int secondaryAddend1,
+            int secondaryAddend2,
+            int secondarySum,
+            bool secondaryAddend1Enabled,
+            bool secondaryAddend2Enabled,
+            bool secondarySumEnabled)
+        {
+            QuestionAnswer? question = await _database.Table<QuestionAnswer>()
+                .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
+                .OrderByDescending(state => state.QuestionID)
+                .FirstOrDefaultAsync();
+
+            if (question == null)
+                return;
+
+            question.SecondaryAddend1 = secondaryAddend1;
+            question.SecondaryAddend2 = secondaryAddend2;
+            question.SecondarySum = secondarySum;
+            question.SecondaryAddend1Enabled = secondaryAddend1Enabled;
+            question.SecondaryAddend2Enabled = secondaryAddend2Enabled;
+            question.SecondarySumEnabled = secondarySumEnabled;
+            await _database.UpdateAsync(question);
+        }
     }
 }

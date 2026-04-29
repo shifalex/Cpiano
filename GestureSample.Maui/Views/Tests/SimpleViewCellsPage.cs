@@ -351,6 +351,8 @@ namespace GestureSample.Views.Tests
 
         private PPWObject _currentPPW;
         private PPWObject _currentPPWEnabled;
+        private PPWObject? _currentSecondaryPPW;
+        private PPWObject? _currentSecondaryPPWEnabled;
         private PPWObject _previousPPW = null;
         private string _previousActionText = string.Empty;
         private ExerciseGenerationResult? _lastGeneratedExercise;
@@ -380,6 +382,7 @@ namespace GestureSample.Views.Tests
         private Label _prevEqualsLabel;
         private const double EquationHelpRowSpacing = 16;
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly QuestionAnswerRepository _questionAnswerRepository;
         private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
 
@@ -773,6 +776,8 @@ namespace GestureSample.Views.Tests
                         _txtAddend1.IsEnabled ? 1 : 0,
                         _txtAddend2.IsEnabled ? 1 : 0,
                         _txtSum.IsEnabled ? 1 : 0);
+                    _currentSecondaryPPW = null;
+                    _currentSecondaryPPWEnabled = null;
 
                 }
                 if (_config.HelpEntries || _config.HelpThroughTen)
@@ -786,6 +791,11 @@ namespace GestureSample.Views.Tests
                         secondary = _gamePlay.GenerateSecondaryTriad(_gamePlay.Sum, 10, 10);
                     txt[0].Text = secondary.Addend1.ToString();
                     txt[1].Text = secondary.Addend2.ToString();
+                    _currentSecondaryPPW = new PPWObject(secondary.Addend1, secondary.Addend2, _gamePlay.Sum);
+                    _currentSecondaryPPWEnabled = new PPWObject(
+                        txt.ElementAtOrDefault(0)?.IsEnabled == true ? 1 : 0,
+                        txt.ElementAtOrDefault(1)?.IsEnabled == true ? 1 : 0,
+                        0);
                 }
                 if (_config.UIQuestionType == UIQuestionType.ThreeAddends)
                 {
@@ -794,12 +804,22 @@ namespace GestureSample.Views.Tests
                         PPWObject secondary = _gamePlay.GenerateTriadBySum(_gamePlay.addend2);
                         txt[0].Text = secondary.Addend1.ToString();
                         _txtAddend2.Text = secondary.Addend2.ToString();
+                        _currentSecondaryPPW = new PPWObject(secondary.Addend1, secondary.Addend2, _gamePlay.addend2);
+                        _currentSecondaryPPWEnabled = new PPWObject(
+                            txt.ElementAtOrDefault(0)?.IsEnabled == true ? 1 : 0,
+                            _txtAddend2.IsEnabled ? 1 : 0,
+                            0);
                     }
                     else
                     {
                         PPWObject secondary = _gamePlay.GenerateTriadBySum(_gamePlay.addend1);
                         _txtAddend1.Text = secondary.Addend1.ToString();
                         txt[0].Text = secondary.Addend2.ToString();
+                        _currentSecondaryPPW = new PPWObject(secondary.Addend1, secondary.Addend2, _gamePlay.addend1);
+                        _currentSecondaryPPWEnabled = new PPWObject(
+                            _txtAddend1.IsEnabled ? 1 : 0,
+                            txt.ElementAtOrDefault(0)?.IsEnabled == true ? 1 : 0,
+                            0);
                     }
                 }
                     if (_config.HelpThroughTen)
@@ -1643,6 +1663,7 @@ namespace GestureSample.Views.Tests
             Title = config.GameName;
             _config = config;
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             _timerChangeEventRepository = ServiceHelper.GetService<TimerChangeEventRepository>();
             if (_config.NumberOfTasksToWin > -1)
@@ -1895,8 +1916,10 @@ namespace GestureSample.Views.Tests
             await UpdateView(true, generatedExercise: generatedExercise);
             await EnsureInitialTimerSettingSavedAsync();
             await PersistVisibleQuestionPartsAsync();
+            await PersistSecondaryPpwAsync();
             if (generatedExercise.PersistenceTask != null)
                 await generatedExercise.PersistenceTask;
+            await PersistKeyboardQuestionDisplayMetadataAsync();
             if (_isKeyboard)
             {
                 SetKeyboardInteractionEnabled(true);
@@ -1947,6 +1970,103 @@ namespace GestureSample.Views.Tests
                 _gamePlay.GameId.ToString(),
                 _gamePlay._questionNumber,
                 BuildVisibleQuestionParts());
+        }
+
+        private async Task PersistSecondaryPpwAsync()
+        {
+            if (_questionAnswerRepository == null || !_isThreeTexts)
+                return;
+
+            PPWObject? secondary = _currentSecondaryPPW;
+            PPWObject? enabled = _currentSecondaryPPWEnabled;
+
+            if ((secondary == null || enabled == null) &&
+                _config.ShowPrev &&
+                _previousPPW != null &&
+                _config.UIQuestionType != UIQuestionType.TwoLinesTwoAddends &&
+                _config.UIQuestionType != UIQuestionType.ThreeAddends)
+            {
+                secondary = _previousPPW;
+                enabled = new PPWObject(0, 0, 0);
+            }
+
+            if (secondary == null || enabled == null)
+                return;
+
+            await _questionAnswerRepository.UpdateSecondaryPpwAsync(
+                _gamePlay.GameId.ToString(),
+                _gamePlay._questionNumber,
+                secondary.Addend1,
+                secondary.Addend2,
+                secondary.Sum,
+                enabled.Addend1 == 1,
+                enabled.Addend2 == 1,
+                enabled.Sum == 1);
+        }
+
+        private async Task PersistKeyboardQuestionDisplayMetadataAsync()
+        {
+            if (_keyboardQuestionRepository == null ||
+                !_isKeyboard ||
+                _config.KeyboardConfig == null ||
+                _config.KeyboardConfig.KeyboardOnlyForHelp ||
+                _gamePlay is BitArrayGamePlay ||
+                _pianoKeyboard == null)
+            {
+                return;
+            }
+
+            bool[]? initialKeyboardState = TryGetInitialKeyboardStateForData();
+            bool[]? questionKeyboard = _config.FromNumToNum ? initialKeyboardState?.ToArray() : null;
+
+            await _keyboardQuestionRepository.UpdatePendingDisplayMetadataAsync(
+                _gamePlay.GameId.ToString(),
+                _gamePlay._questionNumber,
+                BuildCurrentKeyboardQuestionPromptText(),
+                _config.KeyboardConfig.ShowNumbersOnKeys,
+                _config.KeyboardConfig.WeightsArray?.ToArray(),
+                initialKeyboardState,
+                questionKeyboard,
+                _config.KeyboardConfig.Rows,
+                _config.KeyboardConfig.KeysInRow);
+        }
+
+        private bool[]? TryGetInitialKeyboardStateForData()
+        {
+            if (_pianoKeyboard == null || _config.KeyboardConfig == null)
+                return null;
+
+            if (_pianoKeyboard.initColors != null &&
+                _pianoKeyboard.initColors.Length > 0 &&
+                _pianoKeyboard.initColors.Any(bit => bit))
+            {
+                return _pianoKeyboard.initColors.ToArray();
+            }
+
+            if (_config.FromNumToNum || _config.KeyboardConfig.PpwKeyboardSeedMode != PpwKeyboardSeedMode.None)
+            {
+                bool[] currentBits = _pianoKeyboard.ToBitArray();
+                if (currentBits.Any(bit => bit))
+                    return currentBits;
+            }
+
+            return null;
+        }
+
+        private string? BuildCurrentKeyboardQuestionPromptText()
+        {
+            string[] candidates =
+            {
+                _txtSum?.Text ?? string.Empty,
+                _txtAddend1?.Text ?? string.Empty,
+                _txtAddend2?.Text ?? string.Empty
+            };
+
+            string? text = candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate));
+            if (!string.IsNullOrWhiteSpace(text))
+                return text.Trim();
+
+            return _gamePlay.GetKeyboardQuestionPromptText();
         }
 
         private List<QuestionAnswerPart> BuildVisibleQuestionParts()

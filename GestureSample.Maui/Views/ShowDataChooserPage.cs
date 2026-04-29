@@ -24,11 +24,17 @@ namespace GestureSample.Views
         private readonly Picker _datePicker;
         private readonly Picker _gamePicker;
         private readonly ContentView _detailHost;
+        private readonly Button _sortButton;
+        private readonly Label _headerLabel;
+        private readonly Grid _pickerCardsHost;
+        private readonly Border _datePickerCard;
+        private readonly Border _gamePickerCard;
         private List<Game> _games = new();
         private bool _suppressSelectionNavigation;
         private Page? _activeDetailPage;
         private bool _hasLoadedGames;
         private Guid? _currentSelectedGameId;
+        private bool _sortNewestFirst = false;
 
         public ShowDataChooserPage(bool forTeacher = false, Guid? selectedGameId = null)
         {
@@ -44,7 +50,7 @@ namespace GestureSample.Views
             {
                 Title = "Pick a day",
                 FontFamily = FilterFontFamily,
-                FontSize = 16,
+                FontSize = 14,
                 TextColor = Color.FromArgb("#342048"),
                 TitleColor = Color.FromArgb("#8B7D9C"),
                 BackgroundColor = Colors.Transparent
@@ -55,7 +61,7 @@ namespace GestureSample.Views
             {
                 Title = "Pick a session",
                 FontFamily = FilterFontFamily,
-                FontSize = 16,
+                FontSize = 14,
                 TextColor = Color.FromArgb("#342048"),
                 TitleColor = Color.FromArgb("#8B7D9C"),
                 BackgroundColor = Colors.Transparent
@@ -74,35 +80,64 @@ namespace GestureSample.Views
                 Text = "Back",
                 Command = new Command(async () => await NavigateBackAsync())
             });
+            _sortButton = new Button
+            {
+                Text = GetSortButtonText(),
+                HorizontalOptions = LayoutOptions.End,
+                BackgroundColor = Color.FromArgb("#F1EAFB"),
+                TextColor = Color.FromArgb("#5A3C84"),
+                FontFamily = FilterFontFamily,
+                FontSize = 11,
+                CornerRadius = 12,
+                MinimumHeightRequest = 30,
+                Padding = new Thickness(9, 2)
+            };
+            _sortButton.Clicked += async (_, _) => await ToggleSortAsync();
+            _headerLabel = new Label
+            {
+                Text = "Games",
+                FontSize = 16,
+                FontFamily = FilterFontFamily,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#322042"),
+                VerticalTextAlignment = TextAlignment.Center
+            };
+
+            _datePickerCard = CreatePickerCard("DATE", _datePicker);
+            _gamePickerCard = CreatePickerCard("GAME", _gamePicker);
+            _pickerCardsHost = new Grid
+            {
+                ColumnSpacing = 8,
+                RowSpacing = 6
+            };
 
             VerticalStackLayout filterStack = new()
             {
-                Spacing = 8,
+                Spacing = 4,
                 Children =
                 {
-                    new Label
+                    new Grid
                     {
-                        Text = "Choose a game",
-                        FontSize = 22,
-                        FontFamily = FilterFontFamily,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#322042"),
-                        HorizontalTextAlignment = TextAlignment.Start
+                        ColumnDefinitions =
+                        {
+                            new ColumnDefinition { Width = GridLength.Star },
+                            new ColumnDefinition { Width = GridLength.Auto }
+                        },
+                        Children =
+                        {
+                            _headerLabel,
+                            _sortButton
+                        }
                     },
-                    new Label
-                    {
-                        Text = "Pick the day above, then the exact session below.",
-                        FontSize = 12,
-                        TextColor = Color.FromArgb("#756781")
-                    },
-                    CreatePickerCard("DATE", _datePicker),
-                    CreatePickerCard("GAME", _gamePicker)
+                    _pickerCardsHost
                 }
             };
+            UpdatePickerCardsLayout(Width);
+            Grid.SetColumn(_sortButton, 1);
 
             Grid rootGrid = new()
             {
-                Padding = new Thickness(10, 10, 10, 0),
+                Padding = new Thickness(10, 6, 10, 0),
                 RowSpacing = 0,
                 RowDefinitions =
                 {
@@ -116,7 +151,7 @@ namespace GestureSample.Views
                 Stroke = Color.FromArgb("#E3D8F0"),
                 StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(20) },
                 Background = new SolidColorBrush(Colors.White),
-                Padding = new Thickness(14, 14, 14, 12),
+                Padding = new Thickness(10, 8, 10, 8),
                 Shadow = new Shadow
                 {
                     Brush = new SolidColorBrush(Color.FromArgb("#15000000")),
@@ -132,35 +167,65 @@ namespace GestureSample.Views
             rootGrid.Add(_detailHost);
             Grid.SetRow(_detailHost, 1);
             Content = rootGrid;
+            SizeChanged += OnSizeChanged;
         }
 
-        private static View CreatePickerCard(string title, Picker picker)
+        private static Border CreatePickerCard(string title, Picker picker)
         {
             return new Border
             {
                 Stroke = Color.FromArgb("#D9CBEA"),
                 StrokeThickness = 1,
-                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(16) },
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(12) },
                 Background = new SolidColorBrush(Color.FromArgb("#FFFDFE")),
-                Padding = new Thickness(12, 7, 12, 5),
+                Padding = new Thickness(10, 4, 10, 3),
                 Content = new VerticalStackLayout
                 {
-                    Spacing = 1,
+                    Spacing = 0,
                     Children =
                     {
                         new Label
                         {
                             Text = title,
-                            FontSize = 10,
+                            FontSize = 9,
                             FontFamily = FilterFontFamily,
                             FontAttributes = FontAttributes.Bold,
-                            CharacterSpacing = 1.5,
+                            CharacterSpacing = 1.2,
                             TextColor = Color.FromArgb("#8A789B")
                         },
                         picker
                     }
                 }
             };
+        }
+
+        private void OnSizeChanged(object? sender, EventArgs e) => UpdatePickerCardsLayout(Width);
+
+        private void UpdatePickerCardsLayout(double availableWidth)
+        {
+            bool useWideLayout = availableWidth >= 900;
+            _pickerCardsHost.Children.Clear();
+            _pickerCardsHost.RowDefinitions.Clear();
+            _pickerCardsHost.ColumnDefinitions.Clear();
+
+            if (useWideLayout)
+            {
+                _pickerCardsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                _pickerCardsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                _pickerCardsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                _pickerCardsHost.Add(_datePickerCard);
+                Grid.SetColumn(_datePickerCard, 0);
+                _pickerCardsHost.Add(_gamePickerCard);
+                Grid.SetColumn(_gamePickerCard, 1);
+                return;
+            }
+
+            _pickerCardsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            _pickerCardsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            _pickerCardsHost.Add(_datePickerCard);
+            Grid.SetRow(_datePickerCard, 0);
+            _pickerCardsHost.Add(_gamePickerCard);
+            Grid.SetRow(_gamePickerCard, 1);
         }
 
         protected override async void OnAppearing()
@@ -184,9 +249,16 @@ namespace GestureSample.Views
                 return;
             }
 
-            _games.Reverse();
+            SortGamesForPickers();
             RebuildDates();
             SelectInitialGame();
+        }
+
+        private void SortGamesForPickers()
+        {
+            _games = _games
+                .OrderByDescending(game => game.TimeStart)
+                .ToList();
         }
 
         private void RebuildDates()
@@ -285,7 +357,7 @@ namespace GestureSample.Views
 
             _currentSelectedGameId = selectedGame.Id;
 
-            Page detailPage = ShowDataRoutingHelper.CreatePageForGame(selectedGame, _forTeacher, false);
+            Page detailPage = ShowDataRoutingHelper.CreatePageForGame(selectedGame, _forTeacher, false, _sortNewestFirst);
             if (detailPage is ContentPage contentPage && contentPage.Content is View detailView)
             {
                 contentPage.Content = null;
@@ -316,5 +388,17 @@ namespace GestureSample.Views
 
             Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
         }
+
+        private async Task ToggleSortAsync()
+        {
+            if (_games == null || _games.Count == 0)
+                return;
+
+            _sortNewestFirst = !_sortNewestFirst;
+            _sortButton.Text = GetSortButtonText();
+            await ShowSelectedGameAsync();
+        }
+
+        private string GetSortButtonText() => _sortNewestFirst ? "Newest" : "Oldest";
     }
 }

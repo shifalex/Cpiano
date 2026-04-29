@@ -26,6 +26,7 @@ namespace GestureSample.Views
         private readonly Slider _timelineSlider;
         private readonly Label _timelineLabel;
         private readonly bool[] _initialState;
+        private readonly bool _usesToggleReplayState;
         private readonly KeyboardQuestion? _question;
         private readonly bool[]? _finalReplayState;
         private readonly string _initialTimerRegimeText;
@@ -69,6 +70,7 @@ namespace GestureSample.Views
             _initialTimerRegimeText = string.IsNullOrWhiteSpace(timerRegimeText) ? "Unknown" : timerRegimeText;
 
             KeyboardConfig replayConfig = question?.CreateKeyboardConfig() ?? keyboardConfig ?? new KeyboardConfig();
+            _usesToggleReplayState = replayConfig.SyncType == SyncType.None;
 
             _replayKeyboard = new PianoKeyboardReadOnly(replayConfig)
             {
@@ -169,7 +171,7 @@ namespace GestureSample.Views
                 }
             };
 
-            _initialState = new bool[_replayKeyboard.KeyCount];
+            _initialState = BuildInitialReplayState(_replayKeyboard.KeyCount, question);
         }
 
         protected override async void OnAppearing()
@@ -287,7 +289,7 @@ namespace GestureSample.Views
 
                 if (clearOnNextAttemptInput && keyEvent.EventType != 2)
                 {
-                    Array.Fill(state, false);
+                    Array.Copy(_initialState, state, state.Length);
                     activeMarkersByKey.Clear();
                     clearOnNextAttemptInput = false;
                 }
@@ -338,17 +340,27 @@ namespace GestureSample.Views
             };
         }
 
-        private static void ApplyEventToState(bool[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
+        private void ApplyEventToState(bool[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
         {
             int keyIndex = keyEvent.KeyNumber - 1;
             if (keyIndex >= 0 && keyIndex < state.Length)
             {
                 if (keyEvent.EventType == 1)
-                    state[keyIndex] = true;
+                {
+                    if (_usesToggleReplayState)
+                        state[keyIndex] = !state[keyIndex];
+                    else
+                        state[keyIndex] = true;
+                }
                 else if (keyEvent.EventType == 0)
-                    state[keyIndex] = false;
+                {
+                    if (!_usesToggleReplayState)
+                        state[keyIndex] = false;
+                }
                 else if (keyEvent.EventType == 3)
+                {
                     Array.Fill(state, false);
+                }
             }
 
             switch (keyEvent.EventType)
@@ -437,6 +449,17 @@ namespace GestureSample.Views
             return _slowReplayEnabled ? baseDelay * 3 : baseDelay;
         }
 
+        private static bool[] BuildInitialReplayState(int keyCount, KeyboardQuestion? question)
+        {
+            if (question?.InitialKeyboardState != null &&
+                question.InitialKeyboardState.Length == keyCount)
+            {
+                return question.InitialKeyboardState.ToArray();
+            }
+
+            return new bool[keyCount];
+        }
+
         private string GetSpeedButtonText()
         {
             return _slowReplayEnabled ? "Speed: Slow x3" : "Speed: Normal";
@@ -510,7 +533,7 @@ namespace GestureSample.Views
                 Spacing = 8
             };
 
-            if (_question == null || _question.keyboard1 == null || _question.keyboard1.Length == 0)
+            if (_question == null || (!_question.HasQuestionKeyboard && !_question.HasPromptText))
             {
                 promptLayout.IsVisible = false;
                 return promptLayout;
@@ -544,30 +567,59 @@ namespace GestureSample.Views
                 }
             });
 
-            promptLayout.Children.Add(new VerticalStackLayout
+            if (_question.HasPromptText)
             {
-                Spacing = 4,
-                Children =
+                promptLayout.Children.Add(new HorizontalStackLayout
                 {
-                    new Label
+                    Spacing = 8,
+                    Children =
                     {
-                        Text = "Q",
-                        FontAttributes = FontAttributes.Bold,
-                        FontSize = 12
-                    },
-                    new KeyboardSnapshotView
-                    {
-                        Keys = _question.keyboard1,
-                        KeysInRow = _question.KeyboardKeysInRow,
-                        Rows = _question.KeyboardRows,
-                        AboveNumber = _question.aboveNumber,
-                        ArrowLength = _question.length,
-                        Direction = _question.dir,
-                        Compact = false,
-                        HorizontalOptions = LayoutOptions.Fill
+                        new Label
+                        {
+                            Text = "Q",
+                            FontAttributes = FontAttributes.Bold,
+                            FontSize = 12,
+                            VerticalOptions = LayoutOptions.Center
+                        },
+                        new Label
+                        {
+                            Text = _question.QuestionPromptText,
+                            FontAttributes = FontAttributes.Bold,
+                            FontSize = 18,
+                            VerticalOptions = LayoutOptions.Center
+                        }
                     }
-                }
-            });
+                });
+            }
+
+            if (_question.HasQuestionKeyboard)
+            {
+                promptLayout.Children.Add(new VerticalStackLayout
+                {
+                    Spacing = 4,
+                    Children =
+                    {
+                        new Label
+                        {
+                            Text = _question.HasPromptText ? "Q Keyboard" : "Q",
+                            FontAttributes = FontAttributes.Bold,
+                            FontSize = 12
+                        },
+                        new KeyboardSnapshotView
+                        {
+                            Keys = _question.keyboard1,
+                            Weights = _question.KeyboardWeights,
+                            KeysInRow = _question.KeyboardKeysInRow,
+                            Rows = _question.KeyboardRows,
+                            AboveNumber = _question.aboveNumber,
+                            ArrowLength = _question.length,
+                            Direction = _question.dir,
+                            Compact = false,
+                            HorizontalOptions = LayoutOptions.Fill
+                        }
+                    }
+                });
+            }
 
             if (_question.HasVisibleSecondQuestionKeyboard)
             {
@@ -586,6 +638,7 @@ namespace GestureSample.Views
                         new KeyboardSnapshotView
                         {
                             Keys = _question.keyboard2,
+                            Weights = _question.KeyboardWeights,
                             KeysInRow = _question.KeyboardKeysInRow,
                             Rows = _question.KeyboardRows,
                             Compact = false,

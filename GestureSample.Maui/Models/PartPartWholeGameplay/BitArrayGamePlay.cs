@@ -875,7 +875,11 @@ namespace GestureSample.Maui.Models
                 Op = CurrentOperation,
                 dir = dir,
                 KeyboardRows = Config.KeyboardConfig?.Rows ?? 1,
-                KeyboardKeysInRow = Config.KeyboardConfig?.KeysInRow ?? BitArrayQuestion.Length
+                KeyboardKeysInRow = Config.KeyboardConfig?.KeysInRow ?? BitArrayQuestion.Length,
+                ShowNumbersOnKeys = Config.KeyboardConfig?.ShowNumbersOnKeys == true,
+                KeyboardWeights = Config.KeyboardConfig?.WeightsArray?.ToArray(),
+                InitialKeyboardState = GetInitialKeyboardState(),
+                QuestionPromptText = GetKeyboardQuestionPromptText()
             };
 
             if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
