@@ -746,33 +746,8 @@ namespace GestureSample.Maui.Models
                 nativeButton.TintAdjustmentMode = UIViewTintAdjustmentMode.Normal;
                 nativeButton.Alpha = 1;
                 nativeButton.AdjustsImageWhenDisabled = false;
-
-                if (nativeButton.Configuration != null)
-                {
-                    UIButtonConfiguration configuration = nativeButton.Configuration;
-                    configuration.BaseForegroundColor = UIColor.Black;
-                    nativeButton.Configuration = configuration;
-                }
-
-                nativeButton.ConfigurationUpdateHandler = updateButton =>
-                {
-                    updateButton.Highlighted = false;
-                    updateButton.Selected = false;
-                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Normal);
-                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Highlighted);
-                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Disabled);
-                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Selected);
-                    updateButton.SetTitleColor(UIColor.Black, UIControlState.Focused);
-                    updateButton.TintColor = UIColor.Black;
-                    updateButton.Alpha = 1;
-
-                    if (updateButton.Configuration != null)
-                    {
-                        UIButtonConfiguration cfg = updateButton.Configuration;
-                        cfg.BaseForegroundColor = UIColor.Black;
-                        updateButton.Configuration = cfg;
-                    }
-                };
+                nativeButton.ConfigurationUpdateHandler = null;
+                nativeButton.TitleLabel.TextColor = UIColor.Black;
             }
 #endif
         }

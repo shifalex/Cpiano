@@ -33,11 +33,6 @@ public static class MauiProgram
 
             .ConfigureMRGestures();
 
-        /*builder.Services.AddSingleton((_) => new Supabase.Client(
-            "https://njsspracfpbyozvandph.supabase.co", // Replace with your Supabase URL
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA" // Replace with your Supabase API Key
-        ));//Password: c!L2TkQ@8wLPt2e
-        */
         // builder.Services.AddSingleton(_ => StateConnection.Instance.Database);
         Console.WriteLine("a");
         builder.Services.AddSingleton<UserRepository>();
