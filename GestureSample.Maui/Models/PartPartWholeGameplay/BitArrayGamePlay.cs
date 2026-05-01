@@ -43,6 +43,7 @@ namespace GestureSample.Maui.Models
         private int _completedStagedArrowCycles;
         private bool _isCurrentStagedArrowMasked;
         private bool _isCurrentStagedArrowRevealed;
+        public bool ForceShowMaskedThirdArrow { get; set; }
         private bool[]? _stagedArrowFirstBits;
         private bool[]? _stagedArrowSecondBits;
         private readonly List<bool[]> _groupByColorQuestionGroups = new();
@@ -112,10 +113,24 @@ namespace GestureSample.Maui.Models
 
         public string? GetCurrentArrowLabelText()
         {
-            if (_isCurrentStagedArrowMasked && !_isCurrentStagedArrowRevealed)
+            if (_isCurrentStagedArrowMasked &&
+                !_isCurrentStagedArrowRevealed &&
+                !ForceShowMaskedThirdArrow)
                 return "?";
 
             return length > -1 ? length.ToString() : null;
+        }
+
+        public bool SupportsThirdArrowVisibilityControl()
+        {
+            return UsesStagedArrowFlow();
+        }
+
+        public bool IsThirdArrowCurrentlyHidden()
+        {
+            return _isCurrentStagedArrowMasked &&
+                   !_isCurrentStagedArrowRevealed &&
+                   !ForceShowMaskedThirdArrow;
         }
 
         private void CaptureStagedArrowOverlayState()

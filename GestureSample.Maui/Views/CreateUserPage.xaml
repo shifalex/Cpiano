@@ -6,6 +6,10 @@
     <VerticalStackLayout Padding="20" Spacing="20">
         <Label Text="Create New User" FontSize="Large" HorizontalOptions="Center" />
         <Entry x:Name="UserNameEntry" Placeholder="Enter user name here" />
+        <VerticalStackLayout Spacing="6">
+            <Label Text="Numeric keyboard" />
+            <Picker x:Name="NumericInputPicker" />
+        </VerticalStackLayout>
 
         <!-- If you have avatars or images, present them here -->
         <Image x:Name="SelectedAvatarImage" WidthRequest="100" HeightRequest="100" 

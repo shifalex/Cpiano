@@ -2,6 +2,7 @@
 using GestureSample.Maui;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
+using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using GestureSample.Maui.Views;
 using GestureSample.Views;
@@ -20,6 +21,22 @@ namespace GestureSample.Views.Tests
 
     public class SimpleViewCellsPage : ContentPage
     {
+        private Label _statusLight1Icon = new()
+        {
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.White,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
+        private Label _statusLight2Icon = new()
+        {
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Colors.White,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center
+        };
         private Border _statusLight1 = new()
         {
             WidthRequest = 18,
@@ -51,30 +68,35 @@ namespace GestureSample.Views.Tests
             {
                 case PlayUiState.Question:
                     _statusLight1.BackgroundColor = Colors.Red;
+                    _statusLight1Icon.Text = "?";
                    // _lblStatement.Text = text ?? "Look";
                   //  _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.ReadyForInput:
                     _statusLight1.BackgroundColor = Colors.Green;
+                    _statusLight1Icon.Text = string.Empty;
                    // _lblStatement.Text = text ?? "Your turn";
                   //  _pianoPressProgress.Opacity = 1;
                     break;
 
                 case PlayUiState.Tutorial:
                     _statusLight1.BackgroundColor = Colors.Orange;
+                    _statusLight1Icon.Text = "i";
                  //   _lblStatement.Text = text ?? "Tutorial";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.FeedbackCorrect:
                     _statusLight1.BackgroundColor = Colors.LimeGreen;
+                    _statusLight1Icon.Text = "✓";
                //     _lblStatement.Text = text ?? "✅";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
 
                 case PlayUiState.FeedbackWrong:
                     _statusLight1.BackgroundColor = Colors.IndianRed;
+                    _statusLight1Icon.Text = "✕";
                  //   _lblStatement.Text = text ?? "❌";
                  //   _pianoPressProgress.Opacity = 0;
                     break;
@@ -82,11 +104,14 @@ namespace GestureSample.Views.Tests
                 case PlayUiState.Disabled:
                 default:
                     _statusLight1.BackgroundColor = Colors.Gray;
+                    _statusLight1Icon.Text = string.Empty;
                //     _lblStatement.Text = text ?? "";
                 //    _pianoPressProgress.Opacity = 0;
                     break;
             }
-            _statusLight2.BackgroundColor= _statusLight1.BackgroundColor;
+            _statusLight2.BackgroundColor = _statusLight1.BackgroundColor;
+            _statusLight2Icon.Text = _statusLight1Icon.Text;
+            RefreshStatusActionSlot();
            // return Task.CompletedTask;
         }
 
@@ -104,10 +129,21 @@ namespace GestureSample.Views.Tests
             _pianoKeyboard.InputTransparent = !enabled;
             if (_pianoKeyboard.BtnInit != null)
                 _pianoKeyboard.BtnInit.IsEnabled = enabled;
+
+            // Keep keyboard-driven submit actions aligned with keyboard availability.
+            if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
+            {
+                if (_btnKeyboardSubmit != null && _btnKeyboardSubmit.IsVisible)
+                    _btnKeyboardSubmit.IsEnabled = enabled;
+
+                if (_btnKeyboardCheckInline != null && _btnKeyboardCheckInline.IsVisible)
+                    _btnKeyboardCheckInline.IsEnabled = enabled;
+            }
         }
 
         private void SetPageInteractionEnabled(bool enabled)
         {
+            _isPageInteractionEnabled = enabled;
             SetKeyboardInteractionEnabled(enabled);
             if (_numericKeypad != null)
                 _numericKeypad.IsEnabled = enabled;
@@ -121,6 +157,24 @@ namespace GestureSample.Views.Tests
             if (_btnKeyboardSubmit != null)
                 _btnKeyboardSubmit.IsEnabled = enabled;
 
+            if (_btnKeyboardCheckInline != null && _btnKeyboardCheckInline.IsVisible)
+                _btnKeyboardCheckInline.IsEnabled = enabled;
+
+            if (_btnThirdArrowVisibility != null)
+                _btnThirdArrowVisibility.IsEnabled = enabled;
+
+            if (_answerTimeEnabledSwitch != null)
+                _answerTimeEnabledSwitch.IsEnabled = enabled;
+
+            if (_answerTimeMinusButton != null)
+                _answerTimeMinusButton.IsEnabled = enabled;
+
+            if (_answerTimePlusButton != null)
+                _answerTimePlusButton.IsEnabled = enabled;
+
+            if (_answerTimeModeButton != null)
+                _answerTimeModeButton.IsEnabled = enabled;
+
             if (_btnPrev != null)
                 _btnPrev.IsEnabled = enabled && _previousPPW != null;
 
@@ -128,7 +182,7 @@ namespace GestureSample.Views.Tests
                 _btnPrevBelow.IsEnabled = enabled && _previousPPW != null;
 
             if (_btnNext != null)
-                _btnNext.IsEnabled = enabled && _btnCheck != null && _btnCheck.IsVisible ? (_gamePlay.GuessNumber > 0) : false;
+                _btnNext.IsEnabled = enabled && HasVisibleManualCheckButton() ? (_gamePlay.GuessNumber > 0) : false;
 
             if (_btnCheck != null && _btnCheck.IsVisible)
                 _btnCheck.IsEnabled = enabled;
@@ -151,11 +205,13 @@ namespace GestureSample.Views.Tests
         private void ApplyExerciseUiState(bool newExercise)
         {
             SetPlayUiState(GetExerciseUiState(newExercise));
+            SetInlineKeyboardCheckVisible(ShouldUseInlineKeyboardCheckButton());
         }
 
         private void ApplyFeedbackUiState(bool isCorrect)
         {
             SetPlayUiState(isCorrect ? PlayUiState.FeedbackCorrect : PlayUiState.FeedbackWrong);
+            SetInlineKeyboardCheckVisible(false);
         }
 
         private void RestoreReadyForInputState()
@@ -170,6 +226,7 @@ namespace GestureSample.Views.Tests
             }
 
             SetPlayUiState(PlayUiState.ReadyForInput);
+            SetInlineKeyboardCheckVisible(ShouldUseInlineKeyboardCheckButton());
         }
 
         private void ResetStatusLineToNeutral()
@@ -254,13 +311,26 @@ namespace GestureSample.Views.Tests
         }
 
         private readonly GameConfig _config;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
 
         private bool _isKeyboard { get { return _config.KeyboardConfig != null; } }
         private bool HasVisibleNumericInputs => _isThreeTexts && (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp);
-        private NumericInputMode EffectiveNumericInputMode =>
-            _config.NumericInputMode == NumericInputMode.Auto
-                ? NumericInputMode.AppKeypad
-                : _config.NumericInputMode;
+        private NumericInputMode EffectiveNumericInputMode
+        {
+            get
+            {
+                UserPreferenceService preferenceService = ServiceHelper.GetService<UserPreferenceService>();
+                Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
+                NumericInputMode preferredMode = preferenceService.GetPreferredNumericInputMode(activeUserId);
+                if (preferredMode != NumericInputMode.Auto)
+                    return preferredMode;
+
+                return _config.NumericInputMode == NumericInputMode.Auto
+                    ? NumericInputMode.AppKeypad
+                    : _config.NumericInputMode;
+            }
+        }
         private bool _isThreeTexts
         {
             get
@@ -310,6 +380,13 @@ namespace GestureSample.Views.Tests
         private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
         private ProgressBar _pianoPressProgress;
+        private Button _btnKeyboardCheckInline = null;
+        private Border _centerFeedbackBadge = null;
+        private Label _centerFeedbackBadgeLabel = null;
+        private Border _keyboardControlBar = null;
+        private Label _lblKeyboardType = null;
+        private Button _btnThirdArrowVisibility = null;
+        private bool _isPageInteractionEnabled = true;
         private Label _lblHistory;
         private Entry _txtAddend1;
         private Entry _txtAddend2;
@@ -426,8 +503,447 @@ namespace GestureSample.Views.Tests
         {
             return _isKeyboard &&
                    !_config.KeyboardConfig.KeyboardOnlyForHelp &&
-                   !_config.FromNumToNum &&
+                   !ShouldUseInlineKeyboardCheckButton() &&
                    _config.KeyboardConfig.SyncType == SyncType.None;
+        }
+
+        private bool ShouldUseInlineKeyboardCheckButton()
+        {
+            return _isKeyboard &&
+                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
+                   _config.KeyboardConfig.SyncType == SyncType.None;
+        }
+
+        private bool ShouldShowPpwCheckButton()
+        {
+            return !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp;
+        }
+
+        private bool HasVisibleManualCheckButton()
+        {
+            return (_btnCheck?.IsVisible ?? false) ||
+                   (_btnKeyboardCheckInline?.IsVisible ?? false) ||
+                   (_btnKeyboardSubmit?.IsVisible ?? false);
+        }
+
+        private void SetInlineKeyboardCheckVisible(bool isVisible)
+        {
+            if (_btnKeyboardCheckInline == null)
+                return;
+
+            bool shouldShow = isVisible && ShouldUseInlineKeyboardCheckButton();
+            _btnKeyboardCheckInline.IsVisible = shouldShow;
+            _btnKeyboardCheckInline.IsEnabled = shouldShow && _isPageInteractionEnabled;
+            RefreshStatusActionSlot();
+        }
+
+        private void EnsureKeyboardInlineCheckButton()
+        {
+            if (_btnKeyboardCheckInline != null || !ShouldUseInlineKeyboardCheckButton())
+                return;
+
+            _btnKeyboardCheckInline = new Button
+            {
+                Text = "Check",
+                Command = _cmdCheck,
+                WidthRequest = 220,
+                HeightRequest = 44,
+                CornerRadius = 12,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Center
+            };
+        }
+
+        private void EnsureCenterFeedbackBadge()
+        {
+            if (_centerFeedbackBadge != null)
+                return;
+
+            _centerFeedbackBadgeLabel = new Label
+            {
+                FontSize = 24,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                TextColor = Colors.White
+            };
+
+            _centerFeedbackBadge = new Border
+            {
+                WidthRequest = 220,
+                HeightRequest = 44,
+                Padding = 0,
+                StrokeThickness = 0,
+                IsVisible = false,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                StrokeShape = new RoundRectangle { CornerRadius = 12 },
+                Content = _centerFeedbackBadgeLabel
+            };
+        }
+
+        private void RefreshStatusActionSlot()
+        {
+            bool showFeedbackBadge = _currentUiState == PlayUiState.FeedbackCorrect ||
+                                     _currentUiState == PlayUiState.FeedbackWrong;
+            bool usesInlineCheck = ShouldUseInlineKeyboardCheckButton();
+            bool showInlineCheck = usesInlineCheck &&
+                                   _btnKeyboardCheckInline != null &&
+                                   _btnKeyboardCheckInline.IsVisible &&
+                                   !showFeedbackBadge;
+            bool showProgress = _pianoPressProgress != null &&
+                                !usesInlineCheck &&
+                                !showFeedbackBadge;
+
+            if (_pianoPressProgress != null)
+                _pianoPressProgress.IsVisible = showProgress;
+
+            if (_btnKeyboardCheckInline != null)
+            {
+                _btnKeyboardCheckInline.IsVisible = showInlineCheck;
+                _btnKeyboardCheckInline.IsEnabled = showInlineCheck && _isPageInteractionEnabled;
+            }
+
+            if (_centerFeedbackBadge == null || _centerFeedbackBadgeLabel == null)
+                return;
+
+            if (showFeedbackBadge)
+            {
+                bool isCorrect = _currentUiState == PlayUiState.FeedbackCorrect;
+                _centerFeedbackBadge.BackgroundColor = isCorrect
+                    ? Color.FromArgb("#2E9B52")
+                    : Color.FromArgb("#C26A44");
+                _centerFeedbackBadgeLabel.Text = isCorrect ? "💪" : "🤔";
+            }
+
+            _centerFeedbackBadge.IsVisible = showFeedbackBadge;
+        }
+
+        private string GetKeyboardTypeText()
+        {
+            if (_config.KeyboardConfig?.KeyboardAsAQuestion == true)
+                return "Read only";
+
+            return _config.KeyboardConfig?.SyncType switch
+            {
+                SyncType.Sync => "Sync keyboard",
+                SyncType.HalfSync => "Half sync",
+                SyncType.Spatial => "Spatial keyboard",
+                _ => "Piano keyboard"
+            };
+        }
+
+        private bool SupportsThirdArrowVisibilityToggle()
+        {
+            return _config.KeyboardConfig?.IsArrow == true &&
+                   _gamePlay is BitArrayGamePlay arrowGamePlay &&
+                   arrowGamePlay.SupportsThirdArrowVisibilityControl();
+        }
+
+        private async Task ToggleThirdArrowVisibilityAsync()
+        {
+            if (_gamePlay is not BitArrayGamePlay arrowGamePlay)
+                return;
+
+            arrowGamePlay.ForceShowMaskedThirdArrow = !arrowGamePlay.ForceShowMaskedThirdArrow;
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                RefreshArrowVisuals();
+                RefreshKeyboardControlBar();
+            });
+        }
+
+        private void RefreshArrowVisuals()
+        {
+            if (!_isKeyboard || _pianoKeyboard == null)
+                return;
+
+            if (_config.KeyboardConfig?.IsArrow == true && _gamePlay is BitArrayGamePlay arrowGamePlay)
+            {
+                _pianoKeyboard.RemoveArrows();
+                _pianoKeyboard.BackgroundColor = ShouldCycleArrowBackground()
+                    ? GetArrowBackgroundColor()
+                    : Colors.Black;
+                _pianoKeyboard.AddArrow(
+                    arrowGamePlay.dir,
+                    arrowGamePlay.aboveNumber,
+                    arrowGamePlay.length,
+                    labelTextOverride: arrowGamePlay.GetCurrentArrowLabelText());
+            }
+            else
+            {
+                _pianoKeyboard.BackgroundColor = Colors.Black;
+            }
+        }
+
+        private View BuildInlineAnswerTimeControls()
+        {
+            _answerTimeEnabledSwitch = new Microsoft.Maui.Controls.Switch
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                OnColor = Color.FromArgb("#6D4AFF"),
+                Scale = 0.85
+            };
+
+            _answerTimeEnabledSwitch.Toggled += async (_, e) =>
+            {
+                if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                    return;
+
+                if (e.Value)
+                {
+                    int seconds = GetEffectiveAnswerTimeMagnitude(syncKeyboard);
+                    int sign = _lastNonZeroAnswerTimeSetting < 0 ? -1 : (syncKeyboard.AnswerTimeSetting < 0 ? -1 : 1);
+                    await ApplyAnswerTimeSettingAsync(seconds * sign, "AnswerTimeEnabled");
+                }
+                else
+                {
+                    if (syncKeyboard.AnswerTimeSetting != 0)
+                        _lastNonZeroAnswerTimeSetting = syncKeyboard.AnswerTimeSetting;
+
+                    await ApplyAnswerTimeSettingAsync(0, "AnswerTimeDisabled");
+                }
+            };
+
+            _answerTimeMinusButton = new Button
+            {
+                Text = "-",
+                FontSize = 18,
+                WidthRequest = 34,
+                HeightRequest = 34,
+                CornerRadius = 10,
+                Padding = 0,
+                BackgroundColor = Colors.White,
+                TextColor = Colors.Black
+            };
+            _answerTimeMinusButton.Clicked += async (_, _) =>
+            {
+                if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                    return;
+
+                int seconds = Math.Max(1, GetEffectiveAnswerTimeMagnitude(syncKeyboard) - 1);
+                int sign = UsesWholeAnswerTimer(syncKeyboard) ? -1 : 1;
+                await ApplyAnswerTimeSettingAsync(seconds * sign, "AnswerTimeMinus");
+            };
+
+            _answerTimePlusButton = new Button
+            {
+                Text = "+",
+                FontSize = 18,
+                WidthRequest = 34,
+                HeightRequest = 34,
+                CornerRadius = 10,
+                Padding = 0,
+                BackgroundColor = Colors.White,
+                TextColor = Colors.Black
+            };
+            _answerTimePlusButton.Clicked += async (_, _) =>
+            {
+                if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                    return;
+
+                int seconds = Math.Min(9, GetEffectiveAnswerTimeMagnitude(syncKeyboard) + 1);
+                int sign = UsesWholeAnswerTimer(syncKeyboard) ? -1 : 1;
+                await ApplyAnswerTimeSettingAsync(seconds * sign, "AnswerTimePlus");
+            };
+
+            _answerTimeValueLabel = new Label
+            {
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                MinimumWidthRequest = 44
+            };
+
+            _answerTimeModeLabel = new Label
+            {
+                FontSize = 10,
+                TextColor = Colors.White.WithAlpha(0.85f),
+                HorizontalTextAlignment = TextAlignment.End,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+
+            _answerTimeModeButton = new Button
+            {
+                FontSize = 11,
+                Padding = new Thickness(10, 4),
+                CornerRadius = 10,
+                BackgroundColor = Color.FromArgb("#F4F0FF"),
+                TextColor = Color.FromArgb("#5A42D0"),
+                VerticalOptions = LayoutOptions.Center
+            };
+            _answerTimeModeButton.Clicked += async (_, _) => await ToggleAnswerTimeModeAsync();
+
+            return new HorizontalStackLayout
+            {
+                Spacing = 6,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.Center,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = "Timer",
+                        FontSize = 11,
+                        TextColor = Colors.White.WithAlpha(0.85f),
+                        VerticalTextAlignment = TextAlignment.Center
+                    },
+                    _answerTimeEnabledSwitch,
+                    _answerTimeMinusButton,
+                    _answerTimeValueLabel,
+                    _answerTimePlusButton,
+                    _answerTimeModeLabel,
+                    _answerTimeModeButton
+                }
+            };
+        }
+
+        private View BuildKeyboardControlBar()
+        {
+            EnsureKeyboardInlineCheckButton();
+            EnsureCenterFeedbackBadge();
+
+            _lblKeyboardType = new Label
+            {
+                Text = GetKeyboardTypeText(),
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Colors.White,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+
+            Grid statusActionHost = new()
+            {
+                WidthRequest = 220,
+                HeightRequest = 44,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            statusActionHost.Add(_pianoPressProgress);
+            if (_centerFeedbackBadge != null)
+                statusActionHost.Add(_centerFeedbackBadge);
+            if (_btnKeyboardCheckInline != null)
+                statusActionHost.Add(_btnKeyboardCheckInline);
+
+            HorizontalStackLayout leftControls = new()
+            {
+                Spacing = 6,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center
+            };
+
+            leftControls.Add(new Border
+            {
+                Padding = new Thickness(8, 3),
+                StrokeThickness = 0,
+                BackgroundColor = Colors.White.WithAlpha(0.14f),
+                StrokeShape = new RoundRectangle { CornerRadius = 10 },
+                VerticalOptions = LayoutOptions.Center,
+                Content = _lblKeyboardType
+            });
+
+            if (SupportsThirdArrowVisibilityToggle())
+            {
+                _btnThirdArrowVisibility = new Button
+                {
+                    FontSize = 11,
+                    Padding = new Thickness(10, 4),
+                    CornerRadius = 10,
+                    BackgroundColor = Colors.White.WithAlpha(0.18f),
+                    TextColor = Colors.White,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                _btnThirdArrowVisibility.Clicked += async (_, _) => await ToggleThirdArrowVisibilityAsync();
+                leftControls.Add(_btnThirdArrowVisibility);
+            }
+
+            View timerControls = CanShowAnswerTimeTuner()
+                ? BuildInlineAnswerTimeControls()
+                : new Label
+                {
+                    Text = string.Empty,
+                    WidthRequest = 1
+                };
+
+            leftControls.Add(timerControls);
+
+            HorizontalStackLayout statusStrip = new()
+            {
+                Spacing = 8,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.Center,
+                Children = { _statusLight1, _lblStatement, _statusLight2 }
+            };
+
+            Grid singleRow = new()
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto }
+                },
+                ColumnSpacing = 8
+            };
+            singleRow.Add(leftControls, 0, 0);
+            singleRow.Add(new BoxView { Opacity = 0 }, 1, 0);
+            singleRow.Add(statusActionHost, 2, 0);
+            singleRow.Add(new BoxView { Opacity = 0 }, 3, 0);
+            singleRow.Add(statusStrip, 4, 0);
+
+            _keyboardControlBar = new Border
+            {
+                Padding = new Thickness(10, 8),
+                Margin = new Thickness(8, 6, 8, 4),
+                StrokeThickness = 0,
+                BackgroundColor = Colors.Black.WithAlpha(0.52f),
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Center,
+                ZIndex = 10,
+                StrokeShape = new RoundRectangle { CornerRadius = 18 },
+                Content = singleRow
+            };
+
+            RefreshKeyboardControlBar();
+            return _keyboardControlBar;
+        }
+
+        private void RefreshKeyboardControlBar()
+        {
+            if (_lblKeyboardType != null)
+                _lblKeyboardType.Text = GetKeyboardTypeText();
+
+            if (_btnThirdArrowVisibility != null && _gamePlay is BitArrayGamePlay arrowGamePlay)
+            {
+                bool isHidden = arrowGamePlay.IsThirdArrowCurrentlyHidden();
+                _btnThirdArrowVisibility.Text = isHidden ? "arr[2]: hidden" : "arr[2]: shown";
+            }
+
+            if (_lblStatement != null)
+            {
+                _lblStatement.WidthRequest = -1;
+                _lblStatement.HorizontalOptions = LayoutOptions.Start;
+                _lblStatement.LineBreakMode = LineBreakMode.TailTruncation;
+                _lblStatement.MaxLines = 1;
+                _lblStatement.HorizontalTextAlignment = TextAlignment.Start;
+                _lblStatement.VerticalTextAlignment = TextAlignment.Center;
+                _lblStatement.FontSize = 13;
+            }
+
+            if (_pianoPressProgress != null)
+                _pianoPressProgress.HeightRequest = 24;
+
+            if (_btnThirdArrowVisibility != null)
+                _btnThirdArrowVisibility.IsEnabled = _isPageInteractionEnabled;
+
+            RefreshStatusActionSlot();
+
+            RefreshAnswerTimeTuner();
         }
 
         /*private bool _btnNextEnabled = false;
@@ -917,16 +1433,8 @@ namespace GestureSample.Views.Tests
                 if (_config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow)
                 {
                     BitArrayGamePlay arrowGamePlay = (BitArrayGamePlay)_gamePlay;
-                    _pianoKeyboard.RemoveArrows();
                     Console.WriteLine("aboveNumver: {0}, length: {1}", arrowGamePlay.aboveNumber, arrowGamePlay.length);
-                    _pianoKeyboard.BackgroundColor = ShouldCycleArrowBackground()
-                        ? GetArrowBackgroundColor()
-                        : Colors.Black;
-                    _pianoKeyboard.AddArrow(
-                        arrowGamePlay.dir,
-                        arrowGamePlay.aboveNumber,
-                        arrowGamePlay.length,
-                        labelTextOverride: arrowGamePlay.GetCurrentArrowLabelText());
+                    RefreshArrowVisuals();
                     //if (aboveNumber == 10) { _pianoKeyboard.AddArrow(dir, 0/*, _gamePlay.Sum*/); }
 
                 }
@@ -956,6 +1464,7 @@ namespace GestureSample.Views.Tests
                 if (tasks.Count > 0) _ = Task.WhenAll(tasks);
 
             }
+            RefreshKeyboardControlBar();
             if (HasVisibleNumericInputs && allowInputFocus)
             {
                 if (_gamePlay.Status == Statement.False ||
@@ -1662,6 +2171,8 @@ namespace GestureSample.Views.Tests
         {
             Title = config.GameName;
             _config = config;
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
@@ -1671,13 +2182,23 @@ namespace GestureSample.Views.Tests
                 TimerInit();
                 timer.Start();
             }
+            InitializeStatusLightIcons();
             InitializeGamePlay();
             InitializeUI();
+        }
+
+        private void InitializeStatusLightIcons()
+        {
+            _statusLight1.Content = _statusLight1Icon;
+            _statusLight2.Content = _statusLight2Icon;
+            _statusLight1.IsVisible = false;
+            _statusLight2.IsVisible = false;
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _syncToolbarStatusController.Attach();
 
             if (!_hasLoadedInitialExercise)
             {
@@ -1692,6 +2213,12 @@ namespace GestureSample.Views.Tests
             await ApplyUiStateAsync(PlayUiState.FeedbackCorrect);
             await Task.Delay(1000);
             await ApplyUiStateAsync(PlayUiState.FeedbackWrong);*/
+        }
+
+        protected override void OnDisappearing()
+        {
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
         }
         private void InitializeGamePlay()
         {
@@ -1719,6 +2246,7 @@ namespace GestureSample.Views.Tests
 
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
+                SetInlineKeyboardCheckVisible(false);
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(_pianoKeyboard);
                 await HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
 
@@ -1775,6 +2303,7 @@ namespace GestureSample.Views.Tests
             else if (isKeyboardSubmission)
             {
                 _pianoKeyboard.PianoInit();
+                SetPageInteractionEnabled(true);
                 ResetStatusLineToNeutral();
                 RestoreReadyForInputState();
             }
@@ -1838,7 +2367,15 @@ namespace GestureSample.Views.Tests
             if (isKeyboardSubmission)
             {
                 SetPageInteractionEnabled(false);
-                await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                try
+                {
+                    await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                }
+                finally
+                {
+                    if (!keepDisabledForNextExercise)
+                        SetPageInteractionEnabled(true);
+                }
                 return;
             }
 
@@ -1857,7 +2394,10 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldSkipPostCheckDelay(ExerciseCheckResult checkResult, bool isKeyboardSubmission)
         {
-            if (isKeyboardSubmission || !checkResult.IsCorrect || checkResult.Completion != null || _gamePlay.GameOver)
+            if (checkResult.Completion != null || _gamePlay.GameOver)
+                return true;
+
+            if (isKeyboardSubmission || !checkResult.IsCorrect)
                 return false;
 
             return IsInstantArithmeticExerciseFlow();
@@ -1892,13 +2432,38 @@ namespace GestureSample.Views.Tests
             SetPageInteractionEnabled(false);
             SetPlayUiState(PlayUiState.Disabled);
 
-            Task winLoseTask = completion.IsWin
-                ? Statement.Win(completion.Duration)
-                : Statement.Lose();
-
             Page dataPage = ShowDataRoutingHelper.CreateChooserPage(completion.GameId);
-            Application.Current.MainPage = new NavigationPage(dataPage);
-            await winLoseTask;
+            await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                Debug.WriteLine($"[GameCompletion] Navigating to Show Data for game {completion.GameId}");
+
+                if (Navigation?.NavigationStack?.Count > 0)
+                {
+                    Navigation.InsertPageBefore(dataPage, this);
+                    await Navigation.PopAsync(false);
+                }
+                else
+                {
+                    Application.Current.MainPage = new NavigationPage(dataPage);
+                }
+            });
+
+            _ = MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await Task.Delay(50);
+
+                try
+                {
+                    if (completion.IsWin)
+                        await dataPage.DisplayAlert("Win", "🎉😊🏅\n" + completion.Duration.ToFormattedString("mm: ss"), "OK");
+                    else
+                        await dataPage.DisplayAlert("Lose", "🤷", "OK");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[GameCompletion] Completion alert failed: {ex}");
+                }
+            });
         }
 
         private void SetTextInputsEnabled(bool enabled)
@@ -2178,8 +2743,11 @@ namespace GestureSample.Views.Tests
                 ? "Counts across whole answer"
                 : "Resets after each key press";
             _answerTimeModeButton.Text = isWholeTimer ? "Whole Answer" : "After Last Key";
-            _answerTimeMinusButton.IsEnabled = seconds > 1;
-            _answerTimePlusButton.IsEnabled = seconds < 9;
+            bool controlsEnabled = _isPageInteractionEnabled;
+            _answerTimeEnabledSwitch.IsEnabled = controlsEnabled;
+            _answerTimeMinusButton.IsEnabled = controlsEnabled && seconds > 1;
+            _answerTimePlusButton.IsEnabled = controlsEnabled && seconds < 9;
+            _answerTimeModeButton.IsEnabled = controlsEnabled;
             if (_answerTimeTunerCard != null)
                 _answerTimeTunerCard.IsVisible = _isAnswerTimeTunerVisible;
         }
@@ -2446,6 +3014,7 @@ namespace GestureSample.Views.Tests
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
+                new RowDefinition { Height = _isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp ? GridLength.Auto : new GridLength(0) },
                 new RowDefinition { Height = new GridLength(pianoHeight, GridUnitType.Star) }
             },
                 ColumnDefinitions =
@@ -2693,22 +3262,8 @@ namespace GestureSample.Views.Tests
 
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
-                _lblStatement.WidthRequest = 220;// _pianoPressProgress.Width;
-                _pianoPressProgress.HeightRequest = 55;
-                _lblStatement.HorizontalOptions = LayoutOptions.Fill;
-                _lblStatement.HorizontalTextAlignment = TextAlignment.Center;
-                HorizontalStackLayout statusRow = new()
-                {
-                    Spacing = 10,
-                    HorizontalOptions = LayoutOptions.Center,
-                    VerticalOptions = LayoutOptions.End,
-                    Children = { _statusLight1, _pianoPressProgress, _lblStatement, _statusLight2 }
-                };
+                EnsureKeyboardInlineCheckButton();
                 vsl.VerticalOptions = LayoutOptions.End;
-                vsl.Add(statusRow );
-                //vsl.Add(_pianoPressProgress);
-                //vsl.Add(_lblStatement);
-                //vsl.Add(_statusLight);
             }
             grid.Add(vsl);
 
@@ -2720,8 +3275,6 @@ namespace GestureSample.Views.Tests
                 {
                     SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
                     SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
-                    SyncType.None when _config.FromNumToNum && _config.KeyboardConfig.SecondsPressingToAnswer != 0
-                        => new PianoKeyboardTimedToggle(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
                     _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
                 };
 
@@ -2738,41 +3291,13 @@ namespace GestureSample.Views.Tests
                     syncKeyboard.CheckCompletedAsync = checkResult => HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
                 }
 
-                if (_pianoKeyboard is PianoKeyboard pianoKeyboard &&
-                    CanShowAnswerTimeTuner() &&
-                    _config.KeyboardConfig.AllowAnswerTimePanelToggleFromKeyboardHeader)
-                {
-                    pianoKeyboard.HeadingTapped += ToggleAnswerTimeTunerVisibility;
-                }
-
-                if (CanShowAnswerTimeTuner())
-                {
-                    _answerTimeTunerCard = BuildAnswerTimeTuner();
-                }
-
                 // Always host the keyboard inside an overlay host so we can run tutorials on-demand
                 _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
                 grid.Add(_taskMainHost);
                 Grid.SetRow(_taskMainHost, 2);
-
-                if (CanShowAnswerTimeTuner())
-                {
-                    _answerTimeDismissShield = new BoxView
-                    {
-                        BackgroundColor = Colors.Transparent,
-                        IsVisible = false,
-                        ZIndex = 997,
-                        HorizontalOptions = LayoutOptions.Fill,
-                        VerticalOptions = LayoutOptions.Fill
-                    };
-                    TapGestureRecognizer dismissTap = new();
-                    dismissTap.Tapped += (_, _) => HideAnswerTimeTuner();
-                    _answerTimeDismissShield.GestureRecognizers.Add(dismissTap);
-                    _taskMainHost.Children.Add(_answerTimeDismissShield);
-                }
-
-                if (_answerTimeTunerCard != null)
-                    _taskMainHost.Children.Add(_answerTimeTunerCard);
+                View keyboardControlBar = BuildKeyboardControlBar();
+                grid.Add(keyboardControlBar);
+                Grid.SetRow(keyboardControlBar, 1);
 
                 // Help button (top-right over the keyboard)
                 _btnHelp = new Button
@@ -2837,26 +3362,6 @@ namespace GestureSample.Views.Tests
                     pk.BtnInit.TranslationY = 0;
 
                     leftOverlayButtons.Add(pk.BtnInit);
-                }
-
-                if (CanShowAnswerTimeTuner())
-                {
-                    _btnAnswerTimePanel = new Button
-                    {
-                        Text = "\u23F1",
-                        FontSize = 15,
-                        WidthRequest = 34,
-                        HeightRequest = 34,
-                        Padding = 0,
-                        CornerRadius = 17,
-                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
-                        TextColor = Colors.White,
-                        HorizontalOptions = LayoutOptions.Center,
-                        VerticalOptions = LayoutOptions.Center,
-                        Margin = Thickness.Zero
-                    };
-                    _btnAnswerTimePanel.Clicked += (_, _) => ToggleAnswerTimeTunerVisibility();
-                    leftOverlayButtons.Add(_btnAnswerTimePanel);
                 }
 
                 overlayButtons.Add(leftOverlayButtons, 0, 0);
@@ -3129,7 +3634,7 @@ namespace GestureSample.Views.Tests
                 _btnEquationHelp.Clicked += async (_, _) => await RunEquationHelpAsync();
                 hslBtns.Add(_btnEquationHelp);
             }
-            bool showCheckButton = !_config.FromNumToNum;
+            bool showCheckButton = ShouldShowPpwCheckButton();
 
             if (_config.NumberOfMistakesToLose < 0 && !_config.IsHistory)
             {

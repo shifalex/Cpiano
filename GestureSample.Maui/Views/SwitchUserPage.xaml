@@ -23,9 +23,19 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
+        <VerticalStackLayout Spacing="6">
+            <Label x:Name="ActiveUserPreferenceLabel" Text="Numeric keyboard for current user" />
+            <Picker x:Name="NumericInputPicker" SelectedIndexChanged="OnNumericInputPickerSelectedIndexChanged" />
+        </VerticalStackLayout>
+
+        <HorizontalStackLayout Spacing="8">
+            <ActivityIndicator x:Name="SyncActivityIndicator" IsVisible="False" IsRunning="False" VerticalOptions="Center" />
+            <Label x:Name="SyncStatusLabel" IsVisible="False" VerticalOptions="Center" />
+        </HorizontalStackLayout>
+
         <Button Text="Add New User" Clicked="OnAddUserClicked"/>
 
-        <Button Text="SAVE ALL!!" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
+        <Button Text="Force Re-sync" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
 
         <!--<Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>

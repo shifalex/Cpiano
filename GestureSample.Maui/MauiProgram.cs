@@ -37,6 +37,8 @@ public static class MauiProgram
         Console.WriteLine("a");
         builder.Services.AddSingleton<UserRepository>();
         builder.Services.AddSingleton<CurrentUserSession>();
+        builder.Services.AddSingleton<UserPreferenceService>();
+        builder.Services.AddSingleton<BackgroundSyncService>();
 
         builder.Services.AddSingleton(AudioManager.Current);
         builder.Services.AddSingleton<SoundService>();

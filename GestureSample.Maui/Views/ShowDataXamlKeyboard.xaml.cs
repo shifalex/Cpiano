@@ -26,6 +26,8 @@ namespace GestureSample.Views
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
         private readonly KeyEventRepository _keyEventRepository;
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
 
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
@@ -49,6 +51,8 @@ namespace GestureSample.Views
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _timerChangeEventRepository = ServiceHelper.GetService<TimerChangeEventRepository>();
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             _dataToolbarItem = new ToolbarItem
             {
                 Text = "Data",
@@ -80,6 +84,18 @@ namespace GestureSample.Views
             ShowData(gameId);
         }
 
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            _syncToolbarStatusController.Attach();
+        }
+
+        protected override void OnDisappearing()
+        {
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
+        }
+
         public async void ShowData(Guid? gameId = null)
         {
                 gameId ??= _currentSelectedGameId;
@@ -92,7 +108,12 @@ namespace GestureSample.Views
                     await Navigation.PopAsync();
                 }
             
-            if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
+            if (gameId == null && GameIdentifiers.Count > 0)
+            {
+                DateTime today = DateTime.Today;
+                CurrentGame = GameIdentifiers.FirstOrDefault(game => game.TimeStart.Date == today)
+                    ?? GameIdentifiers[0];
+            }
             for (int i = 0; i < GameIdentifiers.Count; i++)
             {
                 if (gameId != null && GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
@@ -296,18 +317,10 @@ namespace GestureSample.Views
 
         private void LoadGames()
         {
-            if (DatePicker.SelectedIndex != -1)
-            {
-                GameIdentifiersFiltered.Clear();
-                for (int i = 0; i < GameIdentifiers.Count; i++)
-                {
-                    if (GameIdentifiers[i].TimeStart.Year == ((DateWraper)DatePicker.SelectedItem).Date.Year &&
-                        GameIdentifiers[i].TimeStart.Month == ((DateWraper)DatePicker.SelectedItem).Date.Month &&
-                        GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day
-                            )
-                        GameIdentifiersFiltered.Add(GameIdentifiers[i]);
-                }
-            }
+            GameIdentifiersFiltered.Clear();
+            for (int i = 0; i < GameIdentifiers.Count; i++)
+                GameIdentifiersFiltered.Add(GameIdentifiers[i]);
+
             GamePicker.ItemsSource = GameIdentifiersFiltered;
             if (GamePicker.Items.Count == 0)
                 return;
@@ -315,6 +328,14 @@ namespace GestureSample.Views
             Game? preferredGame = _currentSelectedGameId.HasValue
                 ? GameIdentifiersFiltered.FirstOrDefault(game => game.Id == _currentSelectedGameId.Value)
                 : null;
+
+            if (preferredGame == null && DatePicker.SelectedItem is DateWraper selectedDate)
+            {
+                preferredGame = GameIdentifiersFiltered.FirstOrDefault(game =>
+                    game.TimeStart.Year == selectedDate.Date.Year &&
+                    game.TimeStart.Month == selectedDate.Date.Month &&
+                    game.TimeStart.Day == selectedDate.Date.Day);
+            }
 
             if (preferredGame != null)
             {
@@ -480,28 +501,19 @@ namespace GestureSample.Views
             return page;
         }
 
-        private async void OnSyncClicked(object sender, EventArgs e)
+        public async Task<string> SyncCurrentGameAsync()
         {
-            try
-            {
-                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
-                if (activeUser == null)
-                {
-                    await DisplayAlert("Sync", "No active user for sync.", "OK");
-                    return;
-                }
+            var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+            if (activeUser == null)
+                throw new InvalidOperationException("No active user for sync.");
 
-                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(activeUser);
-                await RefreshCurrentGameFromSupabaseAsync();
-                await DisplayAlert("Sync", "Keyboard tables synced with Supabase.", "OK");
+            await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(activeUser);
+            await RefreshCurrentGameFromSupabaseAsync();
 
-                if (CurrentGame != null)
-                    await LoadStatesToGrid(CurrentGame.Id);
-            }
-            catch (Exception ex)
-            {
-                await DisplayAlert("Sync Error", ex.Message, "OK");
-            }
+            if (CurrentGame != null)
+                await LoadStatesToGrid(CurrentGame.Id);
+
+            return "Keyboard tables synced with Supabase.";
         }
 
         private async Task RefreshCurrentGameFromSupabaseAsync()

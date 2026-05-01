@@ -16,7 +16,6 @@ namespace GestureSample.Maui.Data
         {
             string gID = GameId.ToString();
             //return await _database.QueryAsync<QuestionAnswer>("SELECT * FROM QuestionAnswer WHERE GameId = '{0}'", GameId);
-            Console.WriteLine("gID: {0}", gID);
             return await _database.Table<QuestionAnswer>().Where(state => state.GameId == gID).ToListAsync();
 
         }

@@ -2143,6 +2143,8 @@ namespace GestureSample.Views
 
         #region MainPage code
         private readonly UserRepository _userRepo;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
         private double _screenSize;
         private bool _hasNavigatedToSplash = false;
 
@@ -2150,6 +2152,8 @@ namespace GestureSample.Views
         {
 
             _userRepo = ServiceHelper.GetService<UserRepository>();
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             var displayInfo = DeviceDisplay.MainDisplayInfo;
             double widthInches = displayInfo.Width / displayInfo.Density;
             double heightInches = displayInfo.Height / displayInfo.Density;
@@ -2183,6 +2187,7 @@ namespace GestureSample.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _syncToolbarStatusController.Attach();
 
 
             // Check if navigation to SplashPage is needed
@@ -2199,6 +2204,12 @@ namespace GestureSample.Views
             else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
 
 
+        }
+
+        protected override void OnDisappearing()
+        {
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
         }
 
         protected override bool OnBackButtonPressed()
