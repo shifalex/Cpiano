@@ -8,6 +8,8 @@ namespace GestureSample.Maui.Data.SupaBase
     public class QuestionAnswer : BaseModel
 
     {
+        [PrimaryKey("id", false)]
+        public int Id { get; set; }
         [Column("questionNumber")]
         public int QuestionNumber { get; set; }
         [Column("gameId")]
@@ -23,6 +25,18 @@ namespace GestureSample.Maui.Data.SupaBase
         public int Addend2 { get; set; }
         [Column("sum")]
         public int Sum { get; set; }
+        [Column("secondarySum")]
+        public int SecondarySum { get; set; } = -1111;
+        [Column("secondaryAddend1")]
+        public int SecondaryAddend1 { get; set; } = -1111;
+        [Column("secondaryAddend2")]
+        public int SecondaryAddend2 { get; set; } = -1111;
+        [Column("secondarySumEnabled")]
+        public bool SecondarySumEnabled { get; set; }
+        [Column("secondaryAddend1Enabled")]
+        public bool SecondaryAddend1Enabled { get; set; }
+        [Column("secondaryAddend2Enabled")]
+        public bool SecondaryAddend2Enabled { get; set; }
         [Column("resultStatus")]
         public int ResultStatus { get; set; } = 0;
 

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Maui.Platform;
-using SQLite;
+using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 
 namespace GestureSample.Maui.Data.SupaBase
@@ -12,7 +12,7 @@ namespace GestureSample.Maui.Data.SupaBase
     [Table("KeyEvent")]
     public class KeyEvent : BaseModel
     {
-        [PrimaryKey, AutoIncrement]
+        [PrimaryKey("id", false)]
         public int id { get; set; }
 
         public string GameId { get; set; }

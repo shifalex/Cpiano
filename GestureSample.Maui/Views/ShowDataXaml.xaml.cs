@@ -20,7 +20,6 @@ namespace GestureSample.Views
             }
         }
         //private readonly RealmService _realmService;
-        private bool isSaveVisible = false;
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
@@ -32,6 +31,8 @@ namespace GestureSample.Views
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
         private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
         private Maui.Data.SQLite.User _currentUser;
         private bool _isTeacher = false;
         private readonly bool _showSelectors;
@@ -76,6 +77,8 @@ namespace GestureSample.Views
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             _backToolbarItem = new ToolbarItem
             {
@@ -110,11 +113,22 @@ namespace GestureSample.Views
             if ( gameId == null /*&& forTeacher*/ && ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name == "Alex")
             {
                 _isTeacher = true;
-                isSaveVisible = false;
                 LoadClassroomUsers(); 
             }
             else
                 ShowData(gameId);
+        }
+
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            _syncToolbarStatusController.Attach();
+        }
+
+        protected override void OnDisappearing()
+        {
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
         }
 
 
@@ -195,7 +209,12 @@ namespace GestureSample.Views
                 // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
                 await Navigation.PopAsync();
             }
-            if (gameId == null && GameIdentifiers.Count > 0) CurrentGame = GameIdentifiers[0];
+            if (gameId == null && GameIdentifiers.Count > 0)
+            {
+                DateTime today = DateTime.Today;
+                CurrentGame = GameIdentifiers.FirstOrDefault(game => game.TimeStart.Date == today)
+                    ?? GameIdentifiers[0];
+            }
             for (int i = 0; i < GameIdentifiers.Count; i++) {
                 if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i+1;
@@ -277,8 +296,6 @@ namespace GestureSample.Views
             for (int i = 0; i < GameIdentifiers.Count; i++)
                if (selectedIdentifier != null && GameIdentifiers[i].Id.Equals(selectedIdentifier)) 
                     CurrentGame = GameIdentifiers[i];
-            isSaveVisible = (CurrentGame!=null && !CurrentGame.WasSynced); 
-            btnSave.IsVisible = isSaveVisible;
 
             List<QuestionAnswer> gameStats = new();
             Dictionary<int, List<QuestionAnswerPart>> helperPartsByQuestion = new();
@@ -399,17 +416,10 @@ namespace GestureSample.Views
 
         private void LoadGames()
         {
-            if (DatePicker.SelectedIndex != -1)
-            {
-                GameIdentifiersFiltered.Clear();
-                for (int i = 0; i < GameIdentifiers.Count; i++)
-                {
-                    if (GameIdentifiers[i].TimeStart.Year == ((DateWraper)DatePicker.SelectedItem).Date.Year &&
-                        GameIdentifiers[i].TimeStart.Month == ((DateWraper)DatePicker.SelectedItem).Date.Month &&
-                        GameIdentifiers[i].TimeStart.Day == ((DateWraper)DatePicker.SelectedItem).Date.Day)
-                        GameIdentifiersFiltered.Add(GameIdentifiers[i]);
-                }
-            }
+            GameIdentifiersFiltered.Clear();
+            for (int i = 0; i < GameIdentifiers.Count; i++)
+                GameIdentifiersFiltered.Add(GameIdentifiers[i]);
+
             GamePicker.ItemsSource = GameIdentifiersFiltered;
             if (GamePicker.Items.Count == 0)
                 return;
@@ -417,6 +427,14 @@ namespace GestureSample.Views
             Game? preferredGame = _currentSelectedGameId.HasValue
                 ? GameIdentifiersFiltered.FirstOrDefault(game => game.Id == _currentSelectedGameId.Value)
                 : null;
+
+            if (preferredGame == null && DatePicker.SelectedItem is DateWraper selectedDate)
+            {
+                preferredGame = GameIdentifiersFiltered.FirstOrDefault(game =>
+                    game.TimeStart.Year == selectedDate.Date.Year &&
+                    game.TimeStart.Month == selectedDate.Date.Month &&
+                    game.TimeStart.Day == selectedDate.Date.Day);
+            }
 
             if (preferredGame != null)
             {
@@ -525,18 +543,24 @@ namespace GestureSample.Views
             _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
         }
 
-        private async void OnDampButtonClicked(object sender, EventArgs e)
+        public async Task<string> SyncCurrentGameAsync()
         {
-            //var users = await _userRepo.GetUsersAsync();
-            //foreach (var user in users)
-            {
-                //await _userRepo.UpdateUserAsync(user);
-                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser); // Sync with Supabase
-            }
-            isSaveVisible = false;
-            btnSave.IsVisible = isSaveVisible;
+            if (_isTeacher)
+                throw new InvalidOperationException("Teacher view cannot sync local data.");
 
-                await DisplayAlert("Sync Complete", "Users synced with Supabase", "OK");
+            var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+            if (activeUser == null)
+                throw new InvalidOperationException("No active user for sync.");
+
+            await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUserDataAsync(activeUser);
+
+            if (CurrentGame != null)
+            {
+                CurrentGame.WasSynced = true;
+                await _gameRepository.UpdateAsync(CurrentGame);
+            }
+
+            return "Data synced with Supabase.";
         }
 
         private async Task NavigateBackAsync()

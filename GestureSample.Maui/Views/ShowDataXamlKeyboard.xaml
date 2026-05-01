@@ -33,16 +33,11 @@
             <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
                 <VerticalStackLayout Spacing="4">
                     <Label Text="GAME" Style="{StaticResource ShowDataFilterLabelStyle}" />
-                    <HorizontalStackLayout Spacing="6">
-                        <Picker x:Name="GamePicker"
-                                Title="Pick a session"
-                                SelectedIndexChanged="OnPickerSelectedIndexChanged"
-                                Style="{StaticResource ShowDataPickerStyle}"
-                                HorizontalOptions="FillAndExpand" />
-                        <Button Text="Sync"
-                                Clicked="OnSyncClicked"
-                                HorizontalOptions="End" />
-                    </HorizontalStackLayout>
+                    <Picker x:Name="GamePicker"
+                            Title="Pick a session"
+                            SelectedIndexChanged="OnPickerSelectedIndexChanged"
+                            Style="{StaticResource ShowDataPickerStyle}"
+                            HorizontalOptions="FillAndExpand" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

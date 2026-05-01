@@ -28,8 +28,6 @@
             <!-- For Header Grid -->
             <RowDefinition Height="*" />
             <!-- For CollectionView -->
-            <RowDefinition Height="Auto" />
-            <!-- For SAve button -->
         </Grid.RowDefinitions>
 
         <!-- Pickers -->
@@ -140,9 +138,6 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-
-
-        <Button Text="SAVE" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
     </Grid>
     
 </ContentPage>

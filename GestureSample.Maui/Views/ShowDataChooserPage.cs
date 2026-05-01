@@ -19,6 +19,8 @@ namespace GestureSample.Views
         private readonly bool _forTeacher;
         private readonly Guid? _selectedGameId;
         private readonly GameRepository _gameRepository;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
         private readonly ObservableCollection<DateWraper> _gameDates = new();
         private readonly ObservableCollection<Game> _filteredGames = new();
         private readonly Picker _datePicker;
@@ -42,6 +44,8 @@ namespace GestureSample.Views
             _selectedGameId = selectedGameId;
             _currentSelectedGameId = selectedGameId;
             _gameRepository = ServiceHelper.GetService<GameRepository>();
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
 
             Title = "Games";
             BackgroundColor = Color.FromArgb("#FBF8FE");
@@ -231,11 +235,21 @@ namespace GestureSample.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _backgroundSyncService.StateChanged += OnBackgroundSyncStateChanged;
+            _syncToolbarStatusController.Attach();
+            RefreshBackgroundSyncUi();
             if (_hasLoadedGames)
                 return;
 
             await LoadGamesAsync();
             _hasLoadedGames = true;
+        }
+
+        protected override void OnDisappearing()
+        {
+            _backgroundSyncService.StateChanged -= OnBackgroundSyncStateChanged;
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
         }
 
         private async Task LoadGamesAsync()
@@ -284,7 +298,14 @@ namespace GestureSample.Views
             Guid? preferredGameId = _currentSelectedGameId ?? _selectedGameId;
             Game? selectedGame = preferredGameId.HasValue
                 ? _games.FirstOrDefault(game => game.Id == preferredGameId.Value)
-                : _games.FirstOrDefault();
+                : null;
+
+            if (selectedGame == null)
+            {
+                DateTime today = DateTime.Today;
+                selectedGame = _games.FirstOrDefault(game => game.TimeStart.Date == today)
+                    ?? _games.FirstOrDefault();
+            }
 
             if (selectedGame == null)
                 return;
@@ -314,8 +335,7 @@ namespace GestureSample.Views
             _filteredGames.Clear();
             foreach (Game game in _games)
             {
-                if (game.TimeStart.Date == date.Date)
-                    _filteredGames.Add(game);
+                _filteredGames.Add(game);
             }
 
             _gamePicker.ItemsSource = _filteredGames;
@@ -325,6 +345,9 @@ namespace GestureSample.Views
             Game? preferredGame = _currentSelectedGameId.HasValue
                 ? _filteredGames.FirstOrDefault(game => game.Id == _currentSelectedGameId.Value)
                 : null;
+
+            if (preferredGame == null)
+                preferredGame = _filteredGames.FirstOrDefault(game => game.TimeStart.Date == date.Date);
 
             if (preferredGame != null)
             {
@@ -400,5 +423,24 @@ namespace GestureSample.Views
         }
 
         private string GetSortButtonText() => _sortNewestFirst ? "Newest" : "Oldest";
+
+        private void OnBackgroundSyncStateChanged(object? sender, EventArgs e)
+        {
+            RefreshBackgroundSyncUi();
+            if (!_backgroundSyncService.IsSyncing && _hasLoadedGames)
+                _ = RefreshGamesAfterSyncAsync();
+        }
+
+        private void RefreshBackgroundSyncUi()
+        {
+            _sortButton.IsEnabled = true;
+            _datePicker.IsEnabled = true;
+            _gamePicker.IsEnabled = true;
+        }
+
+        private async Task RefreshGamesAfterSyncAsync()
+        {
+            await LoadGamesAsync();
+        }
     }
 }
