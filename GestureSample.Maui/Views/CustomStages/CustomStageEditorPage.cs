@@ -22,6 +22,7 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Entry _maxAddendEntry = CreateNumericEntry();
         private readonly Entry _minSumEntry = CreateNumericEntry();
         private readonly Entry _maxSumEntry = CreateNumericEntry();
+        private readonly Entry _weightsEntry = CreateEntry("e.g. 10,10,10,10,50,5,1,1,1,1");
         private readonly Entry _tasksToWinEntry = CreateNumericEntry();
         private readonly Entry _mistakesToLoseEntry = CreateNumericEntry();
         private readonly Entry _keysInRowEntry = CreateNumericEntry();
@@ -35,6 +36,7 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Switch _showPrevSwitch = new();
         private readonly Switch _onlyCloseTriadSwitch = new();
         private readonly Switch _keyboardHelpSwitch = new();
+        private readonly Switch _allowImpossibleWeightedAnswerSwitch = new();
         private readonly Switch _onlyToTenSwitch = new();
         private readonly Switch _onlyThroughTenSwitch = new();
         private readonly Switch _dynamicArrowLengthSwitch = new();
@@ -53,6 +55,7 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Dictionary<Operation, Switch> _operationSwitches = new();
         private GameConfig? _loadedConfigSnapshot;
         private Guid? _editingId;
+        private int[]? _suggestedWeightedStageWeights;
 
         public CustomStageEditorPage(CustomStageKind kind)
         {
@@ -62,6 +65,7 @@ namespace GestureSample.Maui.Views.CustomStages
             BackgroundColor = Colors.Beige;
 
             ConfigurePickers();
+            _weightsEntry.Unfocused += (_, __) => TryApplySuggestedWeightedRange(forceApply: false);
 
             _saveButton = new Button { Text = "Save Stage", BackgroundColor = Colors.MediumPurple, TextColor = Colors.White };
             _saveButton.Clicked += async (_, __) => await SaveStageAsync();
@@ -143,6 +147,22 @@ namespace GestureSample.Maui.Views.CustomStages
                         CreateSwitchField("Keyboard help", _keyboardHelpSwitch)
                     }
                 },
+                CustomStageKind.WeightedKeyboard => new VerticalStackLayout
+                {
+                    Spacing = 10,
+                    Children =
+                    {
+                        CreateLabeledField("Keyboard weights (up to 10)", _weightsEntry),
+                        CreateSwitchField("Allow XXX impossible answer", _allowImpossibleWeightedAnswerSwitch),
+                        CreateMinMaxRow("Sum", _minSumEntry, _maxSumEntry),
+                        new Label
+                        {
+                            Text = "Minimum and maximum sum default to the smallest and largest key weight, and you can change them after.",
+                            FontSize = 12,
+                            TextColor = Colors.DarkSlateGray
+                        }
+                    }
+                },
                 CustomStageKind.Arrow => new VerticalStackLayout
                 {
                     Spacing = 10,
@@ -194,6 +214,9 @@ namespace GestureSample.Maui.Views.CustomStages
                 return;
             }
 
+            if (!await ValidateWeightedKeyboardStageAsync())
+                return;
+
             string name = _nameEntry.Text?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -218,6 +241,9 @@ namespace GestureSample.Maui.Views.CustomStages
 
         private async Task PlayCurrentAsync()
         {
+            if (!await ValidateWeightedKeyboardStageAsync())
+                return;
+
             string name = _nameEntry.Text?.Trim();
             GameConfig config = BuildConfigFromForm(string.IsNullOrWhiteSpace(name) ? $"Custom {CustomStageCatalog.GetDisplayName(_kind)}" : name);
             await Navigation.PushAsync(new SimpleViewCellsPage(config));
@@ -249,6 +275,28 @@ namespace GestureSample.Maui.Views.CustomStages
                     config.ShowPrev = _showPrevSwitch.IsToggled;
                     config.OnlyCloseTriad = _onlyCloseTriadSwitch.IsToggled;
                     config.KeyboardConfig = _keyboardHelpSwitch.IsToggled ? new KeyboardConfig { KeyboardOnlyForHelp = true } : null;
+                    break;
+                case CustomStageKind.WeightedKeyboard:
+                    int[] weightedStageWeights = ParseWeights(_weightsEntry.Text) ?? Array.Empty<int>();
+                    config.OperationList = new List<Operation> { Operation.Sum };
+                    config.UIQuestionType = UIQuestionType.OneText;
+                    config.VariableTypes = VariableTypes.TwoNoSum;
+                    config.NumericInputMode = NumericInputMode.AppKeypad;
+                    config.MinSum = ReadInt(_minSumEntry, config.MinSum);
+                    config.MaxSum = ReadInt(_maxSumEntry, config.MaxSum);
+                    config.KeyboardConfig = new KeyboardConfig
+                    {
+                        SyncType = SyncType.Sync,
+                        TextBoxesQuantity = 1,
+                        Rows = 1,
+                        KeysInRow = weightedStageWeights.Length == 0 ? config.KeyboardConfig?.KeysInRow ?? 10 : weightedStageWeights.Length,
+                        SecondsPressingToAnswer = 2,
+                        WeightsArray = weightedStageWeights,
+                        ShowNumbersOnKeys = true,
+                        AllowSumHeaderVisibilityToggle = false,
+                        UseWeightedCustomStageTargets = true,
+                        AllowImpossibleWeightedAnswer = _allowImpossibleWeightedAnswerSwitch.IsToggled
+                    };
                     break;
                 case CustomStageKind.Arrow:
                     config.QuestionOrder = GetPickerValue(_questionOrderPicker, QuestionOrder.FromLeft);
@@ -375,6 +423,17 @@ namespace GestureSample.Maui.Views.CustomStages
                     _showPrevSwitch.IsToggled = config.ShowPrev;
                     _onlyCloseTriadSwitch.IsToggled = config.OnlyCloseTriad;
                     _keyboardHelpSwitch.IsToggled = config.KeyboardConfig?.KeyboardOnlyForHelp == true;
+                    _weightsEntry.Text = string.Empty;
+                    _allowImpossibleWeightedAnswerSwitch.IsToggled = false;
+                    _suggestedWeightedStageWeights = null;
+                    break;
+                case CustomStageKind.WeightedKeyboard:
+                    _weightsEntry.Text = string.Join(",", config.KeyboardConfig?.WeightsArray ?? Array.Empty<int>());
+                    _allowImpossibleWeightedAnswerSwitch.IsToggled = config.KeyboardConfig?.AllowImpossibleWeightedAnswer == true;
+                    _minSumEntry.Text = config.MinSum.ToString();
+                    _maxSumEntry.Text = config.MaxSum.ToString();
+                    _suggestedWeightedStageWeights = config.KeyboardConfig?.WeightsArray?.ToArray();
+                    TryApplySuggestedWeightedRange(forceApply: false);
                     break;
                 case CustomStageKind.Arrow:
                     SetPickerValue(_questionOrderPicker, config.QuestionOrder);
@@ -518,9 +577,73 @@ namespace GestureSample.Maui.Views.CustomStages
         private static int ReadInt(Entry entry, int fallback)
             => int.TryParse(entry.Text, out int parsed) ? parsed : fallback;
 
+        private async Task<bool> ValidateWeightedKeyboardStageAsync()
+        {
+            if (_kind != CustomStageKind.WeightedKeyboard)
+                return true;
+
+            int[]? weights = ParseWeights(_weightsEntry.Text);
+            if (weights?.Length > 0)
+                return true;
+
+            await DisplayAlert("Missing weights", "Enter up to 10 positive keyboard weights for the weighted stage.", "OK");
+            return false;
+        }
+
+        private void TryApplySuggestedWeightedRange(bool forceApply)
+        {
+            int[]? weights = ParseWeights(_weightsEntry.Text);
+            if (weights == null || weights.Length == 0)
+                return;
+
+            int suggestedMin = weights.Min();
+            int suggestedMax = weights.Max();
+
+            bool shouldUpdateMin = forceApply ||
+                                   string.IsNullOrWhiteSpace(_minSumEntry.Text) ||
+                                   (_suggestedWeightedStageWeights != null &&
+                                    int.TryParse(_minSumEntry.Text, out int currentMin) &&
+                                    currentMin == _suggestedWeightedStageWeights.Min());
+
+            bool shouldUpdateMax = forceApply ||
+                                   string.IsNullOrWhiteSpace(_maxSumEntry.Text) ||
+                                   (_suggestedWeightedStageWeights != null &&
+                                    int.TryParse(_maxSumEntry.Text, out int currentMax) &&
+                                    currentMax == _suggestedWeightedStageWeights.Max());
+
+            if (shouldUpdateMin)
+                _minSumEntry.Text = suggestedMin.ToString();
+
+            if (shouldUpdateMax)
+                _maxSumEntry.Text = suggestedMax.ToString();
+
+            _suggestedWeightedStageWeights = weights.ToArray();
+        }
+
+        private static int[]? ParseWeights(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+
+            string[] tokens = text
+                .Split(new[] { ',', ';', ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            List<int> weights = new();
+            foreach (string token in tokens.Take(10))
+            {
+                if (!int.TryParse(token, out int parsed) || parsed <= 0)
+                    continue;
+
+                weights.Add(parsed);
+            }
+
+            return weights.Count == 0 ? null : weights.ToArray();
+        }
+
         private static List<Operation> GetAvailableOperations(CustomStageKind kind) => kind switch
         {
             CustomStageKind.PPWScheme => new() { Operation.Sum, Operation.Minus, Operation.Multiplication, Operation.Divide },
+            CustomStageKind.WeightedKeyboard => new() { Operation.Sum },
             CustomStageKind.Arrow => new() { Operation.Sum },
             _ => new() { Operation.Copy, Operation.Quantity, Operation.MoveBy, Operation.Mirror, Operation.Not, Operation.And, Operation.Or, Operation.ExclusiveOr, Operation.SUMM }
         };

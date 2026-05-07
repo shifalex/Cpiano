@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
-using SQLite;
+using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
 using NewtonsoftJsonIgnore = Newtonsoft.Json.JsonIgnoreAttribute;
 
@@ -15,7 +15,7 @@ namespace GestureSample.Maui.Data.SupaBase
     [Table("KeyboardQuestion")]
     public class KeyboardQuestion : BaseModel
     {
-        [PrimaryKey, AutoIncrement]
+        [PrimaryKey("QuestionID", false)]
         public int QuestionID { get; set; }
         public int QuestionNumber { get; set; }
         public int AttemptNumber { get; set; } = 0;

@@ -20,6 +20,24 @@ namespace GestureSample.Maui.Data
 
         }
 
+        public async Task<List<QuestionAnswer>> GetByGameIdsAsync(IEnumerable<Guid> gameIds)
+        {
+            string[] gameIdTexts = gameIds?
+                .Select(gameId => gameId.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray() ?? Array.Empty<string>();
+
+            if (gameIdTexts.Length == 0)
+                return new List<QuestionAnswer>();
+
+            string placeholders = string.Join(", ", gameIdTexts.Select(_ => "?"));
+            string sql = $"SELECT * FROM QuestionAnswer WHERE GameId IN ({placeholders})";
+            return (await _database.QueryAsync<QuestionAnswer>(sql, gameIdTexts.Cast<object>().ToArray()))
+                .OrderBy(answer => answer.Time)
+                .ThenBy(answer => answer.QuestionID)
+                .ToList();
+        }
+
         public async Task UpdateSecondaryPpwAsync(
             string gameId,
             int questionNumber,

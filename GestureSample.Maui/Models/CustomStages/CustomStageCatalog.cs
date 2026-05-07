@@ -4,6 +4,7 @@ namespace GestureSample.Maui.Models.CustomStages
     public enum CustomStageKind
     {
         PPWScheme,
+        WeightedKeyboard,
         Arrow,
         Logical
     }
@@ -13,6 +14,7 @@ namespace GestureSample.Maui.Models.CustomStages
         public static string GetDisplayName(CustomStageKind kind) => kind switch
         {
             CustomStageKind.PPWScheme => "PPW Scheme",
+            CustomStageKind.WeightedKeyboard => "Weighted Keyboard",
             CustomStageKind.Arrow => "Arrow",
             CustomStageKind.Logical => "Logical",
             _ => kind.ToString()
@@ -35,6 +37,31 @@ namespace GestureSample.Maui.Models.CustomStages
                     NumberOfTasksToWin = 20,
                     NumberOfMistakesToLose = 3,
                     NumericInputMode = NumericInputMode.AppKeypad
+                },
+                CustomStageKind.WeightedKeyboard => new GameConfig
+                {
+                    GameName = "Custom Weighted Keyboard",
+                    OperationList = new() { Operation.Sum },
+                    UIQuestionType = UIQuestionType.OneText,
+                    VariableTypes = VariableTypes.TwoNoSum,
+                    MinAddend = 1,
+                    MaxAddend = 10,
+                    MinSum = 1,
+                    MaxSum = 10,
+                    NumberOfTasksToWin = 20,
+                    NumberOfMistakesToLose = 3,
+                    NumericInputMode = NumericInputMode.AppKeypad,
+                    KeyboardConfig = new KeyboardConfig
+                    {
+                        SyncType = SyncType.Sync,
+                        TextBoxesQuantity = 1,
+                        Rows = 1,
+                        KeysInRow = 10,
+                        SecondsPressingToAnswer = 2,
+                        ShowNumbersOnKeys = true,
+                        AllowSumHeaderVisibilityToggle = false,
+                        UseWeightedCustomStageTargets = true
+                    }
                 },
                 CustomStageKind.Arrow => new GameConfig
                 {
@@ -111,6 +138,21 @@ namespace GestureSample.Maui.Models.CustomStages
                         ? NumericInputMode.AppKeypad
                         : config.NumericInputMode;
                     break;
+                case CustomStageKind.WeightedKeyboard:
+                    config.OperationList = new List<Operation> { Operation.Sum };
+                    config.UIQuestionType = UIQuestionType.OneText;
+                    config.VariableTypes = VariableTypes.TwoNoSum;
+                    config.NumericInputMode = NumericInputMode.AppKeypad;
+                    config.KeyboardConfig ??= new KeyboardConfig();
+                    config.KeyboardConfig.UseWeightedCustomStageTargets = true;
+                    config.KeyboardConfig.SyncType = SyncType.Sync;
+                    config.KeyboardConfig.TextBoxesQuantity = 1;
+                    config.KeyboardConfig.Rows = 1;
+                    if (config.KeyboardConfig.WeightsArray?.Length > 0)
+                        config.KeyboardConfig.KeysInRow = config.KeyboardConfig.WeightsArray.Length;
+                    config.KeyboardConfig.ShowNumbersOnKeys = true;
+                    config.KeyboardConfig.AllowSumHeaderVisibilityToggle = false;
+                    break;
                 case CustomStageKind.Arrow:
                     config.UIQuestionType = UIQuestionType.OnlyKeyboard;
                     config.KeyboardConfig ??= new KeyboardConfig();
@@ -139,6 +181,9 @@ namespace GestureSample.Maui.Models.CustomStages
 
             return stage.StageKind switch
             {
+                CustomStageKind.WeightedKeyboard =>
+                    $"Weighted  {string.Join(",", config.KeyboardConfig.WeightsArray ?? Array.Empty<int>())}  sum {config.MinSum}-{config.MaxSum}" +
+                    (config.KeyboardConfig.AllowImpossibleWeightedAnswer ? "  + XXX" : string.Empty),
                 CustomStageKind.PPWScheme =>
                     $"{config.OperationList.FirstOrDefault().ToDString()}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.UIQuestionType}",
                 CustomStageKind.Arrow =>

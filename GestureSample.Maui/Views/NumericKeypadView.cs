@@ -13,6 +13,7 @@ namespace GestureSample.Maui.Views
         {
             HorizontalOptions = LayoutOptions.Center;
             Padding = new Thickness(0, 2, 0, 0);
+            MinimumWidthRequest = 280;
 
             Border surface = new()
             {
@@ -93,7 +94,7 @@ namespace GestureSample.Maui.Views
             Button backspaceButton = CreateActionButton("<-", () => BackspacePressed?.Invoke());
             grid.Add(backspaceButton, 3, 0);
             Grid.SetRowSpan(backspaceButton, 1);
-            backspaceButton.MinimumWidthRequest = 64;
+            backspaceButton.MinimumWidthRequest = 72;
 
             Button submitButton = CreateActionButton("V", () => SubmitPressed?.Invoke());
             grid.Add(submitButton, 3, 1);
@@ -101,7 +102,7 @@ namespace GestureSample.Maui.Views
             submitButton.VerticalOptions = LayoutOptions.Fill;
             submitButton.HeightRequest = (54 * 3) + (6 * 2);
             submitButton.MinimumHeightRequest = submitButton.HeightRequest;
-            submitButton.MinimumWidthRequest = 64;
+            submitButton.MinimumWidthRequest = 72;
 
             return grid;
         }

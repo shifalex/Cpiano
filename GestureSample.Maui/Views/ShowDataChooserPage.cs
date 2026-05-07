@@ -37,12 +37,14 @@ namespace GestureSample.Views
         private bool _hasLoadedGames;
         private Guid? _currentSelectedGameId;
         private bool _sortNewestFirst = false;
+        private bool _skipNextPostSyncRefresh;
 
         public ShowDataChooserPage(bool forTeacher = false, Guid? selectedGameId = null)
         {
             _forTeacher = forTeacher;
             _selectedGameId = selectedGameId;
             _currentSelectedGameId = selectedGameId;
+            _skipNextPostSyncRefresh = selectedGameId.HasValue;
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
             _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
@@ -76,7 +78,8 @@ namespace GestureSample.Views
             {
                 Margin = new Thickness(0, 8, 0, 0),
                 HorizontalOptions = LayoutOptions.Fill,
-                VerticalOptions = LayoutOptions.Fill
+                VerticalOptions = LayoutOptions.Fill,
+                IsClippedToBounds = true
             };
 
             ToolbarItems.Add(new ToolbarItem
@@ -108,7 +111,10 @@ namespace GestureSample.Views
             };
 
             _datePickerCard = CreatePickerCard("DATE", _datePicker);
+            _datePickerCard.MaximumWidthRequest = 170;
+            _datePickerCard.HorizontalOptions = LayoutOptions.Start;
             _gamePickerCard = CreatePickerCard("GAME", _gamePicker);
+            _gamePickerCard.HorizontalOptions = LayoutOptions.Fill;
             _pickerCardsHost = new Grid
             {
                 ColumnSpacing = 8,
@@ -143,6 +149,7 @@ namespace GestureSample.Views
             {
                 Padding = new Thickness(10, 6, 10, 0),
                 RowSpacing = 0,
+                IsClippedToBounds = true,
                 RowDefinitions =
                 {
                     new RowDefinition { Height = GridLength.Auto },
@@ -214,7 +221,7 @@ namespace GestureSample.Views
 
             if (useWideLayout)
             {
-                _pickerCardsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                _pickerCardsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 _pickerCardsHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
                 _pickerCardsHost.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 _pickerCardsHost.Add(_datePickerCard);
@@ -324,6 +331,9 @@ namespace GestureSample.Views
 
         private void OnDatePickerSelectedIndexChanged(object? sender, EventArgs e)
         {
+            if (_suppressSelectionNavigation)
+                return;
+
             if (_datePicker.SelectedItem is not DateWraper selectedDate)
                 return;
 
@@ -383,9 +393,21 @@ namespace GestureSample.Views
             Page detailPage = ShowDataRoutingHelper.CreatePageForGame(selectedGame, _forTeacher, false, _sortNewestFirst);
             if (detailPage is ContentPage contentPage && contentPage.Content is View detailView)
             {
+                detailView.HorizontalOptions = LayoutOptions.Fill;
+                detailView.VerticalOptions = LayoutOptions.Fill;
+
+                if (detailView is Layout detailLayout)
+                    detailLayout.IsClippedToBounds = true;
+
                 contentPage.Content = null;
                 _activeDetailPage = detailPage;
-                _detailHost.Content = detailView;
+                _detailHost.Content = new Grid
+                {
+                    HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Fill,
+                    IsClippedToBounds = true,
+                    Children = { detailView }
+                };
                 return;
             }
 
@@ -428,7 +450,15 @@ namespace GestureSample.Views
         {
             RefreshBackgroundSyncUi();
             if (!_backgroundSyncService.IsSyncing && _hasLoadedGames)
+            {
+                if (_skipNextPostSyncRefresh)
+                {
+                    _skipNextPostSyncRefresh = false;
+                    return;
+                }
+
                 _ = RefreshGamesAfterSyncAsync();
+            }
         }
 
         private void RefreshBackgroundSyncUi()

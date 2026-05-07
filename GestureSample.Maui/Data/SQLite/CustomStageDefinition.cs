@@ -20,7 +20,13 @@ namespace GestureSample.Maui.Data.SQLite
         [Ignore]
         public CustomStageKind StageKind
         {
-            get => Enum.TryParse(StageKindName, out CustomStageKind kind) ? kind : CustomStageKind.PPWScheme;
+            get
+            {
+                if (Config?.KeyboardConfig?.UseWeightedCustomStageTargets == true)
+                    return CustomStageKind.WeightedKeyboard;
+
+                return Enum.TryParse(StageKindName, out CustomStageKind kind) ? kind : CustomStageKind.PPWScheme;
+            }
             set => StageKindName = value.ToString();
         }
 

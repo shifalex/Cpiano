@@ -464,6 +464,7 @@ namespace GestureSample.Maui.Models
         public PianoKeyboardReadOnly() : base()
         {
             Config = new();
+            Config.NormalizeWeightedLayout();
             int keysInRow = Config.KeysInRow;
             int rows = Config.Rows;
             NUMBER_OF_KEYS = keysInRow * rows;
@@ -472,7 +473,7 @@ namespace GestureSample.Maui.Models
         }
         public PianoKeyboardReadOnly(KeyboardConfig config) : base()
         {
-
+            config.NormalizeWeightedLayout();
             int keysInRow = config.KeysInRow;
             int rows = config.Rows;
             NUMBER_OF_KEYS = keysInRow * rows;
@@ -480,7 +481,7 @@ namespace GestureSample.Maui.Models
             InitializeWithConfig(config);
         }
 
-        private async void OnSizeChanged(object sender, EventArgs e)
+        private void OnSizeChanged(object sender, EventArgs e)
         {
             int v = ++_layoutVersion;
             //await Task.Delay(200);
@@ -534,7 +535,7 @@ namespace GestureSample.Maui.Models
 
         private void InitializeWithConfig(KeyboardConfig config)
         {
-
+            config.NormalizeWeightedLayout();
             Config = config;
             int keysInRow = config.KeysInRow;
             int rows = config.Rows;

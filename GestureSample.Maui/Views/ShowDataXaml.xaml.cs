@@ -218,8 +218,6 @@ namespace GestureSample.Views
             for (int i = 0; i < GameIdentifiers.Count; i++) {
                 if(gameId!=null &&  GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i+1;
-                await _gameRepository.UpdateAsync(GameIdentifiers[i]);
-
             }
 
             if (CurrentGame != null)

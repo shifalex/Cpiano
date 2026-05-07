@@ -118,8 +118,6 @@ namespace GestureSample.Views
             {
                 if (gameId != null && GameIdentifiers[i].Id.Equals(gameId)) CurrentGame = GameIdentifiers[i];
                 GameIdentifiers[i].index = i + 1;
-                await _gameRepository.UpdateAsync(GameIdentifiers[i]);
-
             }
 
             if (CurrentGame != null)
@@ -140,7 +138,7 @@ namespace GestureSample.Views
                 await LoadStatesToGrid((Guid)gameId);
         }
 
-        private async Task LoadDates()
+        private Task LoadDates()
         {
             GameDates.Clear();
 
@@ -164,7 +162,7 @@ namespace GestureSample.Views
 
             DatePicker.ItemsSource = GameDates;
             if (GameDates.Count == 0)
-                return;
+                return Task.CompletedTask;
 
             DateWraper? preferredDate = _currentSelectedDate.HasValue
                 ? GameDates.FirstOrDefault(item => item.Date.Date == _currentSelectedDate.Value.Date)
@@ -173,11 +171,11 @@ namespace GestureSample.Views
             if (preferredDate != null)
             {
                 DatePicker.SelectedItem = preferredDate;
-                return;
+                return Task.CompletedTask;
             }
 
             DatePicker.SelectedIndex = 0;
-
+            return Task.CompletedTask;
         }
 
         private async Task LoadStatesToGrid(Guid? selectedIdentifier)
@@ -304,7 +302,7 @@ namespace GestureSample.Views
         }
 
 
-        private async void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
+        private void OnDatePickerSelectedIndexChanged(object sender, EventArgs e)
         {
             if (!_showSelectors)
                 return;

@@ -50,9 +50,6 @@ namespace GestureSample.Views
         private int _currentFrameIndex;
         private List<ReplayFrame> _replayFrames = new();
         private List<KeyEvent>? _submitMarkerSnapshot;
-        private bool[]? _submitStateSnapshot;
-        private KeyEvent? _submitFinalKeyPressEvent;
-
         public KeyboardReplayPage(
             string title,
             IReadOnlyList<KeyEvent> events,

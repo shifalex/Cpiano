@@ -37,8 +37,6 @@ namespace GestureSample.Maui.Data.SupaBase
             await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
             await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
             await CreateTableAsync<Game>().ConfigureAwait(false);
-            await Instance.Database.ExecuteAsync("UPDATE Game SET WasSynced = 0;").ConfigureAwait(false);
-            Console.WriteLine("Updated all 'Game' records: WasSynced set to false (0).");
             await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);

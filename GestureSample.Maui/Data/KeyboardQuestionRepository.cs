@@ -24,6 +24,26 @@ namespace GestureSample.Maui.Data
 
         }
 
+        public async Task<List<KeyboardQuestion>> GetByGameIdsAsync(IEnumerable<Guid> gameIds)
+        {
+            string[] gameIdTexts = gameIds?
+                .Select(gameId => gameId.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray() ?? Array.Empty<string>();
+
+            if (gameIdTexts.Length == 0)
+                return new List<KeyboardQuestion>();
+
+            string placeholders = string.Join(", ", gameIdTexts.Select(_ => "?"));
+            string sql = $"SELECT * FROM KeyboardQuestion WHERE GameId IN ({placeholders})";
+            return (await _database.QueryAsync<KeyboardQuestion>(sql, gameIdTexts.Cast<object>().ToArray()))
+                .OrderBy(question => question.QuestionNumber)
+                .ThenBy(question => question.AttemptNumber)
+                .ThenBy(question => question.Time)
+                .ThenBy(question => question.QuestionID)
+                .ToList();
+        }
+
         public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus)
         {
             List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
