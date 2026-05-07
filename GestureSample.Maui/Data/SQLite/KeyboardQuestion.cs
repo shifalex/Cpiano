@@ -8,6 +8,7 @@ using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
 using SQLite;
 using Supabase.Postgrest.Models;
+using System.Globalization;
 
 namespace GestureSample.Maui.Data.SQLite
 {
@@ -23,6 +24,7 @@ namespace GestureSample.Maui.Data.SQLite
         public Guid UserId { get; set; } = Guid.Empty;
         public int ResultStatus { get; set; } = 0;
         public bool WasTutorialUsed { get; set; } = false;
+        public bool WasHeaderResultToggleUsed { get; set; } = false;
 
 
         public int? aboveNumber { get; set; }
@@ -54,6 +56,14 @@ namespace GestureSample.Maui.Data.SQLite
         public int[]? KeyboardWeights { get; set; }
         [Ignore]
         public bool[]? InitialKeyboardState { get; set; }
+        [Ignore]
+        public Color[]? QuestionKeyboardColors { get; set; }
+        [Ignore]
+        public Color[]? QuestionKeyboardColors2 { get; set; }
+        [Ignore]
+        public Color[]? SubmittedKeyboardColors { get; set; }
+        [Ignore]
+        public Color[]? InitialKeyboardColors { get; set; }
 
         // Serialize GameConfig as JSON for storage
         [Column("ConfigJson")]
@@ -110,6 +120,34 @@ namespace GestureSample.Maui.Data.SQLite
             set => InitialKeyboardState = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
         }
 
+        [Column("QuestionKeyboardColorsJson")]
+        public string QuestionKeyboardColorsJson
+        {
+            get => JsonSerializer.Serialize(SerializeColors(QuestionKeyboardColors));
+            set => QuestionKeyboardColors = DeserializeColors(value);
+        }
+
+        [Column("QuestionKeyboardColorsJson2")]
+        public string QuestionKeyboardColorsJson2
+        {
+            get => JsonSerializer.Serialize(SerializeColors(QuestionKeyboardColors2));
+            set => QuestionKeyboardColors2 = DeserializeColors(value);
+        }
+
+        [Column("SubmittedKeyboardColorsJson")]
+        public string SubmittedKeyboardColorsJson
+        {
+            get => JsonSerializer.Serialize(SerializeColors(SubmittedKeyboardColors));
+            set => SubmittedKeyboardColors = DeserializeColors(value);
+        }
+
+        [Column("InitialKeyboardColorsJson")]
+        public string InitialKeyboardColorsJson
+        {
+            get => JsonSerializer.Serialize(SerializeColors(InitialKeyboardColors));
+            set => InitialKeyboardColors = DeserializeColors(value);
+        }
+
         [Column("MoveByDirectionJson")]
         public string MoveByDirectionJson
         {
@@ -130,6 +168,18 @@ namespace GestureSample.Maui.Data.SQLite
 
         [Ignore]
         public bool HasInitialKeyboardState => InitialKeyboardState != null && InitialKeyboardState.Length > 0;
+
+        [Ignore]
+        public bool HasQuestionKeyboardColors => QuestionKeyboardColors != null && QuestionKeyboardColors.Length > 0;
+
+        [Ignore]
+        public bool HasSecondQuestionKeyboardColors => QuestionKeyboardColors2 != null && QuestionKeyboardColors2.Length > 0;
+
+        [Ignore]
+        public bool HasSubmittedKeyboardColors => SubmittedKeyboardColors != null && SubmittedKeyboardColors.Length > 0;
+
+        [Ignore]
+        public bool HasInitialKeyboardColors => InitialKeyboardColors != null && InitialKeyboardColors.Length > 0;
 
         [Ignore]
         public bool HasVisibleSecondQuestionKeyboard =>
@@ -177,6 +227,39 @@ namespace GestureSample.Maui.Data.SQLite
         {
             get
             {
+                if (HasQuestionKeyboardColors || HasSubmittedKeyboardColors)
+                {
+                    int colorLength = Math.Max(QuestionKeyboardColors?.Length ?? 0, SubmittedKeyboardColors?.Length ?? 0);
+                    if (colorLength > 0)
+                    {
+                        Color[] combinedColors = Enumerable.Repeat(Colors.White, colorLength).ToArray();
+                        for (int i = 0; i < colorLength; i++)
+                        {
+                            bool hasQuestion = QuestionKeyboardColors != null && i < QuestionKeyboardColors.Length && !IsFreeColor(QuestionKeyboardColors[i]);
+                            bool hasAnswer = SubmittedKeyboardColors != null && i < SubmittedKeyboardColors.Length && !IsFreeColor(SubmittedKeyboardColors[i]);
+
+                            if (hasQuestion && hasAnswer)
+                            {
+                                Color currentQuestionColor = QuestionKeyboardColors![i];
+                                Color currentAnswerColor = SubmittedKeyboardColors![i];
+                                combinedColors[i] = ColorsMatch(currentQuestionColor, currentAnswerColor)
+                                    ? currentAnswerColor
+                                    : Color.FromArgb("#A9D8A5");
+                            }
+                            else if (hasQuestion)
+                            {
+                                combinedColors[i] = QuestionKeyboardColors![i];
+                            }
+                            else if (hasAnswer)
+                            {
+                                combinedColors[i] = SubmittedKeyboardColors![i];
+                            }
+                        }
+
+                        return combinedColors;
+                    }
+                }
+
                 int lengthToUse = Math.Max(keyboard1?.Length ?? 0, SubmittedKeyboard?.Length ?? 0);
                 if (lengthToUse == 0)
                     return Array.Empty<Color>();
@@ -203,6 +286,18 @@ namespace GestureSample.Maui.Data.SQLite
                 return colors;
             }
         }
+
+        [Ignore]
+        public Color[]? QuestionSnapshotColors => HasQuestionKeyboardColors ? QuestionKeyboardColors : BuildColorsFromBits(keyboard1);
+
+        [Ignore]
+        public Color[]? SecondQuestionSnapshotColors => HasSecondQuestionKeyboardColors ? QuestionKeyboardColors2 : BuildColorsFromBits(keyboard2);
+
+        [Ignore]
+        public Color[]? SubmittedKeyboardSnapshotColors => HasSubmittedKeyboardColors ? SubmittedKeyboardColors : BuildColorsFromBits(SubmittedKeyboard);
+
+        [Ignore]
+        public Color[]? InitialKeyboardSnapshotColors => HasInitialKeyboardColors ? InitialKeyboardColors : BuildColorsFromBits(InitialKeyboardState);
 
         [Ignore]
         public string QuestionCodeText
@@ -274,8 +369,99 @@ namespace GestureSample.Maui.Data.SQLite
                 KeysInRow = Math.Max(1, keysInRow),
                 Rows = Math.Max(1, rows),
                 ShowNumbersOnKeys = ShowNumbersOnKeys || (KeyboardWeights != null && KeyboardWeights.Length > 0),
-                WeightsArray = KeyboardWeights?.ToArray()
+                WeightsArray = KeyboardWeights?.ToArray(),
+                IsMulticolor = HasMulticolorSnapshots()
             };
+        }
+
+        private bool HasMulticolorSnapshots()
+        {
+            return HasMulticolorSnapshot(QuestionKeyboardColors) ||
+                   HasMulticolorSnapshot(QuestionKeyboardColors2) ||
+                   HasMulticolorSnapshot(SubmittedKeyboardColors) ||
+                   HasMulticolorSnapshot(InitialKeyboardColors) ||
+                   Op == Operation.GroupByColor;
+        }
+
+        private static bool HasMulticolorSnapshot(Color[]? colors)
+        {
+            if (colors == null || colors.Length == 0)
+                return false;
+
+            int usedColorCount = colors
+                .Where(color => !IsFreeColor(color))
+                .Select(ToColorToken)
+                .Distinct(StringComparer.Ordinal)
+                .Count();
+
+            return usedColorCount > 1;
+        }
+
+        private static Color[]? BuildColorsFromBits(bool[]? bits)
+        {
+            if (bits == null || bits.Length == 0)
+                return null;
+
+            Color[] colors = new Color[bits.Length];
+            for (int i = 0; i < bits.Length; i++)
+                colors[i] = bits[i] ? Colors.Yellow : Colors.White;
+
+            return colors;
+        }
+
+        private static string[]? SerializeColors(Color[]? colors)
+        {
+            return colors?.Select(ToColorToken).ToArray();
+        }
+
+        private static Color[]? DeserializeColors(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
+
+            string[]? tokens = JsonSerializer.Deserialize<string[]>(json);
+            if (tokens == null || tokens.Length == 0)
+                return null;
+
+            return tokens.Select(ParseColorToken).ToArray();
+        }
+
+        private static string ToColorToken(Color color)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0:0.######},{1:0.######},{2:0.######},{3:0.######}",
+                color.Red,
+                color.Green,
+                color.Blue,
+                color.Alpha);
+        }
+
+        private static Color ParseColorToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return Colors.White;
+
+            string[] parts = token.Split(',');
+            if (parts.Length != 4)
+                return Colors.White;
+
+            return new Color(
+                float.Parse(parts[0], CultureInfo.InvariantCulture),
+                float.Parse(parts[1], CultureInfo.InvariantCulture),
+                float.Parse(parts[2], CultureInfo.InvariantCulture),
+                float.Parse(parts[3], CultureInfo.InvariantCulture));
+        }
+
+        private static bool IsFreeColor(Color color) => ColorsMatch(color, Colors.White) || ColorsMatch(color, Colors.Transparent);
+
+        private static bool ColorsMatch(Color a, Color b)
+        {
+            const float epsilon = 0.01f;
+            return Math.Abs(a.Red - b.Red) < epsilon &&
+                   Math.Abs(a.Green - b.Green) < epsilon &&
+                   Math.Abs(a.Blue - b.Blue) < epsilon &&
+                   Math.Abs(a.Alpha - b.Alpha) < epsilon;
         }
 
     }

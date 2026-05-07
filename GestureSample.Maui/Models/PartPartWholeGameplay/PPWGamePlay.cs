@@ -311,6 +311,16 @@ namespace GestureSample.Maui.Models
             return state.Any(bit => bit) ? state : null;
         }
 
+        public virtual Color[]? GetQuestionKeyboardColors()
+        {
+            return null;
+        }
+
+        public virtual Color[]? GetSecondQuestionKeyboardColors()
+        {
+            return null;
+        }
+
         public virtual string? GetKeyboardQuestionPromptText()
         {
             if (Config?.UIQuestionType == UIQuestionType.OneText)
@@ -362,6 +372,9 @@ namespace GestureSample.Maui.Models
                 ShowNumbersOnKeys = Config.KeyboardConfig.ShowNumbersOnKeys,
                 KeyboardWeights = Config.KeyboardConfig.WeightsArray?.ToArray(),
                 InitialKeyboardState = GetInitialKeyboardState(),
+                InitialKeyboardColors = GetInitialKeyboardColors(),
+                QuestionKeyboardColors = GetQuestionKeyboardColors(),
+                QuestionKeyboardColors2 = GetSecondQuestionKeyboardColors(),
                 QuestionPromptText = GetKeyboardQuestionPromptText()
             };
 
@@ -585,7 +598,7 @@ namespace GestureSample.Maui.Models
                     keyboardSum = GetAlternateValidSum(pianoKeyboard.Sum);
             }
             ExerciseCheckResult result = await EvaluateAsync(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
-            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), result.IsCorrect, DateTime.Now);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), result.IsCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
             Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
             return result;
         }
@@ -634,7 +647,7 @@ namespace GestureSample.Maui.Models
             };
 
             _status = isCorrect ? Statement.True : Statement.False;
-            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -823,7 +836,7 @@ namespace GestureSample.Maui.Models
                 pressedKeysCount == _dynamicKeyboardExpectedPressCount.Value;
 
             _status = isCorrect ? Statement.True : Statement.False;
-            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -839,7 +852,7 @@ namespace GestureSample.Maui.Models
             bool isCorrect = pianoKeyboard.Sum == Sum;
 
             _status = isCorrect ? Statement.True : Statement.False;
-            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -856,7 +869,7 @@ namespace GestureSample.Maui.Models
                              pianoKeyboard.Sum == Sum;
 
             _status = isCorrect ? Statement.True : Statement.False;
-            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -898,7 +911,7 @@ namespace GestureSample.Maui.Models
             return (await EvaluateAsync(pianoKeyboard)).IsCorrect;
         }
 
-        private async Task SaveKeyboardAttemptSnapshotAsync(bool[] submittedKeyboard, bool isCorrect, DateTime submittedTime)
+        private async Task SaveKeyboardAttemptSnapshotAsync(bool[] submittedKeyboard, bool isCorrect, DateTime submittedTime, Color[]? submittedKeyboardColors = null)
         {
             if (!ShouldPersistKeyboardQuestion() || _keyboardQuestionRepository == null || _keyEventRepository == null)
                 return;
@@ -908,7 +921,8 @@ namespace GestureSample.Maui.Models
                 _questionNumber,
                 submittedKeyboard,
                 submittedTime,
-                isCorrect ? 1 : 0);
+                isCorrect ? 1 : 0,
+                submittedKeyboardColors);
 
             if (savedAttempt == null)
                 return;

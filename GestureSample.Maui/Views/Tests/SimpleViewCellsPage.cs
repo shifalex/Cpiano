@@ -144,7 +144,7 @@ namespace GestureSample.Views.Tests
                     _btnAnswerTimePanel.IsEnabled = true;
                     _btnAnswerTimePanel.InputTransparent = false;
                     _btnAnswerTimePanel.Opacity = 1;
-                    _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+                    _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
                 }
 
                 if (_btnKeyboardSubmit != null && _btnKeyboardSubmit.IsVisible)
@@ -176,7 +176,7 @@ namespace GestureSample.Views.Tests
                 _btnAnswerTimePanel.IsEnabled = true;
                 _btnAnswerTimePanel.InputTransparent = false;
                 _btnAnswerTimePanel.Opacity = 1;
-                _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+                _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
             }
 
             if (_btnKeyboardSubmit != null)
@@ -284,6 +284,28 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private Color[]? CaptureLiveKeyboardColors()
+        {
+            return _pianoKeyboard?.GetCurrentColors()?.ToArray();
+        }
+
+        private void ClearLiveKeyboardState()
+        {
+            if (_pianoKeyboard == null)
+                return;
+
+            Color[] clearedColors = Enumerable.Repeat(Colors.White, _pianoKeyboard.KeyCount).ToArray();
+            _pianoKeyboard.PianoInit(clearedColors);
+        }
+
+        private void RestoreLiveKeyboardState(Color[]? colors)
+        {
+            if (_pianoKeyboard == null || colors == null || colors.Length == 0)
+                return;
+
+            _pianoKeyboard.PianoInit(colors);
+        }
+
         private bool HasKeyboardGuidanceSupport()
         {
             return _pianoKeyboard is PianoKeyboardSync &&
@@ -311,7 +333,18 @@ namespace GestureSample.Views.Tests
         private async Task RunRecordedKeyboardTutorialAsync(KeyboardOverlayHost host)
         {
             await MarkCurrentKeyboardQuestionTutorialUsedAsync();
-            await RunTutorialAsync(host);
+            Color[]? keyboardSnapshot = CaptureLiveKeyboardColors();
+            try
+            {
+                ClearLiveKeyboardState();
+                host.SyncOverlay();
+                await RunTutorialAsync(host);
+            }
+            finally
+            {
+                RestoreLiveKeyboardState(keyboardSnapshot);
+                host.SyncOverlay();
+            }
         }
 
         private async Task RunCorrectAnswerHintAsync(KeyboardOverlayHost host)
@@ -532,22 +565,50 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldShowKeyboardSubmitButton()
         {
-            return _isKeyboard &&
-                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
-                   !ShouldUseInlineKeyboardCheckButton() &&
-                   _config.KeyboardConfig.SyncType == SyncType.None;
+            return UsesManualKeyboardCheckMode() &&
+                   !ShouldUseInlineKeyboardCheckButton();
         }
 
         private bool ShouldUseInlineKeyboardCheckButton()
         {
-            return _isKeyboard &&
-                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
-                   _config.KeyboardConfig.SyncType == SyncType.None;
+            return UsesManualKeyboardCheckMode();
         }
 
         private bool ShouldShowPpwCheckButton()
         {
             return !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp;
+        }
+
+        private bool IsGroupByColorKeyboardStage()
+        {
+            return _gamePlay is BitArrayGamePlay bitArrayGamePlay &&
+                   bitArrayGamePlay.CurrentOperation == Operation.GroupByColor;
+        }
+
+        private bool UsesManualKeyboardCheckMode()
+        {
+            return _isKeyboard &&
+                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
+                   (_config.KeyboardConfig.SyncType == SyncType.None || IsGroupByColorKeyboardStage());
+        }
+
+        private bool UsesSyncKeyboardSubmissionMode()
+        {
+            return _isKeyboard &&
+                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
+                   !UsesManualKeyboardCheckMode();
+        }
+
+        private bool UsesThreeColorGroupByColorStage()
+        {
+            return IsGroupByColorKeyboardStage() &&
+                   (_config.KeyboardConfig.GroupByColorColorCount >= 3 ||
+                    (_config.KeyboardConfig.GroupByColorCounts?.Length ?? 0) >= 3);
+        }
+
+        private bool ShouldShowNextButton()
+        {
+            return !IsGroupByColorKeyboardStage();
         }
 
         private bool ShouldShowImpossibleWeightedAnswerButton()
@@ -665,6 +726,7 @@ namespace GestureSample.Views.Tests
                 : _customProgressHost.WidthRequest;
 
             double progress = Math.Clamp(_pianoPressProgress.Progress, 0, 1);
+            _customProgressFill.BackgroundColor = _pianoPressProgress.ProgressColor;
             _customProgressFill.WidthRequest = hostWidth * progress;
             _customProgressFill.IsVisible = _customProgressHost.IsVisible && progress > 0;
         }
@@ -2631,9 +2693,11 @@ namespace GestureSample.Views.Tests
                 _config.KeyboardConfig.ShowNumbersOnKeys,
                 _config.KeyboardConfig.WeightsArray?.ToArray(),
                 initialKeyboardState,
-                questionKeyboard,
-                _config.KeyboardConfig.Rows,
-                _config.KeyboardConfig.KeysInRow);
+                initialKeyboardColors: null,
+                questionKeyboard: questionKeyboard,
+                questionKeyboardColors: null,
+                keyboardRows: _config.KeyboardConfig.Rows,
+                keyboardKeysInRow: _config.KeyboardConfig.KeysInRow);
         }
 
         private bool[]? TryGetInitialKeyboardStateForData()
@@ -2762,6 +2826,28 @@ namespace GestureSample.Views.Tests
                 : $"↺{seconds}";
         }
 
+        private static Color GetWholeAnswerFireColor() => Color.FromArgb("#FF7A00");
+
+        private static Color GetAfterLastKeyAccentColor() => Color.FromArgb("#5A42D0");
+
+        private Color GetAnswerTimeActiveColor(PianoKeyboardSync syncKeyboard)
+        {
+            return UsesWholeAnswerTimer(syncKeyboard)
+                ? GetWholeAnswerFireColor()
+                : GetAfterLastKeyAccentColor();
+        }
+
+        private Color GetAnswerTimePanelBackgroundColor()
+        {
+            if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                return Colors.Black.WithAlpha(0.25f);
+
+            if (syncKeyboard.AnswerTimeSetting == 0)
+                return Colors.Black.WithAlpha(0.25f);
+
+            return GetAnswerTimeActiveColor(syncKeyboard).WithAlpha(0.55f);
+        }
+
         private void RefreshAnswerTimePanelIcon()
         {
             if (_btnAnswerTimePanel == null)
@@ -2770,7 +2856,7 @@ namespace GestureSample.Views.Tests
             string icon = GetAnswerTimePanelIcon();
             _btnAnswerTimePanel.Text = icon;
             _btnAnswerTimePanel.FontSize = icon.Length > 1 ? 11 : 14;
-            _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+            _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
             _btnAnswerTimePanel.Opacity = 1;
         }
 
@@ -2840,6 +2926,9 @@ namespace GestureSample.Views.Tests
                 ? "Counts across whole answer"
                 : "Resets after each key press";
             _answerTimeModeButton.Text = isWholeTimer ? "Whole Answer" : "After Last Key";
+            Color modeAccentColor = GetAnswerTimeActiveColor(syncKeyboard);
+            _answerTimeModeButton.BackgroundColor = modeAccentColor;
+            _answerTimeModeButton.TextColor = Colors.White;
             _answerTimeEnabledSwitch.IsEnabled = true;
             _answerTimeMinusButton.IsEnabled = seconds > 1;
             _answerTimePlusButton.IsEnabled = seconds < AnswerTimeStateMaxSeconds;
@@ -2878,6 +2967,7 @@ namespace GestureSample.Views.Tests
 
             await RecordTimerChangeAsync(oldSetting, newSetting, source);
             RefreshAnswerTimeTuner();
+            RefreshCustomProgressVisual();
         }
 
         private async Task ToggleAnswerTimeModeAsync()
@@ -3161,7 +3251,8 @@ namespace GestureSample.Views.Tests
         // Changed to async so we can await tutorial animation without changing constructor call site.
         private void InitializeUI()
         {
-            bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType != SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
+            bool isPianoHigh = UsesSyncKeyboardSubmissionMode() &&
+                               (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             int pianoHeight = _isKeyboard ? (isPianoHigh ? 120 : 80) : 1;
             if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 220;
             Grid grid = new()
@@ -3392,7 +3483,7 @@ namespace GestureSample.Views.Tests
             }
 
             if (!_isKeyboard ||
-                _config.KeyboardConfig.SyncType == SyncType.None ||
+                UsesManualKeyboardCheckMode() ||
                 _config.KeyboardConfig.KeyboardOnlyForHelp)
             {
                 View? previousBelowView = null;
@@ -3452,13 +3543,19 @@ namespace GestureSample.Views.Tests
 
             if (_isKeyboard)
             {
-
-                _pianoKeyboard = _config.KeyboardConfig.SyncType switch
+                if (UsesManualKeyboardCheckMode())
                 {
-                    SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
-                    SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
-                    _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
-                };
+                    _pianoKeyboard = new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig);
+                }
+                else
+                {
+                    _pianoKeyboard = _config.KeyboardConfig.SyncType switch
+                    {
+                        SyncType.HalfSync => new PianoKeyboardHalfSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
+                        SyncType.Sync or SyncType.Spatial => new PianoKeyboardSync(_gamePlay, _lblStatement, _pianoPressProgress, _config.KeyboardConfig),
+                        _ => new PianoKeyboard(_gamePlay, _lblStatement, _config.KeyboardConfig)
+                    };
+                }
 
                 if (_config.KeyboardConfig.KeyboardAsAQuestion)
                 {
@@ -3604,6 +3701,41 @@ namespace GestureSample.Views.Tests
                     VerticalOptions = LayoutOptions.Center
                 };
 
+                HorizontalStackLayout? colorLegend = null;
+                if (_pianoKeyboard?.Config?.IsMulticolor == true)
+                {
+                    colorLegend = new HorizontalStackLayout()
+                    {
+                        Spacing = 4,
+                        HorizontalOptions = LayoutOptions.End,
+                        VerticalOptions = LayoutOptions.Center
+                    };
+
+                    List<Color> legendColors = new() { Colors.Yellow, Colors.LightGreen };
+                    if (UsesThreeColorGroupByColorStage())
+                        legendColors.Add(Colors.Blue);
+
+                    foreach (Color legendColor in legendColors)
+                    {
+                        colorLegend.Children.Add(new Border
+                        {
+                            WidthRequest = 12,
+                            HeightRequest = 12,
+                            Padding = 0,
+                            StrokeThickness = 1,
+                            Stroke = Colors.White.WithAlpha(0.85f),
+                            BackgroundColor = legendColor,
+                            StrokeShape = new RoundRectangle { CornerRadius = 3 },
+                            HorizontalOptions = LayoutOptions.Center,
+                            VerticalOptions = LayoutOptions.Center
+                        });
+                    }
+
+                }
+
+                if (_config.KeyboardConfig.IsHelpNeeded)
+                    rightOverlayButtons.Add(_btnHelp);
+
                 if (ShouldShowKeyboardSubmitButton())
                 {
                     _btnKeyboardSubmit = new Button
@@ -3644,8 +3776,32 @@ namespace GestureSample.Views.Tests
                     rightOverlayButtons.Add(_btnImpossibleWeightedAnswer);
                 }
 
-                if (_config.KeyboardConfig.IsHelpNeeded)
-                    rightOverlayButtons.Add(_btnHelp);
+                if (_pianoKeyboard is PianoKeyboard keyboardWithToggle &&
+                    keyboardWithToggle.SupportsExternalHeaderResultVisibilityToggle)
+                {
+                    Button btnToggleSumVisibility = new()
+                    {
+                        Text = "◐",
+                        FontSize = 14,
+                        WidthRequest = 34,
+                        HeightRequest = 34,
+                        Padding = 0,
+                        CornerRadius = 17,
+                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.End,
+                        VerticalOptions = LayoutOptions.Center,
+                        Margin = Thickness.Zero
+                    };
+                    btnToggleSumVisibility.Clicked += async (_, _) =>
+                    {
+                        await keyboardWithToggle.ToggleHeaderResultVisibilityFromExternalButtonAsync();
+                    };
+                    rightOverlayButtons.Add(btnToggleSumVisibility);
+                }
+
+                if (colorLegend != null)
+                    rightOverlayButtons.Add(colorLegend);
 
                 if (rightOverlayButtons.Children.Count > 0)
                     overlayButtons.Add(rightOverlayButtons, 2, 0);
@@ -3892,7 +4048,8 @@ namespace GestureSample.Views.Tests
             {
                 if (showCheckButton)
                     hslBtns.Add(_btnCheck);
-                hslBtns.Add(_btnNext);
+                if (ShouldShowNextButton())
+                    hslBtns.Add(_btnNext);
             }
             /*if(_config.NumberOfMistakesToLose >= 0 && OperatingSystem.IsIOS())
             {  

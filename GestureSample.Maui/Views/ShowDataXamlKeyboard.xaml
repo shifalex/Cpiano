@@ -161,7 +161,7 @@
                                        FontAttributes="Bold"
                                        FontSize="12"
                                        VerticalOptions="Center" />
-                                <local:KeyboardSnapshotView Keys="{Binding Question.keyboard1}"
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.QuestionSnapshotColors}"
                                                            KeysInRow="{Binding Question.KeyboardKeysInRow}"
                                                            Rows="{Binding Question.KeyboardRows}"
                                                            Weights="{Binding Question.KeyboardWeights}"
@@ -178,7 +178,7 @@
                                        FontAttributes="Bold"
                                        FontSize="12"
                                        VerticalOptions="Center" />
-                                <local:KeyboardSnapshotView Keys="{Binding Question.InitialKeyboardState}"
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.InitialKeyboardSnapshotColors}"
                                                            KeysInRow="{Binding Question.KeyboardKeysInRow}"
                                                            Rows="{Binding Question.KeyboardRows}"
                                                            Weights="{Binding Question.KeyboardWeights}"
@@ -192,7 +192,7 @@
                                        FontAttributes="Bold"
                                        FontSize="12"
                                        VerticalOptions="Center" />
-                                <local:KeyboardSnapshotView Keys="{Binding Question.keyboard2}"
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.SecondQuestionSnapshotColors}"
                                                            KeysInRow="{Binding Question.KeyboardKeysInRow}"
                                                            Rows="{Binding Question.KeyboardRows}"
                                                            Weights="{Binding Question.KeyboardWeights}"
@@ -215,7 +215,7 @@
                                            FontSize="12"
                                            LineBreakMode="NoWrap" />
                                 </Grid>
-                                <local:KeyboardSnapshotView Keys="{Binding Question.SubmittedKeyboard}"
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.SubmittedKeyboardSnapshotColors}"
                                                            KeysInRow="{Binding Question.KeyboardKeysInRow}"
                                                            Rows="{Binding Question.KeyboardRows}"
                                                            Weights="{Binding Question.KeyboardWeights}"

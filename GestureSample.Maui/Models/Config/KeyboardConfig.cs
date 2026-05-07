@@ -288,6 +288,13 @@
         RemoveWithRed = 2
     }
 
+    public enum GroupByColorLayoutMode
+    {
+        Free = 0,
+        CommutativityEdges = 1,
+        AssociativityEdges = 2
+    }
+
     public class KeyboardConfig
     {
         public void NormalizeWeightedLayout()
@@ -418,6 +425,7 @@
         public bool UseFullHandTutorial { get; set; } = false;
         public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;
         public bool AllowSumHeaderVisibilityToggle { get; set; } = false;
+        public GroupByColorLayoutMode GroupByColorLayoutMode { get; set; } = GroupByColorLayoutMode.Free;
         public int GroupByColorColorCount { get; set; } = 2;
         public int[]? GroupByColorCounts { get; set; }
         public bool GroupByColorAllowSameSideTargets { get; set; } = false;

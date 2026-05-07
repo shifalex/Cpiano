@@ -34,14 +34,18 @@ namespace GestureSample.Maui.Models
         protected bool _patterns;
         protected readonly bool _imposeEdges = false;
         private readonly KeyEventRepository _keyEventRepository;
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
         private readonly VisibilityChangeEventRepository _visibilityChangeEventRepository;
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
         protected virtual Color TraceSecondColor => SECOND_COLOR.WithAlpha(0.82f);
         protected virtual Color TraceThirdColor => THIRD_COLOR.WithAlpha(0.7f);
         private Microsoft.Maui.Controls.Entry? _headerResultEntry;
+        private View? _headerResultVisibilityTarget;
         private bool _headerResultInitiallyVisible;
         private bool _headerResultVisible;
+        public bool SupportsExternalHeaderResultVisibilityToggle =>
+            _headerResultInitiallyVisible && _headerResultVisibilityTarget != null;
 
         private void EnsureAllKeyTextIsBlack()
         {
@@ -169,6 +173,7 @@ After:
             _soundService =  ServiceHelper.GetService<SoundService>();
             _soundService.Mode = pianoConfig.IsVoice?2:1;//TODO:make an enum
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
+            _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _visibilityChangeEventRepository = ServiceHelper.GetService<VisibilityChangeEventRepository>();
             _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
             _imposeEdges = pianoConfig.ImposeEdges;
@@ -281,16 +286,40 @@ After:
                 _headerResultInitiallyVisible = a_array[2].IsVisible;
                 _headerResultVisible = _headerResultInitiallyVisible;
                 _headerResultEntry = a_array[2];
+                View headerResultView = a_array[2];
                 if (canToggleSumHeaderVisibility)
                 {
-                    _headerResultEntry.GestureRecognizers.Add(CreateHeaderResultVisibilityTapGesture());
+                    _headerResultEntry.InputTransparent = true;
+                    Microsoft.Maui.Controls.Grid resultTapHost = new()
+                    {
+                        WidthRequest = a_array[2].WidthRequest,
+                        HeightRequest = a_array[2].HeightRequest,
+                        HorizontalOptions = LayoutOptions.Center,
+                        VerticalOptions = LayoutOptions.Center,
+                        InputTransparent = false
+                    };
+                    Microsoft.Maui.Controls.Button resultTapOverlay = new()
+                    {
+                        BackgroundColor = Colors.Transparent,
+                        Opacity = 0.01,
+                        Padding = 0,
+                        CornerRadius = 0,
+                        BorderWidth = 0,
+                        HorizontalOptions = LayoutOptions.Fill,
+                        VerticalOptions = LayoutOptions.Fill
+                    };
+                    resultTapOverlay.Clicked += async (_, _) => await ToggleHeaderResultVisibilityAsync("HeaderResultOverlayButton");
+                    resultTapHost.Add(a_array[2]);
+                    resultTapHost.Add(resultTapOverlay);
+                    headerResultView = resultTapHost;
                 }
+                _headerResultVisibilityTarget = headerResultView;
 
                 Microsoft.Maui.Controls.HorizontalStackLayout hzl = new()
                 {
                     a_array[0],
                     new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity >= 2 },
-                    a_array[2],
+                    headerResultView,
                     new Microsoft.Maui.Controls.Label(){ HorizontalOptions = LayoutOptions.Center, WidthRequest = 50, IsVisible = textBoxesQuantity == 3 },
                     a_array[1]
                 };
@@ -304,7 +333,7 @@ After:
                 g.Add(hzl, 0, 0);
                 g.HorizontalOptions = LayoutOptions.Fill;
                 g.VerticalOptions = LayoutOptions.Start;
-                g.InputTransparent = !canToggleFromHeader;
+                g.InputTransparent = !(canToggleFromHeader || canToggleSumHeaderVisibility);
                 if (canToggleFromHeader)
                     g.GestureRecognizers.Add(CreateHeaderTapGesture());
                 g.ZIndex = 50;
@@ -392,8 +421,7 @@ After:
 
         private bool CanToggleSumHeaderVisibility(int textBoxesQuantity)
         {
-            return _pianoConfig.AllowSumHeaderVisibilityToggle &&
-                   (textBoxesQuantity == 1 || textBoxesQuantity == 3);
+            return textBoxesQuantity == 1 || textBoxesQuantity == 3;
         }
 
         private TapGestureRecognizer CreateHeaderTapGesture()
@@ -412,13 +440,20 @@ After:
 
         private async Task ToggleHeaderResultVisibilityAsync(string source)
         {
-            if (!_headerResultInitiallyVisible || _headerResultEntry == null)
+            if (!_headerResultInitiallyVisible || _headerResultVisibilityTarget == null)
                 return;
 
             bool previousVisibility = _headerResultVisible;
             bool nextVisibility = !previousVisibility;
             _headerResultVisible = nextVisibility;
-            _headerResultEntry.IsVisible = nextVisibility;
+            _headerResultVisibilityTarget.IsVisible = nextVisibility;
+
+            if (string.Equals(source, "ExternalButton", StringComparison.Ordinal))
+            {
+                await _keyboardQuestionRepository.MarkHeaderResultToggleUsedAsync(
+                    _gamePlay.GameId.ToString(),
+                    _gamePlay._questionNumber);
+            }
 
             if (_visibilityChangeEventRepository == null)
                 return;
@@ -436,6 +471,11 @@ After:
             };
 
             await _visibilityChangeEventRepository.SaveAsync(visibilityEvent);
+        }
+
+        public Task ToggleHeaderResultVisibilityFromExternalButtonAsync()
+        {
+            return ToggleHeaderResultVisibilityAsync("ExternalButton");
         }
 
         public virtual void PianoInit()
@@ -581,6 +621,15 @@ After:
             return _pianoConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor;
         }
 
+        private bool UsesThreeColorGroupByColorCycle()
+        {
+            return Config.IsMulticolor &&
+                   _gamePlay is BitArrayGamePlay bitArrayGamePlay &&
+                   bitArrayGamePlay.CurrentOperation == Operation.GroupByColor &&
+                   (Config.GroupByColorColorCount >= 3 ||
+                    (Config.GroupByColorCounts?.Length ?? 0) >= 3);
+        }
+
         private bool UsesRedRemovalMode()
         {
             return _pianoConfig.ColorInteractionMode == KeyboardColorInteractionMode.RemoveWithRed;
@@ -714,6 +763,10 @@ After:
                 else if (sender.BackgroundColor == COLOR_PRESSED)
                 {
                     sender.BackgroundColor = SECOND_COLOR;
+                }
+                else if (UsesThreeColorGroupByColorCycle() && sender.BackgroundColor == SECOND_COLOR)
+                {
+                    sender.BackgroundColor = THIRD_COLOR;
                 }
                 else
                 {

@@ -27,7 +27,7 @@ namespace GestureSample.Maui.Models
         {
             Colors.Yellow,
             Colors.LightGreen,
-            Colors.DeepSkyBlue
+            Colors.Blue
         };
 
         private int _nextArrowAboveNumber = 1;
@@ -432,7 +432,8 @@ namespace GestureSample.Maui.Models
                 _questionNumber,
                 submittedKeyboard,
                 submittedTime,
-                result ? 1 : 0);
+                result ? 1 : 0,
+                pianoKeyboard.GetCurrentColors());
 
             if (savedAttempt != null)
             {
@@ -455,7 +456,7 @@ namespace GestureSample.Maui.Models
         private async Task<ExerciseCheckResult> EvaluateGroupByColorAsync(PianoKeyboard pianoKeyboard)
         {
             bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
-            bool result = CheckOnly(submittedKeyboard);
+            bool result = CheckGroupByColorAnswer(pianoKeyboard, submittedKeyboard);
 
             _status = result ? Statement.True : Statement.False;
             IncrementGuessNumber();
@@ -466,7 +467,8 @@ namespace GestureSample.Maui.Models
                 _questionNumber,
                 submittedKeyboard,
                 submittedTime,
-                result ? 1 : 0);
+                result ? 1 : 0,
+                pianoKeyboard.GetCurrentColors());
 
             if (savedAttempt != null)
             {
@@ -502,11 +504,43 @@ namespace GestureSample.Maui.Models
             };
         }
 
+        private bool CheckGroupByColorAnswer(PianoKeyboard pianoKeyboard, bool[] submittedKeyboard)
+        {
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            if (targets.Count == 0)
+                return false;
+
+            bool[] expectedOccupied = new bool[BitArrayQuestion.Length];
+            for (int groupIndex = 0; groupIndex < targets.Count; groupIndex++)
+            {
+                bool[] normalizedTarget = NormalizeToKeyboardLength(targets[groupIndex], BitArrayQuestion.Length);
+                Color expectedColor = GroupByColorPalette[Math.Min(groupIndex, GroupByColorPalette.Length - 1)];
+                bool[] submittedColorBits = pianoKeyboard.GetBitsForColor(expectedColor);
+
+                if (!ArraysEqual(submittedColorBits, normalizedTarget))
+                    return false;
+
+                for (int keyIndex = 0; keyIndex < expectedOccupied.Length; keyIndex++)
+                    expectedOccupied[keyIndex] = expectedOccupied[keyIndex] || normalizedTarget[keyIndex];
+            }
+
+            return ArraysEqual(submittedKeyboard, expectedOccupied) &&
+                   pianoKeyboard.GetNonFreeColorCount() == SumArray(expectedOccupied);
+        }
+
         private static bool ArraysEqual(bool[]? a, bool[]? b)
         {
             if (a is null || b is null) return false;
             if (a.Length != b.Length) return false;
             return a.SequenceEqual(b); // or use a.AsSpan().SequenceEqual(b) for slightly better perf
+        }
+
+        private static bool[] NormalizeToKeyboardLength(bool[] bits, int length)
+        {
+            bool[] normalized = new bool[length];
+            int limit = Math.Min(length, bits.Length);
+            Array.Copy(bits, normalized, limit);
+            return normalized;
         }
 
         public bool[] GenerateSequenceArrayQuestion(int from, int length)
@@ -824,6 +858,14 @@ namespace GestureSample.Maui.Models
             return colors;
         }
 
+        public override Color[]? GetQuestionKeyboardColors()
+        {
+            if (CurrentOperation == Operation.GroupByColor)
+                return GetGroupByColorQuestionColors();
+
+            return base.GetQuestionKeyboardColors();
+        }
+
         public IReadOnlyList<GroupByColorStep> GetGroupByColorTutorialSteps()
         {
             List<GroupByColorStep> steps = new();
@@ -894,6 +936,8 @@ namespace GestureSample.Maui.Models
                 ShowNumbersOnKeys = Config.KeyboardConfig?.ShowNumbersOnKeys == true,
                 KeyboardWeights = Config.KeyboardConfig?.WeightsArray?.ToArray(),
                 InitialKeyboardState = GetInitialKeyboardState(),
+                InitialKeyboardColors = GetInitialKeyboardColors(),
+                QuestionKeyboardColors = GetQuestionKeyboardColors(),
                 QuestionPromptText = GetKeyboardQuestionPromptText()
             };
 
@@ -1021,11 +1065,17 @@ namespace GestureSample.Maui.Models
             int groupCount = Math.Clamp(Config.KeyboardConfig?.GroupByColorColorCount ?? 2, 2, 3);
             if (groupCount == 3)
             {
-                GenerateThreeColorGroupByColorExercise(r, start, end);
+                if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.AssociativityEdges)
+                    GenerateAssociativityThreeColorGroupByColorExercise(r, start, end);
+                else
+                    GenerateThreeColorGroupByColorExercise(r, start, end);
             }
             else
             {
-                GenerateTwoColorGroupByColorExercise(r, start, end);
+                if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.CommutativityEdges)
+                    GenerateCommutativityTwoColorGroupByColorExercise(r, start, end);
+                else
+                    GenerateTwoColorGroupByColorExercise(r, start, end);
             }
 
             BitArrayQuestion = _groupByColorQuestionGroups[0];
@@ -1051,6 +1101,36 @@ namespace GestureSample.Maui.Models
             _groupByColorQuestionGroups.Add(primary);
             _groupByColorQuestionGroups.Add(secondary);
             AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
+        }
+
+        private void GenerateCommutativityTwoColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int available = Math.Max(2, end - start);
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 2 }
+                ? ResolveGroupByColorCounts(2, available, Config.KeyboardConfig.GroupByColorCounts)
+                : CreateRandomTwoColorEdgeCounts(r, available);
+            bool yellowOnLeft = r.Next(2) == 0;
+
+            bool[] yellow = yellowOnLeft
+                ? BuildRangeBits(BitArrayQuestion.Length, start, counts[0])
+                : BuildRangeBits(BitArrayQuestion.Length, end - counts[0], counts[0]);
+            bool[] green = yellowOnLeft
+                ? BuildRangeBits(BitArrayQuestion.Length, end - counts[1], counts[1])
+                : BuildRangeBits(BitArrayQuestion.Length, start, counts[1]);
+
+            _groupByColorQuestionGroups.Add(yellow);
+            _groupByColorQuestionGroups.Add(green);
+            _groupByColorTargetDirections.Add(yellowOnLeft ? Direction.Right : Direction.Left);
+            _groupByColorTargetDirections.Add(yellowOnLeft ? Direction.Left : Direction.Right);
+        }
+
+        private static int[] CreateRandomTwoColorEdgeCounts(Random r, int availableSlots)
+        {
+            int maxPerSide = Math.Max(1, availableSlots - 1);
+            int yellowCount = r.Next(1, maxPerSide + 1);
+            int greenMax = Math.Max(1, availableSlots - yellowCount);
+            int greenCount = r.Next(1, greenMax + 1);
+            return new[] { yellowCount, greenCount };
         }
 
         private void GenerateThreeColorGroupByColorExercise(Random r, int start, int end)
@@ -1084,6 +1164,48 @@ namespace GestureSample.Maui.Models
             AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
         }
 
+        private void GenerateAssociativityThreeColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int available = Math.Max(3, end - start);
+            int[] counts = ResolveGroupByColorCounts(3, available, new[] { 3, 2, 2 });
+
+            bool yellowOnLeft = r.Next(2) == 0;
+            bool blueNearYellow = r.Next(2) == 0;
+
+            bool[] yellow;
+            bool[] green;
+            bool[] blue;
+
+            if (yellowOnLeft)
+            {
+                yellow = BuildRangeBits(BitArrayQuestion.Length, start, counts[0]);
+                green = BuildRangeBits(BitArrayQuestion.Length, end - counts[1], counts[1]);
+                blue = blueNearYellow
+                    ? BuildRangeBits(BitArrayQuestion.Length, start + counts[0], counts[2])
+                    : BuildRangeBits(BitArrayQuestion.Length, end - counts[1] - counts[2], counts[2]);
+
+                _groupByColorTargetDirections.Add(Direction.Left);
+                _groupByColorTargetDirections.Add(Direction.Right);
+                _groupByColorTargetDirections.Add(blueNearYellow ? Direction.Right : Direction.Left);
+            }
+            else
+            {
+                yellow = BuildRangeBits(BitArrayQuestion.Length, end - counts[0], counts[0]);
+                green = BuildRangeBits(BitArrayQuestion.Length, start, counts[1]);
+                blue = blueNearYellow
+                    ? BuildRangeBits(BitArrayQuestion.Length, end - counts[0] - counts[2], counts[2])
+                    : BuildRangeBits(BitArrayQuestion.Length, start + counts[1], counts[2]);
+
+                _groupByColorTargetDirections.Add(Direction.Right);
+                _groupByColorTargetDirections.Add(Direction.Left);
+                _groupByColorTargetDirections.Add(blueNearYellow ? Direction.Left : Direction.Right);
+            }
+
+            _groupByColorQuestionGroups.Add(yellow);
+            _groupByColorQuestionGroups.Add(green);
+            _groupByColorQuestionGroups.Add(blue);
+        }
+
         private void AssignGroupByColorDirections(Random r, int groupCount)
         {
             bool allowSameSideTargets = Config.KeyboardConfig?.GroupByColorAllowSameSideTargets == true;
@@ -1110,6 +1232,32 @@ namespace GestureSample.Maui.Models
             int maxStart = Math.Max(middleStart, middleEndExclusive - blueCount);
             int from = r.Next(middleStart, maxStart + 1);
             return BuildRangeBits(BitArrayQuestion.Length, from, blueCount);
+        }
+
+        private int[] ResolveGroupByColorCounts(int groupCount, int availableSlots, int[] fallbackCounts)
+        {
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 1 } configuredCounts
+                ? configuredCounts.Take(groupCount).Concat(Enumerable.Repeat(1, Math.Max(0, groupCount - configuredCounts.Length))).Take(groupCount).ToArray()
+                : fallbackCounts.Take(groupCount).ToArray();
+
+            if (counts.Length < groupCount)
+                counts = counts.Concat(Enumerable.Repeat(1, groupCount - counts.Length)).ToArray();
+
+            for (int i = 0; i < counts.Length; i++)
+                counts[i] = Math.Max(1, counts[i]);
+
+            int total = counts.Sum();
+            while (total > availableSlots)
+            {
+                int index = Array.IndexOf(counts, counts.Max());
+                if (index < 0 || counts[index] <= 1)
+                    break;
+
+                counts[index]--;
+                total--;
+            }
+
+            return counts;
         }
 
         private static bool[] BuildRangeBits(int totalLength, int from, int count)
@@ -1320,6 +1468,12 @@ namespace GestureSample.Maui.Models
             if (CurrentOperation != Operation.GroupByColor || _groupByColorQuestionGroups.Count == 0)
                 return targets;
 
+            if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.AssociativityEdges &&
+                _groupByColorQuestionGroups.Count >= 3)
+            {
+                return BuildAssociativityTargetGroups();
+            }
+
             int leftOffset = 0;
             int rightOffset = 0;
             int keyboardLength = BitArrayQuestion.Length;
@@ -1352,6 +1506,75 @@ namespace GestureSample.Maui.Models
             }
 
             return targets;
+        }
+
+        private List<bool[]> BuildAssociativityTargetGroups()
+        {
+            List<bool[]> targets = new();
+            int keyboardLength = BitArrayQuestion.Length;
+
+            bool yellowTargetsLeft = _groupByColorTargetDirections.Count > 0 && _groupByColorTargetDirections[0] == Direction.Left;
+            bool greenTargetsLeft = _groupByColorTargetDirections.Count > 1 && _groupByColorTargetDirections[1] == Direction.Left;
+            bool blueTargetsLeft = _groupByColorTargetDirections.Count > 2 && _groupByColorTargetDirections[2] == Direction.Left;
+
+            int yellowCount = SumArray(_groupByColorQuestionGroups[0]);
+            int greenCount = SumArray(_groupByColorQuestionGroups[1]);
+            int blueCount = SumArray(_groupByColorQuestionGroups[2]);
+
+            bool[] yellow = new bool[keyboardLength];
+            bool[] green = new bool[keyboardLength];
+            bool[] blue = new bool[keyboardLength];
+
+            int leftOffset = 0;
+            int rightOffset = 0;
+
+            if (yellowTargetsLeft)
+            {
+                FillRange(yellow, leftOffset, yellowCount, true);
+                leftOffset += yellowCount;
+                if (blueTargetsLeft)
+                    FillRange(blue, leftOffset, blueCount, true);
+            }
+            else
+            {
+                FillRange(yellow, rightOffset, yellowCount, false);
+                rightOffset += yellowCount;
+                if (!blueTargetsLeft)
+                    FillRange(blue, rightOffset, blueCount, false);
+            }
+
+            if (greenTargetsLeft)
+            {
+                FillRange(green, leftOffset, greenCount, true);
+                leftOffset += greenCount;
+                if (blueTargetsLeft && !yellowTargetsLeft)
+                    FillRange(blue, leftOffset, blueCount, true);
+            }
+            else
+            {
+                FillRange(green, rightOffset, greenCount, false);
+                rightOffset += greenCount;
+                if (!blueTargetsLeft && yellowTargetsLeft)
+                    FillRange(blue, rightOffset, blueCount, false);
+            }
+
+            targets.Add(yellow);
+            targets.Add(green);
+            targets.Add(blue);
+            return targets;
+        }
+
+        private static void FillRange(bool[] target, int offset, int count, bool fromLeft)
+        {
+            for (int keyIndex = 0; keyIndex < count && keyIndex < target.Length; keyIndex++)
+            {
+                int absoluteIndex = fromLeft
+                    ? offset + keyIndex
+                    : target.Length - 1 - offset - keyIndex;
+
+                if (absoluteIndex >= 0 && absoluteIndex < target.Length)
+                    target[absoluteIndex] = true;
+            }
         }
 
         private bool[] BuildLeftPackedBits(bool[] source)
