@@ -142,15 +142,26 @@ namespace GestureSample.Maui.Models
             IsEnabled = true;
             InputTransparent = true;
 
-            // Hide progress immediately so feedback can appear on lblStatus
-            ResetProgressVisual();
+            try
+            {
+                // Hide progress immediately so feedback can appear on lblStatus
+                ResetProgressVisual();
 
-            ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
-            if (CheckCompletedAsync != null)
-                await CheckCompletedAsync(checkResult);
-
-            _isChecking = false;
-            timer.Start();
+                ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
+                if (CheckCompletedAsync != null)
+                    await CheckCompletedAsync(checkResult);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] {DateTime.Now:dd/MM/yyyy HH:mm:ss}: Timed keyboard submit failed - {ex}");
+                ResetProgressVisual();
+                InputTransparent = false;
+            }
+            finally
+            {
+                _isChecking = false;
+                timer.Start();
+            }
         }
 
         public override void PianoInit()

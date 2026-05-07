@@ -37,6 +37,10 @@ namespace GestureSample.Maui.Models
         protected int _currentTriadIndex = 0;
         protected int? _dynamicKeyboardWeightValue;
         protected int? _dynamicKeyboardExpectedPressCount;
+        protected readonly HashSet<int> _weightedCustomReachableSums = new();
+        protected readonly HashSet<int> _weightedCustomImpossibleSums = new();
+        protected bool _currentWeightedTargetRequiresImpossibleAnswer;
+        private string? _weightedTargetPoolCacheKey;
 
         public PPWObject GenerateSecondaryTriad(int sum, int? addend1Min=null, int? addend1Max = null)
         {
@@ -153,7 +157,10 @@ namespace GestureSample.Maui.Models
             _planRandom = new Random(_planSeed);
 
 
-            GeneratePossibleTriadsSet();
+            if (!UsesWeightedKeyboardTargetGeneration())
+                GeneratePossibleTriadsSet();
+
+            EnsureWeightedTargetPools();
 
 
             //SaveState();
@@ -206,6 +213,8 @@ namespace GestureSample.Maui.Models
                     return;
 
                 await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUnsyncedGamesAndRelatedDataAsync(activeUser);
+                _gameData.WasSynced = true;
+                await _gameRepository.UpdateAsync(_gameData);
             }
             catch (Exception ex)
             {
@@ -425,7 +434,10 @@ namespace GestureSample.Maui.Models
                 _gameData.Losses = _questionsWrong;
                 GameOver = true;
                 await _gameRepository.UpdateAsync(_gameData);
-                await TrySyncSupabaseStateAsync();
+
+                CurrentUserSession? currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+                BackgroundSyncService? backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+                backgroundSyncService?.TryStartSync(currentUserSession?.ActiveUser);
 
                 return new GameCompletionResult
                 {
@@ -555,6 +567,16 @@ namespace GestureSample.Maui.Models
                 return await EvaluateDynamicKeyboardMultiplicationAsync(pianoKeyboard);
             }
 
+            if (UsesWeightedSingleTargetKeyboardStage())
+            {
+                return await EvaluateWeightedSingleTargetKeyboardStageAsync(pianoKeyboard);
+            }
+
+            if (UsesWeightedCustomStageTargets())
+            {
+                return await EvaluateWeightedCustomStageAsync(pianoKeyboard);
+            }
+
             int keyboardSum = Sum;
             if (Sum == NAN && (pianoKeyboard.Addend1>=0 && pianoKeyboard.Addend2>=0)) {
                if( pianoKeyboard.Addend1 == addend1 && pianoKeyboard.Addend2 == addend2)
@@ -665,6 +687,132 @@ namespace GestureSample.Maui.Models
                    _dynamicKeyboardExpectedPressCount.HasValue;
         }
 
+        private bool UsesWeightedSingleTargetKeyboardStage()
+        {
+            return Config?.KeyboardConfig?.WeightsArray != null &&
+                   Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                   Config.UIQuestionType == UIQuestionType.OneText &&
+                   !UsesDynamicKeyboardMultiplication() &&
+                   !UsesWeightedCustomStageTargets() &&
+                   CurrentOperation == Operation.Sum;
+        }
+
+        private bool UsesWeightedCustomStageTargets()
+        {
+            return Config?.KeyboardConfig?.UseWeightedCustomStageTargets == true &&
+                   Config.KeyboardConfig.WeightsArray != null &&
+                   Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                   Config.UIQuestionType == UIQuestionType.OneText;
+        }
+
+        private bool UsesWeightedKeyboardTargetGeneration()
+        {
+            return UsesWeightedSingleTargetKeyboardStage() || UsesWeightedCustomStageTargets();
+        }
+
+        public bool SupportsImpossibleWeightedAnswer =>
+            UsesWeightedCustomStageTargets() &&
+            Config?.KeyboardConfig?.AllowImpossibleWeightedAnswer == true &&
+            _weightedCustomImpossibleSums.Count > 0;
+
+        public bool CurrentWeightedTargetRequiresImpossibleAnswer => _currentWeightedTargetRequiresImpossibleAnswer;
+
+        private void EnsureWeightedTargetPools()
+        {
+            if (!UsesWeightedKeyboardTargetGeneration())
+                return;
+
+            int[] weights = Config.KeyboardConfig.WeightsArray
+                .Where(weight => weight > 0)
+                .Take(10)
+                .ToArray();
+
+            if (weights.Length == 0)
+                return;
+
+            int minTarget = Config.MinSum;
+            int maxTarget = Config.MaxSum;
+            bool allowImpossible = UsesWeightedCustomStageTargets() && Config.KeyboardConfig.AllowImpossibleWeightedAnswer;
+            string cacheKey = $"{minTarget}:{maxTarget}:{allowImpossible}:{string.Join(",", weights)}";
+
+            if (string.Equals(_weightedTargetPoolCacheKey, cacheKey, StringComparison.Ordinal))
+                return;
+
+            _weightedTargetPoolCacheKey = cacheKey;
+            _weightedCustomReachableSums.Clear();
+            _weightedCustomImpossibleSums.Clear();
+            _currentWeightedTargetRequiresImpossibleAnswer = false;
+
+            HashSet<int> rollingSums = new() { 0 };
+
+            foreach (int weight in weights)
+            {
+                HashSet<int> nextSums = new(rollingSums);
+                foreach (int existingSum in rollingSums)
+                {
+                    int nextSum = existingSum + weight;
+                    if (nextSum <= maxTarget)
+                        nextSums.Add(nextSum);
+                }
+
+                rollingSums = nextSums;
+            }
+
+            foreach (int reachableSum in rollingSums)
+            {
+                if (reachableSum >= minTarget && reachableSum <= maxTarget)
+                    _weightedCustomReachableSums.Add(reachableSum);
+            }
+
+            if (allowImpossible)
+            {
+                for (int target = minTarget; target <= maxTarget; target++)
+                {
+                    if (!_weightedCustomReachableSums.Contains(target))
+                        _weightedCustomImpossibleSums.Add(target);
+                }
+            }
+        }
+
+        private int[] BuildWeightedCustomStageFactors(Random r)
+        {
+            EnsureWeightedTargetPools();
+
+            List<int> weightedTargets = _weightedCustomReachableSums
+                .Concat(_weightedCustomImpossibleSums)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToList();
+
+            if (weightedTargets.Count == 0)
+            {
+                int fallback = Math.Max(1, Config.MinSum);
+                _currentWeightedTargetRequiresImpossibleAnswer = false;
+                return new[] { NAN, NAN, fallback };
+            }
+
+            int chosenTarget = weightedTargets[r.Next(weightedTargets.Count)];
+            _currentWeightedTargetRequiresImpossibleAnswer = _weightedCustomImpossibleSums.Contains(chosenTarget);
+            return new[] { NAN, NAN, chosenTarget };
+        }
+
+        private int[] BuildWeightedSingleTargetFactors(Random r)
+        {
+            EnsureWeightedTargetPools();
+
+            if (_weightedCustomReachableSums.Count == 0)
+            {
+                int fallback = Math.Max(1, Config.MinSum);
+                _currentWeightedTargetRequiresImpossibleAnswer = false;
+                return new[] { NAN, NAN, fallback };
+            }
+
+            List<int> weightedTargets = _weightedCustomReachableSums.OrderBy(value => value).ToList();
+            int chosenTarget = weightedTargets[r.Next(weightedTargets.Count)];
+            _currentWeightedTargetRequiresImpossibleAnswer = false;
+            return new[] { NAN, NAN, chosenTarget };
+        }
+
         private async Task<ExerciseCheckResult> EvaluateDynamicKeyboardMultiplicationAsync(PianoKeyboard pianoKeyboard)
         {
             IncrementGuessNumber();
@@ -676,6 +824,56 @@ namespace GestureSample.Maui.Models
 
             _status = isCorrect ? Statement.True : Statement.False;
             await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateWeightedSingleTargetKeyboardStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = pianoKeyboard.Sum == Sum;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateWeightedCustomStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = !_currentWeightedTargetRequiresImpossibleAnswer &&
+                             pianoKeyboard.Sum == Sum;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now);
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        public virtual async Task<ExerciseCheckResult> EvaluateImpossibleWeightedAnswerAsync()
+        {
+            if (!SupportsImpossibleWeightedAnswer)
+                return CreateCheckResult(isCorrect: false);
+
+            IncrementGuessNumber();
+
+            bool isCorrect = _currentWeightedTargetRequiresImpossibleAnswer;
+            _status = isCorrect ? Statement.True : Statement.False;
 
             GameCompletionResult? completion = isCorrect
                 ? await RegisterSuccessfulAttemptAsync()
@@ -785,7 +983,11 @@ namespace GestureSample.Maui.Models
         private void GenerateNewPPWQuestion(Random r)
         {
             // pick factor set depending on operation
-            int[] factors = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)?factors = FactorsMultiplication: factors = Factors;
+            int[] factors = UsesWeightedCustomStageTargets()
+                ? BuildWeightedCustomStageFactors(r)
+                : UsesWeightedSingleTargetKeyboardStage()
+                    ? BuildWeightedSingleTargetFactors(r)
+                    : (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide ? FactorsMultiplication : Factors);
 
             ConfigureDynamicKeyboardMultiplicationWeights(r, factors);
 
@@ -1142,10 +1344,25 @@ namespace GestureSample.Maui.Models
                     }
                 }
 
+                if (PossibleTriads.Count > 0)
+                {
+                    PPWObject chosenTriad = PossibleTriads[r.Next(PossibleTriads.Count)];
+                    factors[0] = chosenTriad.Addend1;
+                    factors[1] = chosenTriad.Addend2;
+                    factors[2] = chosenTriad.Sum;
+                    return factors;
+                }
+
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
                 factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
 
+                while (factors[2] < Config.MinSum || factors[2] > Config.MaxSum)
+                {
+                    factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                    factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
+                    factors[2] = factors[0] * factors[1];
+                }
 
                 return factors;
             }

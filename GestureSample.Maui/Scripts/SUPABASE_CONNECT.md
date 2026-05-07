@@ -100,6 +100,49 @@ Important:
 - do not apply the strict RLS script if the app is still syncing without a real authenticated Supabase user session
 - otherwise sync/read calls will start failing, which is expected
 
+## 6b. Transitional option if you need lints clean before auth is ready
+
+If the app is still using anon access/local user IDs, but you want Supabase
+Security Lints to stop reporting:
+
+- `Policy Exists RLS Disabled`
+- `RLS Disabled in Public`
+
+run:
+
+- [supabase_app_rls_transitional_open.sql](C:/Users/alexs/source/repos/shifalex/Cpiano/Cpiano/GestureSample.Maui/Scripts/supabase_app_rls_transitional_open.sql)
+
+That script:
+
+- enables RLS on the app tables
+- keeps anon/authenticated access open with permissive transitional policies
+- clears the current RLS-disabled lint errors without forcing the app onto the final auth model yet
+
+Important:
+
+- this is still a temporary compatibility mode
+- it is cleaner than disabling RLS, but it is not the same as real per-user protection
+
+## 6c. Fix the mutable function search path warning
+
+If Supabase Security Lints reports:
+
+- `Function Search Path Mutable`
+
+for:
+
+- `public.get_users_by_classroom`
+
+run:
+
+- [supabase_fix_function_search_path.sql](C:/Users/alexs/source/repos/shifalex/Cpiano/Cpiano/GestureSample.Maui/Scripts/supabase_fix_function_search_path.sql)
+
+This sets the function-level search path to:
+
+- `public, pg_temp`
+
+and leaves the current transitional open-access RLS setup unchanged.
+
 ## 7. Recommended order
 
 1. Fill `supabase.local.json` with the new project URL + anon key.

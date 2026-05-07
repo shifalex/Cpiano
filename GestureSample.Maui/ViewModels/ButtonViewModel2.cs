@@ -305,9 +305,6 @@ namespace GestureSample.ViewModels
             }            //if (ASSERT)
             //    SentrySdk.CaptureMessage("Second factors success");
             */
-
-            int questionType; questionType = 2;
-
             int n = r.Next(3); n = 2;
             for (int i = 0; i < 3; i++)
                 if (i != n) factors[i] = NAN;

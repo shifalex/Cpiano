@@ -56,7 +56,7 @@ namespace GestureSample.Maui.Handlers
             try
             {
                 if (forceFullResync)
-                    await _gameRepository.UpdateAllToNotSynced();
+                    await _gameRepository.UpdateAllToNotSynced(user.Id);
 
                 await SupabaseService.SyncUserDataAsync(user);
                 LastCompletedAt = DateTime.Now;

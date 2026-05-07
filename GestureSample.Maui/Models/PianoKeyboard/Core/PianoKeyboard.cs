@@ -515,7 +515,8 @@ After:
             if(Config.WeightsArray != null)
             {
                 _addend1 = 0; _addend2 = 0;
-                for (int i = 0; i < NUMBER_OF_KEYS; i++)
+                int weightsCount = Config.WeightsArray.Length;
+                for (int i = 0; i < NUMBER_OF_KEYS && i < weightsCount; i++)
                 {
                     if (btnKeys[i].BackgroundColor == COLOR_PRESSED)
                     {

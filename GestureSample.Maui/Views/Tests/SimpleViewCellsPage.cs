@@ -15,6 +15,12 @@ using Microsoft.Maui.ApplicationModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+#if IOS || MACCATALYST
+using UIKit;
+#endif
+#if ANDROID
+using Android.Content.Res;
+#endif
 
 namespace GestureSample.Views.Tests
 {
@@ -133,8 +139,19 @@ namespace GestureSample.Views.Tests
             // Keep keyboard-driven submit actions aligned with keyboard availability.
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
             {
+                if (_btnAnswerTimePanel != null && _btnAnswerTimePanel.IsVisible)
+                {
+                    _btnAnswerTimePanel.IsEnabled = true;
+                    _btnAnswerTimePanel.InputTransparent = false;
+                    _btnAnswerTimePanel.Opacity = 1;
+                    _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+                }
+
                 if (_btnKeyboardSubmit != null && _btnKeyboardSubmit.IsVisible)
                     _btnKeyboardSubmit.IsEnabled = enabled;
+
+                if (_btnImpossibleWeightedAnswer != null && _btnImpossibleWeightedAnswer.IsVisible)
+                    _btnImpossibleWeightedAnswer.IsEnabled = enabled;
 
                 if (_btnKeyboardCheckInline != null && _btnKeyboardCheckInline.IsVisible)
                     _btnKeyboardCheckInline.IsEnabled = enabled;
@@ -154,8 +171,19 @@ namespace GestureSample.Views.Tests
             if (_btnHelp != null)
                 _btnHelp.IsEnabled = enabled;
 
+            if (_btnAnswerTimePanel != null)
+            {
+                _btnAnswerTimePanel.IsEnabled = true;
+                _btnAnswerTimePanel.InputTransparent = false;
+                _btnAnswerTimePanel.Opacity = 1;
+                _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+            }
+
             if (_btnKeyboardSubmit != null)
                 _btnKeyboardSubmit.IsEnabled = enabled;
+
+            if (_btnImpossibleWeightedAnswer != null)
+                _btnImpossibleWeightedAnswer.IsEnabled = enabled;
 
             if (_btnKeyboardCheckInline != null && _btnKeyboardCheckInline.IsVisible)
                 _btnKeyboardCheckInline.IsEnabled = enabled;
@@ -164,16 +192,16 @@ namespace GestureSample.Views.Tests
                 _btnThirdArrowVisibility.IsEnabled = enabled;
 
             if (_answerTimeEnabledSwitch != null)
-                _answerTimeEnabledSwitch.IsEnabled = enabled;
+                _answerTimeEnabledSwitch.IsEnabled = true;
 
             if (_answerTimeMinusButton != null)
-                _answerTimeMinusButton.IsEnabled = enabled;
+                _answerTimeMinusButton.IsEnabled = true;
 
             if (_answerTimePlusButton != null)
-                _answerTimePlusButton.IsEnabled = enabled;
+                _answerTimePlusButton.IsEnabled = true;
 
             if (_answerTimeModeButton != null)
-                _answerTimeModeButton.IsEnabled = enabled;
+                _answerTimeModeButton.IsEnabled = true;
 
             if (_btnPrev != null)
                 _btnPrev.IsEnabled = enabled && _previousPPW != null;
@@ -380,11 +408,12 @@ namespace GestureSample.Views.Tests
         private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
         private ProgressBar _pianoPressProgress;
+        private Grid _customProgressHost;
+        private Border _customProgressFill;
         private Button _btnKeyboardCheckInline = null;
         private Border _centerFeedbackBadge = null;
         private Label _centerFeedbackBadgeLabel = null;
         private Border _keyboardControlBar = null;
-        private Label _lblKeyboardType = null;
         private Button _btnThirdArrowVisibility = null;
         private bool _isPageInteractionEnabled = true;
         private Label _lblHistory;
@@ -421,10 +450,12 @@ namespace GestureSample.Views.Tests
         private Button _answerTimeModeButton = null;
         private Button _btnAnswerTimePanel = null;
         private Button _btnKeyboardSubmit = null;
+        private Button _btnImpossibleWeightedAnswer = null;
         private View _answerTimeTunerCard = null;
         private BoxView _answerTimeDismissShield = null;
         private bool _isAnswerTimeTunerVisible = false;
         private int _lastNonZeroAnswerTimeSetting = 0;
+        private const int AnswerTimeStateMaxSeconds = 5;
 
         private PPWObject _currentPPW;
         private PPWObject _currentPPWEnabled;
@@ -519,11 +550,19 @@ namespace GestureSample.Views.Tests
             return !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp;
         }
 
+        private bool ShouldShowImpossibleWeightedAnswerButton()
+        {
+            return _isKeyboard &&
+                   !_config.KeyboardConfig.KeyboardOnlyForHelp &&
+                   _gamePlay.SupportsImpossibleWeightedAnswer;
+        }
+
         private bool HasVisibleManualCheckButton()
         {
             return (_btnCheck?.IsVisible ?? false) ||
                    (_btnKeyboardCheckInline?.IsVisible ?? false) ||
-                   (_btnKeyboardSubmit?.IsVisible ?? false);
+                   (_btnKeyboardSubmit?.IsVisible ?? false) ||
+                   (_btnImpossibleWeightedAnswer?.IsVisible ?? false);
         }
 
         private void SetInlineKeyboardCheckVisible(bool isVisible)
@@ -547,7 +586,7 @@ namespace GestureSample.Views.Tests
                 Text = "Check",
                 Command = _cmdCheck,
                 WidthRequest = 220,
-                HeightRequest = 44,
+                HeightRequest = 55,
                 CornerRadius = 12,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center
@@ -561,7 +600,7 @@ namespace GestureSample.Views.Tests
 
             _centerFeedbackBadgeLabel = new Label
             {
-                FontSize = 24,
+                FontSize = 55,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.White
@@ -570,15 +609,64 @@ namespace GestureSample.Views.Tests
             _centerFeedbackBadge = new Border
             {
                 WidthRequest = 220,
-                HeightRequest = 44,
+                HeightRequest = 55,
                 Padding = 0,
                 StrokeThickness = 0,
+                BackgroundColor = Colors.Transparent,
                 IsVisible = false,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 StrokeShape = new RoundRectangle { CornerRadius = 12 },
                 Content = _centerFeedbackBadgeLabel
             };
+        }
+
+        private void EnsureCustomProgressVisual()
+        {
+            if (_customProgressHost != null)
+                return;
+
+            _customProgressFill = new Border
+            {
+                WidthRequest = 0,
+                HeightRequest = 55,
+                Padding = 0,
+                StrokeThickness = 0,
+                BackgroundColor = Color.FromArgb("#5A42D0"),
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Fill,
+                StrokeShape = new RoundRectangle { CornerRadius = 12 },
+                IsVisible = false,
+                InputTransparent = true
+            };
+
+            _customProgressHost = new Grid
+            {
+                WidthRequest = 220,
+                HeightRequest = 55,
+                BackgroundColor = Colors.Transparent,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Center,
+                IsVisible = false,
+                InputTransparent = true
+            };
+
+            _customProgressHost.Add(_customProgressFill);
+            _customProgressHost.SizeChanged += (_, _) => RefreshCustomProgressVisual();
+        }
+
+        private void RefreshCustomProgressVisual()
+        {
+            if (_customProgressHost == null || _customProgressFill == null || _pianoPressProgress == null)
+                return;
+
+            double hostWidth = _customProgressHost.Width > 0
+                ? _customProgressHost.Width
+                : _customProgressHost.WidthRequest;
+
+            double progress = Math.Clamp(_pianoPressProgress.Progress, 0, 1);
+            _customProgressFill.WidthRequest = hostWidth * progress;
+            _customProgressFill.IsVisible = _customProgressHost.IsVisible && progress > 0;
         }
 
         private void RefreshStatusActionSlot()
@@ -597,6 +685,12 @@ namespace GestureSample.Views.Tests
             if (_pianoPressProgress != null)
                 _pianoPressProgress.IsVisible = showProgress;
 
+            if (_customProgressHost != null)
+            {
+                _customProgressHost.IsVisible = showProgress;
+                RefreshCustomProgressVisual();
+            }
+
             if (_btnKeyboardCheckInline != null)
             {
                 _btnKeyboardCheckInline.IsVisible = showInlineCheck;
@@ -609,9 +703,7 @@ namespace GestureSample.Views.Tests
             if (showFeedbackBadge)
             {
                 bool isCorrect = _currentUiState == PlayUiState.FeedbackCorrect;
-                _centerFeedbackBadge.BackgroundColor = isCorrect
-                    ? Color.FromArgb("#2E9B52")
-                    : Color.FromArgb("#C26A44");
+                _centerFeedbackBadge.BackgroundColor = Colors.Transparent;
                 _centerFeedbackBadgeLabel.Text = isCorrect ? "💪" : "🤔";
             }
 
@@ -742,7 +834,7 @@ namespace GestureSample.Views.Tests
                 if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
                     return;
 
-                int seconds = Math.Min(9, GetEffectiveAnswerTimeMagnitude(syncKeyboard) + 1);
+                int seconds = Math.Min(AnswerTimeStateMaxSeconds, GetEffectiveAnswerTimeMagnitude(syncKeyboard) + 1);
                 int sign = UsesWholeAnswerTimer(syncKeyboard) ? -1 : 1;
                 await ApplyAnswerTimeSettingAsync(seconds * sign, "AnswerTimePlus");
             };
@@ -804,109 +896,35 @@ namespace GestureSample.Views.Tests
         {
             EnsureKeyboardInlineCheckButton();
             EnsureCenterFeedbackBadge();
-
-            _lblKeyboardType = new Label
-            {
-                Text = GetKeyboardTypeText(),
-                FontSize = 12,
-                FontAttributes = FontAttributes.Bold,
-                TextColor = Colors.White,
-                HorizontalTextAlignment = TextAlignment.Center,
-                VerticalTextAlignment = TextAlignment.Center
-            };
+            EnsureCustomProgressVisual();
 
             Grid statusActionHost = new()
             {
                 WidthRequest = 220,
-                HeightRequest = 44,
+                HeightRequest = 55,
+                BackgroundColor = Colors.Transparent,
                 HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Center
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(0, 6, 0, 6),
+                InputTransparent = false
             };
-            statusActionHost.Add(_pianoPressProgress);
+            if (_customProgressHost != null)
+                statusActionHost.Add(_customProgressHost);
             if (_centerFeedbackBadge != null)
                 statusActionHost.Add(_centerFeedbackBadge);
             if (_btnKeyboardCheckInline != null)
                 statusActionHost.Add(_btnKeyboardCheckInline);
-
-            HorizontalStackLayout leftControls = new()
-            {
-                Spacing = 6,
-                HorizontalOptions = LayoutOptions.Start,
-                VerticalOptions = LayoutOptions.Center
-            };
-
-            leftControls.Add(new Border
-            {
-                Padding = new Thickness(8, 3),
-                StrokeThickness = 0,
-                BackgroundColor = Colors.White.WithAlpha(0.14f),
-                StrokeShape = new RoundRectangle { CornerRadius = 10 },
-                VerticalOptions = LayoutOptions.Center,
-                Content = _lblKeyboardType
-            });
-
-            if (SupportsThirdArrowVisibilityToggle())
-            {
-                _btnThirdArrowVisibility = new Button
-                {
-                    FontSize = 11,
-                    Padding = new Thickness(10, 4),
-                    CornerRadius = 10,
-                    BackgroundColor = Colors.White.WithAlpha(0.18f),
-                    TextColor = Colors.White,
-                    VerticalOptions = LayoutOptions.Center
-                };
-                _btnThirdArrowVisibility.Clicked += async (_, _) => await ToggleThirdArrowVisibilityAsync();
-                leftControls.Add(_btnThirdArrowVisibility);
-            }
-
-            View timerControls = CanShowAnswerTimeTuner()
-                ? BuildInlineAnswerTimeControls()
-                : new Label
-                {
-                    Text = string.Empty,
-                    WidthRequest = 1
-                };
-
-            leftControls.Add(timerControls);
-
-            HorizontalStackLayout statusStrip = new()
-            {
-                Spacing = 8,
-                HorizontalOptions = LayoutOptions.End,
-                VerticalOptions = LayoutOptions.Center,
-                Children = { _statusLight1, _lblStatement, _statusLight2 }
-            };
-
-            Grid singleRow = new()
-            {
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Auto },
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Auto }
-                },
-                ColumnSpacing = 8
-            };
-            singleRow.Add(leftControls, 0, 0);
-            singleRow.Add(new BoxView { Opacity = 0 }, 1, 0);
-            singleRow.Add(statusActionHost, 2, 0);
-            singleRow.Add(new BoxView { Opacity = 0 }, 3, 0);
-            singleRow.Add(statusStrip, 4, 0);
-
             _keyboardControlBar = new Border
             {
-                Padding = new Thickness(10, 8),
-                Margin = new Thickness(8, 6, 8, 4),
+                Padding = 0,
+                Margin = new Thickness(0, 0, 0, 0),
                 StrokeThickness = 0,
-                BackgroundColor = Colors.Black.WithAlpha(0.52f),
-                HorizontalOptions = LayoutOptions.Fill,
+                Stroke = Colors.Transparent,
+                BackgroundColor = Colors.Transparent,
+                HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 ZIndex = 10,
-                StrokeShape = new RoundRectangle { CornerRadius = 18 },
-                Content = singleRow
+                Content = statusActionHost
             };
 
             RefreshKeyboardControlBar();
@@ -915,34 +933,16 @@ namespace GestureSample.Views.Tests
 
         private void RefreshKeyboardControlBar()
         {
-            if (_lblKeyboardType != null)
-                _lblKeyboardType.Text = GetKeyboardTypeText();
-
-            if (_btnThirdArrowVisibility != null && _gamePlay is BitArrayGamePlay arrowGamePlay)
-            {
-                bool isHidden = arrowGamePlay.IsThirdArrowCurrentlyHidden();
-                _btnThirdArrowVisibility.Text = isHidden ? "arr[2]: hidden" : "arr[2]: shown";
-            }
-
-            if (_lblStatement != null)
-            {
-                _lblStatement.WidthRequest = -1;
-                _lblStatement.HorizontalOptions = LayoutOptions.Start;
-                _lblStatement.LineBreakMode = LineBreakMode.TailTruncation;
-                _lblStatement.MaxLines = 1;
-                _lblStatement.HorizontalTextAlignment = TextAlignment.Start;
-                _lblStatement.VerticalTextAlignment = TextAlignment.Center;
-                _lblStatement.FontSize = 13;
-            }
-
             if (_pianoPressProgress != null)
-                _pianoPressProgress.HeightRequest = 24;
+                _pianoPressProgress.HeightRequest = 55;
 
-            if (_btnThirdArrowVisibility != null)
-                _btnThirdArrowVisibility.IsEnabled = _isPageInteractionEnabled;
+            if (_customProgressHost != null)
+                _customProgressHost.HeightRequest = 55;
+
+            if (_customProgressFill != null)
+                _customProgressFill.HeightRequest = 55;
 
             RefreshStatusActionSlot();
-
             RefreshAnswerTimeTuner();
         }
 
@@ -1575,6 +1575,42 @@ namespace GestureSample.Views.Tests
                    _config.ShowPrev &&
                    !ShouldPlaceNumericKeypadBesideEntriesForHelp() &&
                    IsLargeEnoughForExpandedNumericLayout();
+        }
+
+        private double GetQuestionLayoutWidth()
+        {
+            if (!UsesCustomNumericKeypad)
+                return TASK_WIDTH;
+
+            DisplayInfo info = DeviceDisplay.Current.MainDisplayInfo;
+            double width = info.Density > 0 ? info.Width / info.Density : info.Width;
+            double height = info.Density > 0 ? info.Height / info.Density : info.Height;
+            double shortSide = Math.Min(width, height);
+            double availableWidth = shortSide > 0 ? shortSide - 44 : TASK_WIDTH;
+
+            if (ShouldPlaceNumericKeypadBesideEntriesForHelp())
+                return Math.Max(150, Math.Min(availableWidth * 0.42, 210));
+
+            return Math.Max(220, Math.Min(availableWidth * 0.78, 320));
+        }
+
+        private double GetQuestionActionWidth()
+        {
+            return UsesCustomNumericKeypad ? 28 : 20;
+        }
+
+        private double GetQuestionHalfWidth(bool reserveActionLabel)
+        {
+            double halfWidth = GetQuestionLayoutWidth() / 2;
+            if (reserveActionLabel)
+                halfWidth -= GetQuestionActionWidth() / 2;
+
+            return Math.Max(72, halfWidth);
+        }
+
+        private double GetQuestionQuarterWidth()
+        {
+            return Math.Max(54, GetQuestionLayoutWidth() / 4);
         }
 
         private void ConfigureNumericEntry(Entry entry)
@@ -2270,6 +2306,19 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private async Task HandleImpossibleWeightedAnswerAsync()
+        {
+            if (_btnNext != null)
+                _btnNext.IsEnabled = false;
+
+            if (!_gamePlay.SupportsImpossibleWeightedAnswer)
+                return;
+
+            SetInlineKeyboardCheckVisible(false);
+            ExerciseCheckResult checkResult = await _gamePlay.EvaluateImpossibleWeightedAnswerAsync();
+            await HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
+        }
+
         private async Task HandleCheckResultAsync(ExerciseCheckResult checkResult, bool isKeyboardSubmission, Action? onCorrect = null)
         {
             bool willAdvanceToNextExercise = checkResult.Completion == null && checkResult.IsCorrect && !_gamePlay.GameOver;
@@ -2433,24 +2482,15 @@ namespace GestureSample.Views.Tests
             SetPlayUiState(PlayUiState.Disabled);
 
             Page dataPage = ShowDataRoutingHelper.CreateChooserPage(completion.GameId);
-            await MainThread.InvokeOnMainThreadAsync(async () =>
+            await MainThread.InvokeOnMainThreadAsync(() =>
             {
-                Debug.WriteLine($"[GameCompletion] Navigating to Show Data for game {completion.GameId}");
-
-                if (Navigation?.NavigationStack?.Count > 0)
-                {
-                    Navigation.InsertPageBefore(dataPage, this);
-                    await Navigation.PopAsync(false);
-                }
-                else
-                {
-                    Application.Current.MainPage = new NavigationPage(dataPage);
-                }
+                Debug.WriteLine($"[GameCompletion] Navigating to Games chooser for completed game {completion.GameId}");
+                Application.Current.MainPage = new NavigationPage(dataPage);
             });
 
             _ = MainThread.InvokeOnMainThreadAsync(async () =>
             {
-                await Task.Delay(50);
+                await Task.Delay(100);
 
                 try
                 {
@@ -2700,12 +2740,65 @@ namespace GestureSample.Views.Tests
 
         private int GetEffectiveAnswerTimeMagnitude(PianoKeyboardSync syncKeyboard)
         {
-            int currentMagnitude = Math.Abs(syncKeyboard.AnswerTimeSetting);
+            int currentMagnitude = Math.Min(AnswerTimeStateMaxSeconds, Math.Abs(syncKeyboard.AnswerTimeSetting));
             if (currentMagnitude > 0)
                 return currentMagnitude;
 
-            int fallbackMagnitude = Math.Abs(_lastNonZeroAnswerTimeSetting);
+            int fallbackMagnitude = Math.Min(AnswerTimeStateMaxSeconds, Math.Abs(_lastNonZeroAnswerTimeSetting));
             return fallbackMagnitude > 0 ? fallbackMagnitude : 3;
+        }
+
+        private string GetAnswerTimePanelIcon()
+        {
+            if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                return "⏱";
+
+            if (syncKeyboard.AnswerTimeSetting == 0)
+                return "⏱";
+
+            int seconds = GetEffectiveAnswerTimeMagnitude(syncKeyboard);
+            return UsesWholeAnswerTimer(syncKeyboard)
+                ? $"Σ{seconds}"
+                : $"↺{seconds}";
+        }
+
+        private void RefreshAnswerTimePanelIcon()
+        {
+            if (_btnAnswerTimePanel == null)
+                return;
+
+            string icon = GetAnswerTimePanelIcon();
+            _btnAnswerTimePanel.Text = icon;
+            _btnAnswerTimePanel.FontSize = icon.Length > 1 ? 11 : 14;
+            _btnAnswerTimePanel.BackgroundColor = Colors.Black.WithAlpha(0.25f);
+            _btnAnswerTimePanel.Opacity = 1;
+        }
+
+        private void ApplyTransparentProgressBarTrack()
+        {
+            if (_pianoPressProgress?.Handler?.PlatformView == null)
+                return;
+
+#if IOS || MACCATALYST
+            if (_pianoPressProgress.Handler.PlatformView is UIProgressView iosProgress)
+            {
+                iosProgress.TrackTintColor = UIColor.Clear;
+                iosProgress.BackgroundColor = UIColor.Clear;
+            }
+#endif
+#if ANDROID
+            if (_pianoPressProgress.Handler.PlatformView is Android.Widget.ProgressBar androidProgress)
+            {
+                androidProgress.ProgressBackgroundTintList = ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+                androidProgress.SetBackgroundColor(Android.Graphics.Color.Transparent);
+            }
+#endif
+#if WINDOWS
+            if (_pianoPressProgress.Handler.PlatformView is Microsoft.UI.Xaml.Controls.ProgressBar windowsProgress)
+            {
+                windowsProgress.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            }
+#endif
         }
 
         private bool UsesWholeAnswerTimer(PianoKeyboardSync syncKeyboard)
@@ -2721,8 +2814,12 @@ namespace GestureSample.Views.Tests
 
         private void RefreshAnswerTimeTuner()
         {
-            if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard ||
-                _answerTimeEnabledSwitch == null ||
+            if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+                return;
+
+            RefreshAnswerTimePanelIcon();
+
+            if (_answerTimeEnabledSwitch == null ||
                 _answerTimeValueLabel == null ||
                 _answerTimeModeLabel == null ||
                 _answerTimeMinusButton == null ||
@@ -2743,11 +2840,10 @@ namespace GestureSample.Views.Tests
                 ? "Counts across whole answer"
                 : "Resets after each key press";
             _answerTimeModeButton.Text = isWholeTimer ? "Whole Answer" : "After Last Key";
-            bool controlsEnabled = _isPageInteractionEnabled;
-            _answerTimeEnabledSwitch.IsEnabled = controlsEnabled;
-            _answerTimeMinusButton.IsEnabled = controlsEnabled && seconds > 1;
-            _answerTimePlusButton.IsEnabled = controlsEnabled && seconds < 9;
-            _answerTimeModeButton.IsEnabled = controlsEnabled;
+            _answerTimeEnabledSwitch.IsEnabled = true;
+            _answerTimeMinusButton.IsEnabled = seconds > 1;
+            _answerTimePlusButton.IsEnabled = seconds < AnswerTimeStateMaxSeconds;
+            _answerTimeModeButton.IsEnabled = true;
             if (_answerTimeTunerCard != null)
                 _answerTimeTunerCard.IsVisible = _isAnswerTimeTunerVisible;
         }
@@ -2814,8 +2910,10 @@ namespace GestureSample.Views.Tests
             if (_answerTimeDismissShield != null)
                 _answerTimeDismissShield.IsVisible = isVisible;
 
-            if (_btnAnswerTimePanel != null)
-                _btnAnswerTimePanel.Text = isVisible ? "T" : "⏱";
+            if (isVisible)
+                PositionAnswerTimeTunerCard();
+
+            RefreshAnswerTimePanelIcon();
         }
 
         private void ToggleAnswerTimeTunerVisibility()
@@ -2829,6 +2927,63 @@ namespace GestureSample.Views.Tests
                 return;
 
             SetAnswerTimeTunerVisibility(false);
+        }
+
+        private void PositionAnswerTimeTunerCard(int remainingAttempts = 4)
+        {
+            if (!_isAnswerTimeTunerVisible ||
+                _answerTimeTunerCard is not VisualElement tunerCard ||
+                _btnAnswerTimePanel == null ||
+                _rootGrid == null)
+            {
+                return;
+            }
+
+            void ApplyPosition()
+            {
+                if (!_isAnswerTimeTunerVisible ||
+                    _answerTimeTunerCard is not VisualElement visibleCard ||
+                    _btnAnswerTimePanel == null ||
+                    _rootGrid == null)
+                {
+                    return;
+                }
+
+                double cardWidth = visibleCard.Width > 0 ? visibleCard.Width : visibleCard.WidthRequest;
+                double cardHeight = visibleCard.Height > 0 ? visibleCard.Height : visibleCard.HeightRequest;
+                double buttonWidth = _btnAnswerTimePanel.Width > 0 ? _btnAnswerTimePanel.Width : _btnAnswerTimePanel.WidthRequest;
+                double buttonHeight = _btnAnswerTimePanel.Height > 0 ? _btnAnswerTimePanel.Height : _btnAnswerTimePanel.HeightRequest;
+
+                if ((cardWidth <= 0 || cardHeight <= 0 || buttonWidth <= 0 || buttonHeight <= 0 || _rootGrid.Width <= 0 || _rootGrid.Height <= 0) &&
+                    remainingAttempts > 0)
+                {
+                    _rootGrid.Dispatcher?.Dispatch(() => PositionAnswerTimeTunerCard(remainingAttempts - 1));
+                    return;
+                }
+
+                visibleCard.TranslationX = 0;
+                visibleCard.TranslationY = 0;
+
+                PointF buttonPoint = GetPointRelativeToRoot(_btnAnswerTimePanel);
+                PointF cardBasePoint = GetPointRelativeToRoot(visibleCard);
+
+                double targetX = buttonPoint.X + (buttonWidth / 2d) - (cardWidth / 2d);
+                double targetY = buttonPoint.Y + buttonHeight + 8;
+
+                targetX = Math.Clamp(targetX, 8, Math.Max(8, _rootGrid.Width - cardWidth - 8));
+                targetY = Math.Clamp(targetY, 8, Math.Max(8, _rootGrid.Height - cardHeight - 8));
+
+                visibleCard.TranslationX = targetX - cardBasePoint.X;
+                visibleCard.TranslationY = targetY - cardBasePoint.Y;
+            }
+
+            if (_rootGrid.Dispatcher?.IsDispatchRequired == true)
+            {
+                _rootGrid.Dispatcher.Dispatch(ApplyPosition);
+                return;
+            }
+
+            ApplyPosition();
         }
 
         private View BuildAnswerTimeTuner()
@@ -2895,7 +3050,7 @@ namespace GestureSample.Views.Tests
                 if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
                     return;
 
-                int seconds = Math.Min(9, GetEffectiveAnswerTimeMagnitude(syncKeyboard) + 1);
+                int seconds = Math.Min(AnswerTimeStateMaxSeconds, GetEffectiveAnswerTimeMagnitude(syncKeyboard) + 1);
                 int sign = UsesWholeAnswerTimer(syncKeyboard) ? -1 : 1;
                 await ApplyAnswerTimeSettingAsync(seconds * sign, "AnswerTimePlus");
             };
@@ -3007,10 +3162,11 @@ namespace GestureSample.Views.Tests
         private void InitializeUI()
         {
             bool isPianoHigh = _isKeyboard && _config.KeyboardConfig.SyncType != SyncType.None && (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
-            int pianoHeight = _isKeyboard ? (isPianoHigh ? 100 : 60) : 1;
-            if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 200;
+            int pianoHeight = _isKeyboard ? (isPianoHigh ? 120 : 80) : 1;
+            if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 220;
             Grid grid = new()
             {
+                BackgroundColor = Colors.AntiqueWhite,
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
@@ -3024,18 +3180,31 @@ namespace GestureSample.Views.Tests
             };
             _rootGrid = grid;
 
-            grid.Add(new BoxView
+            BoxView pageBackground = new()
             {
                 Color = Colors.AntiqueWhite
-            });
+            };
+            grid.Add(pageBackground);
+            Grid.SetRowSpan(pageBackground, grid.RowDefinitions.Count);
 
 
+
+            double statementFontSize = _isKeyboard
+                ? ((_config.UIQuestionType == UIQuestionType.LogicalKeyboards) ? 40 : 55)
+                : 24;
+            double statementMinHeight = _isKeyboard ? 60 : 120;
 
             _lblStatement = new Label
             {
-                HorizontalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Start,
-                FontSize = _isKeyboard ? ((_config.UIQuestionType == UIQuestionType.LogicalKeyboards) ? 40 : 55) : FONT_SIZE_DEFAULT,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                FontSize = statementFontSize,
+                MinimumHeightRequest = statementMinHeight,
+                HeightRequest = statementMinHeight,
+                MaxLines = 4,
+                LineBreakMode = LineBreakMode.WordWrap,
                 TextColor = Colors.Black,
                 Text = Statement.Neutral
             };
@@ -3044,11 +3213,21 @@ namespace GestureSample.Views.Tests
             {
                 Progress = 0,
                 Opacity = 1,
+                BackgroundColor = Colors.Transparent,
                 HeightRequest = 55,
                 WidthRequest = 220,
                 IsVisible = false,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center
+            };
+            _pianoPressProgress.HandlerChanged += (_, _) => ApplyTransparentProgressBarTrack();
+            _pianoPressProgress.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == ProgressBar.ProgressProperty.PropertyName ||
+                    e.PropertyName == VisualElement.IsVisibleProperty.PropertyName)
+                {
+                    RefreshCustomProgressVisual();
+                }
             };
 
            /* HorizontalStackLayout statusRow = new()
@@ -3096,6 +3275,9 @@ namespace GestureSample.Views.Tests
                 else
                 {
                     txt = new Entry[6];
+                    double questionWidth = GetQuestionLayoutWidth();
+                    double quarterWidth = GetQuestionQuarterWidth();
+                    double halfWidth = GetQuestionHalfWidth(false);
                     for (int i = 0; i < txt.Length; i++)
                     {
                         txt[i] = new Entry
@@ -3104,7 +3286,7 @@ namespace GestureSample.Views.Tests
                             HorizontalTextAlignment = TextAlignment.Center,
                             BackgroundColor = Colors.White,
                             TextColor = Colors.Black,
-                            WidthRequest = TASK_WIDTH / 4,
+                            WidthRequest = quarterWidth,
                             FontSize = FONT_SIZE_DEFAULT,
                             IsVisible = !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp
                         };
@@ -3115,7 +3297,7 @@ namespace GestureSample.Views.Tests
                     {
                         Text = "",
                         FontSize = FONT_SIZE_DEFAULT,
-                        WidthRequest = TASK_WIDTH / 2,
+                        WidthRequest = halfWidth,
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
                     };
@@ -3123,7 +3305,7 @@ namespace GestureSample.Views.Tests
                     {
                         Text = "",
                         FontSize = FONT_SIZE_DEFAULT,
-                        WidthRequest = TASK_WIDTH / 4,
+                        WidthRequest = quarterWidth,
                         HorizontalTextAlignment = TextAlignment.Center,
                         VerticalTextAlignment = TextAlignment.Center
                     };
@@ -3131,26 +3313,26 @@ namespace GestureSample.Views.Tests
                     {
                         txt[0].IsEnabled = false;
                         txt[1].IsEnabled = false;
-                        txt[0].WidthRequest = 3 * TASK_WIDTH / 4;
-                        txt[1].WidthRequest = TASK_WIDTH / 4;
-                        txt[2].WidthRequest = TASK_WIDTH / 2;
-                        txt[3].WidthRequest = TASK_WIDTH / 4;
-                        txt[4].WidthRequest = TASK_WIDTH / 4;
+                        txt[0].WidthRequest = 3 * questionWidth / 4;
+                        txt[1].WidthRequest = quarterWidth;
+                        txt[2].WidthRequest = halfWidth;
+                        txt[3].WidthRequest = quarterWidth;
+                        txt[4].WidthRequest = quarterWidth;
                     }
                     if(_config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
                     {
                         //_txtSum.IsVisible = false;
                         txt[0].IsEnabled = false;
                         txt[1].IsEnabled = false;
-                        txt[0].WidthRequest = TASK_WIDTH / 2;
-                        txt[1].WidthRequest = TASK_WIDTH / 2;
+                        txt[0].WidthRequest = halfWidth;
+                        txt[1].WidthRequest = halfWidth;
                     }
                     if (_config.UIQuestionType == UIQuestionType.ThreeAddends)
                     {
                         txt[0].IsEnabled = false;
-                        txt[0].WidthRequest = TASK_WIDTH / 3;
-                    _txtAddend1.WidthRequest = TASK_WIDTH / 3;
-                        _txtAddend2.WidthRequest = TASK_WIDTH / 3;
+                        txt[0].WidthRequest = questionWidth / 3;
+                        _txtAddend1.WidthRequest = questionWidth / 3;
+                        _txtAddend2.WidthRequest = questionWidth / 3;
                     }
 
                     if (_config.HelpEntries || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends)
@@ -3299,6 +3481,31 @@ namespace GestureSample.Views.Tests
                 grid.Add(keyboardControlBar);
                 Grid.SetRow(keyboardControlBar, 1);
 
+                if (CanShowAnswerTimeTuner())
+                {
+                    _answerTimeDismissShield = new BoxView
+                    {
+                        BackgroundColor = Colors.Transparent,
+                        IsVisible = false,
+                        InputTransparent = false,
+                        ZIndex = 997
+                    };
+                    _answerTimeDismissShield.GestureRecognizers.Add(new TapGestureRecognizer
+                    {
+                        Command = new Command(HideAnswerTimeTuner)
+                    });
+
+                    View answerTimeTuner = BuildAnswerTimeTuner();
+
+                    grid.Add(_answerTimeDismissShield);
+                    Grid.SetRow(_answerTimeDismissShield, 1);
+                    Grid.SetRowSpan(_answerTimeDismissShield, 2);
+
+                    grid.Add(answerTimeTuner);
+                    Grid.SetRow(answerTimeTuner, 1);
+                    Grid.SetRowSpan(answerTimeTuner, 2);
+                }
+
                 // Help button (top-right over the keyboard)
                 _btnHelp = new Button
                 {
@@ -3364,6 +3571,30 @@ namespace GestureSample.Views.Tests
                     leftOverlayButtons.Add(pk.BtnInit);
                 }
 
+                if (CanShowAnswerTimeTuner())
+                {
+                    _btnAnswerTimePanel = new Button
+                    {
+                        Text = GetAnswerTimePanelIcon(),
+                        FontSize = 14,
+                        WidthRequest = 40,
+                        HeightRequest = 34,
+                        Padding = 0,
+                        CornerRadius = 17,
+                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.Start,
+                        VerticalOptions = LayoutOptions.Center,
+                        Margin = Thickness.Zero
+                    };
+                    _btnAnswerTimePanel.Clicked += (_, _) =>
+                    {
+                        ToggleAnswerTimeTunerVisibility();
+                    };
+                    leftOverlayButtons.Add(_btnAnswerTimePanel);
+                    RefreshAnswerTimePanelIcon();
+                }
+
                 overlayButtons.Add(leftOverlayButtons, 0, 0);
 
                 HorizontalStackLayout rightOverlayButtons = new()
@@ -3393,6 +3624,26 @@ namespace GestureSample.Views.Tests
                     rightOverlayButtons.Add(_btnKeyboardSubmit);
                 }
 
+                if (ShouldShowImpossibleWeightedAnswerButton())
+                {
+                    _btnImpossibleWeightedAnswer = new Button
+                    {
+                        Text = "XXX",
+                        FontSize = 13,
+                        WidthRequest = 48,
+                        HeightRequest = 34,
+                        Padding = 0,
+                        CornerRadius = 17,
+                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.End,
+                        VerticalOptions = LayoutOptions.Center,
+                        Margin = Thickness.Zero
+                    };
+                    _btnImpossibleWeightedAnswer.Clicked += async (_, _) => await HandleImpossibleWeightedAnswerAsync();
+                    rightOverlayButtons.Add(_btnImpossibleWeightedAnswer);
+                }
+
                 if (_config.KeyboardConfig.IsHelpNeeded)
                     rightOverlayButtons.Add(_btnHelp);
 
@@ -3412,15 +3663,16 @@ namespace GestureSample.Views.Tests
 
         private HorizontalStackLayout InitEquationUI()
         {
-            _txtAddend1.WidthRequest = TASK_WIDTH / 2;
-            _txtAddend2.WidthRequest = TASK_WIDTH / 2;
-            _txtSum.WidthRequest = TASK_WIDTH / 2;
+            double equationHalfWidth = GetQuestionHalfWidth(false);
+            _txtAddend1.WidthRequest = equationHalfWidth;
+            _txtAddend2.WidthRequest = equationHalfWidth;
+            _txtSum.WidthRequest = equationHalfWidth;
             _txtSum.BackgroundColor = Colors.White;
             _txtSum.FontSize = FONT_SIZE_DEFAULT;
             _lblEquationEquals = new Label
             {
                 FontSize = FONT_SIZE_DEFAULT,
-                WidthRequest = 20,
+                WidthRequest = GetQuestionActionWidth(),
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 Text = "="
@@ -3654,6 +3906,8 @@ namespace GestureSample.Views.Tests
         private void InitTextsUI()
         {
             bool isLblAction = _config.EnforceOperationLabel || _config.OperationList.Count > 1;
+            double questionWidth = GetQuestionLayoutWidth();
+            double halfWidth = GetQuestionHalfWidth(isLblAction);
 
             _txtSum = new Entry
             {
@@ -3662,7 +3916,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = TASK_WIDTH,
+                WidthRequest = questionWidth,
                 FontSize = 32,
                 IsVisible = _config.UIQuestionType != UIQuestionType.OnlyKeyboard && _config.UIQuestionType != UIQuestionType.TwoLinesTwoAddends
 
@@ -3676,7 +3930,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
+                WidthRequest = halfWidth,
                 FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends || _config.UIQuestionType == UIQuestionType.ThreeAddends
             };
@@ -3686,13 +3940,13 @@ namespace GestureSample.Views.Tests
                 TextColor = Colors.Black,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
-                WidthRequest = 20,
+                WidthRequest = GetQuestionActionWidth(),
                 IsVisible = isLblAction
             };
             _hr = new BoxView
             {
                 HeightRequest = 2,
-                WidthRequest = TASK_WIDTH,
+                WidthRequest = questionWidth,
                 BackgroundColor = Colors.Black,
                 HorizontalOptions = LayoutOptions.Center,
                 IsVisible = false
@@ -3706,7 +3960,7 @@ namespace GestureSample.Views.Tests
                 HorizontalTextAlignment = TextAlignment.Center,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black,
-                WidthRequest = TASK_WIDTH / 2 - ((isLblAction) ? 10 : 0),
+                WidthRequest = halfWidth,
                 FontSize = FONT_SIZE_DEFAULT,
                 IsVisible = _config.UIQuestionType == UIQuestionType.SimpleEquation || _config.UIQuestionType == UIQuestionType.ThreeTexts || _config.UIQuestionType == UIQuestionType.DecompositionGame || _config.UIQuestionType == UIQuestionType.TwoLinesTwoAddends || _config.UIQuestionType == UIQuestionType.ThreeAddends
             };

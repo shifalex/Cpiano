@@ -45,6 +45,7 @@ namespace GestureSample.Maui.Data.SQLite
             await CreateTableAsync<CustomStageDefinition>().ConfigureAwait(false);
             await CreateTableAsync<CustomStageFlowDefinition>().ConfigureAwait(false);
             await CreateTableAsync<User>().ConfigureAwait(false);
+            await EnsureColumnAsync("Game", "WasSynced", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("QuestionAnswer", "SecondarySum", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
             await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
             await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
@@ -121,19 +122,12 @@ namespace GestureSample.Maui.Data.SQLite
                 //bool columnExists = columns.Any(c => c.Name.Equals("WasSynced", StringComparison.InvariantCultureIgnoreCase));
                 Console.WriteLine("Column 'WasSynced' adding... 3");
 
-                if (true/*!columnExists*/)
-                {
-                    // Add the column since it doesn't exist.
-                    await connection.ExecuteAsync("ALTER TABLE Game ADD COLUMN WasSynced BOOLEAN NOT NULL DEFAULT 0;");
-                    Console.WriteLine("Column 'WasSynced' added successfully.");
+                // Add the column since it doesn't exist.
+                await connection.ExecuteAsync("ALTER TABLE Game ADD COLUMN WasSynced BOOLEAN NOT NULL DEFAULT 0;");
+                Console.WriteLine("Column 'WasSynced' added successfully.");
                 // Update all rows so that WasSynced is false (0)
                 await connection.ExecuteAsync("UPDATE Game SET WasSynced = 0;");
                 Console.WriteLine("Updated all 'Game' records: WasSynced set to false (0).");
-                }
-                else
-                {
-                    Console.WriteLine("Column 'WasSynced' already exists.");
-                }
 
             }
             catch (Exception ex)

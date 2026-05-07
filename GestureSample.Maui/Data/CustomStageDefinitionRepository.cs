@@ -16,16 +16,16 @@ namespace GestureSample.Maui.Data
                 .ToListAsync();
         }
 
-        public Task<List<CustomStageDefinition>> GetByKindAsync(Guid? userId, CustomStageKind kind)
+        public async Task<List<CustomStageDefinition>> GetByKindAsync(Guid? userId, CustomStageKind kind)
         {
             if (userId == null)
-                return Task.FromResult(new List<CustomStageDefinition>());
+                return new List<CustomStageDefinition>();
 
-            string kindName = kind.ToString();
-            return _database.Table<CustomStageDefinition>()
-                .Where(item => item.UserId == userId.Value && item.StageKindName == kindName)
+            List<CustomStageDefinition> stages = await GetByUserAsync(userId);
+            return stages
+                .Where(item => item.StageKind == kind)
                 .OrderBy(item => item.Name)
-                .ToListAsync();
+                .ToList();
         }
 
         public async Task SaveOrUpdateAsync(CustomStageDefinition stage)

@@ -23,6 +23,24 @@ namespace GestureSample.Maui.Data
 
         }
 
+        public async Task<List<KeyEvent>> GetByGameIdsAsync(IEnumerable<Guid> gameIds)
+        {
+            string[] gameIdTexts = gameIds?
+                .Select(gameId => gameId.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray() ?? Array.Empty<string>();
+
+            if (gameIdTexts.Length == 0)
+                return new List<KeyEvent>();
+
+            string placeholders = string.Join(", ", gameIdTexts.Select(_ => "?"));
+            string sql = $"SELECT * FROM KeyEvent WHERE GameId IN ({placeholders})";
+            return (await _database.QueryAsync<KeyEvent>(sql, gameIdTexts.Cast<object>().ToArray()))
+                .OrderBy(keyEvent => keyEvent.EventTime)
+                .ThenBy(keyEvent => keyEvent.id)
+                .ToList();
+        }
+
         public async Task AssignPendingEventsToAttemptAsync(string gameId, int questionNumber, int attemptNumber)
         {
             List<KeyEvent> pendingEvents = await _database.Table<KeyEvent>()

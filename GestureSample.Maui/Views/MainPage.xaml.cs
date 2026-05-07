@@ -29,6 +29,7 @@ namespace GestureSample.Views
             new PageConfig(null, "Custom stages", null),
 
             new PageConfig("Custom stages", "PPW Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.PPWScheme)),
+            new PageConfig("Custom stages", "Weighted Keyboard Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.WeightedKeyboard)),
             new PageConfig("Custom stages", "Arrow Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Arrow)),
             new PageConfig("Custom stages", "Logical Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Logical)),
             new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
@@ -210,14 +211,6 @@ namespace GestureSample.Views
             KeyboardOnlyForHelp = true,
             IsMulticolor = true
         }
-    })),
-    new PageConfig("new Number", "Benchmarks", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Benchmarks",
-        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
-        OnlyCloseTriad=true,
-        DefaultTriad= new PPWObject(30, 30, 60),
-        ShowPrev=true
     })),
      new PageConfig("new Number", "From PPW to keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -1005,7 +998,6 @@ namespace GestureSample.Views
 
             new PageConfig("Data", "Show Data",  () => new ShowDataChooserPage { BindingContext = new ViewModels.MarksViewModel() }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
-            new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataChooserPage { BindingContext = new ViewModels.MarksViewModel() }, true),
             new PageConfig("Data", "Show Personal Record",  () => new RecordsUser { BindingContext = new ViewModels.MarksViewModel() }),
 
             // Views
@@ -1110,9 +1102,24 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            TextBoxesQuantity = 1,
             SecondsPressingToAnswer=-2,
             WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
+            ShowNumbersOnKeys = true,
+            AllowSumHeaderVisibilityToggle = true
+        }
+    })),
+
+    new PageConfig("Weighted Keyboard", "Weighted Till 150", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =150, MaxAddend=140,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            SecondsPressingToAnswer=-2,
+            WeightsArray = new[] { 1,2,2,5,20,20,50,50 },
             ShowNumbersOnKeys = true,
             AllowSumHeaderVisibilityToggle = true
         }
@@ -1121,13 +1128,13 @@ namespace GestureSample.Views
     {
         GameName = "Weighted one number binary bit array",
         UIQuestionType = UIQuestionType.OneText,
-        MaxSum =32, MaxAddend=16,
+        MaxSum =35, MaxAddend=32,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
 
             TextBoxesQuantity = 1,
-            WeightsArray = new[] { 16,8,4,2,1, 1, 2, 4,8,16 },
+            WeightsArray = new[] { 1, 2, 4,8,16, 32 },
             SecondsPressingToAnswer=-1,
             ShowNumbersOnKeys = true
         }
@@ -1141,7 +1148,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
+            WeightsArray = new[] { 1, 2, 4,8,16,32,64,128,256,512 },
             SecondsPressingToAnswer=-2,
             ShowNumbersOnKeys = true
         }
@@ -1777,31 +1784,7 @@ namespace GestureSample.Views
         RepeatingTimesOfTriad = 2,
         NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
-    })),
-    new PageConfig("+ -", "PPW -> + -> - same triad", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "PPW -> + -> - same triad",
-        UIQuestionType = UIQuestionType.ThreeTexts,
-        OperationList = new() { Operation.Sum, Operation.Minus },
-        MinAddend = 1,
-        MaxAddend = 9,
-        MinSum = 2,
-        MaxSum = 10,
-        VariableTypes = VariableTypes.OneCanBeSum,
-        EnforceOperationLabel = true,
-        NumberOfTasksToWin = 30,
-        NumberOfMistakesToLose = 5,
-        Plan = new ExercisePlan
-        {
-            Steps = new()
-            {
-                new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
-                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
-                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Minus, OpMode = PlanOpMode.Fixed }
-            },
-            Loop = true
-        }
-    })),
+    })),    
     new PageConfig("+ -", "Level 1   - Sum<10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 1",
@@ -1892,6 +1875,32 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
+
+    new PageConfig("+ -", "Level 2.5 - Equation rules", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 2.5",
+        UIQuestionType = UIQuestionType.SimpleEquation,
+        OperationList = new() { Operation.Sum, Operation.Minus },
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        EnforceOperationLabel = true,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        Plan = new ExercisePlan
+        {
+            Steps = new()
+            {
+                new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Minus, OpMode = PlanOpMode.Fixed }
+            },
+            Loop = true
+        }
+    })),
+
     new PageConfig("+ -", "Level 2.5 - till 20 - three addends", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 2.5",
@@ -1937,7 +1946,16 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
-    new PageConfig("+ -", "Level 3.2 - Sum<100, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
+
+    new PageConfig("new Number", "Level 3.2 - Benchmarks", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 3.2",
+        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
+        OnlyCloseTriad=true,
+        DefaultTriad= new PPWObject(30, 30, 60),
+        ShowPrev=true
+    })),
+    new PageConfig("+ -", "Level 3.3 - Sum<100, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.2",
         MaxAddend=100, 

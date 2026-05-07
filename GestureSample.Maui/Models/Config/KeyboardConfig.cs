@@ -290,6 +290,27 @@
 
     public class KeyboardConfig
     {
+        public void NormalizeWeightedLayout()
+        {
+            if (WeightsArray == null || WeightsArray.Length == 0)
+                return;
+
+            Rows = Rows <= 0 ? 1 : Rows;
+            KeysInRow = KeysInRow <= 0 ? 1 : KeysInRow;
+
+            int configuredKeyCount = Rows * KeysInRow;
+            if (configuredKeyCount == WeightsArray.Length)
+                return;
+
+            if (Rows == 1 || WeightsArray.Length % Rows != 0)
+            {
+                Rows = 1;
+                KeysInRow = WeightsArray.Length;
+                return;
+            }
+
+            KeysInRow = Math.Max(1, WeightsArray.Length / Rows);
+        }
 
 
         public SyncType SyncType { get; set; } = 0;
@@ -391,6 +412,8 @@
         public int[] WeightsArray = null;
         public List<List<int>> DependancyArray = null;
         public bool UseDynamicMultiplicationWeights { get; set; } = false;
+        public bool UseWeightedCustomStageTargets { get; set; } = false;
+        public bool AllowImpossibleWeightedAnswer { get; set; } = false;
         public int MaskThirdArrowAfterCycleCount { get; set; } = 0;
         public bool UseFullHandTutorial { get; set; } = false;
         public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;
