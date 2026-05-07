@@ -93,13 +93,11 @@ namespace GestureSample.Maui.Data.SupaBase
 
         public static async Task<List<User>> GetUsersOfUser(SQLite.User user)
         {
+            if (user == null || !user.IsTeacher)
+                return new List<User>();
+
             try
             {
-
-
-                //if (!user.IsTeacher) return null;
-
-
                 var parameters = new Dictionary<string, object>
 {
     { "user_id", user.Id } // Replace userId with the actual UUID value
@@ -113,6 +111,12 @@ namespace GestureSample.Maui.Data.SupaBase
             }
             catch (Exception ex)
             {
+                if (ex.Message.Contains("User is not a teacher", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogInfo("GetUsersOfUser skipped classroom lookup because the user is not a teacher.");
+                    return new List<User>();
+                }
+
                 LogError("Error in GetUsersOfUser", ex);
                 throw;
             }

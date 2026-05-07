@@ -34,18 +34,22 @@ namespace GestureSample.Views
         private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
         private readonly bool _showSelectors;
+        private readonly bool _forTeacher;
+        private readonly User? _dataUser;
         private readonly ToolbarItem _dataToolbarItem;
         private readonly ToolbarItem _gamesToolbarItem;
         private readonly ToolbarItem _sortToolbarItem;
         private Guid? _currentSelectedGameId;
         private DateTime? _currentSelectedDate;
         private bool _sortNewestFirst = true;
-        public ShowDataXamlKeyboard(Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true)
+        public ShowDataXamlKeyboard(Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true, bool forTeacher = false, User? dataUser = null)
         {
             InitializeComponent();
             Title = "Keyboard Data";
             _showSelectors = showSelectors;
             _sortNewestFirst = sortNewestFirst;
+            _forTeacher = forTeacher;
+            _dataUser = dataUser;
             _currentSelectedGameId = gameId;
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
@@ -99,13 +103,17 @@ namespace GestureSample.Views
         public async void ShowData(Guid? gameId = null)
         {
                 gameId ??= _currentSelectedGameId;
-                GameIdentifiers = await _gameRepository.GetAllByUserAsync(ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id);
-                await _timerChangeEventRepository.EnsureInitialEventsAsync(GameIdentifiers);
+                Guid activeUserId = (_dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser).Id;
+                GameIdentifiers = await (_forTeacher
+                    ? Maui.Data.SupaBase.SupabaseService.GetAllByUserAsync(activeUserId)
+                    : _gameRepository.GetAllByUserAsync(activeUserId));
+                if (!_forTeacher)
+                    await _timerChangeEventRepository.EnsureInitialEventsAsync(GameIdentifiers);
                 if (GameIdentifiers == null || GameIdentifiers.Count == 0)
                 {
                     Console.WriteLine("no games played");
-                    // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
-                    await Navigation.PopAsync();
+                    ClearDisplayedData();
+                    return;
                 }
             
             if (gameId == null && GameIdentifiers.Count > 0)
@@ -191,9 +199,14 @@ namespace GestureSample.Views
 
             if (selectedIdentifier != null)
             {
-                questionList = await _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
-                gamePresses = await _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier);
-                timerEvents = await _timerChangeEventRepository.GetByGameAsync((Guid)selectedIdentifier);
+                questionList = await (_forTeacher
+                    ? Maui.Data.SupaBase.SupabaseService.GetKeyboardQuestionByQueryAsync(selectedIdentifier)
+                    : _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier));
+                gamePresses = await (_forTeacher
+                    ? Maui.Data.SupaBase.SupabaseService.GetKeyEventsByQueryAsync((Guid)selectedIdentifier)
+                    : _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier));
+                if (!_forTeacher)
+                    timerEvents = await _timerChangeEventRepository.GetByGameAsync((Guid)selectedIdentifier);
             }
             /*foreach (var state in gamePresses)
             {
@@ -582,7 +595,7 @@ namespace GestureSample.Views
                 return;
             }
 
-            ShowDataXaml dataPage = new(false, gameId, false);
+            ShowDataXaml dataPage = new(_forTeacher, gameId, _showSelectors, _sortNewestFirst, _forTeacher ? _dataUser : null);
             if (Navigation?.NavigationStack?.Count > 0)
             {
                 Navigation.InsertPageBefore(dataPage, this);
@@ -595,7 +608,7 @@ namespace GestureSample.Views
 
         private async Task NavigateToChooserAsync(Guid? gameId)
         {
-            Page chooserPage = ShowDataRoutingHelper.CreateChooserPage(gameId);
+            Page chooserPage = ShowDataRoutingHelper.CreateChooserPage(gameId, _forTeacher);
             if (Navigation?.NavigationStack?.Count > 0)
             {
                 Navigation.InsertPageBefore(chooserPage, this);
@@ -604,6 +617,19 @@ namespace GestureSample.Views
             }
 
             Application.Current.MainPage = new NavigationPage(chooserPage);
+        }
+
+        private void ClearDisplayedData()
+        {
+            CurrentGame = null;
+            _currentSelectedGameId = null;
+            _currentSelectedDate = null;
+            GameIdentifiers.Clear();
+            GameIdentifiersFiltered.Clear();
+            GameDates.Clear();
+            DatePicker.ItemsSource = null;
+            GamePicker.ItemsSource = null;
+            Questions.ItemsSource = null;
         }
 
         private static List<KeyEvent> ResolveAttemptEvents(

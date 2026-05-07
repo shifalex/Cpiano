@@ -9,7 +9,7 @@ namespace GestureSample.Views
         private sealed class ReplayFrame
         {
             public DateTime Timestamp { get; init; }
-            public bool[] State { get; init; } = Array.Empty<bool>();
+            public Color[] StateColors { get; init; } = Array.Empty<Color>();
             public List<KeyEvent> MarkerEvents { get; init; } = new();
             public string EventLabel { get; init; } = string.Empty;
             public string TimerRegimeText { get; init; } = "Unknown";
@@ -25,8 +25,12 @@ namespace GestureSample.Views
         private readonly Button _speedButton;
         private readonly Slider _timelineSlider;
         private readonly Label _timelineLabel;
-        private readonly bool[] _initialState;
+        private readonly Color[] _initialColors;
         private readonly bool _usesToggleReplayState;
+        private readonly bool _usesColorReplay;
+        private readonly bool _usesSecondColorReplay;
+        private readonly bool _usesRedRemovalReplay;
+        private readonly bool _usesThreeColorReplay;
         private readonly KeyboardQuestion? _question;
         private readonly bool[]? _finalReplayState;
         private readonly string _initialTimerRegimeText;
@@ -68,6 +72,12 @@ namespace GestureSample.Views
 
             KeyboardConfig replayConfig = question?.CreateKeyboardConfig() ?? keyboardConfig ?? new KeyboardConfig();
             _usesToggleReplayState = replayConfig.SyncType == SyncType.None;
+            _usesColorReplay = replayConfig.IsMulticolor || replayConfig.ColorInteractionMode != KeyboardColorInteractionMode.Default;
+            _usesSecondColorReplay = replayConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor;
+            _usesRedRemovalReplay = replayConfig.ColorInteractionMode == KeyboardColorInteractionMode.RemoveWithRed;
+            _usesThreeColorReplay = question?.Op == Operation.GroupByColor &&
+                                    ((question.QuestionKeyboardColors?.Any(color => ColorsMatch(color, Colors.Blue)) == true) ||
+                                     (question.SubmittedKeyboardColors?.Any(color => ColorsMatch(color, Colors.Blue)) == true));
 
             _replayKeyboard = new PianoKeyboardReadOnly(replayConfig)
             {
@@ -168,7 +178,7 @@ namespace GestureSample.Views
                 }
             };
 
-            _initialState = BuildInitialReplayState(_replayKeyboard.KeyCount, question);
+            _initialColors = BuildInitialReplayColors(_replayKeyboard.KeyCount, question);
         }
 
         protected override async void OnAppearing()
@@ -250,7 +260,7 @@ namespace GestureSample.Views
         private List<ReplayFrame> BuildReplayFrames()
         {
             List<ReplayFrame> frames = new();
-            bool[] state = _initialState.ToArray();
+            Color[] state = _initialColors.ToArray();
             Dictionary<int, Stack<KeyEvent>> activeMarkersByKey = new();
             string currentTimerText = _initialTimerRegimeText;
             string currentEventLabel = _events.Count == 0 ? "No saved strokes for this question." : "Ready to replay.";
@@ -286,7 +296,7 @@ namespace GestureSample.Views
 
                 if (clearOnNextAttemptInput && keyEvent.EventType != 2)
                 {
-                    Array.Copy(_initialState, state, state.Length);
+                    Array.Copy(_initialColors, state, state.Length);
                     activeMarkersByKey.Clear();
                     clearOnNextAttemptInput = false;
                 }
@@ -318,7 +328,7 @@ namespace GestureSample.Views
 
         private static ReplayFrame CreateReplayFrame(
             DateTime timestamp,
-            bool[] state,
+            Color[] state,
             Dictionary<int, Stack<KeyEvent>> activeMarkersByKey,
             string eventLabel,
             string timerRegimeText)
@@ -326,7 +336,7 @@ namespace GestureSample.Views
             return new ReplayFrame
             {
                 Timestamp = timestamp,
-                State = state.ToArray(),
+                StateColors = state.ToArray(),
                 MarkerEvents = activeMarkersByKey
                     .SelectMany(item => item.Value.Reverse())
                     .OrderBy(item => item.EventTime)
@@ -337,26 +347,23 @@ namespace GestureSample.Views
             };
         }
 
-        private void ApplyEventToState(bool[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
+        private void ApplyEventToState(Color[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
         {
             int keyIndex = keyEvent.KeyNumber - 1;
             if (keyIndex >= 0 && keyIndex < state.Length)
             {
                 if (keyEvent.EventType == 1)
                 {
-                    if (_usesToggleReplayState)
-                        state[keyIndex] = !state[keyIndex];
-                    else
-                        state[keyIndex] = true;
+                    state[keyIndex] = GetNextReplayColor(state[keyIndex]);
                 }
                 else if (keyEvent.EventType == 0)
                 {
-                    if (!_usesToggleReplayState)
-                        state[keyIndex] = false;
+                    if (!_usesColorReplay && !_usesToggleReplayState)
+                        state[keyIndex] = Colors.White;
                 }
                 else if (keyEvent.EventType == 3)
                 {
-                    Array.Fill(state, false);
+                    Array.Copy(_initialColors, state, state.Length);
                 }
             }
 
@@ -392,7 +399,7 @@ namespace GestureSample.Views
             ReplayFrame frame = _replayFrames[frameIndex];
             _currentFrameIndex = frameIndex;
 
-            RenderReplayState(frame.State, highlightPressedKeys: true);
+            RenderReplayState(frame.StateColors, highlightPressedKeys: true);
             ClearActiveMarkers();
             foreach (KeyEvent markerEvent in frame.MarkerEvents)
                 AddActiveMarker(markerEvent);
@@ -446,15 +453,23 @@ namespace GestureSample.Views
             return _slowReplayEnabled ? baseDelay * 3 : baseDelay;
         }
 
-        private static bool[] BuildInitialReplayState(int keyCount, KeyboardQuestion? question)
+        private static Color[] BuildInitialReplayColors(int keyCount, KeyboardQuestion? question)
         {
+            if (question?.InitialKeyboardSnapshotColors != null &&
+                question.InitialKeyboardSnapshotColors.Length == keyCount)
+            {
+                return question.InitialKeyboardSnapshotColors.ToArray();
+            }
+
             if (question?.InitialKeyboardState != null &&
                 question.InitialKeyboardState.Length == keyCount)
             {
-                return question.InitialKeyboardState.ToArray();
+                return question.InitialKeyboardState
+                    .Select(bit => bit ? Colors.Yellow : Colors.White)
+                    .ToArray();
             }
 
-            return new bool[keyCount];
+            return Enumerable.Repeat(Colors.White, keyCount).ToArray();
         }
 
         private string GetSpeedButtonText()
@@ -508,7 +523,7 @@ namespace GestureSample.Views
             return $"{seconds}s | {mode}";
         }
 
-        private void RenderReplayState(bool[] state, bool highlightPressedKeys)
+        private void RenderReplayState(Color[] state, bool highlightPressedKeys)
         {
             if (highlightPressedKeys)
             {
@@ -521,6 +536,52 @@ namespace GestureSample.Views
                 colors[i] = Colors.White;
 
             _replayKeyboard.PianoInit(colors);
+        }
+
+        private Color GetNextReplayColor(Color currentColor)
+        {
+            if (_usesRedRemovalReplay)
+            {
+                if (ColorsMatch(currentColor, Colors.Yellow))
+                    return Colors.Red;
+                if (ColorsMatch(currentColor, Colors.Red))
+                    return Colors.Yellow;
+                return currentColor;
+            }
+
+            if (_usesSecondColorReplay)
+            {
+                if (ColorsMatch(currentColor, Colors.White))
+                    return Colors.LightGreen;
+                if (ColorsMatch(currentColor, Colors.LightGreen))
+                    return Colors.White;
+                return currentColor;
+            }
+
+            if (_usesColorReplay)
+            {
+                if (ColorsMatch(currentColor, Colors.White))
+                    return Colors.Yellow;
+                if (ColorsMatch(currentColor, Colors.Yellow))
+                    return Colors.LightGreen;
+                if (_usesThreeColorReplay && ColorsMatch(currentColor, Colors.LightGreen))
+                    return Colors.Blue;
+                return Colors.White;
+            }
+
+            if (_usesToggleReplayState)
+                return ColorsMatch(currentColor, Colors.Yellow) ? Colors.White : Colors.Yellow;
+
+            return Colors.Yellow;
+        }
+
+        private static bool ColorsMatch(Color a, Color b)
+        {
+            const float epsilon = 0.01f;
+            return Math.Abs(a.Red - b.Red) < epsilon &&
+                   Math.Abs(a.Green - b.Green) < epsilon &&
+                   Math.Abs(a.Blue - b.Blue) < epsilon &&
+                   Math.Abs(a.Alpha - b.Alpha) < epsilon;
         }
 
         private VerticalStackLayout BuildPromptLayout()
@@ -604,7 +665,7 @@ namespace GestureSample.Views
                         },
                         new KeyboardSnapshotView
                         {
-                            Keys = _question.keyboard1,
+                            KeyColors = _question.QuestionSnapshotColors,
                             Weights = _question.KeyboardWeights,
                             KeysInRow = _question.KeyboardKeysInRow,
                             Rows = _question.KeyboardRows,
@@ -634,7 +695,7 @@ namespace GestureSample.Views
                         },
                         new KeyboardSnapshotView
                         {
-                            Keys = _question.keyboard2,
+                            KeyColors = _question.SecondQuestionSnapshotColors,
                             Weights = _question.KeyboardWeights,
                             KeysInRow = _question.KeyboardKeysInRow,
                             Rows = _question.KeyboardRows,

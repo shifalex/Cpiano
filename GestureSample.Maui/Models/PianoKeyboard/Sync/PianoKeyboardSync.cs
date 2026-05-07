@@ -76,7 +76,9 @@ namespace GestureSample.Maui.Models
 
         private void UpdateProgressColor()
         {
-            _pressProgress.ProgressColor = IS_WHOLE_TIMER ? Colors.Orange : Colors.DodgerBlue;
+            _pressProgress.ProgressColor = IS_WHOLE_TIMER
+                ? Color.FromArgb("#FF7A00")
+                : Colors.DodgerBlue;
         }
 
         public virtual void UpdateAnswerTimeSetting(int secondsPressingToAnswer)

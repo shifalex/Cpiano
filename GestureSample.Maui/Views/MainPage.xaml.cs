@@ -1,4 +1,4 @@
-﻿using GestureSample.Maui;
+using GestureSample.Maui;
 using GestureSample.Views.Tests;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
@@ -586,11 +586,51 @@ namespace GestureSample.Views
         MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
+            SyncType = SyncType.None,
             IsHelpNeeded = true,
             IsMulticolor = true,
             GroupByColorAllowSameSideTargets = true,
             KeysInRow = 6
+        }
+    })),
+
+    new PageConfig("One operation", "Group By Color - Commutativity", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group by color - commutativity",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
+        OnlyToTen = true,
+        MinSum = 2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            ImposeEdges = true,
+            GroupByColorLayoutMode = GroupByColorLayoutMode.CommutativityEdges
+        }
+    })),
+
+    new PageConfig("One operation", "Group By Color - Associativity", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Group by color - associativity",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
+        OnlyToTen = true,
+        MinSum = 2,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            ImposeEdges = true,
+            GroupByColorColorCount = 3,
+            GroupByColorCounts = new[] { 3, 2, 2 },
+            GroupByColorLayoutMode = GroupByColorLayoutMode.AssociativityEdges
         }
     })),
 
@@ -604,15 +644,12 @@ namespace GestureSample.Views
         MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
+            SyncType = SyncType.None,
             IsHelpNeeded = true,
             IsMulticolor = true,
             KeysInRow = 10,
             GroupByColorColorCount = 3,
-            GroupByColorCounts = new[] { 2, 1, 1 },
-            GroupByColorAllowSameSideTargets = true,
-            GroupByColorKeepOuterColorsOnSides = true,
-            GroupByColorKeepBlueInMiddle = true
+            GroupByColorAllowSameSideTargets = true
         }
     })),
 
@@ -996,7 +1033,15 @@ namespace GestureSample.Views
         }
     })),
 
-            new PageConfig("Data", "Show Data",  () => new ShowDataChooserPage { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig("Data", "Show Data",  () =>
+            {
+                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                Page page = activeUser?.IsTeacher == true || activeUser?.Name == "Alex"
+                    ? new ShowDataXaml(true)
+                    : new ShowDataChooserPage();
+                page.BindingContext = new ViewModels.MarksViewModel();
+                return page;
+            }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
             new PageConfig("Data", "Show Personal Record",  () => new RecordsUser { BindingContext = new ViewModels.MarksViewModel() }),
 

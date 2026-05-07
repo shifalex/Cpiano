@@ -42,13 +42,15 @@ namespace GestureSample.Views
         private Guid? _currentSelectedGameId;
         private DateTime? _currentSelectedDate;
         private bool _sortNewestFirst = true;
+        private readonly Maui.Data.SQLite.User? _dataUser;
 
-        public ShowDataXaml(bool forTeacher=false, Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true)
+        public ShowDataXaml(bool forTeacher = false, Guid? gameId = null, bool showSelectors = true, bool sortNewestFirst = true, Maui.Data.SQLite.User? dataUser = null)
         {
            InitializeComponent();
             Title = "Data";
             _showSelectors = showSelectors;
             _sortNewestFirst = sortNewestFirst;
+            _dataUser = dataUser;
             //StateList.ItemsSource = App.CurrentDB.GetStates();
             //_realmService = new RealmService();
             //StateList.ItemsSource = _realmService.GetItems();
@@ -79,7 +81,7 @@ namespace GestureSample.Views
             _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
             _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
-            _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+            _currentUser = _dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             _backToolbarItem = new ToolbarItem
             {
                 Text = "Back",
@@ -110,7 +112,7 @@ namespace GestureSample.Views
             PickerPanel.IsVisible = _showSelectors;
             HeaderGrid.IsVisible = _showSelectors;
             UserPicker.IsVisible = false;
-            if ( gameId == null /*&& forTeacher*/ && ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name == "Alex")
+            if (gameId == null && (forTeacher || ServiceHelper.GetService<CurrentUserSession>().ActiveUser.IsTeacher))
             {
                 _isTeacher = true;
                 LoadClassroomUsers(); 
@@ -136,6 +138,14 @@ namespace GestureSample.Views
         {
             try
             {
+                if (!_currentUser.IsTeacher)
+                {
+                    _isTeacher = false;
+                    UserPicker.IsVisible = false;
+                    ShowData(null);
+                    return;
+                }
+
                 UserPicker.IsVisible = true;
                 // This will call your edge function via the Supabase client
                 List<Maui.Data.SupaBase.User> users = await Maui.Data.SupaBase.SupabaseService.GetUsersOfUser(_currentUser);
@@ -169,6 +179,7 @@ namespace GestureSample.Views
                 }
                 else
                 {
+                    _isTeacher = false;
                     UserPicker.IsVisible = false;
                 }
                 ShowData(null);
@@ -177,7 +188,7 @@ namespace GestureSample.Views
             catch (Exception ex)
             {
                 _isTeacher = false;
-                _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                _currentUser = _dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
                 await DisplayAlert("Error", $"Could not load users from Supabase. Showing local data instead.\n{ex.Message}", "OK");
                 UserPicker.IsVisible = false;
                 ShowData(null);
@@ -197,7 +208,7 @@ namespace GestureSample.Views
             catch (Exception ex)
             {
                 _isTeacher = false;
-                _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                _currentUser = _dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
                 UserPicker.IsVisible = false;
                 await DisplayAlert("Supabase", $"Could not load remote data. Showing local data instead.\n{ex.Message}", "OK");
                 GameIdentifiers = await _gameRepository.GetAllByUserAsync(_currentUser.Id);
@@ -206,8 +217,8 @@ namespace GestureSample.Views
             if (GameIdentifiers == null || GameIdentifiers.Count==0)
             {
                 Console.WriteLine("no games played");
-                // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
-                await Navigation.PopAsync();
+                ClearDisplayedData();
+                return;
             }
             if (gameId == null && GameIdentifiers.Count > 0)
             {
@@ -309,7 +320,7 @@ namespace GestureSample.Views
                 catch (Exception ex)
                 {
                     _isTeacher = false;
-                    _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                    _currentUser = _dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
                     UserPicker.IsVisible = false;
                     await DisplayAlert("Supabase", $"Could not load remote answers. Showing local data instead.\n{ex.Message}", "OK");
                     gameStats = await _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
@@ -469,7 +480,7 @@ namespace GestureSample.Views
 
         private async Task OpenKeyboardDataPageAsync(Guid gameId)
         {
-            ShowDataXamlKeyboard keyboardPage = new(gameId, false)
+            ShowDataXamlKeyboard keyboardPage = new(gameId, _showSelectors, _sortNewestFirst, _isTeacher, _isTeacher ? _currentUser : _dataUser)
             {
                 BindingContext = BindingContext
             };
@@ -538,7 +549,19 @@ namespace GestureSample.Views
                 _currentUser = new Maui.Data.SQLite.User { Id = userId, Name = selectedUser["Name"].ToString() };
                 ShowData(null);
             }
-            _currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+        }
+
+        private void ClearDisplayedData()
+        {
+            CurrentGame = null;
+            _currentSelectedGameId = null;
+            _currentSelectedDate = null;
+            GameIdentifiers.Clear();
+            GameIdentifiersFiltered.Clear();
+            GameDates.Clear();
+            DatePicker.ItemsSource = null;
+            GamePicker.ItemsSource = null;
+            StateList.ItemsSource = null;
         }
 
         public async Task<string> SyncCurrentGameAsync()
@@ -580,7 +603,7 @@ namespace GestureSample.Views
 
         private async Task NavigateToChooserAsync(Guid? gameId)
         {
-            Page chooserPage = ShowDataRoutingHelper.CreateChooserPage(gameId);
+            Page chooserPage = ShowDataRoutingHelper.CreateChooserPage(gameId, _isTeacher);
             if (Navigation?.NavigationStack?.Count > 0)
             {
                 Navigation.InsertPageBefore(chooserPage, this);

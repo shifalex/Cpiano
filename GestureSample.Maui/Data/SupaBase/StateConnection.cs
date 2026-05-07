@@ -54,6 +54,10 @@ namespace GestureSample.Maui.Data.SupaBase
             await EnsureColumnAsync("KeyboardQuestion", "QuestionPromptText", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "KeyboardWeightsJson", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "InitialKeyboardStateJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionKeyboardColorsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionKeyboardColorsJson2", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardColorsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "InitialKeyboardColorsJson", "TEXT").ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
         }
 

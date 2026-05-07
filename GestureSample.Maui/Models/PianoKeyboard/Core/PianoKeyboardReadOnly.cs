@@ -549,7 +549,7 @@ namespace GestureSample.Maui.Models
             if (config.IsArrow /*|| config.ImposeEdges*/)
             {
                 IsArrowByLength = config.IsArrowLengthDynamic??false;
-                heading_height = 20;
+                heading_height = 34;
                 Console.WriteLine("Heading height: " + heading_height);
             }
             this.RowDefinitions.Add(new RowDefinition() { Height = new GridLength(heading_height) });

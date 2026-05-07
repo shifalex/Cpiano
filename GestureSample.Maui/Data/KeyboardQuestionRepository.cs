@@ -44,7 +44,7 @@ namespace GestureSample.Maui.Data
                 .ToList();
         }
 
-        public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus)
+        public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus, Color[]? submittedKeyboardColors = null)
         {
             List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
                 .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
@@ -63,6 +63,7 @@ namespace GestureSample.Maui.Data
             {
                 pendingQuestion.AttemptNumber = nextAttemptNumber;
                 pendingQuestion.SubmittedKeyboard = submittedKeyboard?.ToArray();
+                pendingQuestion.SubmittedKeyboardColors = submittedKeyboardColors?.ToArray();
                 pendingQuestion.SubmittedTime = submittedTime;
                 pendingQuestion.ResultStatus = resultStatus;
                 await _database.UpdateAsync(pendingQuestion);
@@ -74,6 +75,7 @@ namespace GestureSample.Maui.Data
                 .First();
 
             KeyboardQuestion attemptQuestion = CloneAttemptQuestion(sourceQuestion, nextAttemptNumber, submittedKeyboard, submittedTime, resultStatus, wasTutorialUsed: false);
+            attemptQuestion.SubmittedKeyboardColors = submittedKeyboardColors?.ToArray();
             await _database.InsertAsync(attemptQuestion);
             return attemptQuestion;
         }
@@ -118,6 +120,47 @@ namespace GestureSample.Maui.Data
             await _database.InsertAsync(pendingClone);
         }
 
+        public async Task MarkHeaderResultToggleUsedAsync(string gameId, int questionNumber)
+        {
+            List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
+                .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
+                .ToListAsync();
+
+            if (questions.Count == 0)
+                return;
+
+            KeyboardQuestion pendingQuestion = questions
+                .Where(question => question.AttemptNumber == 0)
+                .OrderByDescending(question => question.QuestionID)
+                .FirstOrDefault();
+
+            if (pendingQuestion != null)
+            {
+                if (pendingQuestion.WasHeaderResultToggleUsed)
+                    return;
+
+                pendingQuestion.WasHeaderResultToggleUsed = true;
+                await _database.UpdateAsync(pendingQuestion);
+                return;
+            }
+
+            KeyboardQuestion sourceQuestion = questions
+                .OrderByDescending(question => question.AttemptNumber)
+                .ThenByDescending(question => question.QuestionID)
+                .First();
+
+            KeyboardQuestion pendingClone = CloneAttemptQuestion(
+                sourceQuestion,
+                attemptNumber: 0,
+                submittedKeyboard: null,
+                submittedTime: null,
+                resultStatus: 0,
+                wasTutorialUsed: sourceQuestion.WasTutorialUsed);
+
+            pendingClone.WasHeaderResultToggleUsed = true;
+            await _database.InsertAsync(pendingClone);
+        }
+
         public async Task UpdatePendingDisplayMetadataAsync(
             string gameId,
             int questionNumber,
@@ -125,7 +168,9 @@ namespace GestureSample.Maui.Data
             bool showNumbersOnKeys,
             int[]? keyboardWeights,
             bool[]? initialKeyboardState,
+            Color[]? initialKeyboardColors = null,
             bool[]? questionKeyboard = null,
+            Color[]? questionKeyboardColors = null,
             int? keyboardRows = null,
             int? keyboardKeysInRow = null)
         {
@@ -144,8 +189,11 @@ namespace GestureSample.Maui.Data
             pendingQuestion.ShowNumbersOnKeys = showNumbersOnKeys;
             pendingQuestion.KeyboardWeights = keyboardWeights?.ToArray();
             pendingQuestion.InitialKeyboardState = initialKeyboardState?.ToArray();
+            pendingQuestion.InitialKeyboardColors = initialKeyboardColors?.ToArray();
             if (questionKeyboard != null && questionKeyboard.Length > 0)
                 pendingQuestion.keyboard1 = questionKeyboard.ToArray();
+            if (questionKeyboardColors != null && questionKeyboardColors.Length > 0)
+                pendingQuestion.QuestionKeyboardColors = questionKeyboardColors.ToArray();
             if (keyboardRows.HasValue && keyboardRows.Value > 0)
                 pendingQuestion.KeyboardRows = keyboardRows.Value;
             if (keyboardKeysInRow.HasValue && keyboardKeysInRow.Value > 0)
@@ -183,11 +231,16 @@ namespace GestureSample.Maui.Data
                 localQuestion.QuestionPromptText = question.QuestionPromptText;
                 localQuestion.keyboard1 = question.keyboard1?.ToArray();
                 localQuestion.keyboard2 = question.keyboard2?.ToArray();
+                localQuestion.QuestionKeyboardColors = question.QuestionKeyboardColors?.ToArray();
+                localQuestion.QuestionKeyboardColors2 = question.QuestionKeyboardColors2?.ToArray();
                 localQuestion.dir = question.dir;
                 localQuestion.MoveByDirection = question.MoveByDirection;
                 localQuestion.Op = question.Op;
                 localQuestion.KeyboardWeights = question.KeyboardWeights?.ToArray();
                 localQuestion.InitialKeyboardState = question.InitialKeyboardState?.ToArray();
+                localQuestion.InitialKeyboardColors = question.InitialKeyboardColors?.ToArray();
+                localQuestion.SubmittedKeyboardColors = question.SubmittedKeyboardColors?.ToArray();
+                localQuestion.WasHeaderResultToggleUsed = question.WasHeaderResultToggleUsed;
 
                 await _database.InsertAsync(localQuestion);
             }
@@ -210,6 +263,7 @@ namespace GestureSample.Maui.Data
                 UserId = sourceQuestion.UserId,
                 ResultStatus = resultStatus,
                 WasTutorialUsed = wasTutorialUsed,
+                WasHeaderResultToggleUsed = sourceQuestion.WasHeaderResultToggleUsed,
                 aboveNumber = sourceQuestion.aboveNumber,
                 length = sourceQuestion.length,
                 MoveByLength = sourceQuestion.MoveByLength,
@@ -219,11 +273,14 @@ namespace GestureSample.Maui.Data
                 QuestionPromptText = sourceQuestion.QuestionPromptText,
                 keyboard1 = sourceQuestion.keyboard1?.ToArray(),
                 keyboard2 = sourceQuestion.keyboard2?.ToArray(),
+                QuestionKeyboardColors = sourceQuestion.QuestionKeyboardColors?.ToArray(),
+                QuestionKeyboardColors2 = sourceQuestion.QuestionKeyboardColors2?.ToArray(),
                 dir = sourceQuestion.dir,
                 MoveByDirection = sourceQuestion.MoveByDirection,
                 Op = sourceQuestion.Op,
                 KeyboardWeights = sourceQuestion.KeyboardWeights?.ToArray(),
                 InitialKeyboardState = sourceQuestion.InitialKeyboardState?.ToArray(),
+                InitialKeyboardColors = sourceQuestion.InitialKeyboardColors?.ToArray(),
                 SubmittedKeyboard = submittedKeyboard?.ToArray(),
                 SubmittedTime = submittedTime
             };

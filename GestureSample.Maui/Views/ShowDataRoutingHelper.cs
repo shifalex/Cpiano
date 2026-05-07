@@ -18,10 +18,10 @@ namespace GestureSample.Views
             return new ShowDataChooserPage(forTeacher, selectedGameId);
         }
 
-        public static Page CreatePageForGame(Game? game, bool forTeacher = false, bool showSelectors = false, bool sortNewestFirst = true)
+        public static Page CreatePageForGame(Game? game, bool forTeacher = false, bool showSelectors = false, bool sortNewestFirst = true, User? dataUser = null)
         {
             if (game != null && ShouldUseKeyboardData(game.Config))
-                return new ShowDataXamlKeyboard(game.Id, showSelectors, sortNewestFirst);
+                return new ShowDataXamlKeyboard(game.Id, showSelectors, sortNewestFirst, forTeacher, dataUser);
 
             return new ShowDataXaml(forTeacher, game?.Id, showSelectors, sortNewestFirst);
         }
