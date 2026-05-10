@@ -516,6 +516,9 @@ namespace GestureSample.Views.Tests
         private bool _equationHelpRunning;
         private bool _showPreviousBelow;
         private View _previousBelowView;
+        private View _questionInputsContainer;
+        private Thickness _questionInputsBaseMargin;
+        private bool _benchmarkAdvanceGestureRunning;
         private Entry _prevAddend1Entry;
         private Entry _prevAddend2Entry;
         private Entry _prevSumEntry;
@@ -576,7 +579,18 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldShowPpwCheckButton()
         {
-            return !_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp;
+            return (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp) &&
+                   !UsesBenchmarkPickerPreview();
+        }
+
+        private bool UsesBenchmarkPickerPreview()
+        {
+            string gameName = _config.GameName ?? string.Empty;
+            return _config.ShowPrev &&
+                   _isThreeTexts &&
+                   !_isKeyboard &&
+                   (gameName.Contains("Benchmark", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(gameName, "Level 3.2", StringComparison.OrdinalIgnoreCase));
         }
 
         private bool IsGroupByColorKeyboardStage()
@@ -608,7 +622,8 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldShowNextButton()
         {
-            return !IsGroupByColorKeyboardStage();
+            return !IsGroupByColorKeyboardStage() &&
+                   !UsesBenchmarkPickerPreview();
         }
 
         private bool ShouldShowImpossibleWeightedAnswerButton()
@@ -1024,14 +1039,37 @@ namespace GestureSample.Views.Tests
             RefreshPreviousPreview();
         }
 
+        private static string FormatPreviousValue(int value)
+        {
+            return value == PPWGamePlay.NAN ? string.Empty : value.ToString();
+        }
+
+        private static int ParseEntryValueOrNan(Entry entry)
+        {
+            return int.TryParse(entry?.Text, out int value) ? value : PPWGamePlay.NAN;
+        }
+
+        private void CapturePreviousExerciseSnapshot()
+        {
+            if (!_isThreeTexts || _txtAddend1 == null || _txtAddend2 == null || _txtSum == null)
+                return;
+
+            _previousPPW = new PPWObject(
+                ParseEntryValueOrNan(_txtAddend1),
+                ParseEntryValueOrNan(_txtAddend2),
+                ParseEntryValueOrNan(_txtSum));
+            _previousActionText = _lblAction?.Text ?? _gamePlay.CurrentOperation.ToDString();
+            RefreshPreviousPreview();
+        }
+
         private void ShowPreviousInline()
         {
             if (_previousPPW == null || !_isThreeTexts)
                 return;
 
-            _txtAddend1.Text = _previousPPW.Addend1.ToString();
-            _txtAddend2.Text = _previousPPW.Addend2.ToString();
-            _txtSum.Text = _previousPPW.Sum.ToString();
+            _txtAddend1.Text = FormatPreviousValue(_previousPPW.Addend1);
+            _txtAddend2.Text = FormatPreviousValue(_previousPPW.Addend2);
+            _txtSum.Text = FormatPreviousValue(_previousPPW.Sum);
             _txtAddend1.IsEnabled = false;
             _txtAddend2.IsEnabled = false;
             _txtSum.IsEnabled = false;
@@ -1181,6 +1219,25 @@ namespace GestureSample.Views.Tests
                 ? BuildEquationPreviousLayout()
                 : BuildStandardPreviousLayout();
 
+            if (UsesBenchmarkPickerPreview())
+            {
+                previousView.Opacity = 0.42;
+                previousView.Scale = 0.96;
+
+                _previousBelowView = new VerticalStackLayout
+                {
+                    HorizontalOptions = LayoutOptions.Center,
+                    Spacing = 2,
+                    IsVisible = false,
+                    Margin = new Thickness(0, 0, 0, 2),
+                    InputTransparent = true,
+                    Children = { previousView }
+                };
+
+                RefreshPreviousPreview();
+                return _previousBelowView;
+            }
+
             _previousBelowView = new VerticalStackLayout
             {
                 HorizontalOptions = LayoutOptions.Center,
@@ -1225,12 +1282,110 @@ namespace GestureSample.Views.Tests
                 return;
             }
 
-            _prevAddend1Entry.Text = _previousPPW.Addend1.ToString();
-            _prevAddend2Entry.Text = _previousPPW.Addend2.ToString();
-            _prevSumEntry.Text = _previousPPW.Sum.ToString();
+            _prevAddend1Entry.Text = FormatPreviousValue(_previousPPW.Addend1);
+            _prevAddend2Entry.Text = FormatPreviousValue(_previousPPW.Addend2);
+            _prevSumEntry.Text = FormatPreviousValue(_previousPPW.Sum);
             if (_config.UIQuestionType != UIQuestionType.SimpleEquation)
                 _prevActionLabel.Text = _previousActionText;
-            _previousBelowView.IsVisible = _showPreviousBelow;
+
+            if (UsesBenchmarkPickerPreview())
+            {
+                _previousBelowView.Margin = hasPrevious
+                    ? new Thickness(0, -42, 0, -10)
+                    : new Thickness(0, 0, 0, 2);
+
+                if (_questionInputsContainer != null)
+                {
+                    _questionInputsContainer.Margin = hasPrevious
+                        ? new Thickness(_questionInputsBaseMargin.Left, -6, _questionInputsBaseMargin.Right, _questionInputsBaseMargin.Bottom)
+                        : _questionInputsBaseMargin;
+                }
+            }
+
+            _previousBelowView.IsVisible = UsesBenchmarkPickerPreview() || _showPreviousBelow;
+        }
+
+        private async Task AnimateBenchmarkQuestionAdvanceInAsync()
+        {
+            if (!UsesBenchmarkPickerPreview() || _questionInputsContainer == null)
+                return;
+
+            List<Task> animations = new();
+
+            if (_previousBelowView?.IsVisible == true)
+            {
+                _previousBelowView.Opacity = 0.14;
+                _previousBelowView.TranslationY = 20;
+                _previousBelowView.Scale = 1.01;
+                animations.Add(_previousBelowView.TranslateTo(0, 0, 210, Easing.CubicOut));
+                animations.Add(_previousBelowView.FadeTo(1, 210, Easing.CubicOut));
+                animations.Add(_previousBelowView.ScaleTo(0.96, 210, Easing.CubicOut));
+            }
+
+            _questionInputsContainer.Opacity = 0.1;
+            _questionInputsContainer.TranslationY = 52;
+            _questionInputsContainer.Scale = 0.98;
+            animations.Add(_questionInputsContainer.TranslateTo(0, 0, 220, Easing.CubicOut));
+            animations.Add(_questionInputsContainer.FadeTo(1, 220, Easing.CubicOut));
+            animations.Add(_questionInputsContainer.ScaleTo(1, 220, Easing.CubicOut));
+
+            await Task.WhenAll(animations);
+        }
+
+        private async Task AnimateBenchmarkQuestionAdvanceOutAsync()
+        {
+            if (!UsesBenchmarkPickerPreview() || _questionInputsContainer == null)
+                return;
+
+            List<Task> animations = new()
+            {
+                _questionInputsContainer.TranslateTo(0, -34, 130, Easing.CubicIn),
+                _questionInputsContainer.FadeTo(0.18, 130, Easing.CubicIn),
+                _questionInputsContainer.ScaleTo(0.97, 130, Easing.CubicIn)
+            };
+
+            if (_previousBelowView?.IsVisible == true)
+            {
+                animations.Add(_previousBelowView.FadeTo(0.32, 110, Easing.CubicIn));
+            }
+
+            await Task.WhenAll(animations);
+        }
+
+        private async Task TryAdvanceBenchmarkPickerAsync()
+        {
+            if (!UsesBenchmarkPickerPreview() ||
+                _benchmarkAdvanceGestureRunning ||
+                !_isPageInteractionEnabled ||
+                _tutorialRunning ||
+                _gamePlay.GameOver)
+            {
+                return;
+            }
+
+            _benchmarkAdvanceGestureRunning = true;
+            try
+            {
+                CapturePreviousExerciseSnapshot();
+                await GenerateNextExerciseAsync();
+            }
+            finally
+            {
+                _benchmarkAdvanceGestureRunning = false;
+            }
+        }
+
+        private void AttachBenchmarkPickerGesture(View target)
+        {
+            if (!UsesBenchmarkPickerPreview() || target == null)
+                return;
+
+            SwipeGestureRecognizer swipeUp = new()
+            {
+                Direction = SwipeDirection.Up
+            };
+            swipeUp.Swiped += async (_, _) => await TryAdvanceBenchmarkPickerAsync();
+            target.GestureRecognizers.Add(swipeUp);
         }
 
         private async Task RunEquationHelpAsync()
@@ -2578,9 +2733,11 @@ namespace GestureSample.Views.Tests
 
         private async Task GenerateNextExerciseAsync()
         {
+            await AnimateBenchmarkQuestionAdvanceOutAsync();
             ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
             _pianoKeyboard?.RefreshKeyCaptions();
             await UpdateView(true, generatedExercise: generatedExercise);
+            await AnimateBenchmarkQuestionAdvanceInAsync();
             await EnsureInitialTimerSettingSavedAsync();
             await PersistVisibleQuestionPartsAsync();
             await PersistSecondaryPpwAsync();
@@ -3446,6 +3603,16 @@ namespace GestureSample.Views.Tests
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
                 }
 
+                _questionInputsContainer = questionInputsLayout;
+                _questionInputsBaseMargin = questionInputsLayout.Margin;
+                AttachBenchmarkPickerGesture(questionInputsLayout);
+
+                if (UsesBenchmarkPickerPreview() && _config.ShowPrev)
+                {
+                    View benchmarkPreviousPeekView = BuildPreviousBelowView();
+                    vsl.Add(benchmarkPreviousPeekView);
+                }
+
                 if (numericKeypadView != null && ShouldPlaceNumericKeypadBesideEntriesForHelp())
                 {
                     if (_numericKeypad != null)
@@ -3487,14 +3654,16 @@ namespace GestureSample.Views.Tests
                 _config.KeyboardConfig.KeyboardOnlyForHelp)
             {
                 View? previousBelowView = null;
-                if (_config.ShowPrev && _isThreeTexts)
+                if (_config.ShowPrev && _isThreeTexts && !UsesBenchmarkPickerPreview())
                 {
                     previousBelowView = BuildPreviousBelowView();
                     vsl.Add(previousBelowView);
                 }
                 if (_numericKeypad != null && ShouldPlaceNumericKeypadBelowPreviousPreview())
                     vsl.Add(_numericKeypad);
-                vsl.Add(InitButtonsUI());
+                HorizontalStackLayout buttonsRow = InitButtonsUI();
+                if (buttonsRow.Children.Count > 0)
+                    vsl.Add(buttonsRow);
             }
 
             if (_config.IsHistory)
@@ -4009,7 +4178,7 @@ namespace GestureSample.Views.Tests
                 HorizontalOptions = LayoutOptions.Center
             };
 
-            if (_config.ShowPrev)
+            if (_config.ShowPrev && !UsesBenchmarkPickerPreview())
             {
                 _btnPrev = new Button
                 {
