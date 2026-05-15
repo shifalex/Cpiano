@@ -105,6 +105,62 @@
                                    TextColor="DimGray"
                                    LineBreakMode="WordWrap" />
 
+                            <Grid ColumnDefinitions="Auto,40,12,40,16,40"
+                                  ColumnSpacing="4"
+                                  IsVisible="{Binding HasPpwState}">
+                                <Label Grid.Column="0"
+                                       Text="PPW"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center"
+                                       Margin="0,6,0,0" />
+                                <Frame Grid.Column="1"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.Addend1Color}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Addend1}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="2"
+                                       Text="{Binding PpwOpText}"
+                                       VerticalOptions="Center"
+                                       FontSize="16" />
+                                <Frame Grid.Column="3"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.Addend2Color}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Addend2}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="4"
+                                       Text="="
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center"
+                                       FontSize="16" />
+                                <Frame Grid.Column="5"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.SumColor}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Sum}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                            </Grid>
+
                             <HorizontalStackLayout Spacing="8"
                                                    IsVisible="{Binding Question.HasPromptText}">
                                 <Label Text="Q"

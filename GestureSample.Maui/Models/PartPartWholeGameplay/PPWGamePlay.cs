@@ -88,6 +88,7 @@ namespace GestureSample.Maui.Models
 
         // snapshot of last question (PPW form)
         private (int a1, int a2, int s, Operation op, VariableTypes vt)? _prevPPWQuestion;
+        private PPWObject? _prevResolvedTriad;
         protected ExercisePlanStep? CurrentPlanStep
         {
             get
@@ -180,16 +181,21 @@ namespace GestureSample.Maui.Models
             await EnsureGameInitializedAsync();
             await MarkGameAsDirtyAsync();
 
+            int persistedAddend1 = GetPersistedQuestionAnswerAddend1();
+            int persistedAddend2 = GetPersistedQuestionAnswerAddend2();
+            int persistedSum = GetPersistedQuestionAnswerSum();
+            Operation persistedOperation = GetPersistedQuestionAnswerOperation();
+
             QuestionAnswer s = new()
             {
 
                 GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
-                Op = CurrentOperation,
-                Addend1 = this.addend1,
-                Addend2 = this.addend2,
-                Sum = this.Sum, //TODO:make more elegant
+                Op = persistedOperation,
+                Addend1 = persistedAddend1,
+                Addend2 = persistedAddend2,
+                Sum = persistedSum,
                 ResultStatus = resultStatus
             };
             await _questionAnswerRepository.SaveAsync(s);
@@ -197,6 +203,14 @@ namespace GestureSample.Maui.Models
             if (syncAfterSave)
                 await TrySyncSupabaseStateAsync();
     }
+
+        protected virtual int GetPersistedQuestionAnswerAddend1() => addend1;
+
+        protected virtual int GetPersistedQuestionAnswerAddend2() => addend2;
+
+        protected virtual int GetPersistedQuestionAnswerSum() => Sum;
+
+        protected virtual Operation GetPersistedQuestionAnswerOperation() => CurrentOperation;
 
         protected async Task MarkGameAsDirtyAsync()
         {
@@ -1011,12 +1025,116 @@ namespace GestureSample.Maui.Models
                 factors[0] = factors[1];
                 factors[1] = temp;
             }
-            foreach (int index in ChooseHiddenValueIndexes(r))
-                factors[index] = NAN;
+
+            _prevResolvedTriad = new PPWObject(factors[0], factors[1], factors[2]);
+
+            if (!TryApplyDistortedRepeatVariant(factors))
+            {
+                foreach (int index in ChooseHiddenValueIndexes(r, factors))
+                    factors[index] = NAN;
+            }
 
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
+
+        private bool TryApplyDistortedRepeatVariant(int[] factors)
+        {
+            if (!Config.UseDistortedVariantInRepeatSequence ||
+                factors == null ||
+                factors.Length < 3 ||
+                Config.RepeatingTimesOfTriad <= 1 ||
+                _currentTriadIndex <= 0 ||
+                _currentTriadIndex >= Config.RepeatingTimesOfTriad ||
+                CurrentOperation != Operation.Sum ||
+                !_prevPPWQuestion.HasValue)
+            {
+                return false;
+            }
+
+            if (!TryBuildDistortedDisplayedQuestion(_prevPPWQuestion.Value, out int displayA1, out int displayA2, out int displaySum))
+                return false;
+
+            factors[0] = displayA1;
+            factors[1] = displayA2;
+            factors[2] = displaySum;
+            return true;
+        }
+
+        private bool TryBuildDistortedDisplayedQuestion((int a1, int a2, int s, Operation op, VariableTypes vt) previousQuestion, out int displayA1, out int displayA2, out int displaySum)
+        {
+            displayA1 = NAN;
+            displayA2 = NAN;
+            displaySum = NAN;
+
+            if (previousQuestion.a1 == NAN)
+            {
+                int resolvedA1 = previousQuestion.s;
+                int resolvedA2 = previousQuestion.a2;
+                int resolvedSum = resolvedA1 + resolvedA2;
+                if (!IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                    return false;
+
+                displayA1 = resolvedA1;
+                displayA2 = resolvedA2;
+                displaySum = NAN;
+                return true;
+            }
+
+            if (previousQuestion.a2 == NAN)
+            {
+                int resolvedA1 = previousQuestion.a1;
+                int resolvedA2 = previousQuestion.s;
+                int resolvedSum = resolvedA1 + resolvedA2;
+                if (!IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                    return false;
+
+                displayA1 = resolvedA1;
+                displayA2 = resolvedA2;
+                displaySum = NAN;
+                return true;
+            }
+
+            if (previousQuestion.s == NAN)
+            {
+                if (previousQuestion.a1 >= previousQuestion.a2)
+                {
+                    int resolvedA1 = previousQuestion.a1 - previousQuestion.a2;
+                    int resolvedA2 = previousQuestion.a2;
+                    int resolvedSum = previousQuestion.a1;
+                    if (resolvedA1 < 0 || !IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                        return false;
+
+                    displayA1 = NAN;
+                    displayA2 = resolvedA2;
+                    displaySum = resolvedSum;
+                    return true;
+                }
+
+                int altResolvedA1 = previousQuestion.a1;
+                int altResolvedA2 = previousQuestion.a2 - previousQuestion.a1;
+                int altResolvedSum = previousQuestion.a2;
+                if (altResolvedA2 < 0 || !IsTriadWithinConfig(altResolvedA1, altResolvedA2, altResolvedSum))
+                    return false;
+
+                displayA1 = altResolvedA1;
+                displayA2 = NAN;
+                displaySum = altResolvedSum;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsTriadWithinConfig(int candidateA1, int candidateA2, int candidateSum)
+        {
+            return candidateA1 >= Config.MinAddend &&
+                   candidateA1 <= Config.MaxAddend &&
+                   candidateA2 >= Config.EffectiveMinAddend2 &&
+                   candidateA2 <= Config.EffectiveMaxAddend2 &&
+                   candidateSum >= Config.MinSum &&
+                   candidateSum <= Config.MaxSum;
         }
 
         private void ConfigureDynamicKeyboardMultiplicationWeights(Random r, int[] factors)
@@ -1045,7 +1163,7 @@ namespace GestureSample.Maui.Models
             Config.KeyboardConfig.ShowNumbersOnKeys = true;
         }
 
-        private List<int> ChooseHiddenValueIndexes(Random r)
+        private List<int> ChooseHiddenValueIndexes(Random r, int[]? currentFactors = null)
         {
             List<int[]> candidates = new();
             int hiddenCount = Math.Clamp(Config.HiddenValueCount, 0, 3);
@@ -1077,6 +1195,22 @@ namespace GestureSample.Maui.Models
                 candidates.Add(indexes.ToArray());
             }
 
+            if (Config.UseDistortedVariantInRepeatSequence &&
+                CurrentOperation == Operation.Sum &&
+                Config.RepeatingTimesOfTriad > 1 &&
+                _currentTriadIndex == 0 &&
+                hiddenCount == 1 &&
+                currentFactors != null &&
+                currentFactors.Length >= 3)
+            {
+                List<int[]> distortionFriendlyCandidates = candidates
+                    .Where(indexes => CanDistortDisplayedQuestion(currentFactors[0], currentFactors[1], currentFactors[2], indexes[0]))
+                    .ToList();
+
+                if (distortionFriendlyCandidates.Count > 0)
+                    candidates = distortionFriendlyCandidates;
+            }
+
             if (candidates.Count == 0)
             {
                 return Config.VariableTypes switch
@@ -1090,6 +1224,23 @@ namespace GestureSample.Maui.Models
             }
 
             return candidates[r.Next(candidates.Count)].ToList();
+        }
+
+        private bool CanDistortDisplayedQuestion(int a1, int a2, int sum, int hiddenIndex)
+        {
+            (int displayA1, int displayA2, int displaySum) previousDisplay = hiddenIndex switch
+            {
+                0 => (NAN, a2, sum),
+                1 => (a1, NAN, sum),
+                2 => (a1, a2, NAN),
+                _ => (a1, a2, sum)
+            };
+
+            return TryBuildDistortedDisplayedQuestion(
+                (previousDisplay.displayA1, previousDisplay.displayA2, previousDisplay.displaySum, CurrentOperation, Config.VariableTypes),
+                out _,
+                out _,
+                out _);
         }
 
         private bool IsHiddenTargetAllowed(int index)
@@ -1132,15 +1283,16 @@ namespace GestureSample.Maui.Models
                 if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex>0 &&
                     !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex>= Config.RepeatingTimesOfSum))
                 {
-                    factors[2] = this.Sum;
+                    PPWObject repeatSource = _prevResolvedTriad ?? new PPWObject(this.addend1, this.addend2, this.Sum);
+                    factors[2] = repeatSource.Sum;
                     if (Config.RepeatingTimesOfTriad > 1)
                     {
-                        factors[0] = this.addend1;
-                        factors[1] = this.addend2;
+                        factors[0] = repeatSource.Addend1;
+                        factors[1] = repeatSource.Addend2;
                         if (r.Next(2) == 1)
                         {
-                            factors[0] = this.addend2;
-                            factors[1] = this.addend1;
+                            factors[0] = repeatSource.Addend2;
+                            factors[1] = repeatSource.Addend1;
                         }
                     }
                     else if (Config.RepeatingTimesOfSum > 1)
@@ -1153,8 +1305,8 @@ namespace GestureSample.Maui.Models
                         }
                         else
                         {
-                            factors[0] = this.addend1;
-                            factors[1] = this.addend2;
+                            factors[0] = repeatSource.Addend1;
+                            factors[1] = repeatSource.Addend2;
                         }
                     }
                     return factors;
@@ -1269,15 +1421,16 @@ namespace GestureSample.Maui.Models
                 if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex > 0 &&
                     !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex >= Config.RepeatingTimesOfSum))
                 {
-                    factors[2] = this.Sum;
+                    PPWObject repeatSource = _prevResolvedTriad ?? new PPWObject(this.addend1, this.addend2, this.Sum);
+                    factors[2] = repeatSource.Sum;
                     if (Config.RepeatingTimesOfTriad > 1)
                     {
-                        factors[0] = this.addend1;
-                        factors[1] = this.addend2;
+                        factors[0] = repeatSource.Addend1;
+                        factors[1] = repeatSource.Addend2;
                         if (r.Next(2) == 1)
                         {
-                            factors[0] = this.addend2;
-                            factors[1] = this.addend1;
+                            factors[0] = repeatSource.Addend2;
+                            factors[1] = repeatSource.Addend1;
                         }
                     }
                     else if (Config.RepeatingTimesOfSum > 1)
@@ -1290,8 +1443,8 @@ namespace GestureSample.Maui.Models
                         }
                         else
                         {
-                            factors[0] = this.addend1;
-                            factors[1] = this.addend2;
+                            factors[0] = repeatSource.Addend1;
+                            factors[1] = repeatSource.Addend2;
                         }
                     }
                     return factors;

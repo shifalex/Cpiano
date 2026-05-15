@@ -148,13 +148,13 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Minus,
         [Description("COPY")]
         Copy,
-       [Description("EQUAL")]
+       [Description("EQUAL\n=")]
         Quantity,
-        [Description("GROUP to the RIGHT -->")]
+        [Description("GROUP to the RIGHT\n-->")]
         SequenceLTR,
-        [Description("<-- GROUP to the LEFT")]
+        [Description("GROUP to the LEFT\n<--")]
         SequenceRTL,
-        [Description("<- SPLIT ->")]
+        [Description("SPLIT\n<- ->")]
         Split,
         [Description("GROUP -><-to CENTER")]
         Centrelize,
@@ -162,19 +162,19 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         GroupByColor,
         [Description("SHIFT")]
         MoveBy,
-        [Description("MIRROR")]
+        [Description("MIRROR\n<|>")]
         Mirror,
         //Serialize, //TODO: Try to solve the conflict that they can be both together and separate entities
         //Reorder,
-        [Description("NOT(!)")]
+        [Description("NOT\n!")]
         Not,
-        [Description("AND(&&)")]
+        [Description("AND\n&&")]
         And,
-        [Description("OR(||)")]
+        [Description("OR\n||")]
         Or,
         [Description("XOR")]
         ExclusiveOr,
-        [Description("SUM(+)")]
+        [Description("SUM\n+")]
         SUMM
 
     }
@@ -407,6 +407,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public bool OnlyCloseTriad { get; set; } = false;
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public int RepeatingTimesOfSum { get; set; } = 1;
+        public bool UseDistortedVariantInRepeatSequence { get; set; } = false;
 
         // Readability aliases that preserve the existing config surface.
         public bool PreferLargerAddend1 { get => isLargerAddend1; set => isLargerAddend1 = value; }

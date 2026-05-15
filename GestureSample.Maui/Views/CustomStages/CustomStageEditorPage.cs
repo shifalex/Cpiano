@@ -32,6 +32,7 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Picker _numericInputPicker = new();
         private readonly Picker _questionOrderPicker = new();
         private readonly Picker _syncTypePicker = new();
+        private readonly Picker _arrowFeedbackPicker = new();
         private readonly VerticalStackLayout _operationSelectionLayout = new() { Spacing = 6 };
         private readonly Switch _showPrevSwitch = new();
         private readonly Switch _onlyCloseTriadSwitch = new();
@@ -41,7 +42,13 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Switch _onlyThroughTenSwitch = new();
         private readonly Switch _dynamicArrowLengthSwitch = new();
         private readonly Switch _showNumbersSwitch = new();
-        private readonly Switch _roundedArrowSwitch = new();
+        private readonly Switch _arrowOnKeyboardPromptSwitch = new();
+        private readonly Switch _arrowSpecialPromptSwitch = new();
+        private readonly Switch _arrowCardinalSwitch = new();
+        private readonly Switch _arrowOrdinalSwitch = new();
+        private readonly Switch _arrowMissingStartSwitch = new();
+        private readonly Switch _arrowMissingLengthSwitch = new();
+        private readonly Switch _arrowMissingEndSwitch = new();
         private readonly Switch _twoKeyboardsSwitch = new();
         private readonly Switch _onlyOneHandSwitch = new();
         private readonly Switch _isHelpNeededSwitch = new();
@@ -123,6 +130,9 @@ namespace GestureSample.Maui.Views.CustomStages
             _syncTypePicker.ItemsSource = CreateOptions(
                 new[] { SyncType.Sync, SyncType.HalfSync, SyncType.Spatial, SyncType.None },
                 value => value.ToString());
+            _arrowFeedbackPicker.ItemsSource = CreateOptions(
+                new[] { ArrowFeedbackMode.Icon, ArrowFeedbackMode.CorrectResponse },
+                value => value == ArrowFeedbackMode.Icon ? "Icon" : "Correct response");
         }
 
         private View BuildKindSpecificForm()
@@ -177,7 +187,16 @@ namespace GestureSample.Maui.Views.CustomStages
                         CreateSwitchField("Only through 10", _onlyThroughTenSwitch),
                         CreateSwitchField("Dynamic arrow length", _dynamicArrowLengthSwitch),
                         CreateSwitchField("Show numbers on keys", _showNumbersSwitch),
-                        CreateSwitchField("Rounded arrow", _roundedArrowSwitch),
+                        CreateSectionTitle("Per-question arrow kind"),
+                        CreateSwitchField("On keyboard arrow", _arrowOnKeyboardPromptSwitch),
+                        CreateSwitchField("Special arrow prompt", _arrowSpecialPromptSwitch),
+                        CreateSwitchField("Cardinal route", _arrowCardinalSwitch),
+                        CreateSwitchField("Ordinal route", _arrowOrdinalSwitch),
+                        CreateSectionTitle("Special arrow missing value"),
+                        CreateSwitchField("Missing start (addend1)", _arrowMissingStartSwitch),
+                        CreateSwitchField("Missing length (addend2)", _arrowMissingLengthSwitch),
+                        CreateSwitchField("Missing end (sum)", _arrowMissingEndSwitch),
+                        CreateLabeledField("Feedback", _arrowFeedbackPicker),
                         CreateSwitchField("Help available", _isHelpNeededSwitch)
                     }
                 },
@@ -308,11 +327,22 @@ namespace GestureSample.Maui.Views.CustomStages
                     config.OnlyThrougTen = _onlyThroughTenSwitch.IsToggled;
                     config.KeyboardConfig ??= new KeyboardConfig();
                     config.KeyboardConfig.SyncType = GetPickerValue(_syncTypePicker, SyncType.Sync);
-                    config.KeyboardConfig.IsArrow = true;
+                    config.KeyboardConfig.IsArrow = _arrowOnKeyboardPromptSwitch.IsToggled;
                     config.KeyboardConfig.SecondsPressingToAnswer = ReadInt(_secondsToAnswerEntry, 2);
                     config.KeyboardConfig.IsArrowLengthDynamic = _dynamicArrowLengthSwitch.IsToggled;
                     config.KeyboardConfig.ShowNumbersOnKeys = _showNumbersSwitch.IsToggled;
-                    config.KeyboardConfig.ArrowType = _roundedArrowSwitch.IsToggled ? ArrowType.Rounded : ArrowType.Straight;
+                    config.KeyboardConfig.ArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+                    config.KeyboardConfig.AllowedArrowPromptKinds =
+                        (_arrowOnKeyboardPromptSwitch.IsToggled ? ArrowPromptKindFlags.OnKeyboard : ArrowPromptKindFlags.None) |
+                        (_arrowSpecialPromptSwitch.IsToggled ? ArrowPromptKindFlags.SpecialPrompt : ArrowPromptKindFlags.None);
+                    config.KeyboardConfig.AllowedArrowRouteKinds =
+                        (_arrowCardinalSwitch.IsToggled ? ArrowRouteKindFlags.Cardinal : ArrowRouteKindFlags.None) |
+                        (_arrowOrdinalSwitch.IsToggled ? ArrowRouteKindFlags.Ordinal : ArrowRouteKindFlags.None);
+                    config.KeyboardConfig.SpecialArrowMissingTargets =
+                        (_arrowMissingStartSwitch.IsToggled ? MissingValueTargetFlags.Addend1 : MissingValueTargetFlags.None) |
+                        (_arrowMissingLengthSwitch.IsToggled ? MissingValueTargetFlags.Addend2 : MissingValueTargetFlags.None) |
+                        (_arrowMissingEndSwitch.IsToggled ? MissingValueTargetFlags.Sum : MissingValueTargetFlags.None);
+                    config.KeyboardConfig.ArrowFeedbackMode = GetPickerValue(_arrowFeedbackPicker, ArrowFeedbackMode.Icon);
                     config.KeyboardConfig.IsHelpNeeded = _isHelpNeededSwitch.IsToggled;
                     break;
                 case CustomStageKind.Logical:
@@ -447,7 +477,37 @@ namespace GestureSample.Maui.Views.CustomStages
                     _onlyThroughTenSwitch.IsToggled = config.OnlyThrougTen;
                     _dynamicArrowLengthSwitch.IsToggled = config.KeyboardConfig?.IsArrowLengthDynamic == true;
                     _showNumbersSwitch.IsToggled = config.KeyboardConfig?.ShowNumbersOnKeys == true;
-                    _roundedArrowSwitch.IsToggled = config.KeyboardConfig?.ArrowType == ArrowType.Rounded;
+                    ArrowPromptKindFlags promptKinds = config.KeyboardConfig?.AllowedArrowPromptKinds ?? ArrowPromptKindFlags.None;
+                    if (promptKinds == ArrowPromptKindFlags.None)
+                        promptKinds = config.KeyboardConfig?.ArrowLabelExerciseMode == ArrowLabelExerciseMode.None
+                            ? ArrowPromptKindFlags.OnKeyboard
+                            : ArrowPromptKindFlags.SpecialPrompt;
+                    _arrowOnKeyboardPromptSwitch.IsToggled = promptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard);
+                    _arrowSpecialPromptSwitch.IsToggled = promptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt);
+
+                    ArrowRouteKindFlags routeKinds = config.KeyboardConfig?.AllowedArrowRouteKinds ?? ArrowRouteKindFlags.None;
+                    if (routeKinds == ArrowRouteKindFlags.None)
+                        routeKinds = config.KeyboardConfig?.ArrowLabelExerciseMode == ArrowLabelExerciseMode.OrdinalStartAndLength ||
+                                     config.KeyboardConfig?.ArrowType == ArrowType.Rounded
+                            ? ArrowRouteKindFlags.Ordinal
+                            : ArrowRouteKindFlags.Cardinal;
+                    _arrowCardinalSwitch.IsToggled = routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal);
+                    _arrowOrdinalSwitch.IsToggled = routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal);
+
+                    MissingValueTargetFlags missingTargets = config.KeyboardConfig?.SpecialArrowMissingTargets ?? MissingValueTargetFlags.None;
+                    if (missingTargets == MissingValueTargetFlags.None)
+                    {
+                        missingTargets = config.KeyboardConfig?.ArrowLabelExerciseMode switch
+                        {
+                            ArrowLabelExerciseMode.StartAndEndWithMissingLength => MissingValueTargetFlags.Addend2,
+                            ArrowLabelExerciseMode.EndAndLengthWithMissingStart => MissingValueTargetFlags.Addend1,
+                            _ => MissingValueTargetFlags.Sum
+                        };
+                    }
+                    _arrowMissingStartSwitch.IsToggled = missingTargets.HasFlag(MissingValueTargetFlags.Addend1);
+                    _arrowMissingLengthSwitch.IsToggled = missingTargets.HasFlag(MissingValueTargetFlags.Addend2);
+                    _arrowMissingEndSwitch.IsToggled = missingTargets.HasFlag(MissingValueTargetFlags.Sum);
+                    SetPickerValue(_arrowFeedbackPicker, config.KeyboardConfig?.ArrowFeedbackMode ?? ArrowFeedbackMode.Icon);
                     _isHelpNeededSwitch.IsToggled = config.KeyboardConfig?.IsHelpNeeded == true;
                     break;
                 case CustomStageKind.Logical:

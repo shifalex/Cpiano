@@ -295,6 +295,43 @@
         AssociativityEdges = 2
     }
 
+    public enum ArrowLabelExerciseMode
+    {
+        None = 0,
+        StartAndLength = 1,
+        StartAndEndWithMissingLength = 2,
+        EndAndLengthWithMissingStart = 3,
+        OrdinalStartAndLength = 4
+    }
+
+    [Flags]
+    public enum ArrowPromptKindFlags
+    {
+        None = 0,
+        OnKeyboard = 1,
+        SpecialPrompt = 2
+    }
+
+    [Flags]
+    public enum ArrowRouteKindFlags
+    {
+        None = 0,
+        Cardinal = 1,
+        Ordinal = 2
+    }
+
+    public enum ArrowFeedbackMode
+    {
+        Icon = 0,
+        CorrectResponse = 1
+    }
+
+    public enum KeyLabelVerticalPosition
+    {
+        Middle = 0,
+        Top = 1
+    }
+
     public class KeyboardConfig
     {
         public void NormalizeWeightedLayout()
@@ -426,6 +463,12 @@
         public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;
         public bool AllowSumHeaderVisibilityToggle { get; set; } = false;
         public GroupByColorLayoutMode GroupByColorLayoutMode { get; set; } = GroupByColorLayoutMode.Free;
+        public ArrowLabelExerciseMode ArrowLabelExerciseMode { get; set; } = ArrowLabelExerciseMode.None;
+        public ArrowPromptKindFlags AllowedArrowPromptKinds { get; set; } = ArrowPromptKindFlags.None;
+        public ArrowRouteKindFlags AllowedArrowRouteKinds { get; set; } = ArrowRouteKindFlags.None;
+        public MissingValueTargetFlags SpecialArrowMissingTargets { get; set; } = MissingValueTargetFlags.None;
+        public ArrowFeedbackMode ArrowFeedbackMode { get; set; } = ArrowFeedbackMode.Icon;
+        public KeyLabelVerticalPosition KeyLabelVerticalPosition { get; set; } = KeyLabelVerticalPosition.Middle;
         public int GroupByColorColorCount { get; set; } = 2;
         public int[]? GroupByColorCounts { get; set; }
         public bool GroupByColorAllowSameSideTargets { get; set; } = false;

@@ -24,6 +24,7 @@ namespace GestureSample.Views
         }
         private readonly GameRepository _gameRepository;
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly QuestionAnswerRepository _questionAnswerRepository;
         private readonly KeyEventRepository _keyEventRepository;
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
         private readonly BackgroundSyncService _backgroundSyncService;
@@ -53,6 +54,7 @@ namespace GestureSample.Views
             _currentSelectedGameId = gameId;
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _timerChangeEventRepository = ServiceHelper.GetService<TimerChangeEventRepository>();
             _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
@@ -195,6 +197,7 @@ namespace GestureSample.Views
             List<KeyboardQuestion> questionList =new();
             List<KeyEvent> gamePresses = new();
             List<TimerChangeEvent> timerEvents = new();
+            List<QuestionAnswer> questionAnswers = new();
 
 
             if (selectedIdentifier != null)
@@ -202,6 +205,9 @@ namespace GestureSample.Views
                 questionList = await (_forTeacher
                     ? Maui.Data.SupaBase.SupabaseService.GetKeyboardQuestionByQueryAsync(selectedIdentifier)
                     : _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier));
+                questionAnswers = await (_forTeacher
+                    ? Maui.Data.SupaBase.SupabaseService.GetAnswersByQueryAsync((Guid)selectedIdentifier)
+                    : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier));
                 gamePresses = await (_forTeacher
                     ? Maui.Data.SupaBase.SupabaseService.GetKeyEventsByQueryAsync((Guid)selectedIdentifier)
                     : _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier));
@@ -252,6 +258,12 @@ namespace GestureSample.Views
             }*/
 
             List<MainItem> mainItems = new();
+            Dictionary<int, ShowState> mergedPpwStatesByQuestion = questionAnswers
+                .GroupBy(item => item.QuestionNumber)
+                .Select(group => BuildMergedPpwState(group.Key, group.ToList()))
+                .Where(item => item != null)
+                .ToDictionary(item => item!.QuestionNumber, item => item!);
+
             if (questionList.Any())
             {
                 foreach (var questionGroup in questionList
@@ -272,10 +284,13 @@ namespace GestureSample.Views
                     foreach (KeyboardQuestion q in orderedAttempts)
                     {
                         List<KeyEvent> attemptEvents = ResolveAttemptEvents(q, orderedAttempts, combinedEvents);
+                        ShowState? ppwState = mergedPpwStatesByQuestion.GetValueOrDefault(questionGroup.Key);
+                        NormalizeSpecialArrowPpwState(q, ppwState);
 
                         mainItems.Add(new()
                         {
                             Question = q,
+                            PpwState = ppwState,
                             SubItems = attemptEvents,
                             CombinedSubItems = combinedEvents,
                             TimerEvents = ResolveAttemptTimerEvents(q, orderedAttempts, timerEvents),
@@ -685,17 +700,148 @@ namespace GestureSample.Views
         {
             return events.Any(item => item.EventType == 0 || item.EventType == 1 || item.EventType == 3);
         }
+
+        private static ShowState? BuildMergedPpwState(int questionNumber, List<QuestionAnswer> questionAnswers)
+        {
+            if (questionAnswers == null || questionAnswers.Count == 0)
+                return null;
+
+            List<QuestionAnswer> orderedStates = questionAnswers
+                .OrderBy(item => item.Time)
+                .ThenBy(item => item.QuestionID)
+                .ToList();
+
+            List<ShowState> visibleStates = new();
+            ShowState? pendingState = null;
+
+            foreach (QuestionAnswer state in orderedStates)
+            {
+                ShowState currentState = new(state);
+                Color color = state.ResultStatus switch
+                {
+                    0 => Colors.PaleVioletRed,
+                    1 => Colors.LightGreen,
+                    2 => Colors.LightYellow,
+                    _ => Colors.White
+                };
+
+                bool hasMissingValue = currentState.Sum == PPWGamePlay.NAN ||
+                                       currentState.Addend1 == PPWGamePlay.NAN ||
+                                       currentState.Addend2 == PPWGamePlay.NAN;
+
+                if (hasMissingValue)
+                {
+                    pendingState ??= currentState;
+                    if (ReferenceEquals(state, orderedStates[^1]))
+                    {
+                        if (currentState.Sum == PPWGamePlay.NAN) { currentState.SumColor = Colors.LightGray; currentState.Sum = 0; }
+                        if (currentState.Addend1 == PPWGamePlay.NAN) { currentState.Addend1Color = Colors.LightGray; currentState.Addend1 = 0; }
+                        if (currentState.Addend2 == PPWGamePlay.NAN) { currentState.Addend2Color = Colors.LightGray; currentState.Addend2 = 0; }
+                        visibleStates.Add(currentState);
+                    }
+
+                    continue;
+                }
+
+                if (pendingState != null &&
+                    (pendingState.Sum == PPWGamePlay.NAN ||
+                     pendingState.Addend1 == PPWGamePlay.NAN ||
+                     pendingState.Addend2 == PPWGamePlay.NAN))
+                {
+                    currentState.StartTime = pendingState.Time;
+                    if (pendingState.Sum == PPWGamePlay.NAN) currentState.SumColor = color;
+                    if (pendingState.Addend1 == PPWGamePlay.NAN) currentState.Addend1Color = color;
+                    if (pendingState.Addend2 == PPWGamePlay.NAN) currentState.Addend2Color = color;
+                }
+
+                visibleStates.Add(currentState);
+                if (currentState.ResultStatus == 1)
+                    pendingState = null;
+            }
+
+            ShowState? mergedState = visibleStates.LastOrDefault();
+            if (mergedState == null)
+                return null;
+
+            mergedState.QuestionNumber = questionNumber;
+            return mergedState;
+        }
+
+        private static void NormalizeSpecialArrowPpwState(KeyboardQuestion question, ShowState? state)
+        {
+            if (question == null || state == null || !question.IsSpecialArrowPrompt)
+                return;
+
+            if (!question.aboveNumber.HasValue || !question.length.HasValue)
+                return;
+
+            int start = question.aboveNumber.Value;
+            int distance = question.length.Value;
+            int end = start + distance;
+
+            ArrowLabelExerciseMode mode = GetArrowPromptMode(question.QuestionPromptText);
+            state.Op = Operation.Sum;
+            state.OpDString = Operation.Sum.ToDString();
+
+            switch (mode)
+            {
+                case ArrowLabelExerciseMode.StartAndEndWithMissingLength:
+                    state.Addend1 = start;
+                    state.Addend2 = state.ResultStatus == 1 ? distance : (state.Addend2 == PPWGamePlay.NAN ? PPWGamePlay.NAN : distance);
+                    state.Sum = end;
+                    break;
+                case ArrowLabelExerciseMode.EndAndLengthWithMissingStart:
+                    state.Addend1 = state.ResultStatus == 1 ? start : (state.Addend1 == PPWGamePlay.NAN ? PPWGamePlay.NAN : start);
+                    state.Addend2 = distance;
+                    state.Sum = end;
+                    break;
+                case ArrowLabelExerciseMode.OrdinalStartAndLength:
+                case ArrowLabelExerciseMode.StartAndLength:
+                default:
+                    state.Addend1 = start;
+                    state.Addend2 = distance;
+                    state.Sum = state.ResultStatus == 1 ? end : (state.Sum == PPWGamePlay.NAN ? PPWGamePlay.NAN : end);
+                    break;
+            }
+        }
+
+        private static ArrowLabelExerciseMode GetArrowPromptMode(string? promptText)
+        {
+            if (string.IsNullOrWhiteSpace(promptText))
+                return ArrowLabelExerciseMode.StartAndLength;
+
+            if (promptText.Contains("(ordinal)", StringComparison.OrdinalIgnoreCase))
+                return ArrowLabelExerciseMode.OrdinalStartAndLength;
+
+            string[] lines = promptText
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(item => item.Trim())
+                .ToArray();
+
+            if (lines.Length >= 3)
+            {
+                if (lines[0] == "?")
+                    return ArrowLabelExerciseMode.StartAndEndWithMissingLength;
+                if (lines[2].StartsWith("?", StringComparison.Ordinal))
+                    return ArrowLabelExerciseMode.EndAndLengthWithMissingStart;
+            }
+
+            return ArrowLabelExerciseMode.StartAndLength;
+        }
     }
 
     public class MainItem : INotifyPropertyChanged
     {
         public KeyboardQuestion Question { get; set; }
+        public ShowState? PpwState { get; set; }
         public List<KeyEvent> SubItems { get; set; }
         public List<KeyEvent> CombinedSubItems { get; set; }
         public List<TimerChangeEvent> TimerEvents { get; set; } = new();
         public List<TimerChangeEvent> CombinedTimerEvents { get; set; } = new();
         public bool[] CombinedFinalKeyboard { get; set; }
         public string TimerRegimeText { get; set; } = "Unknown";
+        public bool HasPpwState => PpwState != null;
+        public string PpwOpText => Question?.IsSpecialArrowPrompt == true ? Operation.Sum.ToDString() : (PpwState?.Op == Operation.Copy ? string.Empty : PpwState?.OpDString ?? string.Empty);
         public bool HasReplay => SubItems != null && SubItems.Count > 0;
         public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
         public bool HasTimingSummary => !string.IsNullOrWhiteSpace(TimingSummaryText);
