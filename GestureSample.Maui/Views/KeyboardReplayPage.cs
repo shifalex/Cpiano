@@ -652,6 +652,9 @@ namespace GestureSample.Views
 
             if (_question.HasQuestionKeyboard)
             {
+                int? previewAboveNumber = _question.IsSpecialArrowPrompt ? null : _question.aboveNumber;
+                int? previewArrowLength = _question.IsSpecialArrowPrompt ? null : _question.length;
+
                 promptLayout.Children.Add(new VerticalStackLayout
                 {
                     Spacing = 4,
@@ -669,8 +672,8 @@ namespace GestureSample.Views
                             Weights = _question.KeyboardWeights,
                             KeysInRow = _question.KeyboardKeysInRow,
                             Rows = _question.KeyboardRows,
-                            AboveNumber = _question.aboveNumber,
-                            ArrowLength = _question.length,
+                            AboveNumber = previewAboveNumber,
+                            ArrowLength = previewArrowLength,
                             Direction = _question.dir,
                             Compact = false,
                             HorizontalOptions = LayoutOptions.Fill

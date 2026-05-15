@@ -17,6 +17,8 @@ namespace GestureSample.Maui.Models
         IDrawable? _overlayDrawable;
         Microsoft.Maui.Controls.BoxView[]? _traceOverlayViews;
         Microsoft.Maui.Controls.BoxView[]? _traceOverlaySecondaryViews;
+        Microsoft.Maui.Controls.Label[]? _keyCaptionLabels;
+        Microsoft.Maui.Controls.Label[]? _tutorialStepLabels;
         public GraphicsView? OverlayView => _overlayView;
 
         public Grid Arrow1; // The combined object containing the number and the arrow
@@ -560,6 +562,8 @@ namespace GestureSample.Maui.Models
             btnKeys = new MR.Gestures.Button[NUMBER_OF_KEYS];
             _traceOverlayViews = new Microsoft.Maui.Controls.BoxView[NUMBER_OF_KEYS];
             _traceOverlaySecondaryViews = new Microsoft.Maui.Controls.BoxView[NUMBER_OF_KEYS];
+            _keyCaptionLabels = new Microsoft.Maui.Controls.Label[NUMBER_OF_KEYS];
+            _tutorialStepLabels = new Microsoft.Maui.Controls.Label[NUMBER_OF_KEYS];
             for (int i = 0; i < keysInRow + (handSeperator < keysInRow ? 1 : 0); i++)
                 this.ColumnDefinitions.Add((i == handSeperator) ? new ColumnDefinition { Width = new GridLength(5) } : new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
@@ -574,7 +578,7 @@ namespace GestureSample.Maui.Models
                     this.Add(
                     btnKeys[keyIndex] = new()
                     {
-                        Text = GetKeyDisplayText(keyIndex),
+                        Text = string.Empty,
                         ClassId = "PianoKeyButton",
                         TextColor = Colors.Black,
                         BackgroundColor = COLOR_FREE,  
@@ -631,6 +635,16 @@ namespace GestureSample.Maui.Models
                     int column = (i < handSeperator) ? i : i + 1;
                     int row = rows - r + (config.IsArrow ? 1 : 0);
                     this.Add(
+                        _keyCaptionLabels[keyIndex] = CreateKeyCaptionLabel(GetKeyDisplayText(keyIndex)),
+                        column,
+                        row);
+
+                    this.Add(
+                        _tutorialStepLabels[keyIndex] = CreateTutorialStepLabel(),
+                        column,
+                        row);
+
+                    this.Add(
                         _traceOverlaySecondaryViews[keyIndex] = new Microsoft.Maui.Controls.BoxView
                         {
                             InputTransparent = true,
@@ -680,6 +694,69 @@ namespace GestureSample.Maui.Models
 
         }
 
+        private void ApplyKeyLabelLayout(MR.Gestures.Button button)
+        {
+            button.Padding = new Thickness(0);
+        }
+
+        private Microsoft.Maui.Controls.Label CreateKeyCaptionLabel(string text)
+        {
+            var label = new Microsoft.Maui.Controls.Label
+            {
+                Text = text,
+                IsVisible = Config?.ShowNumbersOnKeys == true,
+                InputTransparent = true,
+                TextColor = Colors.Black,
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                HorizontalOptions = LayoutOptions.Fill,
+                HorizontalTextAlignment = TextAlignment.Center,
+                LineBreakMode = LineBreakMode.NoWrap,
+                ZIndex = 30
+            };
+
+            ApplyKeyCaptionLayout(label);
+            return label;
+        }
+
+        private static Microsoft.Maui.Controls.Label CreateTutorialStepLabel()
+        {
+            return new Microsoft.Maui.Controls.Label
+            {
+                IsVisible = false,
+                InputTransparent = true,
+                BackgroundColor = Colors.Yellow,
+                TextColor = Colors.Black,
+                FontSize = 16,
+                FontAttributes = FontAttributes.Bold,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 48, 0, 0),
+                Padding = new Thickness(6, 1),
+                MinimumWidthRequest = 24,
+                LineBreakMode = LineBreakMode.NoWrap,
+                ZIndex = 31
+            };
+        }
+
+        private void ApplyKeyCaptionLayout(Microsoft.Maui.Controls.Label label)
+        {
+            KeyLabelVerticalPosition labelPosition = Config?.KeyLabelVerticalPosition ?? KeyLabelVerticalPosition.Middle;
+
+            if (labelPosition == KeyLabelVerticalPosition.Top)
+            {
+                label.VerticalOptions = LayoutOptions.Start;
+                label.Margin = new Thickness(0, 28, 0, 0);
+            }
+            else
+            {
+                label.VerticalOptions = LayoutOptions.Center;
+                label.Margin = new Thickness(0);
+            }
+        }
+
         private string GetKeyDisplayText(int keyIndex)
         {
             if (Config == null || !Config.ShowNumbersOnKeys)
@@ -698,10 +775,45 @@ namespace GestureSample.Maui.Models
 
             for (int i = 0; i < btnKeys.Length; i++)
             {
-                btnKeys[i].Text = GetKeyDisplayText(i);
+                btnKeys[i].Text = string.Empty;
+                if (_keyCaptionLabels != null && i < _keyCaptionLabels.Length && _keyCaptionLabels[i] != null)
+                {
+                    _keyCaptionLabels[i].Text = GetKeyDisplayText(i);
+                    _keyCaptionLabels[i].IsVisible = Config?.ShowNumbersOnKeys == true;
+                    ApplyKeyCaptionLayout(_keyCaptionLabels[i]);
+                }
             }
 
             ScheduleNormalizeAllPianoKeyVisuals();
+        }
+
+        public void SetTutorialStepLabels(IReadOnlyDictionary<int, int>? stepByKey)
+        {
+            if (_tutorialStepLabels == null)
+                return;
+
+            for (int i = 0; i < _tutorialStepLabels.Length; i++)
+            {
+                Microsoft.Maui.Controls.Label? label = _tutorialStepLabels[i];
+                if (label == null)
+                    continue;
+
+                if (stepByKey != null && stepByKey.TryGetValue(i, out int stepNumber))
+                {
+                    label.Text = stepNumber.ToString();
+                    label.IsVisible = true;
+                }
+                else
+                {
+                    label.Text = string.Empty;
+                    label.IsVisible = false;
+                }
+            }
+        }
+
+        public void ClearTutorialStepLabels()
+        {
+            SetTutorialStepLabels(null);
         }
 
         protected void NormalizeAllPianoKeyVisuals()
@@ -730,6 +842,7 @@ namespace GestureSample.Maui.Models
 
         protected void NormalizePianoKeyVisual(MR.Gestures.Button button)
         {
+            ApplyKeyLabelLayout(button);
             button.TextColor = Colors.Black;
             button.Opacity = 1;
 

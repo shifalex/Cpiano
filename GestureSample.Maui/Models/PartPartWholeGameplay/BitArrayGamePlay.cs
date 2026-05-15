@@ -44,6 +44,12 @@ namespace GestureSample.Maui.Models
         private bool _isCurrentStagedArrowMasked;
         private bool _isCurrentStagedArrowRevealed;
         public bool ForceShowMaskedThirdArrow { get; set; }
+        private int _arrowLabelStartValue;
+        private int _arrowLabelEndValue;
+        private int _arrowLabelDistance;
+        private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private bool _usesActiveOnKeyboardArrow;
+        private ArrowType _activeArrowType = ArrowType.Straight;
         private bool[]? _stagedArrowFirstBits;
         private bool[]? _stagedArrowSecondBits;
         private readonly List<bool[]> _groupByColorQuestionGroups = new();
@@ -59,6 +65,206 @@ namespace GestureSample.Maui.Models
             SetBitArrayForArrow(fromIndex, lengthIndexes);
             CaptureStagedArrowOverlayState();
             Console.WriteLine("above number:{0}", aboveNumber);
+        }
+
+        private bool SupportsComposedArrowVariants()
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            return keyboardConfig != null &&
+                   (keyboardConfig.AllowedArrowPromptKinds != ArrowPromptKindFlags.None ||
+                    keyboardConfig.AllowedArrowRouteKinds != ArrowRouteKindFlags.None ||
+                    keyboardConfig.SpecialArrowMissingTargets != MissingValueTargetFlags.None);
+        }
+
+        private ArrowLabelExerciseMode GetCurrentArrowLabelExerciseMode()
+        {
+            if (SupportsComposedArrowVariants())
+                return _activeArrowLabelExerciseMode;
+
+            return Config?.KeyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+        }
+
+        private ArrowType GetCurrentArrowType()
+        {
+            if (SupportsComposedArrowVariants())
+                return _activeArrowType;
+
+            return Config?.KeyboardConfig?.ArrowType ?? ArrowType.Straight;
+        }
+
+        private bool UsesOnKeyboardArrowExercise()
+        {
+            if (SupportsComposedArrowVariants())
+                return _usesActiveOnKeyboardArrow;
+
+            return Config?.KeyboardConfig?.IsArrow == true;
+        }
+
+        private bool UsesArrowLabelExercise()
+        {
+            return GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.StartAndLength or
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength or
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
+                ArrowLabelExerciseMode.OrdinalStartAndLength;
+        }
+
+        private void ResolveCurrentArrowVariant(Random r)
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            _activeArrowLabelExerciseMode = keyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+            _usesActiveOnKeyboardArrow = keyboardConfig?.IsArrow == true;
+            _activeArrowType = keyboardConfig?.ArrowType ?? ArrowType.Straight;
+
+            if (keyboardConfig == null || !SupportsComposedArrowVariants())
+                return;
+
+            ArrowPromptKindFlags promptKinds = keyboardConfig.AllowedArrowPromptKinds == ArrowPromptKindFlags.None
+                ? ArrowPromptKindFlags.OnKeyboard
+                : keyboardConfig.AllowedArrowPromptKinds;
+            ArrowRouteKindFlags routeKinds = keyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.None
+                ? ArrowRouteKindFlags.Cardinal
+                : keyboardConfig.AllowedArrowRouteKinds;
+            MissingValueTargetFlags missingTargets = keyboardConfig.SpecialArrowMissingTargets == MissingValueTargetFlags.None
+                ? MissingValueTargetFlags.Sum
+                : keyboardConfig.SpecialArrowMissingTargets;
+
+            List<(bool UseOnKeyboard, ArrowLabelExerciseMode LabelMode, ArrowType ArrowType)> variants = new();
+
+            if (promptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard))
+            {
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
+                    variants.Add((true, ArrowLabelExerciseMode.None, ArrowType.Straight));
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal))
+                    variants.Add((true, ArrowLabelExerciseMode.None, ArrowType.Rounded));
+            }
+
+            if (promptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt))
+            {
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
+                {
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Sum))
+                        variants.Add((false, ArrowLabelExerciseMode.StartAndLength, ArrowType.Straight));
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Addend2))
+                        variants.Add((false, ArrowLabelExerciseMode.StartAndEndWithMissingLength, ArrowType.Straight));
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Addend1))
+                        variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, ArrowType.Straight));
+                }
+
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) &&
+                    missingTargets.HasFlag(MissingValueTargetFlags.Sum))
+                {
+                    variants.Add((false, ArrowLabelExerciseMode.OrdinalStartAndLength, ArrowType.Rounded));
+                }
+            }
+
+            if (variants.Count == 0)
+            {
+                _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength;
+                _usesActiveOnKeyboardArrow = false;
+                _activeArrowType = ArrowType.Straight;
+                return;
+            }
+
+            (bool useOnKeyboard, ArrowLabelExerciseMode labelMode, ArrowType arrowType) = variants[r.Next(variants.Count)];
+            _usesActiveOnKeyboardArrow = useOnKeyboard;
+            _activeArrowLabelExerciseMode = useOnKeyboard ? ArrowLabelExerciseMode.None : labelMode;
+            _activeArrowType = arrowType;
+        }
+
+        private int GetKeyboardValueAtIndex(int index)
+        {
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            return withoutZero ? index + 1 : index;
+        }
+
+        private int GetKeyboardIndexForValue(int value)
+        {
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            return withoutZero ? value - 1 : value;
+        }
+
+        private void GenerateArrowLabelExercise(Random r)
+        {
+            int keyCount = BitArrayQuestion.Length;
+            int minValue = GetKeyboardValueAtIndex(0);
+            int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
+
+            _arrowLabelStartValue = r.Next(minValue, maxValue);
+            _arrowLabelDistance = r.Next(1, (maxValue - _arrowLabelStartValue) + 1);
+            _arrowLabelEndValue = _arrowLabelStartValue + _arrowLabelDistance;
+
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+
+            int answerStartValue = _arrowLabelStartValue + 1;
+            int answerFromIndex = GetKeyboardIndexForValue(answerStartValue);
+            BitArrayQuestion = GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_arrowLabelEndValue), 1)
+                : GenerateSequenceArrayQuestion(answerFromIndex, _arrowLabelDistance);
+            BitArrayQuestion2 = new bool[keyCount];
+        }
+
+        public bool HasArrowLabelPrompt => UsesArrowLabelExercise();
+
+        public int ArrowLabelAddend1Value => _arrowLabelStartValue;
+
+        public int? ArrowLabelAddend2Value =>
+            GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.StartAndLength or
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength or
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
+                ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? _arrowLabelDistance
+                : null;
+
+        public int ArrowLabelSumValue => _arrowLabelEndValue;
+        public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
+
+        protected override int GetPersistedQuestionAnswerAddend1()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.EndAndLengthWithMissingStart &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelStartValue;
+            }
+
+            return base.GetPersistedQuestionAnswerAddend1();
+        }
+
+        protected override int GetPersistedQuestionAnswerAddend2()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.StartAndEndWithMissingLength &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelDistance;
+            }
+
+            return base.GetPersistedQuestionAnswerAddend2();
+        }
+
+        protected override int GetPersistedQuestionAnswerSum()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelExerciseMode() is ArrowLabelExerciseMode.StartAndLength or ArrowLabelExerciseMode.OrdinalStartAndLength &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelEndValue;
+            }
+
+            return base.GetPersistedQuestionAnswerSum();
+        }
+
+        protected override Operation GetPersistedQuestionAnswerOperation()
+        {
+            if (UsesArrowLabelExercise())
+                return Operation.Sum;
+
+            return base.GetPersistedQuestionAnswerOperation();
         }
 
         private bool UsesStagedArrowFlow()
@@ -197,7 +403,7 @@ namespace GestureSample.Maui.Models
         {
             int fromIndex = 0, lengthIndexes = 1;
             int keys = BitArrayQuestion.Length;
-            bool isOrdinal = Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded;
+            bool isOrdinal = GetCurrentArrowType() == ArrowType.Rounded;
 
             // initial direction and fallback factors
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -361,7 +567,7 @@ namespace GestureSample.Maui.Models
         private void SetBitArrayForArrow(int fromIndex, int lengthIndexes)
         {
             int keys = BitArrayQuestion.Length;
-            if (Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded)
+            if (GetCurrentArrowType() == ArrowType.Rounded)
             {
                 int start = ((dir == Direction.Left ? (aboveNumber - lengthIndexes + keys) : (aboveNumber + lengthIndexes)) - 1) % keys;
                 BitArrayQuestion = GenerateSequenceArrayQuestion(start, 1);
@@ -443,6 +649,8 @@ namespace GestureSample.Maui.Models
 
             if (result)
             {
+                if (UsesArrowLabelExercise())
+                    ApplyArrowLabelPpwState(revealMissingValue: true);
                 _prevBitArrayAnswer = submittedKeyboard.ToArray();
             }
 
@@ -451,6 +659,34 @@ namespace GestureSample.Maui.Models
                 : await RegisterFailedAttemptAsync();
 
             return CreateCheckResult(result, completion: completion);
+        }
+
+        private void ApplyArrowLabelPpwState(bool revealMissingValue)
+        {
+            if (!UsesArrowLabelExercise() || Config?.KeyboardConfig == null)
+                return;
+
+            switch (GetCurrentArrowLabelExerciseMode())
+            {
+                case ArrowLabelExerciseMode.StartAndLength:
+                case ArrowLabelExerciseMode.OrdinalStartAndLength:
+                    addend1 = _arrowLabelStartValue;
+                    addend2 = _arrowLabelDistance;
+                    Sum = revealMissingValue ? _arrowLabelEndValue : NAN;
+                    break;
+
+                case ArrowLabelExerciseMode.StartAndEndWithMissingLength:
+                    addend1 = _arrowLabelStartValue;
+                    addend2 = revealMissingValue ? _arrowLabelDistance : NAN;
+                    Sum = _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.EndAndLengthWithMissingStart:
+                    addend1 = revealMissingValue ? _arrowLabelStartValue : NAN;
+                    addend2 = _arrowLabelDistance;
+                    Sum = _arrowLabelEndValue;
+                    break;
+            }
         }
 
         private async Task<ExerciseCheckResult> EvaluateGroupByColorAsync(PianoKeyboard pianoKeyboard)
@@ -600,6 +836,26 @@ namespace GestureSample.Maui.Models
             });
         }
 
+        public override string? GetKeyboardQuestionPromptText()
+        {
+            if (!UsesArrowLabelExercise())
+                return base.GetKeyboardQuestionPromptText();
+
+            const string arrowLine = "|--->";
+            return GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.StartAndLength =>
+                    $"   {_arrowLabelDistance}\n{arrowLine}\n{_arrowLabelStartValue}",
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength =>
+                    $"   ?\n{arrowLine}\n{_arrowLabelStartValue}      {_arrowLabelEndValue}",
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart =>
+                    $"   {_arrowLabelDistance}\n{arrowLine}\n?      {_arrowLabelEndValue}",
+                ArrowLabelExerciseMode.OrdinalStartAndLength =>
+                    $"   {_arrowLabelDistance}\n(ordinal)\n{_arrowLabelStartValue}",
+                _ => base.GetKeyboardQuestionPromptText()
+            };
+        }
+
         protected override async Task PersistGeneratedExerciseAsync()
         {
             await EnsureGameInitializedAsync();
@@ -610,7 +866,7 @@ namespace GestureSample.Maui.Models
         private void ResolveOperation(Random r, ExercisePlanStep? step)
         {
             // Preserve your rule: Arrow keyboard always uses Copy
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            if (Config.KeyboardConfig != null && (UsesOnKeyboardArrowExercise() || UsesArrowLabelExercise()))
             {
                 CurrentOperation = Operation.Copy;
                 return;
@@ -653,7 +909,16 @@ namespace GestureSample.Maui.Models
 
         private void GenerateNewQuestion(Random r)
         {
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            ResolveCurrentArrowVariant(r);
+
+            if (UsesArrowLabelExercise())
+            {
+                GenerateArrowLabelExercise(r);
+                BuildCorrectAnswer();
+                return;
+            }
+
+            if (UsesOnKeyboardArrowExercise())
             {
                 GenerateArrowExercise();
                 BuildCorrectAnswer();
@@ -777,7 +1042,7 @@ namespace GestureSample.Maui.Models
             if (!step.UseSecondOperandFromPermutation) return;
 
             // If you have special cases (e.g. arrow keyboard), you can early-return here.
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow) return;
+            if (UsesOnKeyboardArrowExercise()) return;
 
             // Build operand2 from permutation policy (you likely already have / will add a helper).
             BitArrayQuestion2 = BuildPermutedOperand(BitArrayQuestion, step.PermutationPolicy);
@@ -790,8 +1055,10 @@ namespace GestureSample.Maui.Models
             string actionText = CurrentOperation.ToDString();
             if (CurrentOperation == Operation.MoveBy)
             {
-                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";
+                string strDir = moveBydir == Direction.Right ? "RIGHT" : "LEFT";
                 actionText += " " + strDir + " BY " + moveByLength;
+                strDir = moveBydir == Direction.Right ? "->" : "<-";
+                actionText += "\n" + strDir + moveByLength;
             }
             else if (CurrentOperation == Operation.GroupByColor)
             {
@@ -820,6 +1087,121 @@ namespace GestureSample.Maui.Models
                 BuildCorrectAnswer();
 
             return BitArrayCorrectAnswer?.ToArray() ?? GetTutorialQuestionBits();
+        }
+
+        public bool UsesArrowDirectionTutorial()
+        {
+            return Config?.KeyboardConfig != null &&
+                   (UsesOnKeyboardArrowExercise() || UsesArrowLabelExercise());
+        }
+
+        public bool IsOrdinalArrowTutorial()
+        {
+            return UsesArrowDirectionTutorial() &&
+                   GetCurrentArrowType() == ArrowType.Rounded;
+        }
+
+        public bool IsSpecialOrdinalArrowTutorial()
+        {
+            return UsesArrowLabelExercise() &&
+                   GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.OrdinalStartAndLength;
+        }
+
+        public IReadOnlyList<int> GetArrowTutorialStepIndices()
+        {
+            if (!UsesArrowDirectionTutorial())
+                return Array.Empty<int>();
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return Array.Empty<int>();
+
+            List<int> indices = new();
+
+            if (UsesArrowLabelExercise())
+            {
+                ArrowLabelExerciseMode mode = GetCurrentArrowLabelExerciseMode();
+
+                if (mode == ArrowLabelExerciseMode.OrdinalStartAndLength)
+                {
+                    bool leftToRight = Config?.QuestionOrder != QuestionOrder.ToLeft;
+                    if (leftToRight)
+                    {
+                        for (int value = _arrowLabelStartValue + 1; value <= _arrowLabelEndValue; value++)
+                        {
+                            int index = GetKeyboardIndexForValue(value);
+                            if (index >= 0 && index < keyCount)
+                                indices.Add(index);
+                        }
+                    }
+                    else
+                    {
+                        for (int value = _arrowLabelEndValue - 1; value >= _arrowLabelStartValue; value--)
+                        {
+                            int index = GetKeyboardIndexForValue(value);
+                            if (index >= 0 && index < keyCount)
+                                indices.Add(index);
+                        }
+                    }
+                }
+                else if (mode == ArrowLabelExerciseMode.EndAndLengthWithMissingStart)
+                {
+                    int startIndex = GetKeyboardIndexForValue(_arrowLabelEndValue);
+                    for (int i = 0; i < _arrowLabelDistance; i++)
+                    {
+                        int index = startIndex - i;
+                        if (index >= 0 && index < keyCount)
+                            indices.Add(index);
+                    }
+                }
+                else
+                {
+                    int startIndex = GetKeyboardIndexForValue(_arrowLabelStartValue + 1);
+                    for (int i = 0; i < _arrowLabelDistance; i++)
+                    {
+                        int index = startIndex + i;
+                        if (index >= 0 && index < keyCount)
+                            indices.Add(index);
+                    }
+                }
+
+                return indices;
+            }
+
+            int currentValue = aboveNumber;
+            int stepCount = Math.Max(1, length);
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            int minValue = withoutZero ? 1 : 0;
+            int maxValue = withoutZero ? keyCount : keyCount - 1;
+
+            if (IsOrdinalArrowTutorial() && dir == Direction.Left)
+            {
+                currentValue -= 1;
+                if (currentValue < minValue)
+                    currentValue = maxValue;
+            }
+            else if (IsOrdinalArrowTutorial() && dir == Direction.Right)
+            {
+                currentValue += 1;
+                if (currentValue > maxValue)
+                    currentValue = minValue;
+            }
+
+            for (int i = 0; i < stepCount; i++)
+            {
+                int index = GetKeyboardIndexForValue(currentValue);
+                if (index >= 0 && index < keyCount)
+                    indices.Add(index);
+
+                currentValue += dir == Direction.Right ? 1 : -1;
+
+                if (currentValue < minValue)
+                    currentValue = maxValue;
+                else if (currentValue > maxValue)
+                    currentValue = minValue;
+            }
+
+            return indices;
         }
 
         public bool[] GetPrimaryColorTargetBits()
@@ -941,10 +1323,15 @@ namespace GestureSample.Maui.Models
                 QuestionPromptText = GetKeyboardQuestionPromptText()
             };
 
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            if (UsesOnKeyboardArrowExercise())
             {
                 s.aboveNumber = aboveNumber;
                 s.length = length;
+            }
+            else if (UsesArrowLabelExercise())
+            {
+                s.aboveNumber = _arrowLabelStartValue;
+                s.length = _arrowLabelDistance;
             }
 
             if (CurrentOperation == Operation.MoveBy)

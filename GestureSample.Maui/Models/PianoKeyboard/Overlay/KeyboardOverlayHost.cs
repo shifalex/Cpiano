@@ -352,6 +352,36 @@ namespace GestureSample.Maui.Models
             Keyboard.InvalidateOverlay();
         }
 
+        public void ShowHighlightedBits(bool[] bits, Color? color = null, float alpha = 0.55f)
+        {
+            TrySyncOverlay();
+
+            bits ??= Array.Empty<bool>();
+            _patternDrawable.AnimBits = bits;
+            _patternDrawable.AnimTargets = BuildShiftTargets(bits, 0);
+            _patternDrawable.AnimProgress = 1f;
+            _patternDrawable.AnimAlpha = Math.Clamp(alpha, 0f, 1f);
+            _patternDrawable.AnimColor = color ?? Colors.Yellow;
+            _patternDrawable.SpawnBits = Array.Empty<bool>();
+            _patternDrawable.SpawnAlpha = 0f;
+            _patternDrawable.CursorIndex = null;
+            Keyboard.InvalidateOverlay();
+        }
+
+        public Task FadeOutHighlightedBitsAsync(uint ms = 180, string animName = "TutBitsFade")
+        {
+            if ((_patternDrawable.AnimBits?.Length ?? 0) == 0)
+                return Task.CompletedTask;
+
+            float startAlpha = _patternDrawable.AnimAlpha;
+            return RunProgressAnimation(animName, ms, t =>
+            {
+                _patternDrawable.AnimAlpha = startAlpha * (1f - t);
+                if (t >= 1f)
+                    ClearAnim();
+            });
+        }
+
         public async Task AnimatePackedGroupsAsync(
             IReadOnlyList<(bool[] Bits, bool[] TargetBits, Color Color)> groups,
             uint moveMs = 900,

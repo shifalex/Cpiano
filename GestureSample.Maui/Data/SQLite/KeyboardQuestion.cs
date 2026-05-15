@@ -198,6 +198,12 @@ namespace GestureSample.Maui.Data.SQLite
         public bool HasPromptText => !string.IsNullOrWhiteSpace(QuestionPromptText);
 
         [Ignore]
+        public bool IsSpecialArrowPrompt =>
+            HasPromptText &&
+            (QuestionPromptText!.Contains("|--->", StringComparison.Ordinal) ||
+             QuestionPromptText.Contains("(ordinal)", StringComparison.OrdinalIgnoreCase));
+
+        [Ignore]
         public bool ShowCombinedArrowKeyboard => HasArrowPrompt;
 
         [Ignore]

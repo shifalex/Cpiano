@@ -79,7 +79,11 @@ namespace GestureSample.Maui.Models.CustomStages
                     {
                         SyncType = SyncType.Sync,
                         IsArrow = true,
-                        SecondsPressingToAnswer = 2
+                        SecondsPressingToAnswer = 2,
+                        AllowedArrowPromptKinds = ArrowPromptKindFlags.OnKeyboard,
+                        AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+                        SpecialArrowMissingTargets = MissingValueTargetFlags.Sum,
+                        ArrowFeedbackMode = ArrowFeedbackMode.Icon
                     }
                 },
                 CustomStageKind.Logical => new GameConfig
@@ -151,12 +155,37 @@ namespace GestureSample.Maui.Models.CustomStages
                     if (config.KeyboardConfig.WeightsArray?.Length > 0)
                         config.KeyboardConfig.KeysInRow = config.KeyboardConfig.WeightsArray.Length;
                     config.KeyboardConfig.ShowNumbersOnKeys = true;
+                    config.KeyboardConfig.KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle;
                     config.KeyboardConfig.AllowSumHeaderVisibilityToggle = false;
                     break;
                 case CustomStageKind.Arrow:
                     config.UIQuestionType = UIQuestionType.OnlyKeyboard;
                     config.KeyboardConfig ??= new KeyboardConfig();
-                    config.KeyboardConfig.IsArrow = true;
+                    if (config.KeyboardConfig.AllowedArrowPromptKinds == ArrowPromptKindFlags.None)
+                        config.KeyboardConfig.AllowedArrowPromptKinds = config.KeyboardConfig.ArrowLabelExerciseMode == ArrowLabelExerciseMode.None
+                            ? ArrowPromptKindFlags.OnKeyboard
+                            : ArrowPromptKindFlags.SpecialPrompt;
+                    if (config.KeyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.None)
+                        config.KeyboardConfig.AllowedArrowRouteKinds = config.KeyboardConfig.ArrowType == ArrowType.Rounded ||
+                                                                      config.KeyboardConfig.ArrowLabelExerciseMode == ArrowLabelExerciseMode.OrdinalStartAndLength
+                            ? ArrowRouteKindFlags.Ordinal
+                            : ArrowRouteKindFlags.Cardinal;
+                    if (config.KeyboardConfig.SpecialArrowMissingTargets == MissingValueTargetFlags.None)
+                    {
+                        config.KeyboardConfig.SpecialArrowMissingTargets = config.KeyboardConfig.ArrowLabelExerciseMode switch
+                        {
+                            ArrowLabelExerciseMode.StartAndEndWithMissingLength => MissingValueTargetFlags.Addend2,
+                            ArrowLabelExerciseMode.EndAndLengthWithMissingStart => MissingValueTargetFlags.Addend1,
+                            _ => MissingValueTargetFlags.Sum
+                        };
+                    }
+                    if (config.KeyboardConfig.AllowedArrowPromptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt) &&
+                        config.KeyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.Ordinal &&
+                        !config.KeyboardConfig.SpecialArrowMissingTargets.HasFlag(MissingValueTargetFlags.Sum))
+                    {
+                        config.KeyboardConfig.SpecialArrowMissingTargets |= MissingValueTargetFlags.Sum;
+                    }
+                    config.KeyboardConfig.IsArrow = config.KeyboardConfig.AllowedArrowPromptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard);
                     if (config.KeyboardConfig.SecondsPressingToAnswer == 0)
                         config.KeyboardConfig.SecondsPressingToAnswer = 2;
                     config.OperationList ??= new List<Operation> { Operation.Sum };
@@ -187,7 +216,7 @@ namespace GestureSample.Maui.Models.CustomStages
                 CustomStageKind.PPWScheme =>
                     $"{config.OperationList.FirstOrDefault().ToDString()}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.UIQuestionType}",
                 CustomStageKind.Arrow =>
-                    $"{config.QuestionOrder}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.KeyboardConfig?.SyncType}",
+                    $"{config.QuestionOrder}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.KeyboardConfig?.SyncType}  {config.KeyboardConfig?.AllowedArrowPromptKinds}  {config.KeyboardConfig?.AllowedArrowRouteKinds}  {config.KeyboardConfig?.ArrowFeedbackMode}",
                 CustomStageKind.Logical =>
                     $"{config.OperationList.FirstOrDefault().ToDString()}  {config.KeyboardConfig?.SyncType}  {config.KeyboardConfig?.KeysInRow} keys",
                 _ => stage.Name

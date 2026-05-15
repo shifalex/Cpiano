@@ -169,7 +169,7 @@ namespace GestureSample.Views.Tests
                 _btnEquationHelp.IsEnabled = enabled;
 
             if (_btnHelp != null)
-                _btnHelp.IsEnabled = enabled;
+                _btnHelp.IsEnabled = true;
 
             if (_btnAnswerTimePanel != null)
             {
@@ -239,6 +239,7 @@ namespace GestureSample.Views.Tests
         private void ApplyFeedbackUiState(bool isCorrect)
         {
             SetPlayUiState(isCorrect ? PlayUiState.FeedbackCorrect : PlayUiState.FeedbackWrong);
+            ApplyArrowLabelPromptFeedback(isCorrect);
             SetInlineKeyboardCheckVisible(false);
         }
 
@@ -246,6 +247,8 @@ namespace GestureSample.Views.Tests
         {
             if (_tutorialRunning)
                 return;
+
+            ResetArrowLabelPromptEntryColors();
 
             if (_config.SecondsTillAllowInput > 0 && _isKeyboard && _pianoKeyboard != null && !_pianoKeyboard.IsEnabled)
             {
@@ -278,6 +281,8 @@ namespace GestureSample.Views.Tests
             }
             finally
             {
+                ClearTutorialStepCounter();
+                _pianoKeyboard?.ClearTutorialStepLabels();
                 host.SetTutorialMode(false);
                 _tutorialRunning = false;
                 RestoreReadyForInputState();
@@ -316,7 +321,9 @@ namespace GestureSample.Views.Tests
         private bool HasDedicatedKeyboardTutorial()
         {
             return HasKeyboardGuidanceSupport() &&
-                   (_config.KeyboardConfig?.IsHelpNeeded ?? false);
+                   ((_config.KeyboardConfig?.IsHelpNeeded ?? false) ||
+                    _config.KeyboardConfig?.IsArrow == true ||
+                    _config.KeyboardConfig?.ArrowLabelExerciseMode != ArrowLabelExerciseMode.None);
         }
 
         private async Task MarkCurrentKeyboardQuestionTutorialUsedAsync()
@@ -360,14 +367,22 @@ namespace GestureSample.Views.Tests
             if (tutorialAnswer.Length == 0)
                 return;
 
-            await host.FadeStaticOverlayAlphaAsync(0.18f, 220, "TutStaticDimIn");
+            await host.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "TutStaticDimIn");
             try
             {
-                await host.PulseBitsAsync(tutorialAnswer, fadeInMs: 280, holdMs: 2200, fadeOutMs: 380, animName: "TutCorrectPulse");
+                await host.PulseBitsAsync(
+                    tutorialAnswer,
+                    fadeInMs: ScaleTutorialMs(280u),
+                    holdMs: ScaleTutorialMs(2200u),
+                    fadeOutMs: ScaleTutorialMs(380u),
+                    animName: "TutCorrectPulse");
             }
             finally
             {
-                await host.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 220, "TutStaticDimOut");
+                await host.FadeStaticOverlayAlphaAsync(
+                    KeyboardOverlayHost.DefaultStaticOverlayAlpha,
+                    ScaleTutorialMs(220u),
+                    "TutStaticDimOut");
             }
         }
 
@@ -441,6 +456,8 @@ namespace GestureSample.Views.Tests
         private readonly int PIANO_HEIGHT2 = 60;
         private Label _lblStatement;
         private ProgressBar _pianoPressProgress;
+        private string? _tutorialStepCounterText;
+        private View _keyboardArrowPromptView;
         private Grid _customProgressHost;
         private Border _customProgressFill;
         private Button _btnKeyboardCheckInline = null;
@@ -748,16 +765,21 @@ namespace GestureSample.Views.Tests
 
         private void RefreshStatusActionSlot()
         {
-            bool showFeedbackBadge = _currentUiState == PlayUiState.FeedbackCorrect ||
-                                     _currentUiState == PlayUiState.FeedbackWrong;
+            bool showTutorialStepCounter = !string.IsNullOrWhiteSpace(_tutorialStepCounterText);
+            bool isFeedbackState = _currentUiState == PlayUiState.FeedbackCorrect ||
+                                   _currentUiState == PlayUiState.FeedbackWrong;
+            bool usePromptEntryFeedback = UsesArrowCorrectResponseFeedback() && isFeedbackState;
+            bool showFeedbackBadge = isFeedbackState && !usePromptEntryFeedback && !showTutorialStepCounter;
             bool usesInlineCheck = ShouldUseInlineKeyboardCheckButton();
             bool showInlineCheck = usesInlineCheck &&
                                    _btnKeyboardCheckInline != null &&
                                    _btnKeyboardCheckInline.IsVisible &&
-                                   !showFeedbackBadge;
+                                   !isFeedbackState &&
+                                   !showTutorialStepCounter;
             bool showProgress = _pianoPressProgress != null &&
                                 !usesInlineCheck &&
-                                !showFeedbackBadge;
+                                !isFeedbackState &&
+                                !showTutorialStepCounter;
 
             if (_pianoPressProgress != null)
                 _pianoPressProgress.IsVisible = showProgress;
@@ -777,14 +799,36 @@ namespace GestureSample.Views.Tests
             if (_centerFeedbackBadge == null || _centerFeedbackBadgeLabel == null)
                 return;
 
-            if (showFeedbackBadge)
+            if (showTutorialStepCounter)
+            {
+                _centerFeedbackBadge.BackgroundColor = Colors.Yellow;
+                _centerFeedbackBadgeLabel.TextColor = Colors.Black;
+                _centerFeedbackBadgeLabel.Text = _tutorialStepCounterText;
+            }
+            else if (showFeedbackBadge)
             {
                 bool isCorrect = _currentUiState == PlayUiState.FeedbackCorrect;
                 _centerFeedbackBadge.BackgroundColor = Colors.Transparent;
+                _centerFeedbackBadgeLabel.TextColor = Colors.White;
                 _centerFeedbackBadgeLabel.Text = isCorrect ? "💪" : "🤔";
             }
 
-            _centerFeedbackBadge.IsVisible = showFeedbackBadge;
+            _centerFeedbackBadge.IsVisible = showTutorialStepCounter || showFeedbackBadge;
+        }
+
+        private void SetTutorialStepCounter(int currentStep, int totalSteps)
+        {
+            _tutorialStepCounterText = currentStep.ToString();
+            RefreshStatusActionSlot();
+        }
+
+        private void ClearTutorialStepCounter()
+        {
+            if (_tutorialStepCounterText == null)
+                return;
+
+            _tutorialStepCounterText = null;
+            RefreshStatusActionSlot();
         }
 
         private string GetKeyboardTypeText()
@@ -1456,6 +1500,7 @@ namespace GestureSample.Views.Tests
             if (_tutorialRunning) return;
 
             UpdateStatement();
+            RefreshKeyboardArrowPromptView();
             if (applyUiState)
                 ApplyExerciseUiState(newExercise);
 
@@ -2110,8 +2155,8 @@ namespace GestureSample.Views.Tests
                 {
                     _tutorialHandDrawable.Opacity = 1f;
                     PointF downPoint = new((float)(_tutorialHandDrawable.Position.X), (float)(_rootGrid.Height + 40));
-                    await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, downPoint, TimeSpan.FromMilliseconds(260));
-                    await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(180));
+                    await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, downPoint, TimeSpan.FromMilliseconds(ScaleTutorialMs(260)));
+                    await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(ScaleTutorialMs(180)));
                 }
                 return;
             }
@@ -2122,7 +2167,7 @@ namespace GestureSample.Views.Tests
             if (handGraphicsView == null || _tutorialHandDrawable == null)
                 return;
 
-            await Task.Delay(40);
+            await Task.Delay(ScaleTutorialMs(40));
 
             int windowSize = Math.Min(5, keyCount);
             int centerIndex = (activeIndices.First() + activeIndices.Last()) / 2;
@@ -2159,13 +2204,13 @@ namespace GestureSample.Views.Tests
             _tutorialHandDrawable.Position = riseStart;
             handGraphicsView.Invalidate();
 
-            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(520));
-            await Task.Delay(120);
+            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, target, TimeSpan.FromMilliseconds(ScaleTutorialMs(520)));
+            await Task.Delay(ScaleTutorialMs(120));
             _tutorialHandDrawable.Bits = targetBits;
             handGraphicsView.Invalidate();
-            await Task.Delay(900);
-            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, riseStart, TimeSpan.FromMilliseconds(320));
-            await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(160));
+            await Task.Delay(ScaleTutorialMs(900));
+            await _tutorialHandDrawable.AnimateMoveAsync(handGraphicsView, riseStart, TimeSpan.FromMilliseconds(ScaleTutorialMs(320)));
+            await _tutorialHandDrawable.HideAsync(handGraphicsView, TimeSpan.FromMilliseconds(ScaleTutorialMs(160)));
         }
 
         async Task Tutorial(KeyboardOverlayHost koh)
@@ -2173,23 +2218,90 @@ namespace GestureSample.Views.Tests
             var gp = (BitArrayGamePlay)_gamePlay;
             bool[] tutorialAnswer = gp.GetTutorialAnswerBits();
 
-            await Task.Delay(1000);
+            await Task.Delay(
+                gp.UsesArrowDirectionTutorial()
+                    ? ScaleArrowTutorialMs(150)
+                    : ScaleTutorialMs(1000));
 
             koh.SyncOverlay();
             await koh.EnsureOverlaySyncedAsync();
 
             if (UsesFullHandTutorial())
             {
-                await koh.FadeStaticOverlayAlphaAsync(0.22f, 180, "TutStaticDimIn");
+                await koh.FadeStaticOverlayAlphaAsync(0.22f, ScaleTutorialMs(180u), "TutStaticDimIn");
                 try
                 {
                     await RunFullHandTutorialAsync(gp.GetTutorialQuestionBits());
                 }
                 finally
                 {
-                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 180, "TutStaticDimOut");
+                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, ScaleTutorialMs(180u), "TutStaticDimOut");
                 }
                 return;
+            }
+
+            if (gp.UsesArrowDirectionTutorial())
+            {
+                IReadOnlyList<int> tutorialIndices = gp.GetArrowTutorialStepIndices();
+                if (tutorialIndices.Count > 0 && _pianoKeyboard != null)
+                {
+                    int keyCount = _pianoKeyboard.KeyCount;
+                    bool isOrdinalArrow = gp.IsOrdinalArrowTutorial();
+
+                    await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "TutStaticDimIn");
+                    try
+                    {
+                        for (int step = 0; step < tutorialIndices.Count; step++)
+                        {
+                            bool[] stepBits = new bool[keyCount];
+                            if (isOrdinalArrow)
+                            {
+                                int idx = tutorialIndices[step];
+                                if (idx >= 0 && idx < stepBits.Length)
+                                {
+                                    stepBits[idx] = true;
+                                    _pianoKeyboard.SetTutorialStepLabels(new Dictionary<int, int> { [idx] = step + 1 });
+                                }
+
+                                koh.ShowHighlightedBits(stepBits, Colors.Yellow, 0.58f);
+                                await Task.Delay(ScaleArrowTutorialMs(420));
+                                _pianoKeyboard.ClearTutorialStepLabels();
+                                await koh.FadeOutHighlightedBitsAsync(ScaleArrowTutorialMs(180u), $"ArrowTutOrdinal_{step}");
+                                await Task.Delay(ScaleArrowTutorialMs(90));
+                            }
+                            else
+                            {
+                                Dictionary<int, int> stepNumbers = new();
+                                for (int i = 0; i <= step && i < tutorialIndices.Count; i++)
+                                {
+                                    int idx = tutorialIndices[i];
+                                    if (idx >= 0 && idx < stepBits.Length)
+                                    {
+                                        stepBits[idx] = true;
+                                        stepNumbers[idx] = i + 1;
+                                    }
+                                }
+
+                                _pianoKeyboard.SetTutorialStepLabels(stepNumbers);
+                                koh.ShowHighlightedBits(stepBits, Colors.Yellow, 0.58f);
+                                await Task.Delay(ScaleArrowTutorialMs(440));
+                            }
+                        }
+
+                        if (!isOrdinalArrow)
+                        {
+                            _pianoKeyboard.ClearTutorialStepLabels();
+                            await koh.FadeOutHighlightedBitsAsync(ScaleArrowTutorialMs(220u), "ArrowTutCardinalEnd");
+                        }
+                    }
+                    finally
+                    {
+                        _pianoKeyboard.ClearTutorialStepLabels();
+                        await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, ScaleTutorialMs(220u), "TutStaticDimOut");
+                    }
+
+                    return;
+                }
             }
 
             if (UsesCyclicalTutorial())
@@ -2209,8 +2321,8 @@ namespace GestureSample.Views.Tests
                         ? Math.Max(1, gp.moveByLength)
                         : Math.Max(1, gp.length);
                     int tutorialRounds = gp.CurrentOperation == Operation.MoveBy ? 1 : 2;
-                    uint tutorialFadeMs = gp.CurrentOperation == Operation.MoveBy ? 1800u : 120u;
-                    uint tutorialHoldMs = gp.CurrentOperation == Operation.MoveBy ? 450u : 150u;
+                    uint tutorialFadeMs = gp.CurrentOperation == Operation.MoveBy ? ScaleTutorialMs(1800u) : ScaleTutorialMs(120u);
+                    uint tutorialHoldMs = gp.CurrentOperation == Operation.MoveBy ? ScaleTutorialMs(450u) : ScaleTutorialMs(150u);
 
                     await koh.AnimateCyclicalStatesAsync(
                         tutorialQuestion,
@@ -2225,21 +2337,21 @@ namespace GestureSample.Views.Tests
 
             if (gp.CurrentOperation is Operation.Not or Operation.Mirror or Operation.Copy)
             {
-                await koh.FadeStaticOverlayAlphaAsync(0.18f, 220, "TutStaticDimIn");
+                await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "TutStaticDimIn");
                 try
                 {
-                    await koh.PulseBitsAsync(tutorialAnswer, fadeInMs: 280, holdMs: 2200, fadeOutMs: 380);
+                    await koh.PulseBitsAsync(tutorialAnswer, fadeInMs: ScaleTutorialMs(280u), holdMs: ScaleTutorialMs(2200u), fadeOutMs: ScaleTutorialMs(380u));
                 }
                 finally
                 {
-                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 220, "TutStaticDimOut");
+                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, ScaleTutorialMs(220u), "TutStaticDimOut");
                 }
                 return;
             }
 
             if (gp.CurrentOperation == Operation.GroupByColor)
             {
-                await koh.FadeStaticOverlayAlphaAsync(0.18f, 220, "TutStaticDimIn");
+                await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "TutStaticDimIn");
                 try
                 {
                     var tutorialGroups = gp.GetGroupByColorTutorialSteps()
@@ -2251,20 +2363,20 @@ namespace GestureSample.Views.Tests
 
                     await koh.AnimatePackedGroupsAsync(
                         tutorialGroups,
-                        moveMs: 2900,
-                        holdMs: 1800,
-                        fadeOutMs: 520,
+                        moveMs: ScaleTutorialMs(2900u),
+                        holdMs: ScaleTutorialMs(1800u),
+                        fadeOutMs: ScaleTutorialMs(520u),
                         animName: "TutColorParallel");
                 }
                 finally
                 {
-                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, 220, "TutStaticDimOut");
+                    await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, ScaleTutorialMs(220u), "TutStaticDimOut");
                 }
                 return;
             }
 
             int move = gp.moveByLength * (gp.moveBydir == Direction.Right ? 1 : -1);
-            await koh.Animate(gp.GetTutorialQuestionBits(), gp.CurrentOperation, move, 4000);
+            await koh.Animate(gp.GetTutorialQuestionBits(), gp.CurrentOperation, move, ScaleTutorialMs(4000u));
         }
 
         private static bool[] BuildPackedTutorialBits(bool[] bits, Direction direction)
@@ -2487,7 +2599,8 @@ namespace GestureSample.Views.Tests
                 UIQuestionType.LogicalKeyboards => new BitArrayGamePlay(_config),
                 UIQuestionType.CanvasesHands => new BitArrayGamePlay(_config),
                 UIQuestionType.DecompositionGame => new DecompositionGamePlay(_config),
-                _ when _config.KeyboardConfig != null && _config.KeyboardConfig.IsArrow => new BitArrayGamePlay(_config),
+                _ when _config.KeyboardConfig != null &&
+                       (_config.KeyboardConfig.IsArrow || _config.KeyboardConfig.ArrowLabelExerciseMode != ArrowLabelExerciseMode.None) => new BitArrayGamePlay(_config),
                 _ => new PPWGamePlay(_config)
             };
         }
@@ -2893,6 +3006,222 @@ namespace GestureSample.Views.Tests
                 return text.Trim();
 
             return _gamePlay.GetKeyboardQuestionPromptText();
+        }
+
+        private bool ShouldShowKeyboardPromptLabel()
+        {
+            return _isKeyboard &&
+                   _config.KeyboardConfig != null &&
+                   (_config.KeyboardConfig.ArrowLabelExerciseMode != ArrowLabelExerciseMode.None ||
+                    _config.KeyboardConfig.AllowedArrowPromptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt));
+        }
+
+        private bool UsesArrowLabelPromptStage()
+        {
+            return _gamePlay is BitArrayGamePlay arrowGamePlay && arrowGamePlay.HasArrowLabelPrompt;
+        }
+
+        private bool UsesArrowCorrectResponseFeedback()
+        {
+            if (!UsesArrowLabelPromptStage() || _config.KeyboardConfig == null)
+                return false;
+
+            bool usesComposedArrowSettings =
+                _config.KeyboardConfig.AllowedArrowPromptKinds != ArrowPromptKindFlags.None ||
+                _config.KeyboardConfig.AllowedArrowRouteKinds != ArrowRouteKindFlags.None ||
+                _config.KeyboardConfig.SpecialArrowMissingTargets != MissingValueTargetFlags.None;
+
+            if (!usesComposedArrowSettings &&
+                _config.KeyboardConfig.ArrowLabelExerciseMode != ArrowLabelExerciseMode.None)
+            {
+                return true;
+            }
+
+            return _config.KeyboardConfig.ArrowFeedbackMode == ArrowFeedbackMode.CorrectResponse;
+        }
+
+        private ArrowLabelExerciseMode GetDisplayedArrowLabelExerciseMode()
+        {
+            if (_gamePlay is BitArrayGamePlay arrowGamePlay)
+                return arrowGamePlay.CurrentArrowLabelExerciseMode;
+
+            return _config.KeyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+        }
+
+        private Entry? GetArrowLabelMissingEntry()
+        {
+            if (!UsesArrowLabelPromptStage() || _config.KeyboardConfig == null)
+                return null;
+
+            return GetDisplayedArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.StartAndLength => _txtSum,
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength => _txtAddend2,
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => _txtAddend1,
+                ArrowLabelExerciseMode.OrdinalStartAndLength => _txtSum,
+                _ => null
+            };
+        }
+
+        private void ResetArrowLabelPromptEntryColors()
+        {
+            if (!UsesArrowLabelPromptStage())
+                return;
+
+            if (_txtAddend1 != null) _txtAddend1.BackgroundColor = Colors.White;
+            if (_txtAddend2 != null) _txtAddend2.BackgroundColor = Colors.White;
+            if (_txtSum != null) _txtSum.BackgroundColor = Colors.White;
+        }
+
+        private void ApplyArrowLabelPromptFeedback(bool isCorrect)
+        {
+            if (!UsesArrowCorrectResponseFeedback())
+                return;
+
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+            if (missingEntry == null)
+                return;
+
+            ResetArrowLabelPromptEntryColors();
+            missingEntry.BackgroundColor = isCorrect ? Colors.LightGreen : Colors.IndianRed;
+        }
+
+        private View BuildKeyboardArrowPromptView()
+        {
+            _txtAddend1 ??= CreateKeyboardArrowPromptEntry();
+            _txtAddend2 ??= CreateKeyboardArrowPromptEntry();
+            _txtSum ??= CreateKeyboardArrowPromptEntry();
+
+            string pathData = GetArrowLabelPromptPathData();
+            var layout = GetArrowLabelPromptLayout();
+
+            var arrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(pathData),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 5,
+                WidthRequest = 220,
+                HeightRequest = 88,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill,
+                StrokeLineCap = layout.UseRoundedStroke ? PenLineCap.Round : PenLineCap.Flat,
+                StrokeLineJoin = layout.UseRoundedStroke ? PenLineJoin.Round : PenLineJoin.Miter
+            };
+
+            var promptSurface = new AbsoluteLayout
+            {
+                WidthRequest = 280,
+                HeightRequest = 112,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start
+            };
+
+            AbsoluteLayout.SetLayoutBounds(arrowPath, layout.PathBounds);
+            promptSurface.Children.Add(arrowPath);
+
+            AbsoluteLayout.SetLayoutBounds(_txtAddend2, layout.Addend2Bounds);
+            promptSurface.Children.Add(_txtAddend2);
+
+            AbsoluteLayout.SetLayoutBounds(_txtAddend1, layout.Addend1Bounds);
+            promptSurface.Children.Add(_txtAddend1);
+
+            AbsoluteLayout.SetLayoutBounds(_txtSum, layout.SumBounds);
+            promptSurface.Children.Add(_txtSum);
+
+            return new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                Spacing = 0,
+                Margin = new Thickness(0, 4, 0, 0),
+                Children = { promptSurface }
+            };
+        }
+
+        private static Entry CreateKeyboardArrowPromptEntry()
+        {
+            return new Entry
+            {
+                IsReadOnly = true,
+                InputTransparent = true,
+                BackgroundColor = Colors.White,
+                TextColor = Colors.Black,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                FontSize = 18,
+                HeightRequest = 25,
+                WidthRequest = 50
+            };
+        }
+
+        private void RefreshKeyboardArrowPromptView()
+        {
+            if (_keyboardArrowPromptView == null || _gamePlay is not BitArrayGamePlay arrowPromptGamePlay)
+                return;
+
+            _keyboardArrowPromptView.IsVisible = arrowPromptGamePlay.HasArrowLabelPrompt;
+            if (!arrowPromptGamePlay.HasArrowLabelPrompt)
+                return;
+
+            ResetArrowLabelPromptEntryColors();
+
+            ArrowLabelExerciseMode mode = arrowPromptGamePlay.CurrentArrowLabelExerciseMode;
+            bool revealCorrectResponse = _gamePlay.Status == Statement.True && UsesArrowCorrectResponseFeedback();
+
+            _txtAddend1.Text = mode == ArrowLabelExerciseMode.EndAndLengthWithMissingStart && !revealCorrectResponse
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelAddend1Value.ToString();
+
+            _txtAddend2.Text = mode == ArrowLabelExerciseMode.StartAndEndWithMissingLength && !revealCorrectResponse
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelAddend2Value?.ToString() ?? string.Empty;
+
+            _txtSum.Text = (mode == ArrowLabelExerciseMode.StartAndLength || mode == ArrowLabelExerciseMode.OrdinalStartAndLength) && !revealCorrectResponse
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
+        }
+
+        private string GetArrowLabelPromptPathData()
+        {
+            ArrowLabelExerciseMode mode = GetDisplayedArrowLabelExerciseMode();
+
+            return mode switch
+            {
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart =>
+                    "M 195,76 L 195,28 L 37,28 M 55,14 L 37,28 L 55,42",
+                ArrowLabelExerciseMode.OrdinalStartAndLength =>
+                    "M 60,76 L 60,52 A 22,22 0 0 1 80,30 L 118,30 L 100,14 M 118,30 L 100,46",
+                _ =>
+                    "M 72,72 L 72,28 L 182,28 M 166,14 L 182,28 L 166,42"
+            };
+        }
+
+        private (Rect PathBounds, Rect Addend1Bounds, Rect Addend2Bounds, Rect SumBounds, bool UseRoundedStroke) GetArrowLabelPromptLayout()
+        {
+            ArrowLabelExerciseMode mode = GetDisplayedArrowLabelExerciseMode();
+
+            return mode switch
+            {
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => (
+                    new Rect(27, 10, 220, 88),
+                    new Rect(55, 64, 50, 25),
+                    new Rect(130, 0, 50, 25),
+                    new Rect(175, 64, 50, 25),
+                    false),
+                ArrowLabelExerciseMode.OrdinalStartAndLength => (
+                    new Rect(12, 8, 220, 88),
+                    new Rect(37, 64, 50, 25),
+                    new Rect(62, 0, 50, 25),
+                    new Rect(130, 64, 50, 25),
+                    true),
+                _ => (
+                    new Rect(16, 10, 220, 88),
+                    new Rect(41, 64, 50, 25),
+                    new Rect(110, 0, 50, 25),
+                    new Rect(154, 64, 50, 25),
+                    false)
+            };
         }
 
         private List<QuestionAnswerPart> BuildVisibleQuestionParts()
@@ -3457,6 +3786,11 @@ namespace GestureSample.Views.Tests
                 Text = Statement.Neutral
             };
 
+            if (ShouldShowKeyboardPromptLabel())
+            {
+                _keyboardArrowPromptView = BuildKeyboardArrowPromptView();
+            }
+
             _pianoPressProgress = new ProgressBar
             {
                 Progress = 0,
@@ -3497,10 +3831,16 @@ namespace GestureSample.Views.Tests
 
             if (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
                 vsl.Add(_lblStatement);
+            else if (_keyboardArrowPromptView != null)
+                vsl.Add(_keyboardArrowPromptView);
 
-            vsl.HorizontalOptions = LayoutOptions.Center;
-            vsl.Padding = 15;
-            vsl.Spacing = 10;
+            vsl.HorizontalOptions = (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
+                ? LayoutOptions.Fill
+                : LayoutOptions.Center;
+            vsl.Padding = _keyboardArrowPromptView != null
+                ? new Thickness(15, 15, 15, 0)
+                : new Thickness(15);
+            vsl.Spacing = _keyboardArrowPromptView != null ? 0 : 10;
 
             if (_isThreeTexts)
             {
@@ -3596,9 +3936,37 @@ namespace GestureSample.Views.Tests
                     if (_config.OperationList.Contains(Operation.Multiplication))
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _hr } });
                     if(_config.UIQuestionType == UIQuestionType.ThreeAddends)
-                        questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, txt[0], _txtAddend2 } });
+                    {
+                        questionInputsLayout.Add(new HorizontalStackLayout
+                        {
+                            HorizontalOptions = LayoutOptions.Center,
+                            Children = { _txtAddend1, txt[0], _txtAddend2 }
+                        });
+                    }
                     else
-                        questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { _txtAddend1, _lblAction, _txtAddend2 } });
+                    {
+                        Grid centeredOperationRow = new()
+                        {
+                            HorizontalOptions = LayoutOptions.Center,
+                            ColumnSpacing = 0,
+                            ColumnDefinitions =
+                            {
+                                new ColumnDefinition { Width = new GridLength(_txtAddend1.WidthRequest) },
+                                new ColumnDefinition { Width = new GridLength(_lblAction.WidthRequest) },
+                                new ColumnDefinition { Width = new GridLength(_txtAddend2.WidthRequest) }
+                            }
+                        };
+
+                        Grid.SetColumn(_txtAddend1, 0);
+                        Grid.SetColumn(_lblAction, 1);
+                        Grid.SetColumn(_txtAddend2, 2);
+
+                        centeredOperationRow.Children.Add(_txtAddend1);
+                        centeredOperationRow.Children.Add(_lblAction);
+                        centeredOperationRow.Children.Add(_txtAddend2);
+
+                        questionInputsLayout.Add(centeredOperationRow);
+                    }
                     if (_config.HelpEntries)
                         questionInputsLayout.Add(new HorizontalStackLayout { HorizontalOptions = LayoutOptions.Center, Children = { txt[2], txt[3], txt[4], txt[5] } });
                 }
@@ -3792,12 +4160,16 @@ namespace GestureSample.Views.Tests
                 _btnHelp.Clicked += async (_, __) =>
                 {
                     if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
+                    await MarkCurrentKeyboardQuestionTutorialUsedAsync();
                     if (_taskMainHost == null) return;
-                    if (_gamePlay is not BitArrayGamePlay) return;
                     
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
-                    await RunRecordedKeyboardTutorialAsync(_taskMainHost);
+
+                    if (HasDedicatedKeyboardTutorial())
+                        await RunRecordedKeyboardTutorialAsync(_taskMainHost);
+                    else if (HasAvailableTutorial())
+                        await RunCorrectAnswerHintAsync(_taskMainHost);
                 };
 
                 Grid overlayButtons = new()
@@ -3902,7 +4274,7 @@ namespace GestureSample.Views.Tests
 
                 }
 
-                if (_config.KeyboardConfig.IsHelpNeeded)
+                if (HasDedicatedKeyboardTutorial())
                     rightOverlayButtons.Add(_btnHelp);
 
                 if (ShouldShowKeyboardSubmitButton())
@@ -4057,10 +4429,12 @@ namespace GestureSample.Views.Tests
             };
             _lblAction = new Label
             {
-                HorizontalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Start,
                 FontSize = 40,
-                TextColor = Colors.Black
+                TextColor = Colors.Black,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
             };
             _logicalColorLeftArrow = new Label
             {
@@ -4105,7 +4479,7 @@ namespace GestureSample.Views.Tests
             vsl.Add(_task2Host);
             vsl.Add(new VerticalStackLayout
             {
-                HorizontalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Fill,
                 Spacing = 2,
                 Children = { _lblAction, _logicalColorActionLayout }
             });
@@ -4342,6 +4716,21 @@ namespace GestureSample.Views.Tests
 
             Content = root;
         }
+
+        private const double TutorialSpeedFactor = 2.0;
+        private const double ArrowTutorialSpeedFactor = 1.0;
+
+        private static int ScaleTutorialMs(int milliseconds)
+            => (int)Math.Round(milliseconds * TutorialSpeedFactor);
+
+        private static uint ScaleTutorialMs(uint milliseconds)
+            => (uint)Math.Round(milliseconds * TutorialSpeedFactor);
+
+        private static int ScaleArrowTutorialMs(int milliseconds)
+            => (int)Math.Round(milliseconds * ArrowTutorialSpeedFactor);
+
+        private static uint ScaleArrowTutorialMs(uint milliseconds)
+            => (uint)Math.Round(milliseconds * ArrowTutorialSpeedFactor);
     }
 
 }
