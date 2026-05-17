@@ -241,6 +241,15 @@ namespace GestureSample.Maui.Data
                 localQuestion.InitialKeyboardColors = question.InitialKeyboardColors?.ToArray();
                 localQuestion.SubmittedKeyboardColors = question.SubmittedKeyboardColors?.ToArray();
                 localQuestion.WasHeaderResultToggleUsed = question.WasHeaderResultToggleUsed;
+                localQuestion.KeyDownCount = question.KeyDownCount;
+                localQuestion.DistinctKeyCount = question.DistinctKeyCount;
+                localQuestion.PressClusterCount = question.PressClusterCount;
+                localQuestion.LargestPressClusterSize = question.LargestPressClusterSize;
+                localQuestion.MaxInterKeyGapMs = question.MaxInterKeyGapMs;
+                localQuestion.AverageInterKeyGapMs = question.AverageInterKeyGapMs;
+                localQuestion.FirstKeyToSubmitMs = question.FirstKeyToSubmitMs;
+                localQuestion.LastKeyToSubmitMs = question.LastKeyToSubmitMs;
+                localQuestion.PressPatternKind = question.PressPatternKind;
 
                 await _database.InsertAsync(localQuestion);
             }
@@ -264,6 +273,15 @@ namespace GestureSample.Maui.Data
                 ResultStatus = resultStatus,
                 WasTutorialUsed = wasTutorialUsed,
                 WasHeaderResultToggleUsed = sourceQuestion.WasHeaderResultToggleUsed,
+                KeyDownCount = sourceQuestion.KeyDownCount,
+                DistinctKeyCount = sourceQuestion.DistinctKeyCount,
+                PressClusterCount = sourceQuestion.PressClusterCount,
+                LargestPressClusterSize = sourceQuestion.LargestPressClusterSize,
+                MaxInterKeyGapMs = sourceQuestion.MaxInterKeyGapMs,
+                AverageInterKeyGapMs = sourceQuestion.AverageInterKeyGapMs,
+                FirstKeyToSubmitMs = sourceQuestion.FirstKeyToSubmitMs,
+                LastKeyToSubmitMs = sourceQuestion.LastKeyToSubmitMs,
+                PressPatternKind = sourceQuestion.PressPatternKind,
                 aboveNumber = sourceQuestion.aboveNumber,
                 length = sourceQuestion.length,
                 MoveByLength = sourceQuestion.MoveByLength,

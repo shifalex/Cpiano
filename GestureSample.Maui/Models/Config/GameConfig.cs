@@ -222,6 +222,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
     {
         Auto,
         AppKeypad,
+        ChoiceKeyboard,
         SystemKeyboard
     }
 

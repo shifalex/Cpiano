@@ -1498,6 +1498,30 @@ namespace GestureSample.Views
             KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
         }
     })),
+    new PageConfig("->", "Arrow Label - distance numpad", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - distance numpad",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend1 | MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
     new PageConfig("->", "Arrow Label - missing distance", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Arrow Label - missing distance",
@@ -1943,6 +1967,7 @@ namespace GestureSample.Views
         MinAddend = 2,
         MaxAddend = 9,
         MaxSum=10,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
         VariableTypes = VariableTypes.OneCanBeSum,
         RepeatingTimesOfTriad = 4,
         UseDistortedVariantInRepeatSequence = true,

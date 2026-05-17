@@ -253,7 +253,8 @@
         ArrowQuestion = 128,
         Multicolor = 256,
         HelpAvailable = 512,
-        PermutationTraceColors = 1024
+        PermutationTraceColors = 1024,
+        HideMainKeyboard = 2048
     }
 
     [Flags]
@@ -416,6 +417,13 @@
             set => KeyboardFeatures = value
                 ? KeyboardFeatures | KeyboardFeatureFlags.KeyboardAsQuestion
                 : KeyboardFeatures & ~KeyboardFeatureFlags.KeyboardAsQuestion;
+        }
+        public bool HideMainKeyboard
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.HideMainKeyboard);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.HideMainKeyboard
+                : KeyboardFeatures & ~KeyboardFeatureFlags.HideMainKeyboard;
         }
 
         public int SecondsPressingToAnswer { get; set; } = 2;

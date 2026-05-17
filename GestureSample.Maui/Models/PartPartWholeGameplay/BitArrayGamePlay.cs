@@ -642,10 +642,7 @@ namespace GestureSample.Maui.Models
                 pianoKeyboard.GetCurrentColors());
 
             if (savedAttempt != null)
-            {
-                await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
-                await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
-            }
+                await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
 
             if (result)
             {
@@ -707,10 +704,7 @@ namespace GestureSample.Maui.Models
                 pianoKeyboard.GetCurrentColors());
 
             if (savedAttempt != null)
-            {
-                await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
-                await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
-            }
+                await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
 
             if (result)
             {

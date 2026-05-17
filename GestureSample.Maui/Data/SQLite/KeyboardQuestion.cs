@@ -25,6 +25,15 @@ namespace GestureSample.Maui.Data.SQLite
         public int ResultStatus { get; set; } = 0;
         public bool WasTutorialUsed { get; set; } = false;
         public bool WasHeaderResultToggleUsed { get; set; } = false;
+        public int KeyDownCount { get; set; } = 0;
+        public int DistinctKeyCount { get; set; } = 0;
+        public int PressClusterCount { get; set; } = 0;
+        public int LargestPressClusterSize { get; set; } = 0;
+        public int MaxInterKeyGapMs { get; set; } = 0;
+        public int AverageInterKeyGapMs { get; set; } = 0;
+        public int FirstKeyToSubmitMs { get; set; } = 0;
+        public int LastKeyToSubmitMs { get; set; } = 0;
+        public int PressPatternKind { get; set; } = 0;
 
 
         public int? aboveNumber { get; set; }
@@ -190,6 +199,36 @@ namespace GestureSample.Maui.Data.SQLite
 
         [Ignore]
         public string AttemptText => AttemptNumber > 0 ? $"Trial {AttemptNumber}" : "Trial";
+
+        [Ignore]
+        public KeyboardPressPatternKind PressPattern => (KeyboardPressPatternKind)PressPatternKind;
+
+        [Ignore]
+        public string PressPatternText => KeyboardTimingAnalyzer.ToDisplayText(PressPattern);
+
+        [Ignore]
+        public bool HasTimingMetrics => KeyDownCount > 0 || FirstKeyToSubmitMs > 0 || LastKeyToSubmitMs > 0;
+
+        [Ignore]
+        public string TimingMetricsText
+        {
+            get
+            {
+                if (!HasTimingMetrics)
+                    return string.Empty;
+
+                List<string> parts = new();
+                if (KeyDownCount > 0)
+                    parts.Add($"Pattern {PressPatternText}");
+                if (MaxInterKeyGapMs > 0)
+                    parts.Add($"Max gap {FormatMilliseconds(MaxInterKeyGapMs)}");
+                if (LastKeyToSubmitMs > 0)
+                    parts.Add($"Last->submit {FormatMilliseconds(LastKeyToSubmitMs)}");
+                if (FirstKeyToSubmitMs > 0)
+                    parts.Add($"Whole answer {FormatMilliseconds(FirstKeyToSubmitMs)}");
+                return string.Join("  |  ", parts);
+            }
+        }
 
         [Ignore]
         public bool HasArrowPrompt => aboveNumber.HasValue && length.HasValue;
@@ -413,6 +452,14 @@ namespace GestureSample.Maui.Data.SQLite
                 colors[i] = bits[i] ? Colors.Yellow : Colors.White;
 
             return colors;
+        }
+
+        private static string FormatMilliseconds(int milliseconds)
+        {
+            if (milliseconds <= 0)
+                return "0.000s";
+
+            return $"{milliseconds / 1000d:0.000}s";
         }
 
         private static string[]? SerializeColors(Color[]? colors)

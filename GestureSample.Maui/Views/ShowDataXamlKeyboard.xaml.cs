@@ -31,6 +31,7 @@ namespace GestureSample.Views
         private readonly SyncToolbarStatusController _syncToolbarStatusController;
 
         private ObservableCollection<DateWraper> GameDates { get; set; } = new();
+        private ObservableCollection<TimingRecommendationRow> TimingRecommendations { get; } = new();
         private List<Game> GameIdentifiers { get; set; } = new();
         private Game CurrentGame { get; set; } = null;
         private ObservableCollection<Game> GameIdentifiersFiltered { get; set; } = new();
@@ -87,6 +88,7 @@ namespace GestureSample.Views
                 ToolbarItems.Add(_sortToolbarItem);
 
             PickerPanel.IsVisible = _showSelectors;
+            TimingRecommendationsList.ItemsSource = TimingRecommendations;
             ShowData(gameId);
         }
 
@@ -117,6 +119,8 @@ namespace GestureSample.Views
                     ClearDisplayedData();
                     return;
                 }
+
+                await LoadTimingRecommendationsAsync();
             
             if (gameId == null && GameIdentifiers.Count > 0)
             {
@@ -327,6 +331,57 @@ namespace GestureSample.Views
             if (mainItems.Count > 0)
                 Questions.ScrollTo(0, position: ScrollToPosition.Start, animate: false);
             //StateList.ItemsSource = gamePresses;
+        }
+
+        private async Task LoadTimingRecommendationsAsync()
+        {
+            TimingRecommendations.Clear();
+
+            if (_forTeacher || GameIdentifiers == null || GameIdentifiers.Count == 0)
+            {
+                TimingRecommendationsContainer.IsVisible = false;
+                return;
+            }
+
+            List<Game> syncGames = GameIdentifiers
+                .Where(game => game.Config?.KeyboardConfig != null)
+                .Where(game => game.Config.KeyboardConfig.SyncType == SyncType.Sync ||
+                               game.Config.KeyboardConfig.SyncType == SyncType.HalfSync ||
+                               game.Config.KeyboardConfig.SyncType == SyncType.Spatial)
+                .ToList();
+
+            if (syncGames.Count == 0)
+            {
+                TimingRecommendationsContainer.IsVisible = false;
+                return;
+            }
+
+            List<KeyboardQuestion> allQuestions = await _keyboardQuestionRepository.GetByGameIdsAsync(syncGames.Select(game => game.Id));
+            foreach (IGrouping<string, Game> stageGroup in syncGames
+                .GroupBy(game => game.GameName)
+                .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                HashSet<string> stageGameIds = stageGroup
+                    .Select(game => game.Id.ToString())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                KeyboardTimingRecommendation? recommendation = KeyboardTimingAnalyzer.BuildRecommendation(
+                    allQuestions.Where(question => stageGameIds.Contains(question.GameId)));
+
+                if (recommendation == null)
+                    continue;
+
+                TimingRecommendations.Add(new TimingRecommendationRow
+                {
+                    StageName = stageGroup.Key,
+                    AttemptCount = recommendation.AttemptCount,
+                    DominantPatternText = KeyboardTimingAnalyzer.ToDisplayText(recommendation.DominantPattern),
+                    AfterLastKeyText = $"{recommendation.RecommendedAfterLastKeySeconds}s",
+                    WholeAnswerText = $"{recommendation.RecommendedWholeAnswerSeconds}s"
+                });
+            }
+
+            TimingRecommendationsContainer.IsVisible = TimingRecommendations.Count > 0;
         }
 
 
@@ -644,6 +699,8 @@ namespace GestureSample.Views
             GameDates.Clear();
             DatePicker.ItemsSource = null;
             GamePicker.ItemsSource = null;
+            TimingRecommendations.Clear();
+            TimingRecommendationsContainer.IsVisible = false;
             Questions.ItemsSource = null;
         }
 
@@ -830,6 +887,15 @@ namespace GestureSample.Views
         }
     }
 
+    public class TimingRecommendationRow
+    {
+        public string StageName { get; set; } = string.Empty;
+        public int AttemptCount { get; set; }
+        public string DominantPatternText { get; set; } = string.Empty;
+        public string AfterLastKeyText { get; set; } = string.Empty;
+        public string WholeAnswerText { get; set; } = string.Empty;
+    }
+
     public class MainItem : INotifyPropertyChanged
     {
         public KeyboardQuestion Question { get; set; }
@@ -864,6 +930,9 @@ namespace GestureSample.Views
                 DateTime? answerTime = GetAnswerTime();
                 if (answerTime.HasValue)
                     parts.Add($"Answer: {FormatDuration(answerTime.Value - Question.Time)}");
+
+                if (Question.HasTimingMetrics)
+                    parts.Add(Question.TimingMetricsText);
 
                 return string.Join("  |  ", parts);
             }

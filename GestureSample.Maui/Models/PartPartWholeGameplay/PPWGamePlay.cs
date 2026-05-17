@@ -941,8 +941,34 @@ namespace GestureSample.Maui.Models
             if (savedAttempt == null)
                 return;
 
+            await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
+        }
+
+        protected async Task FinalizeKeyboardAttemptAsync(Data.SQLite.KeyboardQuestion savedAttempt, DateTime submittedTime)
+        {
+            if (_keyEventRepository == null || _keyboardQuestionRepository == null)
+                return;
+
             await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
             await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
+
+            List<KeyEvent> attemptEvents = await _keyEventRepository.GetAttemptEventsAsync(
+                GameId.ToString(),
+                _questionNumber,
+                savedAttempt.AttemptNumber);
+
+            KeyboardAttemptTimingMetrics metrics = KeyboardTimingAnalyzer.AnalyzeAttempt(attemptEvents, submittedTime);
+            savedAttempt.KeyDownCount = metrics.KeyDownCount;
+            savedAttempt.DistinctKeyCount = metrics.DistinctKeyCount;
+            savedAttempt.PressClusterCount = metrics.PressClusterCount;
+            savedAttempt.LargestPressClusterSize = metrics.LargestPressClusterSize;
+            savedAttempt.MaxInterKeyGapMs = metrics.MaxInterKeyGapMs;
+            savedAttempt.AverageInterKeyGapMs = metrics.AverageInterKeyGapMs;
+            savedAttempt.FirstKeyToSubmitMs = metrics.FirstKeyToSubmitMs;
+            savedAttempt.LastKeyToSubmitMs = metrics.LastKeyToSubmitMs;
+            savedAttempt.PressPatternKind = (int)metrics.PressPatternKind;
+
+            await _keyboardQuestionRepository.UpdateAsync(savedAttempt);
         }
 
         public virtual Task<ExerciseGenerationResult> GenerateExerciseAsync()

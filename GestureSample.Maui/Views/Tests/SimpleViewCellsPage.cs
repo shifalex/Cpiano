@@ -391,11 +391,23 @@ namespace GestureSample.Views.Tests
         private readonly SyncToolbarStatusController _syncToolbarStatusController;
 
         private bool _isKeyboard { get { return _config.KeyboardConfig != null; } }
-        private bool HasVisibleNumericInputs => _isThreeTexts && (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp);
+        private bool UsesArrowPromptAnswerWithoutMainKeyboard =>
+            _isKeyboard &&
+            _config.KeyboardConfig != null &&
+            _config.KeyboardConfig.KeyboardOnlyForHelp &&
+            _config.KeyboardConfig.HideMainKeyboard &&
+            ShouldShowKeyboardPromptLabel();
+
+        private bool HasVisibleNumericInputs =>
+            (_isThreeTexts && (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)) ||
+            UsesArrowPromptAnswerWithoutMainKeyboard;
         private NumericInputMode EffectiveNumericInputMode
         {
             get
             {
+                if (_config.NumericInputMode == NumericInputMode.ChoiceKeyboard)
+                    return NumericInputMode.ChoiceKeyboard;
+
                 UserPreferenceService preferenceService = ServiceHelper.GetService<UserPreferenceService>();
                 Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
                 NumericInputMode preferredMode = preferenceService.GetPreferredNumericInputMode(activeUserId);
@@ -424,6 +436,8 @@ namespace GestureSample.Views.Tests
             }
         }
         private bool UsesCustomNumericKeypad => HasVisibleNumericInputs && EffectiveNumericInputMode == NumericInputMode.AppKeypad;
+        private bool UsesChoiceAnswerKeyboard => HasVisibleNumericInputs && EffectiveNumericInputMode == NumericInputMode.ChoiceKeyboard;
+        private bool UsesManagedNumericInput => UsesCustomNumericKeypad || UsesChoiceAnswerKeyboard;
         public new bool IsEnabled
         {
             get => _pianoKeyboard?.IsEnabled ?? true;
@@ -475,6 +489,7 @@ namespace GestureSample.Views.Tests
         private Label _logicalColorLeftArrow;
         private Label _logicalColorRightArrow;
         private NumericKeypadView _numericKeypad;
+        private ChoiceAnswerKeyboardView _choiceAnswerKeyboard;
         private BoxView _hr;
         private Entry[] txt;
         private Entry _lastFocused;
@@ -546,6 +561,8 @@ namespace GestureSample.Views.Tests
         private readonly QuestionAnswerRepository _questionAnswerRepository;
         private readonly QuestionAnswerPartRepository _questionAnswerPartRepository;
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
+        private readonly GameRepository _gameRepository;
+        private bool _isApplyingAutoTune;
 
         //VerticalStackLayout _vsl;
         protected IDispatcherTimer timer;
@@ -1768,7 +1785,7 @@ namespace GestureSample.Views.Tests
 
             await Task.Delay(effectiveDelay);
 
-            if (UsesCustomNumericKeypad)
+            if (UsesManagedNumericInput)
             {
                 SelectNumericEntry(entry);
                 return;
@@ -1796,6 +1813,22 @@ namespace GestureSample.Views.Tests
 
         private View InitNumericKeypadUI()
         {
+            if (UsesChoiceAnswerKeyboard)
+            {
+                _choiceAnswerKeyboard = new ChoiceAnswerKeyboardView
+                {
+                    HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Center,
+                    WidthRequest = TASK_WIDTH,
+                    MaximumWidthRequest = TASK_WIDTH,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    IsVisible = true
+                };
+
+                _choiceAnswerKeyboard.ChoicePressed += OnChoiceAnswerPressed;
+                return _choiceAnswerKeyboard;
+            }
+
             _numericKeypad = new NumericKeypadView
             {
                 HorizontalOptions = LayoutOptions.Fill,
@@ -1841,7 +1874,7 @@ namespace GestureSample.Views.Tests
 
         private double GetQuestionLayoutWidth()
         {
-            if (!UsesCustomNumericKeypad)
+            if (!UsesManagedNumericInput)
                 return TASK_WIDTH;
 
             DisplayInfo info = DeviceDisplay.Current.MainDisplayInfo;
@@ -1858,7 +1891,7 @@ namespace GestureSample.Views.Tests
 
         private double GetQuestionActionWidth()
         {
-            return UsesCustomNumericKeypad ? 28 : 20;
+            return UsesManagedNumericInput ? 28 : 20;
         }
 
         private double GetQuestionHalfWidth(bool reserveActionLabel)
@@ -1878,14 +1911,14 @@ namespace GestureSample.Views.Tests
         private void ConfigureNumericEntry(Entry entry)
         {
             DesignResources.ApplyStyle(entry, "GameNumericEntryStyle");
-            entry.IsReadOnly = UsesCustomNumericKeypad;
+            entry.IsReadOnly = UsesManagedNumericInput;
             entry.IsSpellCheckEnabled = false;
             entry.IsTextPredictionEnabled = false;
 
             if (!_numericEntries.Contains(entry))
                 _numericEntries.Add(entry);
 
-            if (UsesCustomNumericKeypad)
+            if (UsesManagedNumericInput)
             {
                 TapGestureRecognizer tapGesture = new();
                 tapGesture.Tapped += (_, _) => SelectNumericEntry(entry);
@@ -1916,7 +1949,7 @@ namespace GestureSample.Views.Tests
 
         private void SelectNumericEntry(Entry? entry)
         {
-            if (!UsesCustomNumericKeypad)
+            if (!UsesManagedNumericInput)
                 return;
 
             if (!IsEntryEditable(entry))
@@ -1982,7 +2015,7 @@ namespace GestureSample.Views.Tests
                     numericEntry.TextColor = DesignResources.GetColor("GameNumericEntryDisabledTextColor", Colors.Gray);
                     ResetNumericEntryTransform(numericEntry);
                 }
-                else if (numericEntry == _activeNumericEntry && UsesCustomNumericKeypad)
+                else if (numericEntry == _activeNumericEntry && UsesManagedNumericInput)
                 {
                     numericEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryActiveBackgroundColor", Color.FromArgb("#FFF9D6"));
                     numericEntry.TextColor = DesignResources.GetColor("GameNumericEntryTextColor", Colors.Black);
@@ -2020,6 +2053,18 @@ namespace GestureSample.Views.Tests
             targetEntry.Text = currentText + digit;
             _lastFocused = targetEntry;
             RefreshNumericEntryAppearance();
+        }
+
+        private void OnChoiceAnswerPressed(int value)
+        {
+            Entry? targetEntry = EnsureNumericEntrySelection();
+            if (targetEntry == null)
+                return;
+
+            targetEntry.Text = value.ToString();
+            _lastFocused = targetEntry;
+            RefreshNumericEntryAppearance();
+            OnNumericSubmitPressed();
         }
 
         private void OnNumericBackspacePressed()
@@ -2542,6 +2587,7 @@ namespace GestureSample.Views.Tests
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
             _questionAnswerPartRepository = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             _timerChangeEventRepository = ServiceHelper.GetService<TimerChangeEventRepository>();
+            _gameRepository = ServiceHelper.GetService<GameRepository>();
             if (_config.NumberOfTasksToWin > -1)
             {
                 TimerInit();
@@ -2681,6 +2727,7 @@ namespace GestureSample.Views.Tests
             }
             else if (isKeyboardSubmission)
             {
+                await ApplyAutoAnswerTimeTuningAsync("AutoTuneRetry");
                 _pianoKeyboard.PianoInit();
                 SetPageInteractionEnabled(true);
                 ResetStatusLineToNeutral();
@@ -2851,6 +2898,7 @@ namespace GestureSample.Views.Tests
             _pianoKeyboard?.RefreshKeyCaptions();
             await UpdateView(true, generatedExercise: generatedExercise);
             await AnimateBenchmarkQuestionAdvanceInAsync();
+            await ApplyAutoAnswerTimeTuningAsync("AutoTuneNextQuestion");
             await EnsureInitialTimerSettingSavedAsync();
             await PersistVisibleQuestionPartsAsync();
             await PersistSecondaryPpwAsync();
@@ -2883,6 +2931,64 @@ namespace GestureSample.Views.Tests
                 syncKeyboard.AnswerTimeSetting,
                 DateTime.Now,
                 "InitialConfig");
+        }
+
+        private async Task ApplyAutoAnswerTimeTuningAsync(string source)
+        {
+            if (_isApplyingAutoTune ||
+                _gameRepository == null ||
+                _keyboardQuestionRepository == null ||
+                _pianoKeyboard is not PianoKeyboardSync syncKeyboard)
+            {
+                return;
+            }
+
+            var activeUser = ServiceHelper.GetService<CurrentUserSession>()?.ActiveUser;
+            if (activeUser == null)
+                return;
+
+            _isApplyingAutoTune = true;
+            try
+            {
+                List<Game> userGames = await _gameRepository.GetAllByUserAsync(activeUser.Id);
+                List<Game> relevantGames = userGames
+                    .Where(game => game.Config?.KeyboardConfig != null)
+                    .Where(game => game.Config.KeyboardConfig.SyncType == SyncType.Sync ||
+                                   game.Config.KeyboardConfig.SyncType == SyncType.HalfSync ||
+                                   game.Config.KeyboardConfig.SyncType == SyncType.Spatial)
+                    .Where(game => string.Equals(game.GameName, _config.GameName, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (relevantGames.Count == 0)
+                    return;
+
+                List<KeyboardQuestion> questions = await _keyboardQuestionRepository.GetByGameIdsAsync(relevantGames.Select(game => game.Id));
+                KeyboardTimingRecommendation? recommendation = KeyboardTimingAnalyzer.BuildRecommendation(questions);
+                if (recommendation == null)
+                    return;
+
+                bool wholeAnswerMode = UsesWholeAnswerTimer(syncKeyboard);
+                int desiredMagnitude = wholeAnswerMode
+                    ? recommendation.RecommendedWholeAnswerSeconds
+                    : recommendation.RecommendedAfterLastKeySeconds;
+                int desiredSetting = desiredMagnitude * (wholeAnswerMode ? -1 : 1);
+
+                if (syncKeyboard.AnswerTimeSetting == 0)
+                {
+                    _lastNonZeroAnswerTimeSetting = desiredSetting;
+                    RefreshAnswerTimeTuner();
+                    return;
+                }
+
+                if (syncKeyboard.AnswerTimeSetting == desiredSetting)
+                    return;
+
+                await ApplyAnswerTimeSettingAsync(desiredSetting, source);
+            }
+            finally
+            {
+                _isApplyingAutoTune = false;
+            }
         }
 
         private bool ApplyConfiguredKeyboardSeedState()
@@ -3829,10 +3935,10 @@ namespace GestureSample.Views.Tests
               
             };
 
-            if (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
-                vsl.Add(_lblStatement);
-            else if (_keyboardArrowPromptView != null)
+            if (_keyboardArrowPromptView != null)
                 vsl.Add(_keyboardArrowPromptView);
+            else if (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
+                vsl.Add(_lblStatement);
 
             vsl.HorizontalOptions = (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)
                 ? LayoutOptions.Fill
@@ -4016,6 +4122,12 @@ namespace GestureSample.Views.Tests
                     }
                 }
             }
+            else if (UsesArrowPromptAnswerWithoutMainKeyboard)
+            {
+                View? numericKeypadView = UsesManagedNumericInput ? InitNumericKeypadUI() : null;
+                if (numericKeypadView != null)
+                    vsl.Add(numericKeypadView);
+            }
 
             if (!_isKeyboard ||
                 UsesManualKeyboardCheckMode() ||
@@ -4108,12 +4220,15 @@ namespace GestureSample.Views.Tests
                 }
 
                 // Always host the keyboard inside an overlay host so we can run tutorials on-demand
-                _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
-                grid.Add(_taskMainHost);
-                Grid.SetRow(_taskMainHost, 2);
-                View keyboardControlBar = BuildKeyboardControlBar();
-                grid.Add(keyboardControlBar);
-                Grid.SetRow(keyboardControlBar, 1);
+                if (!_config.KeyboardConfig.HideMainKeyboard)
+                {
+                    _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
+                    grid.Add(_taskMainHost);
+                    Grid.SetRow(_taskMainHost, 2);
+                    View keyboardControlBar = BuildKeyboardControlBar();
+                    grid.Add(keyboardControlBar);
+                    Grid.SetRow(keyboardControlBar, 1);
+                }
 
                 if (CanShowAnswerTimeTuner())
                 {

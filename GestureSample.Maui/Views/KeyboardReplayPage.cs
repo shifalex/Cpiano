@@ -625,6 +625,17 @@ namespace GestureSample.Views
                 }
             });
 
+            if (_question.HasTimingMetrics)
+            {
+                promptLayout.Children.Add(new Label
+                {
+                    Text = _question.TimingMetricsText,
+                    FontSize = 12,
+                    TextColor = Colors.DimGray,
+                    LineBreakMode = LineBreakMode.WordWrap
+                });
+            }
+
             if (_question.HasPromptText)
             {
                 promptLayout.Children.Add(new HorizontalStackLayout

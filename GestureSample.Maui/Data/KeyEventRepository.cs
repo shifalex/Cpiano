@@ -54,6 +54,18 @@ namespace GestureSample.Maui.Data
             }
         }
 
+        public async Task<List<KeyEvent>> GetAttemptEventsAsync(string gameId, int questionNumber, int attemptNumber)
+        {
+            return (await _database.Table<KeyEvent>()
+                .Where(state => state.GameId == gameId &&
+                                state.QuestionNumber == questionNumber &&
+                                state.AttemptNumber == attemptNumber)
+                .ToListAsync())
+                .OrderBy(state => state.EventTime)
+                .ThenBy(state => state.id)
+                .ToList();
+        }
+
         public Task SaveCheckEventAsync(string gameId, int questionNumber, int attemptNumber, DateTime eventTime)
         {
             KeyEvent keyEvent = new()
