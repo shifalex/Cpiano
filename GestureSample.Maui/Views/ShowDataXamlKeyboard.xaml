@@ -42,25 +42,87 @@
             </Border>
         </VerticalStackLayout>
 
-        <CollectionView x:Name="Questions"
-                        Grid.Row="1"
-                        Margin="0,8,0,0"
-                        SelectionMode="None"
-                        ItemSizingStrategy="MeasureAllItems"
-                        VerticalScrollBarVisibility="Always"
-                        ItemsUpdatingScrollMode="KeepScrollOffset">
-            <CollectionView.ItemsLayout>
-                <LinearItemsLayout Orientation="Vertical"
-                                   ItemSpacing="4" />
-            </CollectionView.ItemsLayout>
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Frame BorderColor="LightGray"
-                           CornerRadius="8"
-                           Padding="10"
-                           Margin="10,6"
-                           BackgroundColor="{Binding Question.RowBackgroundColor}">
-                        <VerticalStackLayout Spacing="8">
+        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+            <Border x:Name="TimingRecommendationsContainer"
+                    Grid.Row="0"
+                    Margin="10,8,10,0"
+                    Padding="10"
+                    BackgroundColor="#FFFDFE"
+                    Stroke="#D9CBEA"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 16"
+                    IsVisible="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Timing Tuning"
+                           FontFamily="Georgia"
+                           FontAttributes="Bold"
+                           FontSize="15"
+                           TextColor="#4A2F68" />
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+                          ColumnSpacing="8">
+                        <Label Grid.Column="0" Text="Stage" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                        <Label Grid.Column="1" Text="Try" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="2" Text="Pattern" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="3" Text="After" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="4" Text="Whole" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                    </Grid>
+                    <CollectionView x:Name="TimingRecommendationsList"
+                                    SelectionMode="None"
+                                    ItemSizingStrategy="MeasureAllItems"
+                                    HeightRequest="180">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="4" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0"
+                                           Text="{Binding StageName}"
+                                           LineBreakMode="TailTruncation"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding AttemptCount}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="2"
+                                           Text="{Binding DominantPatternText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="3"
+                                           Text="{Binding AfterLastKeyText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="4"
+                                           Text="{Binding WholeAnswerText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <CollectionView x:Name="Questions"
+                            Grid.Row="1"
+                            Margin="0,8,0,0"
+                            SelectionMode="None"
+                            ItemSizingStrategy="MeasureAllItems"
+                            VerticalScrollBarVisibility="Always"
+                            ItemsUpdatingScrollMode="KeepScrollOffset">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical"
+                                       ItemSpacing="4" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BorderColor="LightGray"
+                               CornerRadius="8"
+                               Padding="10"
+                               Margin="10,6"
+                               BackgroundColor="{Binding Question.RowBackgroundColor}">
+                            <VerticalStackLayout Spacing="8">
                             <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
                                 <Label Grid.Column="0"
                                        Text="{Binding Question.QuestionNumber}"
@@ -280,10 +342,11 @@
                                                            HorizontalOptions="Fill" />
                             </VerticalStackLayout>
 
-                        </VerticalStackLayout>
-                    </Frame>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
     </Grid>
 </ContentPage>

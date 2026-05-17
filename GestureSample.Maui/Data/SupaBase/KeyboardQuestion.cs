@@ -24,6 +24,16 @@ namespace GestureSample.Maui.Data.SupaBase
         public Guid UserId { get; set; } = Guid.Empty;
         public int ResultStatus { get; set; } = 0;
         public bool WasTutorialUsed { get; set; } = false;
+        public bool WasHeaderResultToggleUsed { get; set; } = false;
+        public int KeyDownCount { get; set; } = 0;
+        public int DistinctKeyCount { get; set; } = 0;
+        public int PressClusterCount { get; set; } = 0;
+        public int LargestPressClusterSize { get; set; } = 0;
+        public int MaxInterKeyGapMs { get; set; } = 0;
+        public int AverageInterKeyGapMs { get; set; } = 0;
+        public int FirstKeyToSubmitMs { get; set; } = 0;
+        public int LastKeyToSubmitMs { get; set; } = 0;
+        public int PressPatternKind { get; set; } = 0;
 
         public int? aboveNumber { get; set; }
         public int? length { get; set; }
