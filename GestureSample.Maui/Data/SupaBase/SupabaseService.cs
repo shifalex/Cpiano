@@ -51,6 +51,25 @@ namespace GestureSample.Maui.Data.SupaBase
             Console.WriteLine($"[ERROR] {DateTime.Now}: {message} - Exception: {ex.Message}");
         }
 
+        private static bool IsMissingSupabaseConfig(Exception ex)
+        {
+            return ex is InvalidOperationException &&
+                   ex.Message.Contains("Supabase config was not found", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void EnsureSupabaseConfiguredForSync()
+        {
+            try
+            {
+                _ = _config.Value;
+            }
+            catch (Exception ex) when (IsMissingSupabaseConfig(ex))
+            {
+                LogInfo("Supabase config is not configured. Cloud sync failed.");
+                throw new InvalidOperationException("Supabase sync is not connected. Check the local Supabase config.", ex);
+            }
+        }
+
         #endregion
 
         /// <summary>
@@ -213,6 +232,8 @@ namespace GestureSample.Maui.Data.SupaBase
                 return;
             }
 
+            EnsureSupabaseConfiguredForSync();
+
             try
             {
                
@@ -291,6 +312,8 @@ namespace GestureSample.Maui.Data.SupaBase
         /// </summary>
         public static async Task SyncUnsyncedGamesAndRelatedDataAsync(SQLite.User user)
         {
+            EnsureSupabaseConfiguredForSync();
+
             try
             {
                 LogInfo("Starting SyncUnsyncedGamesAndRelatedDataAsync.");

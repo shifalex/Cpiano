@@ -1,5 +1,3 @@
-using Microsoft.Maui.Layouts;
-
 namespace GestureSample.Maui.Views
 {
     public sealed class ChoiceAnswerKeyboardView : ContentView
@@ -19,24 +17,35 @@ namespace GestureSample.Maui.Views
             Content = surface;
         }
 
-        private View BuildChoicesLayout()
+        private Grid BuildChoicesLayout()
         {
-            FlexLayout layout = new()
+            Grid grid = new()
             {
-                Direction = FlexDirection.Row,
-                Wrap = FlexWrap.Wrap,
-                JustifyContent = FlexJustify.Center,
-                AlignItems = FlexAlignItems.Center,
-                AlignContent = FlexAlignContent.Center
+                ColumnSpacing = 6,
+                RowSpacing = 6,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Star }
+                },
+                RowDefinitions =
+                {
+                    new RowDefinition { Height = GridLength.Auto },
+                    new RowDefinition { Height = GridLength.Auto }
+                }
             };
 
             for (int value = 1; value <= 10; value++)
             {
                 Button button = CreateChoiceButton(value);
-                layout.Children.Add(button);
+                int index = value - 1;
+                grid.Add(button, index % 5, index / 5);
             }
 
-            return layout;
+            return grid;
         }
 
         private Button CreateChoiceButton(int value)
@@ -46,16 +55,11 @@ namespace GestureSample.Maui.Views
                 Text = value.ToString(),
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Fill,
-                MinimumWidthRequest = 52,
-                MinimumHeightRequest = 52,
-                Margin = new Thickness(3)
+                MinimumHeightRequest = 52
             };
 
-            FlexLayout.SetBasis(button, new FlexBasis(18, true));
-            FlexLayout.SetGrow(button, 1);
-            FlexLayout.SetShrink(button, 1);
-
             DesignResources.ApplyStyle(button, "NumericKeypadDigitButtonStyle");
+            button.MinimumWidthRequest = 0;
             button.Clicked += (_, _) => ChoicePressed?.Invoke(value);
             return button;
         }
