@@ -1815,12 +1815,13 @@ namespace GestureSample.Views.Tests
         {
             if (UsesChoiceAnswerKeyboard)
             {
+                double choiceKeyboardWidth = GetChoiceKeyboardWidth();
                 _choiceAnswerKeyboard = new ChoiceAnswerKeyboardView
                 {
                     HorizontalOptions = LayoutOptions.Fill,
                     VerticalOptions = LayoutOptions.Center,
-                    WidthRequest = TASK_WIDTH,
-                    MaximumWidthRequest = TASK_WIDTH,
+                    WidthRequest = choiceKeyboardWidth,
+                    MaximumWidthRequest = choiceKeyboardWidth,
                     Margin = new Thickness(0, 2, 0, 0),
                     IsVisible = true
                 };
@@ -1845,6 +1846,17 @@ namespace GestureSample.Views.Tests
             _numericKeypad.SubmitPressed += OnNumericSubmitPressed;
 
             return _numericKeypad;
+        }
+
+        private double GetChoiceKeyboardWidth()
+        {
+            DisplayInfo info = DeviceDisplay.Current.MainDisplayInfo;
+            double width = info.Density > 0 ? info.Width / info.Density : info.Width;
+            double height = info.Density > 0 ? info.Height / info.Density : info.Height;
+            double shortSide = Math.Min(width, height);
+            double availableWidth = shortSide > 0 ? shortSide - 28 : TASK_WIDTH * 1.65;
+
+            return Math.Max(TASK_WIDTH * 1.4, Math.Min(availableWidth, TASK_WIDTH * 1.8));
         }
 
         private bool IsLargeEnoughForExpandedNumericLayout()
@@ -1885,6 +1897,9 @@ namespace GestureSample.Views.Tests
 
             if (ShouldPlaceNumericKeypadBesideEntriesForHelp())
                 return Math.Max(150, Math.Min(availableWidth * 0.42, 210));
+
+            if (UsesChoiceAnswerKeyboard)
+                return Math.Max(150, Math.Min(availableWidth * 0.56, 190));
 
             return Math.Max(220, Math.Min(availableWidth * 0.78, 320));
         }
@@ -1965,6 +1980,18 @@ namespace GestureSample.Views.Tests
 
         private Entry? EnsureNumericEntrySelection()
         {
+            if (UsesArrowLabelPromptStage())
+            {
+                Entry? arrowLabelMissingEntry = GetArrowLabelMissingEntry();
+                if (IsEntryEditable(arrowLabelMissingEntry))
+                {
+                    if (_activeNumericEntry != arrowLabelMissingEntry)
+                        SelectNumericEntry(arrowLabelMissingEntry);
+
+                    return arrowLabelMissingEntry;
+                }
+            }
+
             if (IsEntryEditable(_activeNumericEntry))
                 return _activeNumericEntry;
 
@@ -1977,6 +2004,10 @@ namespace GestureSample.Views.Tests
 
         private Entry? GetPreferredNumericEntry()
         {
+            Entry? arrowLabelMissingEntry = GetArrowLabelMissingEntry();
+            if (IsEntryEditable(arrowLabelMissingEntry))
+                return arrowLabelMissingEntry;
+
             if (IsEntryEditable(_lastFocused))
                 return _lastFocused;
 
@@ -2064,6 +2095,13 @@ namespace GestureSample.Views.Tests
             targetEntry.Text = value.ToString();
             _lastFocused = targetEntry;
             RefreshNumericEntryAppearance();
+
+            if (UsesArrowLabelPromptStage())
+            {
+                SubmitArrowLabelPromptAnswer();
+                return;
+            }
+
             OnNumericSubmitPressed();
         }
 
@@ -2095,6 +2133,12 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null)
                 return;
 
+            if (UsesArrowLabelPromptStage())
+            {
+                SubmitArrowLabelPromptAnswer();
+                return;
+            }
+
             if (targetEntry == _txtAddend1 && _config.RequiresBothAddendsInput && IsEntryEditable(_txtAddend2))
             {
                 SelectNumericEntry(_txtAddend2);
@@ -2115,6 +2159,65 @@ namespace GestureSample.Views.Tests
             }
 
             CheckGamePlay();
+        }
+
+        private async void SubmitArrowLabelPromptAnswer()
+        {
+            if (_gamePlay is not BitArrayGamePlay arrowGamePlay || !arrowGamePlay.HasArrowLabelPrompt)
+                return;
+
+            int addend1 = arrowGamePlay.ArrowLabelAddend1Value;
+            int addend2 = arrowGamePlay.ArrowLabelAddend2Value ?? 0;
+            int sum = arrowGamePlay.ArrowLabelSumValue;
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+
+            if (missingEntry == null || !int.TryParse(missingEntry.Text, out int submittedValue))
+            {
+                ApplyFeedbackUiState(false);
+                if (missingEntry != null)
+                    missingEntry.BackgroundColor = Colors.IndianRed;
+
+                _lblStatement.Text = Statement.WrongInput;
+                return;
+            }
+
+            switch (arrowGamePlay.CurrentArrowLabelExerciseMode)
+            {
+                case ArrowLabelExerciseMode.StartAndLength:
+                case ArrowLabelExerciseMode.OrdinalStartAndLength:
+                    sum = submittedValue;
+                    break;
+                case ArrowLabelExerciseMode.StartAndEndWithMissingLength:
+                    addend2 = submittedValue;
+                    break;
+                case ArrowLabelExerciseMode.EndAndLengthWithMissingStart:
+                    addend1 = submittedValue;
+                    break;
+            }
+
+            ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(addend1, addend2, sum);
+            ApplyFeedbackUiState(checkResult.IsCorrect);
+            missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
+
+            if (checkResult.Completion != null)
+            {
+                await Task.Delay(450);
+                await HandleGameCompletionAsync(checkResult.Completion);
+                return;
+            }
+
+            if (checkResult.IsCorrect && !_gamePlay.GameOver)
+            {
+                await Task.Delay(450);
+                await GenerateNextExerciseAsync();
+                return;
+            }
+
+            if (!checkResult.IsCorrect)
+                return;
+
+            ResetStatusLineToNeutral();
+            RestoreReadyForInputState();
         }
 
         private bool UsesCyclicalTutorial()
@@ -3951,7 +4054,7 @@ namespace GestureSample.Views.Tests
             if (_isThreeTexts)
             {
                 InitTextsUI();
-                View? numericKeypadView = UsesCustomNumericKeypad ? InitNumericKeypadUI() : null;
+                View? numericKeypadView = UsesManagedNumericInput ? InitNumericKeypadUI() : null;
                 VerticalStackLayout questionInputsLayout = new()
                 {
                     HorizontalOptions = LayoutOptions.Center,
@@ -4255,31 +4358,32 @@ namespace GestureSample.Views.Tests
                     Grid.SetRowSpan(answerTimeTuner, 2);
                 }
 
-                // Help button (top-right over the keyboard)
-                _btnHelp = new Button
+                if (_taskMainHost != null)
                 {
-                    Text = "?",
-                    FontSize = 16,
-                    WidthRequest = 34,
-                    HeightRequest = 34,
-                    Padding = 0,
-                    CornerRadius = 17,
-                    BackgroundColor = Colors.Black.WithAlpha(0.25f),
-                    TextColor = Colors.White,
-                    HorizontalOptions = LayoutOptions.End,
-                    VerticalOptions = LayoutOptions.Center,
-                    Margin = Thickness.Zero,
-                    ZIndex = 999,
-                };
+                    // Help button (top-right over the keyboard)
+                    _btnHelp = new Button
+                    {
+                        Text = "?",
+                        FontSize = 16,
+                        WidthRequest = 34,
+                        HeightRequest = 34,
+                        Padding = 0,
+                        CornerRadius = 17,
+                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.End,
+                        VerticalOptions = LayoutOptions.Center,
+                        Margin = Thickness.Zero,
+                        ZIndex = 999,
+                    };
 
-                _btnHelp.Clicked += async (_, __) =>
-                {
-                    if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
-                    await MarkCurrentKeyboardQuestionTutorialUsedAsync();
-                    if (_taskMainHost == null) return;
-                    
-                    // make sure rects are synced before animating
-                    _taskMainHost.SyncOverlay();
+                    _btnHelp.Clicked += async (_, __) =>
+                    {
+                        if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
+                        await MarkCurrentKeyboardQuestionTutorialUsedAsync();
+                        
+                        // make sure rects are synced before animating
+                        _taskMainHost.SyncOverlay();
 
                     if (HasDedicatedKeyboardTutorial())
                         await RunRecordedKeyboardTutorialAsync(_taskMainHost);
@@ -4462,7 +4566,8 @@ namespace GestureSample.Views.Tests
                 if (rightOverlayButtons.Children.Count > 0)
                     overlayButtons.Add(rightOverlayButtons, 2, 0);
 
-                _taskMainHost.Children.Add(overlayButtons);
+                    _taskMainHost.Children.Add(overlayButtons);
+                }
 
                 
                    

@@ -220,6 +220,37 @@ namespace GestureSample.Maui.Models
         public int ArrowLabelSumValue => _arrowLabelEndValue;
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
 
+        public override async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
+        {
+            if (!UsesArrowLabelExercise())
+                return await base.EvaluateAsync(a1, a2, s);
+
+            bool isCorrect = GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.StartAndLength => s == _arrowLabelEndValue,
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength => a2 == _arrowLabelDistance,
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => a1 == _arrowLabelStartValue,
+                ArrowLabelExerciseMode.OrdinalStartAndLength => s == _arrowLabelEndValue,
+                _ => false
+            };
+
+            IncrementGuessNumber();
+            _status = isCorrect ? Statement.True : Statement.False;
+
+            GameCompletionResult? completion;
+            if (isCorrect)
+            {
+                ApplyArrowLabelPpwState(revealMissingValue: true);
+                completion = await RegisterSuccessfulAttemptAsync();
+            }
+            else
+            {
+                completion = await RegisterFailedAttemptAsync();
+            }
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
         protected override int GetPersistedQuestionAnswerAddend1()
         {
             if (UsesArrowLabelExercise())
