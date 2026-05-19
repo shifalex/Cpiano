@@ -406,6 +406,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
                 : BitArrayGeneration & ~BitArrayGenerationFlags.KeyboardOnly;
         }
         public bool OnlyCloseTriad { get; set; } = false;
+        public bool AllowCloseTriadSumChange { get; set; } = false;
+        public bool UsePairedCloseTriadBenchmark { get; set; } = false;
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public int RepeatingTimesOfSum { get; set; } = 1;
         public bool UseDistortedVariantInRepeatSequence { get; set; } = false;
