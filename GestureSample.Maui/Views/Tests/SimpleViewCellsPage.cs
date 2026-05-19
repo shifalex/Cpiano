@@ -484,6 +484,9 @@ namespace GestureSample.Views.Tests
         private Entry _txtAddend1;
         private Entry _txtAddend2;
         private Entry _txtSum;
+        private Entry _txtComplexAddend3;
+        private Entry _txtComplexSum2;
+        private Entry _txtComplexTotalDistance;
         private Label _lblAction;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
@@ -563,6 +566,7 @@ namespace GestureSample.Views.Tests
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
         private readonly GameRepository _gameRepository;
         private bool _isApplyingAutoTune;
+        private bool _benchmarkAutoSkippingFilledAnchor;
 
         //VerticalStackLayout _vsl;
         protected IDispatcherTimer timer;
@@ -1123,6 +1127,25 @@ namespace GestureSample.Views.Tests
             RefreshPreviousPreview();
         }
 
+        private void ApplyBenchmarkAnchorFromInputs()
+        {
+            if (!_config.UsePairedCloseTriadBenchmark ||
+                !_isThreeTexts ||
+                _txtAddend1 == null ||
+                _txtAddend2 == null ||
+                _txtSum == null)
+            {
+                return;
+            }
+
+            if (int.TryParse(_txtAddend1.Text, out int addend1) &&
+                int.TryParse(_txtAddend2.Text, out int addend2) &&
+                int.TryParse(_txtSum.Text, out int sum))
+            {
+                _gamePlay.SetCurrentBenchmarkAnchor(addend1, addend2, sum);
+            }
+        }
+
         private void ShowPreviousInline()
         {
             if (_previousPPW == null || !_isThreeTexts)
@@ -1175,9 +1198,10 @@ namespace GestureSample.Views.Tests
 
         private View BuildEquationPreviousLayout()
         {
-            double addendWidth = TASK_WIDTH / 2;
+            double previousWidth = GetQuestionLayoutWidth();
+            double addendWidth = previousWidth / 2;
 
-            _prevSumEntry = CreatePreviousEntry(TASK_WIDTH);
+            _prevSumEntry = CreatePreviousEntry(previousWidth);
             _prevSumEntry.FontSize = _txtSum?.FontSize > 0 ? _txtSum.FontSize : 32;
 
             _prevAddend1Entry = CreatePreviousEntry(addendWidth);
@@ -1221,7 +1245,7 @@ namespace GestureSample.Views.Tests
                     {
                         HorizontalOptions = LayoutOptions.Center,
                         Spacing = 0,
-                        WidthRequest = TASK_WIDTH,
+                        WidthRequest = previousWidth,
                         Children = { _prevAddend1Entry, _prevAddend2Entry }
                     }
                 }
@@ -1230,8 +1254,11 @@ namespace GestureSample.Views.Tests
 
         private View BuildStandardPreviousLayout()
         {
-            double equationWidth = TASK_WIDTH / 2;
-            _prevSumEntry = CreatePreviousEntry(TASK_WIDTH);
+            double previousWidth = GetQuestionLayoutWidth();
+            bool showAction = _config.EnforceOperationLabel || _config.OperationList.Count > 1;
+            double actionWidth = showAction ? GetQuestionActionWidth() : 0;
+            double equationWidth = (previousWidth - actionWidth) / 2;
+            _prevSumEntry = CreatePreviousEntry(previousWidth);
             _prevAddend1Entry = CreatePreviousEntry(equationWidth);
             _prevAddend2Entry = CreatePreviousEntry(equationWidth);
             _prevActionLabel = new Label
@@ -1239,9 +1266,10 @@ namespace GestureSample.Views.Tests
                 FontSize = FONT_SIZE_DEFAULT,
                 TextColor = Colors.Gray,
                 Opacity = 0.2,
+                IsVisible = showAction,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
-                WidthRequest = 20
+                WidthRequest = actionWidth
             };
             _prevEqualsLabel = new Label
             {
@@ -1268,6 +1296,8 @@ namespace GestureSample.Views.Tests
                     new HorizontalStackLayout
                     {
                         HorizontalOptions = LayoutOptions.Center,
+                        Spacing = 0,
+                        WidthRequest = previousWidth,
                         Children = { _prevAddend1Entry, _prevActionLabel, _prevAddend2Entry }
                     }
                 }
@@ -1428,6 +1458,7 @@ namespace GestureSample.Views.Tests
             try
             {
                 CapturePreviousExerciseSnapshot();
+                ApplyBenchmarkAnchorFromInputs();
                 await GenerateNextExerciseAsync();
             }
             finally
@@ -1899,14 +1930,14 @@ namespace GestureSample.Views.Tests
                 return Math.Max(150, Math.Min(availableWidth * 0.42, 210));
 
             if (UsesChoiceAnswerKeyboard)
-                return Math.Max(150, Math.Min(availableWidth * 0.56, 190));
+                return Math.Max(124, Math.Min(availableWidth * 0.42, 150));
 
-            return Math.Max(220, Math.Min(availableWidth * 0.78, 320));
+            return Math.Max(150, Math.Min(availableWidth * 0.62, 220));
         }
 
         private double GetQuestionActionWidth()
         {
-            return UsesManagedNumericInput ? 28 : 20;
+            return UsesManagedNumericInput ? 18 : 20;
         }
 
         private double GetQuestionHalfWidth(bool reserveActionLabel)
@@ -1915,12 +1946,12 @@ namespace GestureSample.Views.Tests
             if (reserveActionLabel)
                 halfWidth -= GetQuestionActionWidth() / 2;
 
-            return Math.Max(72, halfWidth);
+            return Math.Max(54, halfWidth);
         }
 
         private double GetQuestionQuarterWidth()
         {
-            return Math.Max(54, GetQuestionLayoutWidth() / 4);
+            return Math.Max(42, GetQuestionLayoutWidth() / 4);
         }
 
         private void ConfigureNumericEntry(Entry entry)
@@ -2166,6 +2197,12 @@ namespace GestureSample.Views.Tests
             if (_gamePlay is not BitArrayGamePlay arrowGamePlay || !arrowGamePlay.HasArrowLabelPrompt)
                 return;
 
+            if (arrowGamePlay.HasComplexArrowLabelPrompt)
+            {
+                await SubmitComplexArrowLabelPromptAnswer(arrowGamePlay);
+                return;
+            }
+
             int addend1 = arrowGamePlay.ArrowLabelAddend1Value;
             int addend2 = arrowGamePlay.ArrowLabelAddend2Value ?? 0;
             int sum = arrowGamePlay.ArrowLabelSumValue;
@@ -2209,6 +2246,58 @@ namespace GestureSample.Views.Tests
             if (checkResult.IsCorrect && !_gamePlay.GameOver)
             {
                 await Task.Delay(450);
+                await GenerateNextExerciseAsync();
+                return;
+            }
+
+            if (!checkResult.IsCorrect)
+                return;
+
+            ResetStatusLineToNeutral();
+            RestoreReadyForInputState();
+        }
+
+        private async Task SubmitComplexArrowLabelPromptAnswer(BitArrayGamePlay arrowGamePlay)
+        {
+            ComplexArrowLabelTarget? target = arrowGamePlay.CurrentComplexArrowLabelTarget;
+            Entry? missingEntry = GetComplexArrowLabelEntry(target);
+
+            if (target == null || missingEntry == null || !int.TryParse(missingEntry.Text, out int submittedValue))
+            {
+                ApplyFeedbackUiState(false);
+                if (missingEntry != null)
+                    missingEntry.BackgroundColor = Colors.IndianRed;
+
+                _lblStatement.Text = Statement.WrongInput;
+                return;
+            }
+
+            ExerciseCheckResult checkResult = await arrowGamePlay.EvaluateComplexArrowLabelAsync(target.Value, submittedValue);
+            if (checkResult.IsCorrect)
+                missingEntry.Text = submittedValue.ToString();
+
+            ApplyFeedbackUiState(checkResult.IsCorrect);
+            missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
+
+            if (checkResult.IsCorrect && arrowGamePlay.HasPendingComplexArrowLabelTarget)
+            {
+                await Task.Delay(1000);
+                RefreshKeyboardArrowPromptView();
+                SelectNumericEntry(GetArrowLabelMissingEntry() ?? missingEntry);
+                RestoreReadyForInputState();
+                return;
+            }
+
+            if (checkResult.Completion != null)
+            {
+                await Task.Delay(1000);
+                await HandleGameCompletionAsync(checkResult.Completion);
+                return;
+            }
+
+            if (checkResult.IsCorrect && !_gamePlay.GameOver)
+            {
+                await Task.Delay(1000);
                 await GenerateNextExerciseAsync();
                 return;
             }
@@ -3000,6 +3089,10 @@ namespace GestureSample.Views.Tests
             ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
             _pianoKeyboard?.RefreshKeyCaptions();
             await UpdateView(true, generatedExercise: generatedExercise);
+
+            if (await TrySkipFilledPairedBenchmarkAnchorAsync())
+                return;
+
             await AnimateBenchmarkQuestionAdvanceInAsync();
             await ApplyAutoAnswerTimeTuningAsync("AutoTuneNextQuestion");
             await EnsureInitialTimerSettingSavedAsync();
@@ -3016,6 +3109,31 @@ namespace GestureSample.Views.Tests
                 {
                     _pianoKeyboard.IsEnabled = true;
                 }
+            }
+        }
+
+        private async Task<bool> TrySkipFilledPairedBenchmarkAnchorAsync()
+        {
+            if (_benchmarkAutoSkippingFilledAnchor ||
+                !_config.UsePairedCloseTriadBenchmark ||
+                !_gamePlay.IsCurrentPairedBenchmarkAnchor)
+            {
+                return false;
+            }
+
+            _benchmarkAutoSkippingFilledAnchor = true;
+            try
+            {
+                await AnimateBenchmarkQuestionAdvanceInAsync();
+                await Task.Delay(520);
+                CapturePreviousExerciseSnapshot();
+                ApplyBenchmarkAnchorFromInputs();
+                await GenerateNextExerciseAsync();
+                return true;
+            }
+            finally
+            {
+                _benchmarkAutoSkippingFilledAnchor = false;
             }
         }
 
@@ -3262,6 +3380,9 @@ namespace GestureSample.Views.Tests
             if (!UsesArrowLabelPromptStage() || _config.KeyboardConfig == null)
                 return null;
 
+            if (_gamePlay is BitArrayGamePlay { HasComplexArrowLabelPrompt: true } arrowGamePlay)
+                return GetComplexArrowLabelEntry(arrowGamePlay.CurrentComplexArrowLabelTarget);
+
             return GetDisplayedArrowLabelExerciseMode() switch
             {
                 ArrowLabelExerciseMode.StartAndLength => _txtSum,
@@ -3272,14 +3393,39 @@ namespace GestureSample.Views.Tests
             };
         }
 
+        private Entry? GetComplexArrowLabelEntry(ComplexArrowLabelTarget? target)
+        {
+            return target switch
+            {
+                ComplexArrowLabelTarget.Addend2 => _txtAddend2,
+                ComplexArrowLabelTarget.Addend3 => _txtComplexAddend3,
+                ComplexArrowLabelTarget.FirstSum => _txtSum,
+                ComplexArrowLabelTarget.Sum2 => _txtComplexSum2,
+                ComplexArrowLabelTarget.TotalDistance => _txtComplexTotalDistance,
+                _ => null
+            };
+        }
+
         private void ResetArrowLabelPromptEntryColors()
         {
             if (!UsesArrowLabelPromptStage())
                 return;
 
+            SetArrowLabelPromptEntryBaseColors();
+        }
+
+        private void SetArrowLabelPromptEntryBaseColors()
+        {
             if (_txtAddend1 != null) _txtAddend1.BackgroundColor = Colors.White;
             if (_txtAddend2 != null) _txtAddend2.BackgroundColor = Colors.White;
             if (_txtSum != null) _txtSum.BackgroundColor = Colors.White;
+            if (_txtComplexAddend3 != null) _txtComplexAddend3.BackgroundColor = Colors.White;
+            if (_txtComplexSum2 != null) _txtComplexSum2.BackgroundColor = Colors.White;
+            if (_txtComplexTotalDistance != null) _txtComplexTotalDistance.BackgroundColor = Colors.White;
+
+            Entry? activeEntry = GetArrowLabelMissingEntry();
+            if (activeEntry != null)
+                activeEntry.BackgroundColor = Colors.LightYellow;
         }
 
         private void ApplyArrowLabelPromptFeedback(bool isCorrect)
@@ -3297,6 +3443,14 @@ namespace GestureSample.Views.Tests
 
         private View BuildKeyboardArrowPromptView()
         {
+            if (GetDisplayedArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.ComplexTwoStep or
+                ArrowLabelExerciseMode.ComplexTwoStepToFive or
+                ArrowLabelExerciseMode.ComplexTwoStepToTen)
+            {
+                return BuildComplexKeyboardArrowPromptView();
+            }
+
             _txtAddend1 ??= CreateKeyboardArrowPromptEntry();
             _txtAddend2 ??= CreateKeyboardArrowPromptEntry();
             _txtSum ??= CreateKeyboardArrowPromptEntry();
@@ -3348,6 +3502,78 @@ namespace GestureSample.Views.Tests
             };
         }
 
+        private View BuildComplexKeyboardArrowPromptView()
+        {
+            _txtAddend1 ??= CreateKeyboardArrowPromptEntry();
+            _txtAddend2 ??= CreateKeyboardArrowPromptEntry();
+            _txtSum ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexAddend3 ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexSum2 ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexTotalDistance ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexTotalDistance.WidthRequest = 64;
+
+            var firstArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 69,132 L 69,78 L 184,78 M 168,66 L 184,78 L 168,90"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3
+            };
+
+            var secondArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 184,132 L 184,78 L 300,78 M 284,66 L 300,78 L 284,90"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3
+            };
+
+            var totalArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 69,134 L 69,184 L 300,184 L 300,134 M 288,150 L 300,134 L 312,150"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3
+            };
+
+            var promptSurface = new AbsoluteLayout
+            {
+                WidthRequest = 320,
+                HeightRequest = 210,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start
+            };
+
+            AbsoluteLayout.SetLayoutBounds(firstArrowPath, new Rect(0, 0, 320, 210));
+            promptSurface.Children.Add(firstArrowPath);
+            AbsoluteLayout.SetLayoutBounds(secondArrowPath, new Rect(0, 0, 320, 210));
+            promptSurface.Children.Add(secondArrowPath);
+            AbsoluteLayout.SetLayoutBounds(totalArrowPath, new Rect(0, 0, 320, 210));
+            promptSurface.Children.Add(totalArrowPath);
+
+            AbsoluteLayout.SetLayoutBounds(_txtAddend1, new Rect(19, 108, 50, 25));
+            promptSurface.Children.Add(_txtAddend1);
+            AbsoluteLayout.SetLayoutBounds(_txtAddend2, new Rect(86, 28, 50, 25));
+            promptSurface.Children.Add(_txtAddend2);
+            AbsoluteLayout.SetLayoutBounds(_txtSum, new Rect(134, 108, 50, 25));
+            promptSurface.Children.Add(_txtSum);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexAddend3, new Rect(201, 28, 50, 25));
+            promptSurface.Children.Add(_txtComplexAddend3);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexSum2, new Rect(250, 108, 50, 25));
+            promptSurface.Children.Add(_txtComplexSum2);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexTotalDistance, new Rect(128, 167, 64, 25));
+            promptSurface.Children.Add(_txtComplexTotalDistance);
+
+            return new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                Spacing = 0,
+                Margin = new Thickness(0, 2, 0, 8),
+                Children = { promptSurface }
+            };
+        }
+
         private static Entry CreateKeyboardArrowPromptEntry()
         {
             return new Entry
@@ -3376,6 +3602,13 @@ namespace GestureSample.Views.Tests
             ResetArrowLabelPromptEntryColors();
 
             ArrowLabelExerciseMode mode = arrowPromptGamePlay.CurrentArrowLabelExerciseMode;
+            if (arrowPromptGamePlay.HasComplexArrowLabelPrompt)
+            {
+                RefreshComplexKeyboardArrowPromptView(arrowPromptGamePlay);
+                SetArrowLabelPromptEntryBaseColors();
+                return;
+            }
+
             bool revealCorrectResponse = _gamePlay.Status == Statement.True && UsesArrowCorrectResponseFeedback();
 
             _txtAddend1.Text = mode == ArrowLabelExerciseMode.EndAndLengthWithMissingStart && !revealCorrectResponse
@@ -3389,6 +3622,37 @@ namespace GestureSample.Views.Tests
             _txtSum.Text = (mode == ArrowLabelExerciseMode.StartAndLength || mode == ArrowLabelExerciseMode.OrdinalStartAndLength) && !revealCorrectResponse
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
+            SetArrowLabelPromptEntryBaseColors();
+        }
+
+        private void RefreshComplexKeyboardArrowPromptView(BitArrayGamePlay arrowPromptGamePlay)
+        {
+            if (_txtAddend1 == null ||
+                _txtAddend2 == null ||
+                _txtSum == null ||
+                _txtComplexAddend3 == null ||
+                _txtComplexSum2 == null ||
+                _txtComplexTotalDistance == null)
+            {
+                return;
+            }
+
+            _txtAddend1.Text = arrowPromptGamePlay.ArrowLabelAddend1Value.ToString();
+            _txtSum.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.FirstSum)
+                ? string.Empty
+                : arrowPromptGamePlay.ComplexArrowFirstSumValue.ToString();
+            _txtAddend2.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend2)
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelAddend2Value?.ToString() ?? string.Empty;
+            _txtComplexAddend3.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend3)
+                ? string.Empty
+                : arrowPromptGamePlay.ComplexArrowAddend3Value.ToString();
+            _txtComplexSum2.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Sum2)
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
+            _txtComplexTotalDistance.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.TotalDistance)
+                ? string.Empty
+                : arrowPromptGamePlay.ComplexArrowTotalDistanceValue.ToString();
         }
 
         private string GetArrowLabelPromptPathData()
@@ -4860,7 +5124,7 @@ namespace GestureSample.Views.Tests
                 TextColor = Colors.Black,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
-                WidthRequest = GetQuestionActionWidth(),
+                WidthRequest = isLblAction ? GetQuestionActionWidth() : 0,
                 IsVisible = isLblAction
             };
             _hr = new BoxView

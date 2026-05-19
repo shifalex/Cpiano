@@ -302,7 +302,19 @@
         StartAndLength = 1,
         StartAndEndWithMissingLength = 2,
         EndAndLengthWithMissingStart = 3,
-        OrdinalStartAndLength = 4
+        OrdinalStartAndLength = 4,
+        ComplexTwoStep = 5,
+        ComplexTwoStepToFive = 6,
+        ComplexTwoStepToTen = 7
+    }
+
+    public enum ComplexArrowLabelTarget
+    {
+        Addend2 = 0,
+        Addend3 = 1,
+        FirstSum = 2,
+        Sum2 = 3,
+        TotalDistance = 4
     }
 
     [Flags]

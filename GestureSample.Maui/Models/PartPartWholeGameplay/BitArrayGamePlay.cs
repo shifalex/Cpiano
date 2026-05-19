@@ -47,6 +47,11 @@ namespace GestureSample.Maui.Models
         private int _arrowLabelStartValue;
         private int _arrowLabelEndValue;
         private int _arrowLabelDistance;
+        private int _complexArrowAddend3;
+        private int _complexArrowFirstSum;
+        private int _complexArrowTotalDistance;
+        private readonly List<ComplexArrowLabelTarget> _complexArrowMissingTargets = new();
+        private int _complexArrowCompletedTargetCount;
         private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
         private bool _usesActiveOnKeyboardArrow;
         private ArrowType _activeArrowType = ArrowType.Straight;
@@ -106,7 +111,18 @@ namespace GestureSample.Maui.Models
                 ArrowLabelExerciseMode.StartAndLength or
                 ArrowLabelExerciseMode.StartAndEndWithMissingLength or
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
-                ArrowLabelExerciseMode.OrdinalStartAndLength;
+                ArrowLabelExerciseMode.OrdinalStartAndLength or
+                ArrowLabelExerciseMode.ComplexTwoStep or
+                ArrowLabelExerciseMode.ComplexTwoStepToFive or
+                ArrowLabelExerciseMode.ComplexTwoStepToTen;
+        }
+
+        private bool UsesComplexArrowLabelExercise()
+        {
+            return GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.ComplexTwoStep or
+                ArrowLabelExerciseMode.ComplexTwoStepToFive or
+                ArrowLabelExerciseMode.ComplexTwoStepToTen;
         }
 
         private void ResolveCurrentArrowVariant(Random r)
@@ -186,6 +202,12 @@ namespace GestureSample.Maui.Models
 
         private void GenerateArrowLabelExercise(Random r)
         {
+            if (UsesComplexArrowLabelExercise())
+            {
+                GenerateComplexArrowLabelExercise(r);
+                return;
+            }
+
             int keyCount = BitArrayQuestion.Length;
             int minValue = GetKeyboardValueAtIndex(0);
             int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
@@ -204,6 +226,41 @@ namespace GestureSample.Maui.Models
             BitArrayQuestion2 = new bool[keyCount];
         }
 
+        private void GenerateComplexArrowLabelExercise(Random r)
+        {
+            int keyCount = BitArrayQuestion.Length;
+            int minValue = GetKeyboardValueAtIndex(0);
+            int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
+            int fixedFirstSum = GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.ComplexTwoStepToFive => 5,
+                ArrowLabelExerciseMode.ComplexTwoStepToTen => 10,
+                _ => 0
+            };
+
+            _complexArrowFirstSum = fixedFirstSum > 0
+                ? Math.Clamp(fixedFirstSum, minValue + 1, maxValue - 1)
+                : r.Next(minValue + 2, maxValue);
+
+            _arrowLabelStartValue = r.Next(minValue, _complexArrowFirstSum);
+            _arrowLabelDistance = _complexArrowFirstSum - _arrowLabelStartValue;
+            _complexArrowAddend3 = r.Next(1, (maxValue - _complexArrowFirstSum) + 1);
+            _arrowLabelEndValue = _complexArrowFirstSum + _complexArrowAddend3;
+            _complexArrowTotalDistance = _arrowLabelDistance + _complexArrowAddend3;
+            _complexArrowCompletedTargetCount = 0;
+
+            _complexArrowMissingTargets.Clear();
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.FirstSum);
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Sum2);
+            _complexArrowMissingTargets.RemoveAt(r.Next(1, _complexArrowMissingTargets.Count));
+
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+            BitArrayQuestion = GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_complexArrowFirstSum), 1);
+            BitArrayQuestion2 = GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_arrowLabelEndValue), 1);
+        }
+
         public bool HasArrowLabelPrompt => UsesArrowLabelExercise();
 
         public int ArrowLabelAddend1Value => _arrowLabelStartValue;
@@ -213,12 +270,62 @@ namespace GestureSample.Maui.Models
                 ArrowLabelExerciseMode.StartAndLength or
                 ArrowLabelExerciseMode.StartAndEndWithMissingLength or
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
-                ArrowLabelExerciseMode.OrdinalStartAndLength
+                ArrowLabelExerciseMode.OrdinalStartAndLength or
+                ArrowLabelExerciseMode.ComplexTwoStep or
+                ArrowLabelExerciseMode.ComplexTwoStepToFive or
+                ArrowLabelExerciseMode.ComplexTwoStepToTen
                 ? _arrowLabelDistance
                 : null;
 
         public int ArrowLabelSumValue => _arrowLabelEndValue;
+        public int ComplexArrowAddend3Value => _complexArrowAddend3;
+        public int ComplexArrowFirstSumValue => _complexArrowFirstSum;
+        public int ComplexArrowTotalDistanceValue => _complexArrowTotalDistance;
+        public bool HasComplexArrowLabelPrompt => UsesComplexArrowLabelExercise();
+        public bool HasPendingComplexArrowLabelTarget => HasComplexArrowLabelPrompt &&
+            _complexArrowCompletedTargetCount < _complexArrowMissingTargets.Count;
+        public ComplexArrowLabelTarget? CurrentComplexArrowLabelTarget => HasPendingComplexArrowLabelTarget
+            ? _complexArrowMissingTargets[_complexArrowCompletedTargetCount]
+            : null;
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
+
+        public bool IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget target)
+        {
+            int index = _complexArrowMissingTargets.IndexOf(target);
+            return index >= _complexArrowCompletedTargetCount;
+        }
+
+        public async Task<ExerciseCheckResult> EvaluateComplexArrowLabelAsync(ComplexArrowLabelTarget target, int submittedValue)
+        {
+            if (!UsesComplexArrowLabelExercise())
+                return await EvaluateAsync(_arrowLabelStartValue, _arrowLabelDistance, _arrowLabelEndValue);
+
+            int correctValue = target switch
+            {
+                ComplexArrowLabelTarget.Addend2 => _arrowLabelDistance,
+                ComplexArrowLabelTarget.Addend3 => _complexArrowAddend3,
+                ComplexArrowLabelTarget.FirstSum => _complexArrowFirstSum,
+                ComplexArrowLabelTarget.Sum2 => _arrowLabelEndValue,
+                ComplexArrowLabelTarget.TotalDistance => _complexArrowTotalDistance,
+                _ => int.MinValue
+            };
+
+            bool isCorrect = CurrentComplexArrowLabelTarget == target && submittedValue == correctValue;
+            IncrementGuessNumber();
+            _status = isCorrect ? Statement.True : Statement.False;
+
+            if (!isCorrect)
+                return CreateCheckResult(false, completion: await RegisterFailedAttemptAsync());
+
+            _complexArrowCompletedTargetCount++;
+            ApplyArrowLabelPpwState(revealMissingValue: !HasPendingComplexArrowLabelTarget);
+
+            if (HasPendingComplexArrowLabelTarget)
+                return CreateCheckResult(true);
+
+            GameCompletionResult? completion = await RegisterSuccessfulAttemptAsync();
+            return CreateCheckResult(true, completion: completion);
+        }
 
         public override async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
         {
@@ -713,6 +820,16 @@ namespace GestureSample.Maui.Models
                     addend1 = revealMissingValue ? _arrowLabelStartValue : NAN;
                     addend2 = _arrowLabelDistance;
                     Sum = _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.ComplexTwoStep:
+                case ArrowLabelExerciseMode.ComplexTwoStepToFive:
+                case ArrowLabelExerciseMode.ComplexTwoStepToTen:
+                    addend1 = _arrowLabelStartValue;
+                    addend2 = IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend2) && !revealMissingValue
+                        ? NAN
+                        : _arrowLabelDistance;
+                    Sum = _complexArrowFirstSum;
                     break;
             }
         }
