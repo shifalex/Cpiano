@@ -314,7 +314,8 @@
         Addend3 = 1,
         FirstSum = 2,
         Sum2 = 3,
-        TotalDistance = 4
+        TotalDistance = 4,
+        Addend1 = 5
     }
 
     [Flags]
@@ -478,6 +479,7 @@
         public bool UseDynamicMultiplicationWeights { get; set; } = false;
         public bool UseWeightedCustomStageTargets { get; set; } = false;
         public bool AllowImpossibleWeightedAnswer { get; set; } = false;
+        public bool AllowAmbiguousComplexArrowMissingTargets { get; set; } = false;
         public int MaskThirdArrowAfterCycleCount { get; set; } = 0;
         public bool UseFullHandTutorial { get; set; } = false;
         public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;

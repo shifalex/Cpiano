@@ -51,6 +51,8 @@ namespace GestureSample.Maui.Models
         private int _complexArrowFirstSum;
         private int _complexArrowTotalDistance;
         private readonly List<ComplexArrowLabelTarget> _complexArrowMissingTargets = new();
+        private ComplexArrowLabelTarget? _fixedComplexArrowPrimaryTarget;
+        private bool _fixedComplexArrowScaffoldActive;
         private int _complexArrowCompletedTargetCount;
         private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
         private bool _usesActiveOnKeyboardArrow;
@@ -242,23 +244,258 @@ namespace GestureSample.Maui.Models
                 ? Math.Clamp(fixedFirstSum, minValue + 1, maxValue - 1)
                 : r.Next(minValue + 2, maxValue);
 
-            _arrowLabelStartValue = r.Next(minValue, _complexArrowFirstSum);
+            int maxTotalDistance = GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.ComplexTwoStepToTen
+                ? 9
+                : fixedFirstSum;
+            int maxDistance1 = fixedFirstSum > 0
+                ? Math.Max(1, maxTotalDistance - 1)
+                : fixedFirstSum;
+            int minStartValue = fixedFirstSum > 0
+                ? Math.Max(minValue, _complexArrowFirstSum - maxDistance1)
+                : minValue;
+            _arrowLabelStartValue = r.Next(minStartValue, _complexArrowFirstSum);
             _arrowLabelDistance = _complexArrowFirstSum - _arrowLabelStartValue;
-            _complexArrowAddend3 = r.Next(1, (maxValue - _complexArrowFirstSum) + 1);
+            int maxAddend3 = maxValue - _complexArrowFirstSum;
+            if (fixedFirstSum > 0)
+                maxAddend3 = Math.Min(maxAddend3, maxTotalDistance - _arrowLabelDistance);
+            _complexArrowAddend3 = r.Next(1, maxAddend3 + 1);
             _arrowLabelEndValue = _complexArrowFirstSum + _complexArrowAddend3;
             _complexArrowTotalDistance = _arrowLabelDistance + _complexArrowAddend3;
             _complexArrowCompletedTargetCount = 0;
+            _fixedComplexArrowPrimaryTarget = null;
+            _fixedComplexArrowScaffoldActive = false;
 
             _complexArrowMissingTargets.Clear();
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.FirstSum);
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Sum2);
-            _complexArrowMissingTargets.RemoveAt(r.Next(1, _complexArrowMissingTargets.Count));
+            _complexArrowMissingTargets.AddRange(BuildComplexArrowMissingTargets(r, fixedFirstSum));
 
             ApplyArrowLabelPpwState(revealMissingValue: false);
             BitArrayQuestion = GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_complexArrowFirstSum), 1);
             BitArrayQuestion2 = GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_arrowLabelEndValue), 1);
+        }
+
+        private IReadOnlyList<ComplexArrowLabelTarget> BuildComplexArrowMissingTargets(Random r, int fixedFirstSum)
+        {
+            if (Config?.KeyboardConfig?.AllowAmbiguousComplexArrowMissingTargets == true)
+            {
+                List<ComplexArrowLabelTarget> ambiguousTargets = GetAllComplexArrowTargets();
+                ambiguousTargets.RemoveAt(r.Next(1, ambiguousTargets.Count));
+                return ambiguousTargets;
+            }
+
+            if (fixedFirstSum > 0)
+                return BuildFixedFirstSumComplexArrowMissingTargets(r);
+
+            List<ComplexArrowLabelTarget> solvableTargets = ChooseSolvableComplexArrowTargets(
+                r,
+                new()
+                {
+                    ComplexArrowLabelTarget.Addend2,
+                    ComplexArrowLabelTarget.Addend3,
+                    ComplexArrowLabelTarget.FirstSum,
+                    ComplexArrowLabelTarget.Sum2,
+                    ComplexArrowLabelTarget.TotalDistance
+                },
+                hiddenTargetCount: 3,
+                knownTargets: new());
+
+            if (solvableTargets.Count > 0)
+                return solvableTargets;
+
+            return new[]
+            {
+                ComplexArrowLabelTarget.Addend2,
+                ComplexArrowLabelTarget.Sum2,
+                ComplexArrowLabelTarget.TotalDistance
+            };
+        }
+
+        private IReadOnlyList<ComplexArrowLabelTarget> BuildFixedFirstSumComplexArrowMissingTargets(Random r)
+        {
+            _fixedComplexArrowPrimaryTarget = r.Next(2) == 0
+                ? ComplexArrowLabelTarget.Addend1
+                : ComplexArrowLabelTarget.TotalDistance;
+            _fixedComplexArrowScaffoldActive = false;
+            return new[] { _fixedComplexArrowPrimaryTarget.Value };
+        }
+
+        private static List<ComplexArrowLabelTarget> GetAllComplexArrowTargets()
+        {
+            return new()
+            {
+                ComplexArrowLabelTarget.Addend1,
+                ComplexArrowLabelTarget.Addend2,
+                ComplexArrowLabelTarget.Addend3,
+                ComplexArrowLabelTarget.FirstSum,
+                ComplexArrowLabelTarget.Sum2,
+                ComplexArrowLabelTarget.TotalDistance
+            };
+        }
+
+        private static List<ComplexArrowLabelTarget> GetPreferredFixedFirstSumTargetOrder(HashSet<ComplexArrowLabelTarget> givenTargets)
+        {
+            if (givenTargets.Contains(ComplexArrowLabelTarget.Addend1) && givenTargets.Contains(ComplexArrowLabelTarget.TotalDistance))
+            {
+                return new()
+                {
+                    ComplexArrowLabelTarget.Addend2,
+                    ComplexArrowLabelTarget.Addend3,
+                    ComplexArrowLabelTarget.Sum2
+                };
+            }
+
+            if (givenTargets.Contains(ComplexArrowLabelTarget.Addend1) && givenTargets.Contains(ComplexArrowLabelTarget.Sum2))
+            {
+                return new()
+                {
+                    ComplexArrowLabelTarget.Addend2,
+                    ComplexArrowLabelTarget.Addend3,
+                    ComplexArrowLabelTarget.TotalDistance
+                };
+            }
+
+            return new()
+            {
+                ComplexArrowLabelTarget.Addend3,
+                ComplexArrowLabelTarget.Addend2,
+                ComplexArrowLabelTarget.Addend1
+            };
+        }
+
+        private static List<ComplexArrowLabelTarget> ChooseSolvableComplexArrowTargets(
+            Random r,
+            List<ComplexArrowLabelTarget> allTargets,
+            int hiddenTargetCount,
+            HashSet<ComplexArrowLabelTarget> knownTargets)
+        {
+            List<List<ComplexArrowLabelTarget>> candidates = new();
+            foreach (List<ComplexArrowLabelTarget> combination in GetCombinations(allTargets, hiddenTargetCount))
+            {
+                foreach (List<ComplexArrowLabelTarget> sequence in GetPermutations(combination))
+                {
+                    if (IsComplexArrowSequenceSolvable(sequence, allTargets, knownTargets))
+                        candidates.Add(sequence);
+                }
+            }
+
+            List<List<ComplexArrowLabelTarget>> orderedCandidates = candidates
+                .Where(PlacesTotalDistanceBeforeSum2)
+                .ToList();
+            if (orderedCandidates.Count > 0)
+                candidates = orderedCandidates;
+
+            return candidates.Count == 0
+                ? new List<ComplexArrowLabelTarget>()
+                : candidates[r.Next(candidates.Count)];
+        }
+
+        private static bool PlacesTotalDistanceBeforeSum2(IReadOnlyList<ComplexArrowLabelTarget> sequence)
+        {
+            int totalDistanceIndex = GetComplexTargetIndex(sequence, ComplexArrowLabelTarget.TotalDistance);
+            int sum2Index = GetComplexTargetIndex(sequence, ComplexArrowLabelTarget.Sum2);
+            return totalDistanceIndex < 0 || sum2Index < 0 || totalDistanceIndex < sum2Index;
+        }
+
+        private static int GetComplexTargetIndex(IReadOnlyList<ComplexArrowLabelTarget> sequence, ComplexArrowLabelTarget target)
+        {
+            for (int i = 0; i < sequence.Count; i++)
+            {
+                if (sequence[i] == target)
+                    return i;
+            }
+
+            return -1;
+        }
+
+        private static bool IsComplexArrowSequenceSolvable(
+            IReadOnlyList<ComplexArrowLabelTarget> sequence,
+            IReadOnlyList<ComplexArrowLabelTarget> allTargets,
+            HashSet<ComplexArrowLabelTarget> knownTargets)
+        {
+            HashSet<ComplexArrowLabelTarget> known = new(knownTargets);
+            foreach (ComplexArrowLabelTarget target in allTargets)
+            {
+                if (!sequence.Contains(target))
+                    known.Add(target);
+            }
+
+            foreach (ComplexArrowLabelTarget target in sequence)
+            {
+                if (!CanSolveComplexArrowTarget(target, known))
+                    return false;
+
+                known.Add(target);
+            }
+
+            return true;
+        }
+
+        private static bool CanSolveComplexArrowTarget(ComplexArrowLabelTarget target, HashSet<ComplexArrowLabelTarget> known)
+        {
+            return target switch
+            {
+                ComplexArrowLabelTarget.Addend1 =>
+                    (known.Contains(ComplexArrowLabelTarget.FirstSum) && known.Contains(ComplexArrowLabelTarget.Addend2)) ||
+                    (known.Contains(ComplexArrowLabelTarget.Sum2) && known.Contains(ComplexArrowLabelTarget.TotalDistance)),
+                ComplexArrowLabelTarget.Addend2 =>
+                    (known.Contains(ComplexArrowLabelTarget.FirstSum) && known.Contains(ComplexArrowLabelTarget.Addend1)) ||
+                    (known.Contains(ComplexArrowLabelTarget.TotalDistance) && known.Contains(ComplexArrowLabelTarget.Addend3)),
+                ComplexArrowLabelTarget.Addend3 =>
+                    (known.Contains(ComplexArrowLabelTarget.Sum2) && known.Contains(ComplexArrowLabelTarget.FirstSum)) ||
+                    (known.Contains(ComplexArrowLabelTarget.TotalDistance) && known.Contains(ComplexArrowLabelTarget.Addend2)),
+                ComplexArrowLabelTarget.FirstSum =>
+                    (known.Contains(ComplexArrowLabelTarget.Addend1) && known.Contains(ComplexArrowLabelTarget.Addend2)) ||
+                    (known.Contains(ComplexArrowLabelTarget.Sum2) && known.Contains(ComplexArrowLabelTarget.Addend3)),
+                ComplexArrowLabelTarget.Sum2 =>
+                    (known.Contains(ComplexArrowLabelTarget.Addend1) && known.Contains(ComplexArrowLabelTarget.TotalDistance)) ||
+                    (known.Contains(ComplexArrowLabelTarget.FirstSum) && known.Contains(ComplexArrowLabelTarget.Addend3)),
+                ComplexArrowLabelTarget.TotalDistance =>
+                    (known.Contains(ComplexArrowLabelTarget.Sum2) && known.Contains(ComplexArrowLabelTarget.Addend1)) ||
+                    (known.Contains(ComplexArrowLabelTarget.Addend2) && known.Contains(ComplexArrowLabelTarget.Addend3)),
+                _ => false
+            };
+        }
+
+        private static IEnumerable<List<ComplexArrowLabelTarget>> GetCombinations(
+            IReadOnlyList<ComplexArrowLabelTarget> targets,
+            int count,
+            int start = 0)
+        {
+            if (count == 0)
+            {
+                yield return new List<ComplexArrowLabelTarget>();
+                yield break;
+            }
+
+            for (int i = start; i <= targets.Count - count; i++)
+            {
+                foreach (List<ComplexArrowLabelTarget> tail in GetCombinations(targets, count - 1, i + 1))
+                {
+                    tail.Insert(0, targets[i]);
+                    yield return tail;
+                }
+            }
+        }
+
+        private static IEnumerable<List<ComplexArrowLabelTarget>> GetPermutations(IReadOnlyList<ComplexArrowLabelTarget> targets)
+        {
+            if (targets.Count == 0)
+            {
+                yield return new List<ComplexArrowLabelTarget>();
+                yield break;
+            }
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                List<ComplexArrowLabelTarget> remaining = targets.ToList();
+                ComplexArrowLabelTarget head = remaining[i];
+                remaining.RemoveAt(i);
+
+                foreach (List<ComplexArrowLabelTarget> tail in GetPermutations(remaining))
+                {
+                    tail.Insert(0, head);
+                    yield return tail;
+                }
+            }
         }
 
         public bool HasArrowLabelPrompt => UsesArrowLabelExercise();
@@ -288,11 +525,49 @@ namespace GestureSample.Maui.Models
             ? _complexArrowMissingTargets[_complexArrowCompletedTargetCount]
             : null;
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
+        public bool IsFixedComplexArrowLabelScaffoldActive => _fixedComplexArrowScaffoldActive;
 
         public bool IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget target)
         {
+            if (IsFixedComplexArrowLabelMode())
+            {
+                if (target == ComplexArrowLabelTarget.FirstSum)
+                    return false;
+
+                if (target == ComplexArrowLabelTarget.Sum2)
+                    return true;
+
+                if (!_fixedComplexArrowScaffoldActive &&
+                    (target == ComplexArrowLabelTarget.Addend2 || target == ComplexArrowLabelTarget.Addend3))
+                {
+                    return true;
+                }
+            }
+
             int index = _complexArrowMissingTargets.IndexOf(target);
             return index >= _complexArrowCompletedTargetCount;
+        }
+
+        public bool IsFixedComplexArrowLabelMode()
+        {
+            return GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.ComplexTwoStepToFive or
+                ArrowLabelExerciseMode.ComplexTwoStepToTen;
+        }
+
+        private bool StartFixedComplexArrowLabelScaffoldAfterFailure()
+        {
+            if (!IsFixedComplexArrowLabelMode() || _fixedComplexArrowScaffoldActive || _fixedComplexArrowPrimaryTarget == null)
+                return false;
+
+            _fixedComplexArrowScaffoldActive = true;
+            _complexArrowCompletedTargetCount = 0;
+            _complexArrowMissingTargets.Clear();
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
+            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
+            _complexArrowMissingTargets.Add(_fixedComplexArrowPrimaryTarget.Value);
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+            return true;
         }
 
         public async Task<ExerciseCheckResult> EvaluateComplexArrowLabelAsync(ComplexArrowLabelTarget target, int submittedValue)
@@ -302,6 +577,7 @@ namespace GestureSample.Maui.Models
 
             int correctValue = target switch
             {
+                ComplexArrowLabelTarget.Addend1 => _arrowLabelStartValue,
                 ComplexArrowLabelTarget.Addend2 => _arrowLabelDistance,
                 ComplexArrowLabelTarget.Addend3 => _complexArrowAddend3,
                 ComplexArrowLabelTarget.FirstSum => _complexArrowFirstSum,
@@ -315,7 +591,12 @@ namespace GestureSample.Maui.Models
             _status = isCorrect ? Statement.True : Statement.False;
 
             if (!isCorrect)
+            {
+                if (StartFixedComplexArrowLabelScaffoldAfterFailure())
+                    return CreateCheckResult(false);
+
                 return CreateCheckResult(false, completion: await RegisterFailedAttemptAsync());
+            }
 
             _complexArrowCompletedTargetCount++;
             ApplyArrowLabelPpwState(revealMissingValue: !HasPendingComplexArrowLabelTarget);
