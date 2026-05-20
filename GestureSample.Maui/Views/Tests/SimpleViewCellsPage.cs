@@ -405,6 +405,12 @@ namespace GestureSample.Views.Tests
         {
             get
             {
+                if (_gamePlay is BitArrayGamePlay arrowGamePlay &&
+                    arrowGamePlay.CurrentArrowLabelExerciseMode == ArrowLabelExerciseMode.ComplexTwoStepToTen)
+                {
+                    return NumericInputMode.AppKeypad;
+                }
+
                 if (_config.NumericInputMode == NumericInputMode.ChoiceKeyboard)
                     return NumericInputMode.ChoiceKeyboard;
 
@@ -487,6 +493,7 @@ namespace GestureSample.Views.Tests
         private Entry _txtComplexAddend3;
         private Entry _txtComplexSum2;
         private Entry _txtComplexTotalDistance;
+        private Entry? _arrowPromptFeedbackEntry;
         private Label _lblAction;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
@@ -1847,7 +1854,7 @@ namespace GestureSample.Views.Tests
             if (UsesChoiceAnswerKeyboard)
             {
                 double choiceKeyboardWidth = GetChoiceKeyboardWidth();
-                _choiceAnswerKeyboard = new ChoiceAnswerKeyboardView
+                _choiceAnswerKeyboard = new ChoiceAnswerKeyboardView(Math.Max(10, _config.MaxSum))
                 {
                     HorizontalOptions = LayoutOptions.Fill,
                     VerticalOptions = LayoutOptions.Center,
@@ -2233,7 +2240,10 @@ namespace GestureSample.Views.Tests
             }
 
             ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(addend1, addend2, sum);
+            _arrowPromptFeedbackEntry = missingEntry;
             ApplyFeedbackUiState(checkResult.IsCorrect);
+            _arrowPromptFeedbackEntry = null;
+            SetArrowLabelPromptEntryBaseColors();
             missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
 
             if (checkResult.Completion != null)
@@ -2261,6 +2271,7 @@ namespace GestureSample.Views.Tests
         {
             ComplexArrowLabelTarget? target = arrowGamePlay.CurrentComplexArrowLabelTarget;
             Entry? missingEntry = GetComplexArrowLabelEntry(target);
+            ComplexArrowLabelTarget? targetBeforeSubmit = target;
 
             if (target == null || missingEntry == null || !int.TryParse(missingEntry.Text, out int submittedValue))
             {
@@ -2273,10 +2284,23 @@ namespace GestureSample.Views.Tests
             }
 
             ExerciseCheckResult checkResult = await arrowGamePlay.EvaluateComplexArrowLabelAsync(target.Value, submittedValue);
+            if (!checkResult.IsCorrect && arrowGamePlay.CurrentComplexArrowLabelTarget != targetBeforeSubmit)
+            {
+                await Task.Delay(450);
+                RefreshKeyboardArrowPromptView();
+                SelectNumericEntry(GetArrowLabelMissingEntry() ?? missingEntry);
+                ResetStatusLineToNeutral();
+                RestoreReadyForInputState();
+                return;
+            }
+
             if (checkResult.IsCorrect)
                 missingEntry.Text = submittedValue.ToString();
 
+            _arrowPromptFeedbackEntry = missingEntry;
             ApplyFeedbackUiState(checkResult.IsCorrect);
+            _arrowPromptFeedbackEntry = null;
+            SetArrowLabelPromptEntryBaseColors();
             missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
 
             if (checkResult.IsCorrect && arrowGamePlay.HasPendingComplexArrowLabelTarget)
@@ -3397,6 +3421,7 @@ namespace GestureSample.Views.Tests
         {
             return target switch
             {
+                ComplexArrowLabelTarget.Addend1 => _txtAddend1,
                 ComplexArrowLabelTarget.Addend2 => _txtAddend2,
                 ComplexArrowLabelTarget.Addend3 => _txtComplexAddend3,
                 ComplexArrowLabelTarget.FirstSum => _txtSum,
@@ -3433,7 +3458,7 @@ namespace GestureSample.Views.Tests
             if (!UsesArrowCorrectResponseFeedback())
                 return;
 
-            Entry? missingEntry = GetArrowLabelMissingEntry();
+            Entry? missingEntry = _arrowPromptFeedbackEntry ?? GetArrowLabelMissingEntry();
             if (missingEntry == null)
                 return;
 
@@ -3514,7 +3539,7 @@ namespace GestureSample.Views.Tests
 
             var firstArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
-                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 69,132 L 69,78 L 184,78 M 168,66 L 184,78 L 168,90"),
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,76 L 184,76 M 168,64 L 184,76 L 168,88"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
                 StrokeThickness = 3
@@ -3522,7 +3547,7 @@ namespace GestureSample.Views.Tests
 
             var secondArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
-                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 184,132 L 184,78 L 300,78 M 284,66 L 300,78 L 284,90"),
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 182,132 L 182,76 L 300,76 M 284,64 L 300,76 L 284,88"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
                 StrokeThickness = 3
@@ -3530,7 +3555,7 @@ namespace GestureSample.Views.Tests
 
             var totalArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
-                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 69,134 L 69,184 L 300,184 L 300,134 M 288,150 L 300,134 L 312,150"),
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,18 L 300,18 L 284,6 M 300,18 L 284,30"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
                 StrokeThickness = 3
@@ -3539,29 +3564,30 @@ namespace GestureSample.Views.Tests
             var promptSurface = new AbsoluteLayout
             {
                 WidthRequest = 320,
-                HeightRequest = 210,
+                HeightRequest = 170,
+                Padding = new Thickness(0, 10, 0, 0),
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start
             };
 
-            AbsoluteLayout.SetLayoutBounds(firstArrowPath, new Rect(0, 0, 320, 210));
+            AbsoluteLayout.SetLayoutBounds(firstArrowPath, new Rect(0, 0, 320, 170));
             promptSurface.Children.Add(firstArrowPath);
-            AbsoluteLayout.SetLayoutBounds(secondArrowPath, new Rect(0, 0, 320, 210));
+            AbsoluteLayout.SetLayoutBounds(secondArrowPath, new Rect(0, 0, 320, 170));
             promptSurface.Children.Add(secondArrowPath);
-            AbsoluteLayout.SetLayoutBounds(totalArrowPath, new Rect(0, 0, 320, 210));
+            AbsoluteLayout.SetLayoutBounds(totalArrowPath, new Rect(0, 0, 320, 170));
             promptSurface.Children.Add(totalArrowPath);
 
-            AbsoluteLayout.SetLayoutBounds(_txtAddend1, new Rect(19, 108, 50, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtAddend1, new Rect(19, 119, 50, 25));
             promptSurface.Children.Add(_txtAddend1);
-            AbsoluteLayout.SetLayoutBounds(_txtAddend2, new Rect(86, 28, 50, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtAddend2, new Rect(86, 61, 50, 25));
             promptSurface.Children.Add(_txtAddend2);
-            AbsoluteLayout.SetLayoutBounds(_txtSum, new Rect(134, 108, 50, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtSum, new Rect(134, 119, 50, 25));
             promptSurface.Children.Add(_txtSum);
-            AbsoluteLayout.SetLayoutBounds(_txtComplexAddend3, new Rect(201, 28, 50, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtComplexAddend3, new Rect(201, 61, 50, 25));
             promptSurface.Children.Add(_txtComplexAddend3);
-            AbsoluteLayout.SetLayoutBounds(_txtComplexSum2, new Rect(250, 108, 50, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtComplexSum2, new Rect(250, 119, 50, 25));
             promptSurface.Children.Add(_txtComplexSum2);
-            AbsoluteLayout.SetLayoutBounds(_txtComplexTotalDistance, new Rect(128, 167, 64, 25));
+            AbsoluteLayout.SetLayoutBounds(_txtComplexTotalDistance, new Rect(134, 0, 50, 25));
             promptSurface.Children.Add(_txtComplexTotalDistance);
 
             return new VerticalStackLayout
@@ -3637,17 +3663,30 @@ namespace GestureSample.Views.Tests
                 return;
             }
 
-            _txtAddend1.Text = arrowPromptGamePlay.ArrowLabelAddend1Value.ToString();
+            bool isFixedScaffoldMode = arrowPromptGamePlay.IsFixedComplexArrowLabelMode();
+            bool showDistanceScaffold = !isFixedScaffoldMode || arrowPromptGamePlay.IsFixedComplexArrowLabelScaffoldActive;
+            bool showSecondSum = !isFixedScaffoldMode;
+
+            _txtAddend1.IsVisible = true;
+            _txtSum.IsVisible = true;
+            _txtComplexTotalDistance.IsVisible = true;
+            _txtAddend2.IsVisible = showDistanceScaffold;
+            _txtComplexAddend3.IsVisible = showDistanceScaffold;
+            _txtComplexSum2.IsVisible = showSecondSum;
+
+            _txtAddend1.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend1)
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelAddend1Value.ToString();
             _txtSum.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.FirstSum)
                 ? string.Empty
                 : arrowPromptGamePlay.ComplexArrowFirstSumValue.ToString();
-            _txtAddend2.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend2)
+            _txtAddend2.Text = !showDistanceScaffold || arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend2)
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelAddend2Value?.ToString() ?? string.Empty;
-            _txtComplexAddend3.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend3)
+            _txtComplexAddend3.Text = !showDistanceScaffold || arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend3)
                 ? string.Empty
                 : arrowPromptGamePlay.ComplexArrowAddend3Value.ToString();
-            _txtComplexSum2.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Sum2)
+            _txtComplexSum2.Text = !showSecondSum || arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Sum2)
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
             _txtComplexTotalDistance.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.TotalDistance)

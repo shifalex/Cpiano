@@ -1,48 +1,52 @@
-namespace GestureSample.Maui.Views
+﻿namespace GestureSample.Maui.Views
 {
     public sealed class ChoiceAnswerKeyboardView : ContentView
     {
         public event Action<int>? ChoicePressed;
 
-        public ChoiceAnswerKeyboardView()
+        public ChoiceAnswerKeyboardView(int maxChoice = 10, int preferredRowCount = 0)
         {
             HorizontalOptions = LayoutOptions.Center;
             Padding = new Thickness(0, 2, 0, 0);
 
+            maxChoice = Math.Max(1, maxChoice);
+
             Border surface = new()
             {
-                Content = BuildChoicesLayout()
+                Content = BuildChoicesLayout(maxChoice, preferredRowCount)
             };
             DesignResources.ApplyStyle(surface, "NumericKeypadSurfaceStyle");
             Content = surface;
         }
 
-        private Grid BuildChoicesLayout()
+        private Grid BuildChoicesLayout(int maxChoice, int preferredRowCount)
         {
+            int rowCount = preferredRowCount > 0
+                ? Math.Min(maxChoice, preferredRowCount)
+                : 0;
+            int columnCount = rowCount > 0
+                ? (int)Math.Ceiling(maxChoice / (double)rowCount)
+                : maxChoice <= 10 ? 5 : 10;
+            rowCount = rowCount > 0
+                ? rowCount
+                : (int)Math.Ceiling(maxChoice / (double)columnCount);
             Grid grid = new()
             {
                 ColumnSpacing = 6,
-                RowSpacing = 6,
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Star }
-                },
-                RowDefinitions =
-                {
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto }
-                }
+                RowSpacing = 6
             };
 
-            for (int value = 1; value <= 10; value++)
+            for (int column = 0; column < columnCount; column++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+
+            for (int row = 0; row < rowCount; row++)
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            for (int value = 1; value <= maxChoice; value++)
             {
                 Button button = CreateChoiceButton(value);
                 int index = value - 1;
-                grid.Add(button, index % 5, index / 5);
+                grid.Add(button, index % columnCount, index / columnCount);
             }
 
             return grid;
