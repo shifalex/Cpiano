@@ -493,7 +493,11 @@ namespace GestureSample.Views.Tests
         private Entry _txtComplexAddend3;
         private Entry _txtComplexSum2;
         private Entry _txtComplexTotalDistance;
+        private Microsoft.Maui.Controls.Shapes.Path? _complexFirstArrowPath;
+        private Microsoft.Maui.Controls.Shapes.Path? _complexSecondArrowPath;
+        private Microsoft.Maui.Controls.Shapes.Path? _complexTotalArrowPath;
         private Entry? _arrowPromptFeedbackEntry;
+        private Entry? _replaceOnNextNumericInputEntry;
         private Label _lblAction;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
@@ -2007,6 +2011,9 @@ namespace GestureSample.Views.Tests
 
             if (!IsEntryEditable(entry))
             {
+                if (_activeNumericEntry != null && !IsEntryEditable(_activeNumericEntry))
+                    _activeNumericEntry = null;
+
                 RefreshNumericEntryAppearance();
                 return;
             }
@@ -2106,6 +2113,14 @@ namespace GestureSample.Views.Tests
                 return;
 
             string currentText = targetEntry.Text ?? string.Empty;
+            if (_replaceOnNextNumericInputEntry == targetEntry)
+            {
+                currentText = string.Empty;
+                targetEntry.Text = string.Empty;
+                targetEntry.BackgroundColor = Colors.LightYellow;
+                _replaceOnNextNumericInputEntry = null;
+            }
+
             if (digit == "-")
             {
                 targetEntry.Text = currentText.StartsWith("-")
@@ -2129,6 +2144,9 @@ namespace GestureSample.Views.Tests
             Entry? targetEntry = EnsureNumericEntrySelection();
             if (targetEntry == null)
                 return;
+
+            if (_replaceOnNextNumericInputEntry == targetEntry)
+                _replaceOnNextNumericInputEntry = null;
 
             targetEntry.Text = value.ToString();
             _lastFocused = targetEntry;
@@ -2219,7 +2237,10 @@ namespace GestureSample.Views.Tests
             {
                 ApplyFeedbackUiState(false);
                 if (missingEntry != null)
+                {
                     missingEntry.BackgroundColor = Colors.IndianRed;
+                    _replaceOnNextNumericInputEntry = missingEntry;
+                }
 
                 _lblStatement.Text = Statement.WrongInput;
                 return;
@@ -2245,6 +2266,7 @@ namespace GestureSample.Views.Tests
             _arrowPromptFeedbackEntry = null;
             SetArrowLabelPromptEntryBaseColors();
             missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
+            _replaceOnNextNumericInputEntry = checkResult.IsCorrect ? null : missingEntry;
 
             if (checkResult.Completion != null)
             {
@@ -2277,7 +2299,10 @@ namespace GestureSample.Views.Tests
             {
                 ApplyFeedbackUiState(false);
                 if (missingEntry != null)
+                {
                     missingEntry.BackgroundColor = Colors.IndianRed;
+                    _replaceOnNextNumericInputEntry = missingEntry;
+                }
 
                 _lblStatement.Text = Statement.WrongInput;
                 return;
@@ -2302,6 +2327,7 @@ namespace GestureSample.Views.Tests
             _arrowPromptFeedbackEntry = null;
             SetArrowLabelPromptEntryBaseColors();
             missingEntry.BackgroundColor = checkResult.IsCorrect ? Colors.LightGreen : Colors.IndianRed;
+            _replaceOnNextNumericInputEntry = checkResult.IsCorrect ? null : missingEntry;
 
             if (checkResult.IsCorrect && arrowGamePlay.HasPendingComplexArrowLabelTarget)
             {
@@ -3405,7 +3431,7 @@ namespace GestureSample.Views.Tests
                 return null;
 
             if (_gamePlay is BitArrayGamePlay { HasComplexArrowLabelPrompt: true } arrowGamePlay)
-                return GetComplexArrowLabelEntry(arrowGamePlay.CurrentComplexArrowLabelTarget);
+                return GetVisibleComplexArrowLabelEntry(arrowGamePlay);
 
             return GetDisplayedArrowLabelExerciseMode() switch
             {
@@ -3431,6 +3457,24 @@ namespace GestureSample.Views.Tests
             };
         }
 
+        private Entry? GetVisibleComplexArrowLabelEntry(BitArrayGamePlay arrowGamePlay)
+        {
+            Entry? targetEntry = GetComplexArrowLabelEntry(arrowGamePlay.CurrentComplexArrowLabelTarget);
+            if (targetEntry?.IsVisible == true)
+                return targetEntry;
+
+            if (arrowGamePlay.IsFixedComplexArrowLabelMode() && !arrowGamePlay.IsFixedComplexArrowLabelScaffoldActive)
+            {
+                Entry?[] openingEntries = { _txtAddend1, _txtComplexTotalDistance };
+                foreach (Entry? entry in openingEntries)
+                {
+                    if (entry?.IsVisible == true && string.IsNullOrWhiteSpace(entry.Text))
+                        return entry;
+                }
+            }
+
+            return targetEntry;
+        }
         private void ResetArrowLabelPromptEntryColors()
         {
             if (!UsesArrowLabelPromptStage())
@@ -3537,28 +3581,31 @@ namespace GestureSample.Views.Tests
             _txtComplexTotalDistance ??= CreateKeyboardArrowPromptEntry();
             _txtComplexTotalDistance.WidthRequest = 64;
 
-            var firstArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            _complexFirstArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,76 L 184,76 M 168,64 L 184,76 L 168,88"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
-                StrokeThickness = 3
+                StrokeThickness = 3,
+                InputTransparent = true
             };
 
-            var secondArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            _complexSecondArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 182,132 L 182,76 L 300,76 M 284,64 L 300,76 L 284,88"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
-                StrokeThickness = 3
+                StrokeThickness = 3,
+                InputTransparent = true
             };
 
-            var totalArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            _complexTotalArrowPath = new Microsoft.Maui.Controls.Shapes.Path
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,18 L 300,18 L 284,6 M 300,18 L 284,30"),
                 Fill = Colors.Transparent,
                 Stroke = Colors.Black,
-                StrokeThickness = 3
+                StrokeThickness = 3,
+                InputTransparent = true
             };
 
             var promptSurface = new AbsoluteLayout
@@ -3567,15 +3614,16 @@ namespace GestureSample.Views.Tests
                 HeightRequest = 170,
                 Padding = new Thickness(0, 10, 0, 0),
                 HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Start
+                VerticalOptions = LayoutOptions.Start,
+                InputTransparent = true
             };
 
-            AbsoluteLayout.SetLayoutBounds(firstArrowPath, new Rect(0, 0, 320, 170));
-            promptSurface.Children.Add(firstArrowPath);
-            AbsoluteLayout.SetLayoutBounds(secondArrowPath, new Rect(0, 0, 320, 170));
-            promptSurface.Children.Add(secondArrowPath);
-            AbsoluteLayout.SetLayoutBounds(totalArrowPath, new Rect(0, 0, 320, 170));
-            promptSurface.Children.Add(totalArrowPath);
+            AbsoluteLayout.SetLayoutBounds(_complexFirstArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexFirstArrowPath);
+            AbsoluteLayout.SetLayoutBounds(_complexSecondArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexSecondArrowPath);
+            AbsoluteLayout.SetLayoutBounds(_complexTotalArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexTotalArrowPath);
 
             AbsoluteLayout.SetLayoutBounds(_txtAddend1, new Rect(19, 119, 50, 25));
             promptSurface.Children.Add(_txtAddend1);
@@ -3648,6 +3696,10 @@ namespace GestureSample.Views.Tests
             _txtSum.Text = (mode == ArrowLabelExerciseMode.StartAndLength || mode == ArrowLabelExerciseMode.OrdinalStartAndLength) && !revealCorrectResponse
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
+
+            _txtAddend1.IsEnabled = _txtAddend1.IsVisible;
+            _txtAddend2.IsEnabled = _txtAddend2.IsVisible;
+            _txtSum.IsEnabled = _txtSum.IsVisible;
             SetArrowLabelPromptEntryBaseColors();
         }
 
@@ -3665,14 +3717,29 @@ namespace GestureSample.Views.Tests
 
             bool isFixedScaffoldMode = arrowPromptGamePlay.IsFixedComplexArrowLabelMode();
             bool showDistanceScaffold = !isFixedScaffoldMode || arrowPromptGamePlay.IsFixedComplexArrowLabelScaffoldActive;
-            bool showSecondSum = !isFixedScaffoldMode;
+            bool showFirstSum = !isFixedScaffoldMode || arrowPromptGamePlay.IsFixedComplexArrowLabelScaffoldActive;
+            bool showSecondSum = true;
+
+            if (_complexFirstArrowPath != null) _complexFirstArrowPath.IsVisible = showDistanceScaffold;
+            if (_complexSecondArrowPath != null) _complexSecondArrowPath.IsVisible = showDistanceScaffold;
+            if (_complexTotalArrowPath != null) _complexTotalArrowPath.IsVisible = true;
 
             _txtAddend1.IsVisible = true;
-            _txtSum.IsVisible = true;
+            _txtSum.IsVisible = showFirstSum;
             _txtComplexTotalDistance.IsVisible = true;
             _txtAddend2.IsVisible = showDistanceScaffold;
             _txtComplexAddend3.IsVisible = showDistanceScaffold;
             _txtComplexSum2.IsVisible = showSecondSum;
+
+            _txtAddend1.IsEnabled = _txtAddend1.IsVisible;
+            _txtSum.IsEnabled = _txtSum.IsVisible;
+            _txtComplexTotalDistance.IsEnabled = _txtComplexTotalDistance.IsVisible;
+            _txtAddend2.IsEnabled = _txtAddend2.IsVisible;
+            _txtComplexAddend3.IsEnabled = _txtComplexAddend3.IsVisible;
+            _txtComplexSum2.IsEnabled = _txtComplexSum2.IsVisible;
+
+            if (_activeNumericEntry != null && !_activeNumericEntry.IsVisible)
+                SelectNumericEntry(GetVisibleComplexArrowLabelEntry(arrowPromptGamePlay));
 
             _txtAddend1.Text = arrowPromptGamePlay.IsComplexArrowLabelTargetHidden(ComplexArrowLabelTarget.Addend1)
                 ? string.Empty
@@ -4251,16 +4318,17 @@ namespace GestureSample.Views.Tests
         {
             bool isPianoHigh = UsesSyncKeyboardSubmissionMode() &&
                                (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
-            int pianoHeight = _isKeyboard ? (isPianoHigh ? 120 : 80) : 1;
-            if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 220;
+            bool reserveMainKeyboardArea = _isKeyboard && _config.KeyboardConfig != null && !_config.KeyboardConfig.HideMainKeyboard;
+            int pianoHeight = reserveMainKeyboardArea ? (isPianoHigh ? 120 : 80) : 0;
+            if (reserveMainKeyboardArea && _config.KeyboardConfig.IsArrow) pianoHeight = 220;
             Grid grid = new()
             {
                 BackgroundColor = Colors.AntiqueWhite,
                 RowDefinitions =
             {
                 new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
-                new RowDefinition { Height = _isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp ? GridLength.Auto : new GridLength(0) },
-                new RowDefinition { Height = new GridLength(pianoHeight, GridUnitType.Star) }
+                new RowDefinition { Height = reserveMainKeyboardArea && !_config.KeyboardConfig.KeyboardOnlyForHelp ? GridLength.Auto : new GridLength(0) },
+                new RowDefinition { Height = reserveMainKeyboardArea ? new GridLength(pianoHeight, GridUnitType.Star) : new GridLength(0) }
             },
                 ColumnDefinitions =
             {

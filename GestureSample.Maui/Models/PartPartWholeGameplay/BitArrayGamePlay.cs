@@ -275,15 +275,15 @@ namespace GestureSample.Maui.Models
 
         private IReadOnlyList<ComplexArrowLabelTarget> BuildComplexArrowMissingTargets(Random r, int fixedFirstSum)
         {
+            if (fixedFirstSum > 0)
+                return BuildFixedFirstSumComplexArrowMissingTargets(r);
+
             if (Config?.KeyboardConfig?.AllowAmbiguousComplexArrowMissingTargets == true)
             {
                 List<ComplexArrowLabelTarget> ambiguousTargets = GetAllComplexArrowTargets();
                 ambiguousTargets.RemoveAt(r.Next(1, ambiguousTargets.Count));
                 return ambiguousTargets;
             }
-
-            if (fixedFirstSum > 0)
-                return BuildFixedFirstSumComplexArrowMissingTargets(r);
 
             List<ComplexArrowLabelTarget> solvableTargets = ChooseSolvableComplexArrowTargets(
                 r,
@@ -532,10 +532,10 @@ namespace GestureSample.Maui.Models
             if (IsFixedComplexArrowLabelMode())
             {
                 if (target == ComplexArrowLabelTarget.FirstSum)
-                    return false;
+                    return !_fixedComplexArrowScaffoldActive;
 
                 if (target == ComplexArrowLabelTarget.Sum2)
-                    return true;
+                    return false;
 
                 if (!_fixedComplexArrowScaffoldActive &&
                     (target == ComplexArrowLabelTarget.Addend2 || target == ComplexArrowLabelTarget.Addend3))
@@ -563,9 +563,18 @@ namespace GestureSample.Maui.Models
             _fixedComplexArrowScaffoldActive = true;
             _complexArrowCompletedTargetCount = 0;
             _complexArrowMissingTargets.Clear();
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
-            _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
-            _complexArrowMissingTargets.Add(_fixedComplexArrowPrimaryTarget.Value);
+            if (_fixedComplexArrowPrimaryTarget == ComplexArrowLabelTarget.Addend1)
+            {
+                _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
+                _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
+                _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend1);
+            }
+            else
+            {
+                _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend2);
+                _complexArrowMissingTargets.Add(ComplexArrowLabelTarget.Addend3);
+                _complexArrowMissingTargets.Add(_fixedComplexArrowPrimaryTarget.Value);
+            }
             ApplyArrowLabelPpwState(revealMissingValue: false);
             return true;
         }
