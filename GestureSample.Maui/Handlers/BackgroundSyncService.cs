@@ -70,10 +70,7 @@ namespace GestureSample.Maui.Handlers
             catch (Exception ex)
             {
                 LastCompletedAt = DateTime.Now;
-                string message = string.IsNullOrWhiteSpace(ex.Message)
-                    ? "Sync failed"
-                    : ex.Message;
-                UpdateState(false, message, message);
+                UpdateState(false, "Sync failed", ex.Message);
             }
         }
 
