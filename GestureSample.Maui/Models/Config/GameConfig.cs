@@ -281,8 +281,9 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         Addend1 = 1,
         Addend2 = 2,
         Sum = 4,
+        TotalDistance = 8,
         Addends = Addend1 | Addend2,
-        All = Addends | Sum
+        All = Addends | Sum | TotalDistance
     }
 
     [Flags]
@@ -330,6 +331,8 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int MinSum { get; set; } = 1;
         public int MaxSum { get; set; } = 10;
         public MissingValueTargetFlags AllowedMissingValueTargets { get; set; } = MissingValueTargetFlags.Addends;
+        public MissingValueTargetFlags ArrowLabelMissingValueTarget { get; set; } = MissingValueTargetFlags.None;
+        public int ArrowLabelFocusIndex { get; set; } = -1;
         public MissingValueConstraintFlags MissingValueConstraints { get; set; } = MissingValueConstraintFlags.None;
         public int HiddenValueCount { get; set; } = 2;
         public VariableTypes VariableTypes
@@ -436,6 +439,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int SecondsTillHideExercise { get; set; } = -1;
         public int SecondsTillAllowInput { get; set; } = -1;
         public int SecondsTillNextExercise { get; set; } = 2;
+        public bool HideCheckAndNextButtons { get; set; } = false;
 
         // Targets / constraints
         public int NumberOfTasksToWin { get; set; } = -1;

@@ -249,6 +249,7 @@ namespace GestureSample.Views.Tests
                 return;
 
             ResetArrowLabelPromptEntryColors();
+            _choiceAnswerKeyboard?.ResetFeedback();
 
             if (_config.SecondsTillAllowInput > 0 && _isKeyboard && _pianoKeyboard != null && !_pianoKeyboard.IsEnabled)
             {
@@ -396,7 +397,22 @@ namespace GestureSample.Views.Tests
             _config.KeyboardConfig != null &&
             _config.KeyboardConfig.KeyboardOnlyForHelp &&
             _config.KeyboardConfig.HideMainKeyboard &&
-            ShouldShowKeyboardPromptLabel();
+            ShouldShowKeyboardPromptLabel() &&
+            !IsActiveArrowKeyboardQuestion;
+
+        private bool IsActiveArrowKeyboardQuestion =>
+            _gamePlay is BitArrayGamePlay arrowGamePlay &&
+            arrowGamePlay.IsActiveOnKeyboardArrowQuestion;
+
+        private bool UsesArrowLabelRetryStage =>
+            _isKeyboard &&
+            _config.KeyboardConfig != null &&
+            (_config.KeyboardConfig.EnableArrowLabelRetry ||
+             _config.KeyboardConfig.ArrowLabelRetryMode != ArrowLabelRetryMode.None);
+
+        private bool ShouldHostMainKeyboard =>
+            _isKeyboard &&
+            (!_config.KeyboardConfig.HideMainKeyboard || UsesArrowLabelRetryStage);
 
         private bool HasVisibleNumericInputs =>
             (_isThreeTexts && (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp)) ||
@@ -480,16 +496,27 @@ namespace GestureSample.Views.Tests
         private Border _keyboardControlBar = null;
         private Button _btnThirdArrowVisibility = null;
         private bool _isPageInteractionEnabled = true;
+        private bool _isArrowLabelRetryHelpVisible;
+        private bool _isComplexThroughTenBreakdownVisible;
+        private readonly Dictionary<Entry, bool> _complexPromptEntryValidationStates = new();
         private Label _lblHistory;
         private Entry _txtAddend1;
         private Entry _txtAddend2;
         private Entry _txtSum;
+        private Entry _txtComplexAddend3;
+        private Entry _txtComplexSum2;
+        private Entry _txtComplexTotalDistance;
+        private Microsoft.Maui.Controls.Shapes.Path _keyboardArrowPromptPath;
+        private Microsoft.Maui.Controls.Shapes.Path _complexFirstArrowPath;
+        private Microsoft.Maui.Controls.Shapes.Path _complexSecondArrowPath;
+        private Microsoft.Maui.Controls.Shapes.Path _complexTotalArrowPath;
         private Label _lblAction;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
         private Label _logicalColorRightArrow;
         private NumericKeypadView _numericKeypad;
         private ChoiceAnswerKeyboardView _choiceAnswerKeyboard;
+        private int? _lastChoiceAnswerValue;
         private BoxView _hr;
         private Entry[] txt;
         private Entry _lastFocused;
@@ -538,6 +565,7 @@ namespace GestureSample.Views.Tests
             Color.FromArgb("#3A3213"),
             Color.FromArgb("#3B1F2B")
         };
+        private const bool EnableNumericInputDebug = false;
         private readonly List<Entry> _numericEntries = new();
         private Entry? _activeNumericEntry;
 
@@ -602,17 +630,36 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldShowKeyboardSubmitButton()
         {
+            if (ShouldHideCheckAndNextButtons())
+                return false;
+
             return UsesManualKeyboardCheckMode() &&
                    !ShouldUseInlineKeyboardCheckButton();
         }
 
         private bool ShouldUseInlineKeyboardCheckButton()
         {
+            if (ShouldHideCheckAndNextButtons())
+                return false;
+
             return UsesManualKeyboardCheckMode();
+        }
+
+        private bool ShouldHideCheckAndNextButtons()
+        {
+            bool isArrowLabelStage =
+                _config.KeyboardConfig?.ArrowLabelExerciseMode != ArrowLabelExerciseMode.None ||
+                (_config.GameName?.Contains("Arrow Label", StringComparison.OrdinalIgnoreCase) ?? false);
+
+            return _config.HideCheckAndNextButtons ||
+                   isArrowLabelStage;
         }
 
         private bool ShouldShowPpwCheckButton()
         {
+            if (ShouldHideCheckAndNextButtons())
+                return false;
+
             return (!_isKeyboard || _config.KeyboardConfig.KeyboardOnlyForHelp) &&
                    !UsesBenchmarkPickerPreview();
         }
@@ -656,12 +703,18 @@ namespace GestureSample.Views.Tests
 
         private bool ShouldShowNextButton()
         {
+            if (ShouldHideCheckAndNextButtons())
+                return false;
+
             return !IsGroupByColorKeyboardStage() &&
                    !UsesBenchmarkPickerPreview();
         }
 
         private bool ShouldShowImpossibleWeightedAnswerButton()
         {
+            if (ShouldHideCheckAndNextButtons())
+                return false;
+
             return _isKeyboard &&
                    !_config.KeyboardConfig.KeyboardOnlyForHelp &&
                    _gamePlay.SupportsImpossibleWeightedAnswer;
@@ -796,7 +849,8 @@ namespace GestureSample.Views.Tests
             bool showProgress = _pianoPressProgress != null &&
                                 !usesInlineCheck &&
                                 !isFeedbackState &&
-                                !showTutorialStepCounter;
+                                !showTutorialStepCounter &&
+                                (!_isArrowLabelRetryHelpVisible || IsActiveArrowKeyboardQuestion);
 
             if (_pianoPressProgress != null)
                 _pianoPressProgress.IsVisible = showProgress;
@@ -1071,6 +1125,15 @@ namespace GestureSample.Views.Tests
 
         private void RefreshKeyboardControlBar()
         {
+            bool shouldShowHostedKeyboard = !_isKeyboard ||
+                                            !_config.KeyboardConfig.HideMainKeyboard ||
+                                            _isArrowLabelRetryHelpVisible ||
+                                            IsActiveArrowKeyboardQuestion;
+            if (_taskMainHost != null)
+                _taskMainHost.IsVisible = shouldShowHostedKeyboard;
+            if (_keyboardControlBar != null)
+                _keyboardControlBar.IsVisible = shouldShowHostedKeyboard;
+
             if (_pianoPressProgress != null)
                 _pianoPressProgress.HeightRequest = 55;
 
@@ -1518,6 +1581,9 @@ namespace GestureSample.Views.Tests
 
             UpdateStatement();
             RefreshKeyboardArrowPromptView();
+            RefreshManagedNumericInputVisibility();
+            if (UsesManagedNumericInput || UsesArrowLabelPromptStage())
+                LogNumericInputDebug("UpdateView:Begin", $"newExercise={newExercise}, allowInputFocus={allowInputFocus}");
             if (applyUiState)
                 ApplyExerciseUiState(newExercise);
 
@@ -1528,7 +1594,7 @@ namespace GestureSample.Views.Tests
 
             if (_btnNext != null) _btnNext.IsEnabled = _gamePlay.GuessNumber > 0 && !newExercise;
             if (_config.IsHistory) _lblHistory.Text = GenerateHistoryString(_gamePlay.AllHistory.Where(item => item.Sum == _gamePlay.Sum).ToList());
-            if (_isThreeTexts && (_config.UIQuestionType != UIQuestionType.ThreeAddends || newExercise))
+            if (_isThreeTexts && !UsesArrowLabelPromptStage() && (_config.UIQuestionType != UIQuestionType.ThreeAddends || newExercise))
             {
                 _txtAddend1.Text = _gamePlay.addend1 == PPWGamePlay.NAN ? "" : _gamePlay.addend1.ToString();
                 _txtAddend2.Text = _gamePlay.addend2 == PPWGamePlay.NAN ? "" : _gamePlay.addend2.ToString();
@@ -1559,22 +1625,13 @@ namespace GestureSample.Views.Tests
                 tasks.Add(DelayKeyboardInputAsync(_config.SecondsTillAllowInput));
             }
 
+            if (_isThreeTexts || UsesArrowLabelPromptStage())
+            {
+                SyncPrimaryEntryEnabledState();
+            }
+
             if (newExercise)
             {
-                if (_isThreeTexts)
-                {
-                    EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
-                    EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
-                    EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
-                    _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
-                    _currentPPWEnabled = new PPWObject(
-                        _txtAddend1.IsEnabled ? 1 : 0,
-                        _txtAddend2.IsEnabled ? 1 : 0,
-                        _txtSum.IsEnabled ? 1 : 0);
-                    _currentSecondaryPPW = null;
-                    _currentSecondaryPPWEnabled = null;
-
-                }
                 if (_config.HelpEntries || _config.HelpThroughTen)
                     for (int i = 0; i < txt.Length; i++)
                         txt[i].Text = "";
@@ -1746,6 +1803,23 @@ namespace GestureSample.Views.Tests
             RefreshKeyboardControlBar();
             if (HasVisibleNumericInputs && allowInputFocus)
             {
+                if (UsesManagedNumericInput)
+                {
+                    Entry? preferredManagedEntry = GetPreferredNumericEntry();
+                    if (preferredManagedEntry != null)
+                    {
+                        LogNumericInputDebug("UpdateView:ManagedFocus", $"target={GetNumericEntryName(preferredManagedEntry)}");
+                        await ForceFocusAsync(preferredManagedEntry);
+                    }
+                    else
+                    {
+                        LogNumericInputDebug("UpdateView:ManagedFocus", "target=null");
+                    }
+
+                    RefreshNumericEntryAppearance();
+                    return;
+                }
+
                 if (_gamePlay.Status == Statement.False ||
          _gamePlay.Status == Statement.WrongInput ||
          _gamePlay.Status == Statement.New)
@@ -1794,6 +1868,8 @@ namespace GestureSample.Views.Tests
             if (entry != null && entry.IsVisible && entry.IsEnabled)
             {
                 _lastFocused = entry;
+                if (UsesArrowLabelPromptStage())
+                    _config.ArrowLabelFocusIndex = GetArrowLabelFocusIndex(entry);
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     entry.Unfocus();
@@ -1811,6 +1887,66 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private void SyncPrimaryEntryEnabledState()
+        {
+            if (UsesArrowLabelPromptStage())
+            {
+                Entry? missingEntry = GetArrowLabelMissingEntry();
+                LogNumericInputDebug("SyncPrimaryEntryEnabledState:ArrowPrompt", $"missing={GetNumericEntryName(missingEntry)}");
+                _config.ArrowLabelFocusIndex = GetArrowLabelFocusIndex(missingEntry);
+
+            bool requireComplexBreakdownEntries =
+                    _config.KeyboardConfig.ArrowLabelRetryMode == ArrowLabelRetryMode.RevealComplexThroughTen &&
+                    _isComplexThroughTenBreakdownVisible;
+                bool requireComplexNextTenDistances =
+                    _config.KeyboardConfig.ArrowLabelRetryMode == ArrowLabelRetryMode.None &&
+                    IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode());
+
+                EntryEnabled(_txtAddend1, missingEntry == _txtAddend1);
+                EntryEnabled(_txtAddend2, missingEntry == _txtAddend2 || requireComplexBreakdownEntries || requireComplexNextTenDistances);
+                EntryEnabled(_txtSum, missingEntry == _txtSum);
+                if (_txtComplexAddend3 != null) EntryEnabled(_txtComplexAddend3, missingEntry == _txtComplexAddend3);
+                if (_txtComplexSum2 != null) EntryEnabled(_txtComplexSum2, missingEntry == _txtComplexSum2);
+                if (_txtComplexTotalDistance != null) EntryEnabled(_txtComplexTotalDistance, missingEntry == _txtComplexTotalDistance);
+                if (_txtComplexAddend3 != null && requireComplexBreakdownEntries)
+                    EntryEnabled(_txtComplexAddend3, true);
+                if (_txtComplexAddend3 != null && requireComplexNextTenDistances)
+                    EntryEnabled(_txtComplexAddend3, true);
+
+                Entry? preferredEntry = requireComplexBreakdownEntries || requireComplexNextTenDistances
+                    ? _txtAddend2
+                    : missingEntry;
+
+                if (UsesManagedNumericInput && IsEntryEditable(preferredEntry))
+                    SelectNumericEntry(preferredEntry);
+
+                LogNumericInputDebug("SyncPrimaryEntryEnabledState:ArrowPromptApplied", $"missing={GetNumericEntryName(missingEntry)}");
+
+                _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
+                _currentPPWEnabled = new PPWObject(
+                    _txtAddend1.IsEnabled ? 1 : 0,
+                    _txtAddend2.IsEnabled ? 1 : 0,
+                    _txtSum.IsEnabled ? 1 : 0);
+                _currentSecondaryPPW = null;
+                _currentSecondaryPPWEnabled = null;
+                return;
+            }
+
+            EntryEnabled(_txtAddend1, _gamePlay.addend1 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+            EntryEnabled(_txtAddend2, _gamePlay.addend2 == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+            EntryEnabled(_txtSum, _gamePlay.Sum == PPWGamePlay.NAN && !(_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp));
+
+            _currentPPW = new PPWObject(_gamePlay.addend1, _gamePlay.addend2, _gamePlay.Sum);
+            _currentPPWEnabled = new PPWObject(
+                _txtAddend1.IsEnabled ? 1 : 0,
+                _txtAddend2.IsEnabled ? 1 : 0,
+                _txtSum.IsEnabled ? 1 : 0);
+            _currentSecondaryPPW = null;
+            _currentSecondaryPPWEnabled = null;
+
+            LogNumericInputDebug("SyncPrimaryEntryEnabledState:DefaultApplied");
+        }
+
         private View InitNumericKeypadUI()
         {
             if (UsesChoiceAnswerKeyboard)
@@ -1819,8 +1955,7 @@ namespace GestureSample.Views.Tests
                 {
                     HorizontalOptions = LayoutOptions.Fill,
                     VerticalOptions = LayoutOptions.Center,
-                    WidthRequest = TASK_WIDTH,
-                    MaximumWidthRequest = TASK_WIDTH,
+                    MaxValue = Math.Max(10, _config.MaxSum),
                     Margin = new Thickness(0, 2, 0, 0),
                     IsVisible = true
                 };
@@ -1845,6 +1980,17 @@ namespace GestureSample.Views.Tests
             _numericKeypad.SubmitPressed += OnNumericSubmitPressed;
 
             return _numericKeypad;
+        }
+
+        private void RefreshManagedNumericInputVisibility()
+        {
+            bool showNumericInput = HasVisibleNumericInputs;
+
+            if (_choiceAnswerKeyboard != null)
+                _choiceAnswerKeyboard.IsVisible = showNumericInput && EffectiveNumericInputMode == NumericInputMode.ChoiceKeyboard;
+
+            if (_numericKeypad != null)
+                _numericKeypad.IsVisible = showNumericInput && EffectiveNumericInputMode == NumericInputMode.AppKeypad;
         }
 
         private bool IsLargeEnoughForExpandedNumericLayout()
@@ -1942,6 +2088,75 @@ namespace GestureSample.Views.Tests
             entry.Scale = 1;
         }
 
+        private string GetNumericEntryName(Entry? entry)
+        {
+            if (entry == null)
+                return "null";
+            if (ReferenceEquals(entry, _txtAddend1))
+                return "Addend1";
+            if (ReferenceEquals(entry, _txtAddend2))
+                return "Addend2";
+            if (ReferenceEquals(entry, _txtSum))
+                return "Sum";
+            if (ReferenceEquals(entry, _txtComplexAddend3))
+                return "ComplexAddend3";
+            if (ReferenceEquals(entry, _txtComplexSum2))
+                return "ComplexSum2";
+            if (ReferenceEquals(entry, _txtComplexTotalDistance))
+                return "ComplexTotalDistance";
+
+            int helperIndex = Array.IndexOf(txt ?? Array.Empty<Entry>(), entry);
+            if (helperIndex >= 0)
+                return $"Helper[{helperIndex}]";
+
+            int index = _numericEntries.IndexOf(entry);
+            return index >= 0 ? $"Entry[{index}]" : "UnknownEntry";
+        }
+
+        private int GetArrowLabelFocusIndex(Entry? entry)
+        {
+            if (entry == null)
+                return -1;
+            if (ReferenceEquals(entry, _txtAddend1))
+                return 0;
+            if (ReferenceEquals(entry, _txtAddend2) || ReferenceEquals(entry, _txtComplexTotalDistance))
+                return 1;
+            if (ReferenceEquals(entry, _txtSum) || ReferenceEquals(entry, _txtComplexSum2))
+                return 2;
+            if (ReferenceEquals(entry, _txtComplexAddend3))
+                return 3;
+
+            return _numericEntries.IndexOf(entry);
+        }
+
+        private string FormatNumericEntryState(Entry? entry)
+        {
+            if (entry == null)
+                return "null";
+
+            string text = entry.Text ?? string.Empty;
+            return $"{GetNumericEntryName(entry)}(enabled={entry.IsEnabled},visible={entry.IsVisible},text='{text}')";
+        }
+
+        private void LogNumericInputDebug(string eventName, string details = "")
+        {
+            if (!EnableNumericInputDebug)
+                return;
+
+            ArrowLabelExerciseMode mode = GetDisplayedArrowLabelExerciseMode();
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+            string message =
+                $"[NUMPADDBG] {eventName} | mode={mode} | missing={GetNumericEntryName(missingEntry)} | " +
+                $"active={GetNumericEntryName(_activeNumericEntry)} | last={GetNumericEntryName(_lastFocused)} | " +
+                $"A1={FormatNumericEntryState(_txtAddend1)} | A2={FormatNumericEntryState(_txtAddend2)} | Sum={FormatNumericEntryState(_txtSum)}";
+
+            if (!string.IsNullOrWhiteSpace(details))
+                message += $" | {details}";
+
+            Debug.WriteLine(message);
+            Console.WriteLine(message);
+        }
+
         private bool IsEntryEditable(Entry? entry)
         {
             return entry != null && entry.IsVisible && entry.IsEnabled;
@@ -1952,44 +2167,120 @@ namespace GestureSample.Views.Tests
             if (!UsesManagedNumericInput)
                 return;
 
+            LogNumericInputDebug("SelectNumericEntry:Requested", $"target={GetNumericEntryName(entry)}");
+
             if (!IsEntryEditable(entry))
             {
+                LogNumericInputDebug("SelectNumericEntry:Rejected", $"target={GetNumericEntryName(entry)} not editable");
                 RefreshNumericEntryAppearance();
                 return;
             }
 
             _activeNumericEntry = entry;
             _lastFocused = entry;
+            if (UsesArrowLabelPromptStage())
+                _config.ArrowLabelFocusIndex = GetArrowLabelFocusIndex(entry);
+            LogNumericInputDebug("SelectNumericEntry:Applied", $"target={GetNumericEntryName(entry)}");
             RefreshNumericEntryAppearance();
         }
 
         private Entry? EnsureNumericEntrySelection()
         {
+            if (UsesComplexThroughTenBreakdownInput())
+            {
+                if ((ReferenceEquals(_activeNumericEntry, _txtAddend2) ||
+                     ReferenceEquals(_activeNumericEntry, _txtComplexAddend3)) &&
+                    IsEntryEditable(_activeNumericEntry))
+                {
+                    LogNumericInputDebug("EnsureNumericEntrySelection:UseActiveComplexThroughTen", $"target={GetNumericEntryName(_activeNumericEntry)}");
+                    return _activeNumericEntry;
+                }
+
+                Entry? complexThroughTenEntry = GetCurrentComplexThroughTenEntry();
+                if (IsEntryEditable(complexThroughTenEntry) && !ReferenceEquals(_activeNumericEntry, complexThroughTenEntry))
+                {
+                    LogNumericInputDebug("EnsureNumericEntrySelection:UseComplexThroughTen", $"target={GetNumericEntryName(complexThroughTenEntry)}");
+                    SelectNumericEntry(complexThroughTenEntry);
+                    return complexThroughTenEntry;
+                }
+            }
+
             if (IsEntryEditable(_activeNumericEntry))
+            {
+                LogNumericInputDebug("EnsureNumericEntrySelection:UseActive", $"target={GetNumericEntryName(_activeNumericEntry)}");
                 return _activeNumericEntry;
+            }
 
             Entry? preferredEntry = GetPreferredNumericEntry();
             if (preferredEntry != null)
+            {
+                LogNumericInputDebug("EnsureNumericEntrySelection:UsePreferred", $"target={GetNumericEntryName(preferredEntry)}");
                 SelectNumericEntry(preferredEntry);
+            }
+            else
+            {
+                LogNumericInputDebug("EnsureNumericEntrySelection:NoTarget");
+            }
 
             return preferredEntry;
         }
 
         private Entry? GetPreferredNumericEntry()
         {
+            if (UsesComplexThroughTenBreakdownInput())
+            {
+                Entry? complexThroughTenEntry = GetCurrentComplexThroughTenEntry();
+                if (IsEntryEditable(complexThroughTenEntry))
+                {
+                    LogNumericInputDebug("GetPreferredNumericEntry:ComplexThroughTen", $"target={GetNumericEntryName(complexThroughTenEntry)}");
+                    return complexThroughTenEntry;
+                }
+            }
+
+            if (UsesComplexNextTenDistanceInput())
+            {
+                Entry? complexNextEntry = GetCurrentComplexNextTenEntry();
+                if (IsEntryEditable(complexNextEntry))
+                {
+                    LogNumericInputDebug("GetPreferredNumericEntry:ComplexNextTen", $"target={GetNumericEntryName(complexNextEntry)}");
+                    return complexNextEntry;
+                }
+            }
+
+            Entry? arrowLabelMissingEntry = GetArrowLabelMissingEntry();
+            if (IsEntryEditable(arrowLabelMissingEntry))
+            {
+                LogNumericInputDebug("GetPreferredNumericEntry:ArrowMissing", $"target={GetNumericEntryName(arrowLabelMissingEntry)}");
+                return arrowLabelMissingEntry;
+            }
+
             if (IsEntryEditable(_lastFocused))
+            {
+                LogNumericInputDebug("GetPreferredNumericEntry:LastFocused", $"target={GetNumericEntryName(_lastFocused)}");
                 return _lastFocused;
+            }
 
             if (IsEntryEditable(_txtSum) && _gamePlay.Sum == PPWGamePlay.NAN)
+            {
+                LogNumericInputDebug("GetPreferredNumericEntry:Sum", $"target={GetNumericEntryName(_txtSum)}");
                 return _txtSum;
+            }
 
             if (IsEntryEditable(_txtAddend1) && _gamePlay.addend1 == PPWGamePlay.NAN)
+            {
+                LogNumericInputDebug("GetPreferredNumericEntry:Addend1", $"target={GetNumericEntryName(_txtAddend1)}");
                 return _txtAddend1;
+            }
 
             if (IsEntryEditable(_txtAddend2) && _gamePlay.addend2 == PPWGamePlay.NAN)
+            {
+                LogNumericInputDebug("GetPreferredNumericEntry:Addend2", $"target={GetNumericEntryName(_txtAddend2)}");
                 return _txtAddend2;
+            }
 
-            return _numericEntries.FirstOrDefault(IsEntryEditable);
+            Entry? fallback = _numericEntries.FirstOrDefault(IsEntryEditable);
+            LogNumericInputDebug("GetPreferredNumericEntry:Fallback", $"target={GetNumericEntryName(fallback)}");
+            return fallback;
         }
 
         private Entry? GetNextEditableEntry(Entry currentEntry)
@@ -2015,10 +2306,22 @@ namespace GestureSample.Views.Tests
                     numericEntry.TextColor = DesignResources.GetColor("GameNumericEntryDisabledTextColor", Colors.Gray);
                     ResetNumericEntryTransform(numericEntry);
                 }
+                else if (_complexPromptEntryValidationStates.TryGetValue(numericEntry, out bool isValid) && !isValid)
+                {
+                    numericEntry.BackgroundColor = Colors.IndianRed;
+                    numericEntry.TextColor = Colors.Black;
+                    ResetNumericEntryTransform(numericEntry);
+                }
                 else if (numericEntry == _activeNumericEntry && UsesManagedNumericInput)
                 {
                     numericEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryActiveBackgroundColor", Color.FromArgb("#FFF9D6"));
                     numericEntry.TextColor = DesignResources.GetColor("GameNumericEntryTextColor", Colors.Black);
+                    ResetNumericEntryTransform(numericEntry);
+                }
+                else if (_complexPromptEntryValidationStates.TryGetValue(numericEntry, out isValid))
+                {
+                    numericEntry.BackgroundColor = Colors.LightGreen;
+                    numericEntry.TextColor = Colors.Black;
                     ResetNumericEntryTransform(numericEntry);
                 }
                 else
@@ -2026,6 +2329,56 @@ namespace GestureSample.Views.Tests
                     numericEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryBackgroundColor", Colors.White);
                     numericEntry.TextColor = DesignResources.GetColor("GameNumericEntryTextColor", Colors.Black);
                     ResetNumericEntryTransform(numericEntry);
+                }
+            }
+
+            RefreshArrowPromptActiveEntryAppearance();
+        }
+
+        private void RefreshArrowPromptActiveEntryAppearance()
+        {
+            if (!UsesArrowLabelPromptStage() || !UsesManagedNumericInput)
+                return;
+
+            Entry?[] promptEntries =
+            {
+                _txtAddend1,
+                _txtAddend2,
+                _txtSum,
+                _txtComplexAddend3,
+                _txtComplexSum2,
+                _txtComplexTotalDistance
+            };
+
+            foreach (Entry? promptEntry in promptEntries)
+            {
+                if (promptEntry == null || _numericEntries.Contains(promptEntry))
+                    continue;
+
+                if (!promptEntry.IsEnabled)
+                {
+                    promptEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryBackgroundColor", Colors.White);
+                    promptEntry.TextColor = DesignResources.GetColor("GameNumericEntryDisabledTextColor", Colors.Gray);
+                }
+                else if (_complexPromptEntryValidationStates.TryGetValue(promptEntry, out bool isValid) && !isValid)
+                {
+                    promptEntry.BackgroundColor = Colors.IndianRed;
+                    promptEntry.TextColor = Colors.Black;
+                }
+                else if (promptEntry == _activeNumericEntry)
+                {
+                    promptEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryActiveBackgroundColor", Color.FromArgb("#FFF9D6"));
+                    promptEntry.TextColor = DesignResources.GetColor("GameNumericEntryTextColor", Colors.Black);
+                }
+                else if (_complexPromptEntryValidationStates.TryGetValue(promptEntry, out isValid))
+                {
+                    promptEntry.BackgroundColor = Colors.LightGreen;
+                    promptEntry.TextColor = Colors.Black;
+                }
+                else
+                {
+                    promptEntry.BackgroundColor = DesignResources.GetColor("GameNumericEntryBackgroundColor", Colors.White);
+                    promptEntry.TextColor = DesignResources.GetColor("GameNumericEntryTextColor", Colors.Black);
                 }
             }
         }
@@ -2036,6 +2389,7 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null)
                 return;
 
+            LogNumericInputDebug("OnNumericDigitPressed", $"digit='{digit}' target={GetNumericEntryName(targetEntry)}");
             string currentText = targetEntry.Text ?? string.Empty;
             if (digit == "-")
             {
@@ -2061,6 +2415,8 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null)
                 return;
 
+            LogNumericInputDebug("OnChoiceAnswerPressed", $"value={value} target={GetNumericEntryName(targetEntry)}");
+            _lastChoiceAnswerValue = value;
             targetEntry.Text = value.ToString();
             _lastFocused = targetEntry;
             RefreshNumericEntryAppearance();
@@ -2073,6 +2429,7 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null || string.IsNullOrEmpty(targetEntry.Text))
                 return;
 
+            LogNumericInputDebug("OnNumericBackspacePressed", $"target={GetNumericEntryName(targetEntry)}");
             targetEntry.Text = targetEntry.Text[..^1];
             _lastFocused = targetEntry;
             RefreshNumericEntryAppearance();
@@ -2084,6 +2441,7 @@ namespace GestureSample.Views.Tests
             if (targetEntry == null)
                 return;
 
+            LogNumericInputDebug("OnNumericClearPressed", $"target={GetNumericEntryName(targetEntry)}");
             targetEntry.Text = string.Empty;
             _lastFocused = targetEntry;
             RefreshNumericEntryAppearance();
@@ -2094,6 +2452,45 @@ namespace GestureSample.Views.Tests
             Entry? targetEntry = EnsureNumericEntrySelection();
             if (targetEntry == null)
                 return;
+
+            LogNumericInputDebug("OnNumericSubmitPressed", $"target={GetNumericEntryName(targetEntry)}");
+            if (UsesComplexNextTenDistanceInput())
+            {
+                if (!ValidateComplexPromptEntry(targetEntry))
+                    return;
+
+                Entry? nextComplexEntry = GetNextComplexNextTenEntry(targetEntry);
+                if (nextComplexEntry != null)
+                {
+                    SelectNumericEntry(nextComplexEntry);
+                    return;
+                }
+
+                CheckGamePlay();
+                return;
+            }
+
+            if (UsesComplexThroughTenBreakdownInput())
+            {
+                if (!ValidateComplexPromptEntry(targetEntry))
+                    return;
+
+                Entry? nextComplexEntry = GetNextComplexThroughTenEntry(targetEntry);
+                if (nextComplexEntry != null)
+                {
+                    SelectNumericEntry(nextComplexEntry);
+                    return;
+                }
+
+                CheckGamePlay();
+                return;
+            }
+
+            if (UsesArrowLabelPromptStage() && targetEntry == GetArrowLabelMissingEntry())
+            {
+                CheckGamePlay();
+                return;
+            }
 
             if (targetEntry == _txtAddend1 && _config.RequiresBothAddendsInput && IsEntryEditable(_txtAddend2))
             {
@@ -2115,6 +2512,151 @@ namespace GestureSample.Views.Tests
             }
 
             CheckGamePlay();
+        }
+
+        private bool ValidateComplexPromptEntry(Entry entry)
+        {
+            if (_gamePlay is not BitArrayGamePlay arrowPromptGamePlay ||
+                !IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode()))
+            {
+                return true;
+            }
+
+            int start = arrowPromptGamePlay.ArrowLabelAddend1Value;
+            int end = arrowPromptGamePlay.ArrowLabelSumValue;
+            int middle = arrowPromptGamePlay.ArrowLabelAddend2Value ?? 10;
+            int? expectedValue = null;
+
+            if (ReferenceEquals(entry, _txtAddend1))
+                expectedValue = start;
+            else if (ReferenceEquals(entry, _txtAddend2))
+                expectedValue = middle - start;
+            else if (ReferenceEquals(entry, _txtSum))
+                expectedValue = middle;
+            else if (ReferenceEquals(entry, _txtComplexAddend3))
+                expectedValue = end - middle;
+            else if (ReferenceEquals(entry, _txtComplexSum2))
+                expectedValue = end;
+            else if (ReferenceEquals(entry, _txtComplexTotalDistance))
+                expectedValue = arrowPromptGamePlay.ArrowLabelDistanceValue;
+
+            if (!expectedValue.HasValue)
+                return true;
+
+            bool isCorrect = int.TryParse(entry.Text, out int value) && value == expectedValue.Value;
+            _complexPromptEntryValidationStates[entry] = isCorrect;
+            SelectNumericEntry(entry);
+            RefreshNumericEntryAppearance();
+            if (!isCorrect)
+            {
+                entry.BackgroundColor = Colors.IndianRed;
+                entry.TextColor = Colors.Black;
+            }
+
+            return isCorrect;
+        }
+
+        private bool UsesComplexThroughTenBreakdownInput()
+        {
+            return UsesArrowLabelPromptStage() &&
+                   _config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.RevealComplexThroughTen &&
+                   _isComplexThroughTenBreakdownVisible;
+        }
+
+        private bool UsesComplexNextTenDistanceInput()
+        {
+            return UsesArrowLabelPromptStage() &&
+                   _config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.None &&
+                   IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode());
+        }
+
+        private Entry? GetNextComplexNextTenEntry(Entry currentEntry)
+        {
+            List<Entry> entries = new();
+
+            if (_txtAddend2 != null)
+                entries.Add(_txtAddend2);
+            if (_txtComplexAddend3 != null)
+                entries.Add(_txtComplexAddend3);
+
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+            if (missingEntry != null)
+                entries.Add(missingEntry);
+
+            entries = entries
+                .Where(IsEntryEditable)
+                .Distinct()
+                .ToList();
+
+            int currentIndex = entries.IndexOf(currentEntry);
+            if (currentIndex < 0)
+                return entries.FirstOrDefault();
+
+            return currentIndex + 1 < entries.Count ? entries[currentIndex + 1] : null;
+        }
+
+        private Entry? GetCurrentComplexNextTenEntry()
+        {
+            if (IsEntryEditable(_txtAddend2) && string.IsNullOrWhiteSpace(_txtAddend2.Text))
+                return _txtAddend2;
+
+            if (IsEntryEditable(_txtComplexAddend3) && string.IsNullOrWhiteSpace(_txtComplexAddend3.Text))
+                return _txtComplexAddend3;
+
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+            return IsEntryEditable(missingEntry) ? missingEntry : null;
+        }
+
+        private Entry? GetCurrentComplexThroughTenEntry()
+        {
+            if (IsEntryEditable(_txtAddend2) && string.IsNullOrWhiteSpace(_txtAddend2.Text))
+                return _txtAddend2;
+
+            if (IsEntryEditable(_txtComplexAddend3) && string.IsNullOrWhiteSpace(_txtComplexAddend3.Text))
+                return _txtComplexAddend3;
+
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+            return IsEntryEditable(missingEntry) ? missingEntry : null;
+        }
+
+        private void SelectFirstComplexThroughTenBreakdownEntry()
+        {
+            if (!UsesManagedNumericInput || !UsesComplexThroughTenBreakdownInput() || !IsEntryEditable(_txtAddend2))
+                return;
+
+            _txtAddend2.Text = string.Empty;
+            if (_txtComplexAddend3 != null)
+                _txtComplexAddend3.Text = string.Empty;
+
+            _complexPromptEntryValidationStates.Remove(_txtAddend2);
+            if (_txtComplexAddend3 != null)
+                _complexPromptEntryValidationStates.Remove(_txtComplexAddend3);
+
+            SelectNumericEntry(_txtAddend2);
+        }
+
+        private Entry? GetNextComplexThroughTenEntry(Entry currentEntry)
+        {
+            List<Entry> entries = new();
+            Entry? missingEntry = GetArrowLabelMissingEntry();
+
+            if (_txtAddend2 != null)
+                entries.Add(_txtAddend2);
+            if (_txtComplexAddend3 != null)
+                entries.Add(_txtComplexAddend3);
+            if (missingEntry != null)
+                entries.Add(missingEntry);
+
+            entries = entries
+                .Where(IsEntryEditable)
+                .Distinct()
+                .ToList();
+
+            int currentIndex = entries.IndexOf(currentEntry);
+            if (currentIndex < 0)
+                return entries.FirstOrDefault();
+
+            return currentIndex + 1 < entries.Count ? entries[currentIndex + 1] : null;
         }
 
         private bool UsesCyclicalTutorial()
@@ -2656,7 +3198,7 @@ namespace GestureSample.Views.Tests
             if (_btnNext != null) _btnNext.IsEnabled = false;
             //if (_btnPrev != null) _btnPrev.IsEnabled = false;
 
-            if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
+            if (_isKeyboard && (!_config.KeyboardConfig.KeyboardOnlyForHelp || IsActiveArrowKeyboardQuestion))
             {
                 SetInlineKeyboardCheckVisible(false);
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(_pianoKeyboard);
@@ -2667,10 +3209,7 @@ namespace GestureSample.Views.Tests
             {
                 try
                 {
-                    PPWObject submittedAnswer = new(
-                        Convert.ToInt32(_txtAddend1.Text),
-                        Convert.ToInt32(_txtAddend2.Text),
-                        Convert.ToInt32(_txtSum.Text));
+                    PPWObject submittedAnswer = BuildSubmittedPpwAnswer();
 
                     ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(submittedAnswer.Addend1, submittedAnswer.Addend2, submittedAnswer.Sum);
                     await HandleCheckResultAsync(checkResult, isKeyboardSubmission: false, onCorrect: () => CapturePreviousAnswer(submittedAnswer));
@@ -2680,6 +3219,53 @@ namespace GestureSample.Views.Tests
                     _lblStatement.Text = Statement.WrongInput;
                 }
             }
+        }
+
+        private PPWObject BuildSubmittedPpwAnswer()
+        {
+            if (UsesArrowLabelPromptStage() &&
+                IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode()) &&
+                _gamePlay is BitArrayGamePlay arrowPromptGamePlay)
+            {
+                MissingValueTargetFlags missingTarget = arrowPromptGamePlay.CurrentArrowLabelMissingTarget;
+                int start = arrowPromptGamePlay.ArrowLabelAddend1Value;
+                int end = arrowPromptGamePlay.ArrowLabelSumValue;
+                int middle = arrowPromptGamePlay.ArrowLabelAddend2Value ?? 10;
+                bool requireComplexBreakdownEntries =
+                    _config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.RevealComplexThroughTen &&
+                    _isComplexThroughTenBreakdownVisible;
+
+                if (requireComplexBreakdownEntries)
+                {
+                int firstDistance = Convert.ToInt32(_txtAddend2.Text);
+                int secondDistance = Convert.ToInt32(_txtComplexAddend3.Text);
+                bool requireComplexDistanceEntries =
+                    _config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.None ||
+                    (_config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.RevealComplexThroughTen &&
+                     _isComplexThroughTenBreakdownVisible);
+                if (requireComplexDistanceEntries &&
+                    (firstDistance != middle - start || secondDistance != end - middle))
+                {
+                    return new PPWObject(PPWGamePlay.NAN, PPWGamePlay.NAN, PPWGamePlay.NAN);
+                }
+            }
+
+                return new PPWObject(
+                    missingTarget == MissingValueTargetFlags.Addend1
+                        ? Convert.ToInt32(_txtAddend1.Text)
+                        : arrowPromptGamePlay.ArrowLabelAddend1Value,
+                    missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance)
+                        ? Convert.ToInt32(_txtComplexTotalDistance.Text)
+                        : arrowPromptGamePlay.ArrowLabelDistanceValue,
+                    missingTarget == MissingValueTargetFlags.Sum
+                        ? Convert.ToInt32(_txtComplexSum2.Text)
+                        : arrowPromptGamePlay.ArrowLabelSumValue);
+            }
+
+            return new PPWObject(
+                Convert.ToInt32(_txtAddend1.Text),
+                Convert.ToInt32(_txtAddend2.Text),
+                Convert.ToInt32(_txtSum.Text));
         }
 
         private async Task HandleImpossibleWeightedAnswerAsync()
@@ -2697,7 +3283,10 @@ namespace GestureSample.Views.Tests
 
         private async Task HandleCheckResultAsync(ExerciseCheckResult checkResult, bool isKeyboardSubmission, Action? onCorrect = null)
         {
-            bool willAdvanceToNextExercise = checkResult.Completion == null && checkResult.IsCorrect && !_gamePlay.GameOver;
+            bool willAdvanceToNextExercise = checkResult.Completion == null &&
+                                             checkResult.IsCorrect &&
+                                             !checkResult.RefreshCurrentQuestion &&
+                                             !_gamePlay.GameOver;
             await UpdateView(applyUiState: false, allowInputFocus: !willAdvanceToNextExercise);
             bool shouldAutoShowTutorial = UpdateAutoTutorialState(checkResult);
 
@@ -2706,14 +3295,18 @@ namespace GestureSample.Views.Tests
                 onCorrect?.Invoke();
             }
 
-            if (!checkResult.IsWrongInput)
+            if (!isKeyboardSubmission && !checkResult.IsCorrect && TryApplyArrowLabelRetryHelp())
             {
-                ApplyFeedbackUiState(checkResult.IsCorrect);
-            }
-            else
-            {
+                ResetStatusLineToNeutral();
                 RestoreReadyForInputState();
+                await UpdateView(applyUiState: false, allowInputFocus: true);
+                return;
             }
+
+            if (!checkResult.IsWrongInput)
+                ApplyFeedbackUiState(checkResult.IsCorrect);
+            else
+                RestoreReadyForInputState();
 
             await ApplyPostCheckDelayAsync(checkResult, isKeyboardSubmission, willAdvanceToNextExercise);
 
@@ -2724,6 +3317,22 @@ namespace GestureSample.Views.Tests
             else if (willAdvanceToNextExercise)
             {
                 await GenerateNextExerciseAsync();
+            }
+            else if (checkResult.RefreshCurrentQuestion)
+            {
+                LogNumericInputDebug("HandleCheckResult:RefreshCurrentQuestion:BeforeApplyPending");
+                _gamePlay.ResetStatusToNeutral();
+                _isArrowLabelRetryHelpVisible = false;
+
+                if (_gamePlay is BitArrayGamePlay bitArrayGamePlay)
+                {
+                    bitArrayGamePlay.ApplyPendingArrowLabelPromptMode();
+                    bitArrayGamePlay.HideCurrentArrowLabelMissingValue();
+                }
+
+                RefreshKeyboardControlBar();
+                await UpdateView(applyUiState: false, allowInputFocus: true);
+                LogNumericInputDebug("HandleCheckResult:RefreshCurrentQuestion:AfterUpdateView");
             }
             else if (isKeyboardSubmission)
             {
@@ -2742,6 +3351,49 @@ namespace GestureSample.Views.Tests
             if (shouldAutoShowTutorial && checkResult.Completion == null)
             {
                 await RunAutoTutorialIfAvailableAsync();
+            }
+        }
+
+        private bool TryApplyArrowLabelRetryHelp()
+        {
+            if (!UsesArrowLabelRetryStage || _config.KeyboardConfig == null)
+                return false;
+
+            switch (_config.KeyboardConfig.ArrowLabelRetryMode)
+            {
+                case ArrowLabelRetryMode.ShowKeyboardHelp:
+                    if (_isArrowLabelRetryHelpVisible)
+                    {
+                        if (_config.KeyboardConfig.UseKeyboardQuestionAfterArrowLabelHelp &&
+                            _gamePlay is BitArrayGamePlay arrowGamePlay &&
+                            arrowGamePlay.QueueArrowLabelRetryKeyboardQuestion())
+                        {
+                            arrowGamePlay.ApplyPendingArrowLabelPromptMode();
+                            RefreshKeyboardArrowPromptView();
+                            RefreshKeyboardControlBar();
+                            return true;
+                        }
+
+                        return false;
+                    }
+
+                    _isArrowLabelRetryHelpVisible = true;
+                    RefreshKeyboardControlBar();
+                    return true;
+
+                case ArrowLabelRetryMode.RevealComplexThroughTen:
+                    if (_isComplexThroughTenBreakdownVisible)
+                        return false;
+
+                    _isComplexThroughTenBreakdownVisible = true;
+                    RefreshKeyboardArrowPromptView();
+                    SyncPrimaryEntryEnabledState();
+                    SelectFirstComplexThroughTenBreakdownEntry();
+                    RefreshNumericEntryAppearance();
+                    return true;
+
+                default:
+                    return false;
             }
         }
 
@@ -2787,8 +3439,26 @@ namespace GestureSample.Views.Tests
             if (ShouldSkipPostCheckDelay(checkResult, isKeyboardSubmission))
                 return;
 
-            if (!checkResult.ShouldDelayFeedback || _config.SecondsTillNextExercise <= 0)
+            if (!checkResult.ShouldDelayFeedback)
                 return;
+
+            if (_config.SecondsTillNextExercise <= 0)
+            {
+                if (!checkResult.RefreshCurrentQuestion)
+                    return;
+
+                SetPageInteractionEnabled(false);
+                try
+                {
+                    await Task.Delay(450);
+                }
+                finally
+                {
+                    if (!keepDisabledForNextExercise)
+                        SetPageInteractionEnabled(true);
+                }
+                return;
+            }
 
             if (isKeyboardSubmission)
             {
@@ -2888,11 +3558,17 @@ namespace GestureSample.Views.Tests
             if (_txtAddend1 != null) EntryEnabled(_txtAddend1, enabled);
             if (_txtAddend2 != null) EntryEnabled(_txtAddend2, enabled);
             if (_txtSum != null) EntryEnabled(_txtSum, enabled);
+            if (_txtComplexAddend3 != null) EntryEnabled(_txtComplexAddend3, enabled);
+            if (_txtComplexSum2 != null) EntryEnabled(_txtComplexSum2, enabled);
+            if (_txtComplexTotalDistance != null) EntryEnabled(_txtComplexTotalDistance, enabled);
             RefreshNumericEntryAppearance();
         }
 
         private async Task GenerateNextExerciseAsync()
         {
+            _isArrowLabelRetryHelpVisible = false;
+            _isComplexThroughTenBreakdownVisible = false;
+            _complexPromptEntryValidationStates.Clear();
             await AnimateBenchmarkQuestionAdvanceOutAsync();
             ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
             _pianoKeyboard?.RefreshKeyCaptions();
@@ -3159,14 +3835,36 @@ namespace GestureSample.Views.Tests
             if (!UsesArrowLabelPromptStage() || _config.KeyboardConfig == null)
                 return null;
 
-            return GetDisplayedArrowLabelExerciseMode() switch
+            MissingValueTargetFlags missingTarget = _gamePlay is BitArrayGamePlay arrowGamePlay
+                ? arrowGamePlay.CurrentArrowLabelMissingTarget
+                : _config.ArrowLabelMissingValueTarget;
+
+            return missingTarget switch
             {
-                ArrowLabelExerciseMode.StartAndLength => _txtSum,
-                ArrowLabelExerciseMode.StartAndEndWithMissingLength => _txtAddend2,
-                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => _txtAddend1,
-                ArrowLabelExerciseMode.OrdinalStartAndLength => _txtSum,
+                MissingValueTargetFlags.Addend1 => _txtAddend1,
+                MissingValueTargetFlags.TotalDistance => IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode())
+                    ? _txtComplexTotalDistance
+                    : _txtAddend2,
+                MissingValueTargetFlags.Addend2 => IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode())
+                    ? _txtComplexTotalDistance
+                    : _txtAddend2,
+                MissingValueTargetFlags.Sum => IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode())
+                    ? _txtComplexSum2
+                    : _txtSum,
                 _ => null
             };
+        }
+
+        private static bool IsComplexArrowLabelPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance;
+        }
+
+        private bool ShouldShowComplexArrowBreakdown()
+        {
+            return _config.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.RevealComplexThroughTen ||
+                   _isComplexThroughTenBreakdownVisible;
         }
 
         private void ResetArrowLabelPromptEntryColors()
@@ -3177,6 +3875,9 @@ namespace GestureSample.Views.Tests
             if (_txtAddend1 != null) _txtAddend1.BackgroundColor = Colors.White;
             if (_txtAddend2 != null) _txtAddend2.BackgroundColor = Colors.White;
             if (_txtSum != null) _txtSum.BackgroundColor = Colors.White;
+            if (_txtComplexAddend3 != null) _txtComplexAddend3.BackgroundColor = Colors.White;
+            if (_txtComplexSum2 != null) _txtComplexSum2.BackgroundColor = Colors.White;
+            if (_txtComplexTotalDistance != null) _txtComplexTotalDistance.BackgroundColor = Colors.White;
         }
 
         private void ApplyArrowLabelPromptFeedback(bool isCorrect)
@@ -3194,6 +3895,9 @@ namespace GestureSample.Views.Tests
 
         private View BuildKeyboardArrowPromptView()
         {
+            if (IsComplexArrowLabelPromptMode(GetDisplayedArrowLabelExerciseMode()))
+                return BuildComplexKeyboardArrowPromptView();
+
             _txtAddend1 ??= CreateKeyboardArrowPromptEntry();
             _txtAddend2 ??= CreateKeyboardArrowPromptEntry();
             _txtSum ??= CreateKeyboardArrowPromptEntry();
@@ -3201,7 +3905,7 @@ namespace GestureSample.Views.Tests
             string pathData = GetArrowLabelPromptPathData();
             var layout = GetArrowLabelPromptLayout();
 
-            var arrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            _keyboardArrowPromptPath = new Microsoft.Maui.Controls.Shapes.Path
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(pathData),
                 Fill = Colors.Transparent,
@@ -3223,8 +3927,8 @@ namespace GestureSample.Views.Tests
                 VerticalOptions = LayoutOptions.Start
             };
 
-            AbsoluteLayout.SetLayoutBounds(arrowPath, layout.PathBounds);
-            promptSurface.Children.Add(arrowPath);
+            AbsoluteLayout.SetLayoutBounds(_keyboardArrowPromptPath, layout.PathBounds);
+            promptSurface.Children.Add(_keyboardArrowPromptPath);
 
             AbsoluteLayout.SetLayoutBounds(_txtAddend2, layout.Addend2Bounds);
             promptSurface.Children.Add(_txtAddend2);
@@ -3241,6 +3945,83 @@ namespace GestureSample.Views.Tests
                 VerticalOptions = LayoutOptions.Start,
                 Spacing = 0,
                 Margin = new Thickness(0, 4, 0, 0),
+                Children = { promptSurface }
+            };
+        }
+
+        private View BuildComplexKeyboardArrowPromptView()
+        {
+            _txtAddend1 ??= CreateKeyboardArrowPromptEntry();
+            _txtAddend2 ??= CreateKeyboardArrowPromptEntry();
+            _txtSum ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexAddend3 ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexSum2 ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexTotalDistance ??= CreateKeyboardArrowPromptEntry();
+            _txtComplexTotalDistance.WidthRequest = 64;
+
+            _complexFirstArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,76 L 184,76 M 168,64 L 184,76 L 168,88"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3,
+                InputTransparent = true
+            };
+
+            _complexSecondArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 182,132 L 182,76 L 300,76 M 284,64 L 300,76 L 284,88"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3,
+                InputTransparent = true
+            };
+
+            _complexTotalArrowPath = new Microsoft.Maui.Controls.Shapes.Path
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString("M 67,132 L 67,18 L 300,18 L 284,6 M 300,18 L 284,30"),
+                Fill = Colors.Transparent,
+                Stroke = Colors.Black,
+                StrokeThickness = 3,
+                InputTransparent = true
+            };
+
+            var promptSurface = new AbsoluteLayout
+            {
+                WidthRequest = 320,
+                HeightRequest = 170,
+                Padding = new Thickness(0, 10, 0, 0),
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                InputTransparent = true
+            };
+
+            AbsoluteLayout.SetLayoutBounds(_complexFirstArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexFirstArrowPath);
+            AbsoluteLayout.SetLayoutBounds(_complexSecondArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexSecondArrowPath);
+            AbsoluteLayout.SetLayoutBounds(_complexTotalArrowPath, new Rect(0, 0, 320, 170));
+            promptSurface.Children.Add(_complexTotalArrowPath);
+
+            AbsoluteLayout.SetLayoutBounds(_txtAddend1, new Rect(19, 119, 50, 25));
+            promptSurface.Children.Add(_txtAddend1);
+            AbsoluteLayout.SetLayoutBounds(_txtAddend2, new Rect(86, 61, 50, 25));
+            promptSurface.Children.Add(_txtAddend2);
+            AbsoluteLayout.SetLayoutBounds(_txtSum, new Rect(134, 119, 50, 25));
+            promptSurface.Children.Add(_txtSum);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexAddend3, new Rect(201, 61, 50, 25));
+            promptSurface.Children.Add(_txtComplexAddend3);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexSum2, new Rect(250, 119, 50, 25));
+            promptSurface.Children.Add(_txtComplexSum2);
+            AbsoluteLayout.SetLayoutBounds(_txtComplexTotalDistance, new Rect(134, 0, 50, 25));
+            promptSurface.Children.Add(_txtComplexTotalDistance);
+
+            return new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                Spacing = 0,
+                Margin = new Thickness(0, 2, 0, 8),
                 Children = { promptSurface }
             };
         }
@@ -3266,26 +4047,105 @@ namespace GestureSample.Views.Tests
             if (_keyboardArrowPromptView == null || _gamePlay is not BitArrayGamePlay arrowPromptGamePlay)
                 return;
 
-            _keyboardArrowPromptView.IsVisible = arrowPromptGamePlay.HasArrowLabelPrompt;
+            _keyboardArrowPromptView.IsVisible = arrowPromptGamePlay.HasArrowLabelPrompt || IsActiveArrowKeyboardQuestion;
             if (!arrowPromptGamePlay.HasArrowLabelPrompt)
                 return;
 
             ResetArrowLabelPromptEntryColors();
 
             ArrowLabelExerciseMode mode = arrowPromptGamePlay.CurrentArrowLabelExerciseMode;
+            MissingValueTargetFlags missingTarget = arrowPromptGamePlay.CurrentArrowLabelMissingTarget;
             bool revealCorrectResponse = _gamePlay.Status == Statement.True && UsesArrowCorrectResponseFeedback();
+            RefreshSimpleKeyboardArrowPromptPath(mode);
 
-            _txtAddend1.Text = mode == ArrowLabelExerciseMode.EndAndLengthWithMissingStart && !revealCorrectResponse
+            _txtAddend1.Text = missingTarget == MissingValueTargetFlags.Addend1 && !revealCorrectResponse
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelAddend1Value.ToString();
 
-            _txtAddend2.Text = mode == ArrowLabelExerciseMode.StartAndEndWithMissingLength && !revealCorrectResponse
+            _txtAddend2.Text = missingTarget == MissingValueTargetFlags.Addend2 && !revealCorrectResponse
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelAddend2Value?.ToString() ?? string.Empty;
 
-            _txtSum.Text = (mode == ArrowLabelExerciseMode.StartAndLength || mode == ArrowLabelExerciseMode.OrdinalStartAndLength) && !revealCorrectResponse
+            _txtSum.Text = missingTarget == MissingValueTargetFlags.Sum && !revealCorrectResponse
                 ? string.Empty
                 : arrowPromptGamePlay.ArrowLabelSumValue.ToString();
+
+            RefreshComplexKeyboardArrowPromptView(arrowPromptGamePlay, mode, missingTarget, revealCorrectResponse);
+        }
+
+        private void RefreshSimpleKeyboardArrowPromptPath(ArrowLabelExerciseMode mode)
+        {
+            if (_keyboardArrowPromptPath == null || IsComplexArrowLabelPromptMode(mode))
+                return;
+
+            string pathData = GetArrowLabelPromptPathData();
+            var layout = GetArrowLabelPromptLayout();
+            _keyboardArrowPromptPath.Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(pathData);
+            _keyboardArrowPromptPath.StrokeLineCap = layout.UseRoundedStroke ? PenLineCap.Round : PenLineCap.Flat;
+            _keyboardArrowPromptPath.StrokeLineJoin = layout.UseRoundedStroke ? PenLineJoin.Round : PenLineJoin.Miter;
+            AbsoluteLayout.SetLayoutBounds(_keyboardArrowPromptPath, layout.PathBounds);
+
+            if (_txtAddend1 != null)
+                AbsoluteLayout.SetLayoutBounds(_txtAddend1, layout.Addend1Bounds);
+            if (_txtAddend2 != null)
+                AbsoluteLayout.SetLayoutBounds(_txtAddend2, layout.Addend2Bounds);
+            if (_txtSum != null)
+                AbsoluteLayout.SetLayoutBounds(_txtSum, layout.SumBounds);
+        }
+
+        private void RefreshComplexKeyboardArrowPromptView(
+            BitArrayGamePlay arrowPromptGamePlay,
+            ArrowLabelExerciseMode mode,
+            MissingValueTargetFlags missingTarget,
+            bool revealCorrectResponse)
+        {
+            if (!IsComplexArrowLabelPromptMode(mode) ||
+                _txtComplexAddend3 == null ||
+                _txtComplexSum2 == null ||
+                _txtComplexTotalDistance == null)
+            {
+                return;
+            }
+
+            int start = arrowPromptGamePlay.ArrowLabelAddend1Value;
+            int end = arrowPromptGamePlay.ArrowLabelSumValue;
+            int? middle = arrowPromptGamePlay.ArrowLabelAddend2Value;
+            bool showBreakdown = ShouldShowComplexArrowBreakdown();
+
+            if (_complexFirstArrowPath != null) _complexFirstArrowPath.IsVisible = showBreakdown;
+            if (_complexSecondArrowPath != null) _complexSecondArrowPath.IsVisible = showBreakdown;
+            if (_txtAddend2 != null) _txtAddend2.IsVisible = showBreakdown;
+            if (_txtSum != null) _txtSum.IsVisible = showBreakdown;
+            if (_txtComplexAddend3 != null) _txtComplexAddend3.IsVisible = showBreakdown;
+
+            _txtComplexTotalDistance.Text = missingTarget == MissingValueTargetFlags.TotalDistance && !revealCorrectResponse
+                ? string.Empty
+                : arrowPromptGamePlay.ArrowLabelDistanceValue.ToString();
+
+            bool requireFilledBreakdown =
+                _config.KeyboardConfig?.ArrowLabelRetryMode == ArrowLabelRetryMode.RevealComplexThroughTen &&
+                _isComplexThroughTenBreakdownVisible &&
+                !revealCorrectResponse;
+            bool shouldPrefillSmallDistances = revealCorrectResponse ||
+                (_config.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.None &&
+                 !_isComplexThroughTenBreakdownVisible);
+
+            if (showBreakdown && middle.HasValue)
+            {
+                _txtAddend2.Text = requireFilledBreakdown || !shouldPrefillSmallDistances ? string.Empty : (middle.Value - start).ToString();
+                _txtSum.Text = middle.Value.ToString();
+                _txtComplexAddend3.Text = requireFilledBreakdown || !shouldPrefillSmallDistances ? string.Empty : (end - middle.Value).ToString();
+            }
+            else
+            {
+                _txtComplexAddend3.Text = string.Empty;
+            }
+
+            _txtComplexSum2.Text = missingTarget == MissingValueTargetFlags.Sum && !revealCorrectResponse
+                ? string.Empty
+                : end.ToString();
+
+            RefreshNumericEntryAppearance();
         }
 
         private string GetArrowLabelPromptPathData()
@@ -3294,8 +4154,16 @@ namespace GestureSample.Views.Tests
 
             return mode switch
             {
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    "M 70,72 L 70,36 M 56,50 L 70,36 L 84,50 " +
+                    "M 86,36 L 136,36 M 122,22 L 136,36 L 122,50 " +
+                    "M 150,36 L 186,36 L 186,72 M 172,58 L 186,72 L 200,58",
+                ArrowLabelExerciseMode.ComplexLongDistance =>
+                    "M 70,72 L 70,36 M 56,50 L 70,36 L 84,50 " +
+                    "M 86,36 L 136,36 M 122,22 L 136,36 L 122,50 " +
+                    "M 150,36 L 186,36 L 186,72 M 172,58 L 186,72 L 200,58",
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart =>
-                    "M 195,76 L 195,28 L 37,28 M 55,14 L 37,28 L 55,42",
+                    "M 218,72 L 218,28 L 107,28 M 123,14 L 107,28 L 123,42",
                 ArrowLabelExerciseMode.OrdinalStartAndLength =>
                     "M 60,76 L 60,52 A 22,22 0 0 1 80,30 L 118,30 L 100,14 M 118,30 L 100,46",
                 _ =>
@@ -3309,11 +4177,23 @@ namespace GestureSample.Views.Tests
 
             return mode switch
             {
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen => (
+                    new Rect(14, 10, 230, 88),
+                    new Rect(35, 64, 50, 25),
+                    new Rect(102, 0, 58, 25),
+                    new Rect(160, 64, 50, 25),
+                    false),
+                ArrowLabelExerciseMode.ComplexLongDistance => (
+                    new Rect(14, 10, 230, 88),
+                    new Rect(35, 64, 50, 25),
+                    new Rect(102, 0, 58, 25),
+                    new Rect(160, 64, 50, 25),
+                    false),
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart => (
-                    new Rect(27, 10, 220, 88),
-                    new Rect(55, 64, 50, 25),
-                    new Rect(130, 0, 50, 25),
-                    new Rect(175, 64, 50, 25),
+                    new Rect(-16, 10, 220, 88),
+                    new Rect(41, 64, 50, 25),
+                    new Rect(110, 0, 50, 25),
+                    new Rect(154, 64, 50, 25),
                     false),
                 ArrowLabelExerciseMode.OrdinalStartAndLength => (
                     new Rect(12, 8, 220, 88),
@@ -4220,12 +5100,14 @@ namespace GestureSample.Views.Tests
                 }
 
                 // Always host the keyboard inside an overlay host so we can run tutorials on-demand
-                if (!_config.KeyboardConfig.HideMainKeyboard)
+                if (ShouldHostMainKeyboard)
                 {
                     _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
+                    _taskMainHost.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
                     grid.Add(_taskMainHost);
                     Grid.SetRow(_taskMainHost, 2);
                     View keyboardControlBar = BuildKeyboardControlBar();
+                    keyboardControlBar.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
                     grid.Add(keyboardControlBar);
                     Grid.SetRow(keyboardControlBar, 1);
                 }
@@ -4309,7 +5191,8 @@ namespace GestureSample.Views.Tests
                 };
 
                 // init button comes from the keyboard now
-                if (_pianoKeyboard is PianoKeyboard pk && pk.BtnInit != null)
+                if (!_config.KeyboardConfig.HideMainKeyboard &&
+                    _pianoKeyboard is PianoKeyboard pk && pk.BtnInit != null)
                 {
                     pk.BtnInit.WidthRequest = 34;
                     pk.BtnInit.HeightRequest = 34;
@@ -4462,7 +5345,15 @@ namespace GestureSample.Views.Tests
                 if (rightOverlayButtons.Children.Count > 0)
                     overlayButtons.Add(rightOverlayButtons, 2, 0);
 
-                _taskMainHost.Children.Add(overlayButtons);
+                if (_taskMainHost != null)
+                {
+                    _taskMainHost.Children.Add(overlayButtons);
+                }
+                else if (!_config.KeyboardConfig.HideMainKeyboard)
+                {
+                    grid.Add(overlayButtons);
+                    Grid.SetRow(overlayButtons, 2);
+                }
 
                 
                    

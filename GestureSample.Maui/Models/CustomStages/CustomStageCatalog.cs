@@ -80,6 +80,7 @@ namespace GestureSample.Maui.Models.CustomStages
                         SyncType = SyncType.Sync,
                         IsArrow = true,
                         SecondsPressingToAnswer = 2,
+                        ArrowDirectionMode = ArrowDirectionMode.LeftToRight,
                         AllowedArrowPromptKinds = ArrowPromptKindFlags.OnKeyboard,
                         AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
                         SpecialArrowMissingTargets = MissingValueTargetFlags.Sum,
@@ -161,6 +162,23 @@ namespace GestureSample.Maui.Models.CustomStages
                 case CustomStageKind.Arrow:
                     config.UIQuestionType = UIQuestionType.OnlyKeyboard;
                     config.KeyboardConfig ??= new KeyboardConfig();
+                    if (config.KeyboardConfig.ArrowDirectionMode == ArrowDirectionMode.Auto)
+                    {
+                        config.KeyboardConfig.ArrowDirectionMode = config.QuestionOrder switch
+                        {
+                            QuestionOrder.ToLeft => ArrowDirectionMode.RightToLeft,
+                            QuestionOrder.BackAndForth => ArrowDirectionMode.Alternating,
+                            QuestionOrder.Random => ArrowDirectionMode.Random,
+                            _ => ArrowDirectionMode.LeftToRight
+                        };
+                    }
+                    config.QuestionOrder = config.KeyboardConfig.ArrowDirectionMode switch
+                    {
+                        ArrowDirectionMode.RightToLeft => QuestionOrder.ToLeft,
+                        ArrowDirectionMode.Alternating => QuestionOrder.BackAndForth,
+                        ArrowDirectionMode.Random => QuestionOrder.Random,
+                        _ => QuestionOrder.FromLeft
+                    };
                     if (config.KeyboardConfig.AllowedArrowPromptKinds == ArrowPromptKindFlags.None)
                         config.KeyboardConfig.AllowedArrowPromptKinds = config.KeyboardConfig.ArrowLabelExerciseMode == ArrowLabelExerciseMode.None
                             ? ArrowPromptKindFlags.OnKeyboard
@@ -216,10 +234,34 @@ namespace GestureSample.Maui.Models.CustomStages
                 CustomStageKind.PPWScheme =>
                     $"{config.OperationList.FirstOrDefault().ToDString()}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.UIQuestionType}",
                 CustomStageKind.Arrow =>
-                    $"{config.QuestionOrder}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.KeyboardConfig?.SyncType}  {config.KeyboardConfig?.AllowedArrowPromptKinds}  {config.KeyboardConfig?.AllowedArrowRouteKinds}  {config.KeyboardConfig?.ArrowFeedbackMode}",
+                    $"{config.KeyboardConfig?.ArrowDirectionMode}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.KeyboardConfig?.SyncType}  {DescribeArrowPromptFamily(config.KeyboardConfig)}  {DescribeArrowRouteFamily(config.KeyboardConfig)}  {config.KeyboardConfig?.ArrowFeedbackMode}",
                 CustomStageKind.Logical =>
                     $"{config.OperationList.FirstOrDefault().ToDString()}  {config.KeyboardConfig?.SyncType}  {config.KeyboardConfig?.KeysInRow} keys",
                 _ => stage.Name
+            };
+        }
+
+        private static string DescribeArrowPromptFamily(KeyboardConfig? keyboardConfig)
+        {
+            ArrowPromptKindFlags flags = keyboardConfig?.AllowedArrowPromptKinds ?? ArrowPromptKindFlags.None;
+            return flags switch
+            {
+                ArrowPromptKindFlags.OnKeyboard => "On keyboard",
+                ArrowPromptKindFlags.SpecialPrompt => "Special prompt",
+                ArrowPromptKindFlags.OnKeyboard | ArrowPromptKindFlags.SpecialPrompt => "Mixed prompt",
+                _ => "On keyboard"
+            };
+        }
+
+        private static string DescribeArrowRouteFamily(KeyboardConfig? keyboardConfig)
+        {
+            ArrowRouteKindFlags flags = keyboardConfig?.AllowedArrowRouteKinds ?? ArrowRouteKindFlags.None;
+            return flags switch
+            {
+                ArrowRouteKindFlags.Cardinal => "Cardinal",
+                ArrowRouteKindFlags.Ordinal => "Ordinal",
+                ArrowRouteKindFlags.Cardinal | ArrowRouteKindFlags.Ordinal => "Mixed route",
+                _ => "Cardinal"
             };
         }
     }

@@ -302,7 +302,9 @@
         StartAndLength = 1,
         StartAndEndWithMissingLength = 2,
         EndAndLengthWithMissingStart = 3,
-        OrdinalStartAndLength = 4
+        OrdinalStartAndLength = 4,
+        ComplexBridgeToNextTen = 5,
+        ComplexLongDistance = 6
     }
 
     [Flags]
@@ -325,6 +327,22 @@
     {
         Icon = 0,
         CorrectResponse = 1
+    }
+
+    public enum ArrowDirectionMode
+    {
+        Auto = 0,
+        LeftToRight = 1,
+        RightToLeft = 2,
+        Alternating = 3,
+        Random = 4
+    }
+
+    public enum ArrowLabelRetryMode
+    {
+        None = 0,
+        ShowKeyboardHelp = 1,
+        RevealComplexThroughTen = 2
     }
 
     public enum KeyLabelVerticalPosition
@@ -472,10 +490,17 @@
         public bool AllowSumHeaderVisibilityToggle { get; set; } = false;
         public GroupByColorLayoutMode GroupByColorLayoutMode { get; set; } = GroupByColorLayoutMode.Free;
         public ArrowLabelExerciseMode ArrowLabelExerciseMode { get; set; } = ArrowLabelExerciseMode.None;
+        public int MaxArrowLabelDistance { get; set; } = 0;
+        public bool EnableArrowLabelRetry { get; set; } = false;
+        public ArrowLabelRetryMode ArrowLabelRetryMode { get; set; } = ArrowLabelRetryMode.None;
+        public bool UseKeyboardQuestionAfterArrowLabelHelp { get; set; } = false;
+        public ArrowLabelExerciseMode ArrowLabelRetryAlternateMode { get; set; } = ArrowLabelExerciseMode.None;
+        public MissingValueTargetFlags SpecialArrowRetryAlternateTargets { get; set; } = MissingValueTargetFlags.None;
         public ArrowPromptKindFlags AllowedArrowPromptKinds { get; set; } = ArrowPromptKindFlags.None;
         public ArrowRouteKindFlags AllowedArrowRouteKinds { get; set; } = ArrowRouteKindFlags.None;
         public MissingValueTargetFlags SpecialArrowMissingTargets { get; set; } = MissingValueTargetFlags.None;
         public ArrowFeedbackMode ArrowFeedbackMode { get; set; } = ArrowFeedbackMode.Icon;
+        public ArrowDirectionMode ArrowDirectionMode { get; set; } = ArrowDirectionMode.Auto;
         public KeyLabelVerticalPosition KeyLabelVerticalPosition { get; set; } = KeyLabelVerticalPosition.Middle;
         public int GroupByColorColorCount { get; set; } = 2;
         public int[]? GroupByColorCounts { get; set; }

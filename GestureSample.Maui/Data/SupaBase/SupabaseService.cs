@@ -14,11 +14,25 @@ using EnumsNET;
 using Supabase.Postgrest.Attributes;
 using static Supabase.Postgrest.Constants;
 using System.Threading;
+using Microsoft.Maui.Networking;
 
 namespace GestureSample.Maui.Data.SupaBase
 {
     public static class SupabaseService
     {
+        public sealed class SyncOfflineException : Exception
+        {
+            public SyncOfflineException()
+                : base("Sync skipped: internet connection is offline.")
+            {
+            }
+
+            public SyncOfflineException(Exception innerException)
+                : base("Sync skipped: internet connection is offline.", innerException)
+            {
+            }
+        }
+
         private sealed class LocalRelatedSyncBatch
         {
             public Dictionary<Guid, List<SQLite.QuestionAnswer>> QuestionAnswersByGameId { get; init; } = new();
@@ -49,6 +63,17 @@ namespace GestureSample.Maui.Data.SupaBase
         private static void LogError(string message, Exception ex)
         {
             Console.WriteLine($"[ERROR] {DateTime.Now}: {message} - Exception: {ex.Message}");
+        }
+
+        private static bool IsOfflineException(Exception ex)
+        {
+            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+                return true;
+
+            string message = ex.Message ?? string.Empty;
+            return message.Contains("offline", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("internet connection", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("network connection", StringComparison.OrdinalIgnoreCase);
         }
 
         #endregion
@@ -245,6 +270,12 @@ namespace GestureSample.Maui.Data.SupaBase
             }
             catch (Exception ex)
             {
+                if (ex is SyncOfflineException || IsOfflineException(ex))
+                {
+                    LogInfo("SyncUserDataAsync skipped because the internet connection is offline.");
+                    throw ex is SyncOfflineException ? ex : new SyncOfflineException(ex);
+                }
+
                 LogError("Error in SyncUserDataAsync", ex);
                 throw;
             }
@@ -334,6 +365,12 @@ namespace GestureSample.Maui.Data.SupaBase
             }
             catch (Exception ex)
             {
+                if (ex is SyncOfflineException || IsOfflineException(ex))
+                {
+                    LogInfo("SyncUnsyncedGamesAndRelatedDataAsync skipped because the internet connection is offline.");
+                    throw ex is SyncOfflineException ? ex : new SyncOfflineException(ex);
+                }
+
                 LogError("Unexpected error in SyncUnsyncedGamesAndRelatedDataAsync", ex);
                 throw;
             }
