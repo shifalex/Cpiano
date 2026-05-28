@@ -406,14 +406,15 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null)
+        protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null, bool refreshCurrentQuestion = false)
         {
             return new ExerciseCheckResult
             {
                 IsCorrect = isCorrect,
                 IsWrongInput = isWrongInput,
                 Status = _status,
-                Completion = completion
+                Completion = completion,
+                RefreshCurrentQuestion = refreshCurrentQuestion
             };
         }
 
@@ -1390,6 +1391,15 @@ namespace GestureSample.Maui.Models
                         }
                     } 
                     while (!PossibleTriads.Contains(new PPWObject(factors[0], factors[1], factors[2])));
+                    return factors;
+                }
+
+                if (PossibleTriads.Count == 0)
+                {
+                    PPWObject fallbackTriad = Config.DefaultTriad;
+                    factors[0] = fallbackTriad.Addend1;
+                    factors[1] = fallbackTriad.Addend2;
+                    factors[2] = fallbackTriad.Sum;
                     return factors;
                 }
 

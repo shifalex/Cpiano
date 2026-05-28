@@ -15,6 +15,20 @@ namespace GestureSample.Maui.Views.CustomStages
             public override string ToString() => Label;
         }
 
+        private enum ArrowPromptFamily
+        {
+            OnKeyboardOnly,
+            SpecialOnly,
+            Mixed
+        }
+
+        private enum ArrowRouteFamily
+        {
+            CardinalOnly,
+            OrdinalOnly,
+            Mixed
+        }
+
         private readonly CustomStageKind _kind;
         private readonly CustomStageDefinitionRepository _stageRepository;
         private readonly Entry _nameEntry = CreateEntry("Stage name");
@@ -30,9 +44,11 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Picker _uiQuestionPicker = new();
         private readonly Picker _variableTypesPicker = new();
         private readonly Picker _numericInputPicker = new();
-        private readonly Picker _questionOrderPicker = new();
         private readonly Picker _syncTypePicker = new();
         private readonly Picker _arrowFeedbackPicker = new();
+        private readonly Picker _arrowDirectionPicker = new();
+        private readonly Picker _arrowPromptFamilyPicker = new();
+        private readonly Picker _arrowRouteFamilyPicker = new();
         private readonly VerticalStackLayout _operationSelectionLayout = new() { Spacing = 6 };
         private readonly Switch _showPrevSwitch = new();
         private readonly Switch _onlyCloseTriadSwitch = new();
@@ -42,10 +58,6 @@ namespace GestureSample.Maui.Views.CustomStages
         private readonly Switch _onlyThroughTenSwitch = new();
         private readonly Switch _dynamicArrowLengthSwitch = new();
         private readonly Switch _showNumbersSwitch = new();
-        private readonly Switch _arrowOnKeyboardPromptSwitch = new();
-        private readonly Switch _arrowSpecialPromptSwitch = new();
-        private readonly Switch _arrowCardinalSwitch = new();
-        private readonly Switch _arrowOrdinalSwitch = new();
         private readonly Switch _arrowMissingStartSwitch = new();
         private readonly Switch _arrowMissingLengthSwitch = new();
         private readonly Switch _arrowMissingEndSwitch = new();
@@ -124,12 +136,37 @@ namespace GestureSample.Maui.Views.CustomStages
             _numericInputPicker.ItemsSource = CreateOptions(
                 new[] { NumericInputMode.AppKeypad, NumericInputMode.SystemKeyboard, NumericInputMode.Auto },
                 value => value.ToString());
-            _questionOrderPicker.ItemsSource = CreateOptions(
-                new[] { QuestionOrder.FromLeft, QuestionOrder.ToLeft, QuestionOrder.BackAndForth, QuestionOrder.Random, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalRight, QuestionOrder.CyclicalMixed },
-                value => value.ToString());
             _syncTypePicker.ItemsSource = CreateOptions(
                 new[] { SyncType.Sync, SyncType.HalfSync, SyncType.Spatial, SyncType.None },
                 value => value.ToString());
+            _arrowDirectionPicker.ItemsSource = CreateOptions(
+                new[] { ArrowDirectionMode.LeftToRight, ArrowDirectionMode.RightToLeft, ArrowDirectionMode.Alternating, ArrowDirectionMode.Random },
+                value => value switch
+                {
+                    ArrowDirectionMode.LeftToRight => "Left to right",
+                    ArrowDirectionMode.RightToLeft => "Right to left",
+                    ArrowDirectionMode.Alternating => "Alternating",
+                    ArrowDirectionMode.Random => "Random",
+                    _ => value.ToString()
+                });
+            _arrowPromptFamilyPicker.ItemsSource = CreateOptions(
+                new[] { ArrowPromptFamily.OnKeyboardOnly, ArrowPromptFamily.SpecialOnly, ArrowPromptFamily.Mixed },
+                value => value switch
+                {
+                    ArrowPromptFamily.OnKeyboardOnly => "On keyboard",
+                    ArrowPromptFamily.SpecialOnly => "Special prompt",
+                    ArrowPromptFamily.Mixed => "Mixed",
+                    _ => value.ToString()
+                });
+            _arrowRouteFamilyPicker.ItemsSource = CreateOptions(
+                new[] { ArrowRouteFamily.CardinalOnly, ArrowRouteFamily.OrdinalOnly, ArrowRouteFamily.Mixed },
+                value => value switch
+                {
+                    ArrowRouteFamily.CardinalOnly => "Cardinal",
+                    ArrowRouteFamily.OrdinalOnly => "Ordinal",
+                    ArrowRouteFamily.Mixed => "Mixed",
+                    _ => value.ToString()
+                });
             _arrowFeedbackPicker.ItemsSource = CreateOptions(
                 new[] { ArrowFeedbackMode.Icon, ArrowFeedbackMode.CorrectResponse },
                 value => value == ArrowFeedbackMode.Icon ? "Icon" : "Correct response");
@@ -178,7 +215,7 @@ namespace GestureSample.Maui.Views.CustomStages
                     Spacing = 10,
                     Children =
                     {
-                        CreateLabeledField("Question order", _questionOrderPicker),
+                        CreateLabeledField("Arrow direction", _arrowDirectionPicker),
                         CreateLabeledField("Sync type", _syncTypePicker),
                         CreateMinMaxRow("From / length", _minAddendEntry, _maxAddendEntry),
                         CreateMinMaxRow("Target sum", _minSumEntry, _maxSumEntry),
@@ -187,11 +224,8 @@ namespace GestureSample.Maui.Views.CustomStages
                         CreateSwitchField("Only through 10", _onlyThroughTenSwitch),
                         CreateSwitchField("Dynamic arrow length", _dynamicArrowLengthSwitch),
                         CreateSwitchField("Show numbers on keys", _showNumbersSwitch),
-                        CreateSectionTitle("Per-question arrow kind"),
-                        CreateSwitchField("On keyboard arrow", _arrowOnKeyboardPromptSwitch),
-                        CreateSwitchField("Special arrow prompt", _arrowSpecialPromptSwitch),
-                        CreateSwitchField("Cardinal route", _arrowCardinalSwitch),
-                        CreateSwitchField("Ordinal route", _arrowOrdinalSwitch),
+                        CreateLabeledField("Prompt family", _arrowPromptFamilyPicker),
+                        CreateLabeledField("Route family", _arrowRouteFamilyPicker),
                         CreateSectionTitle("Special arrow missing value"),
                         CreateSwitchField("Missing start (addend1)", _arrowMissingStartSwitch),
                         CreateSwitchField("Missing length (addend2)", _arrowMissingLengthSwitch),
@@ -318,7 +352,7 @@ namespace GestureSample.Maui.Views.CustomStages
                     };
                     break;
                 case CustomStageKind.Arrow:
-                    config.QuestionOrder = GetPickerValue(_questionOrderPicker, QuestionOrder.FromLeft);
+                    ArrowDirectionMode arrowDirection = GetPickerValue(_arrowDirectionPicker, ArrowDirectionMode.LeftToRight);
                     config.MinAddend = ReadInt(_minAddendEntry, config.MinAddend);
                     config.MaxAddend = ReadInt(_maxAddendEntry, config.MaxAddend);
                     config.MinSum = ReadInt(_minSumEntry, config.MinSum);
@@ -327,23 +361,39 @@ namespace GestureSample.Maui.Views.CustomStages
                     config.OnlyThrougTen = _onlyThroughTenSwitch.IsToggled;
                     config.KeyboardConfig ??= new KeyboardConfig();
                     config.KeyboardConfig.SyncType = GetPickerValue(_syncTypePicker, SyncType.Sync);
-                    config.KeyboardConfig.IsArrow = _arrowOnKeyboardPromptSwitch.IsToggled;
+                    config.KeyboardConfig.ArrowDirectionMode = arrowDirection;
+                    config.QuestionOrder = arrowDirection switch
+                    {
+                        ArrowDirectionMode.RightToLeft => QuestionOrder.ToLeft,
+                        ArrowDirectionMode.Alternating => QuestionOrder.BackAndForth,
+                        ArrowDirectionMode.Random => QuestionOrder.Random,
+                        _ => QuestionOrder.FromLeft
+                    };
                     config.KeyboardConfig.SecondsPressingToAnswer = ReadInt(_secondsToAnswerEntry, 2);
                     config.KeyboardConfig.IsArrowLengthDynamic = _dynamicArrowLengthSwitch.IsToggled;
                     config.KeyboardConfig.ShowNumbersOnKeys = _showNumbersSwitch.IsToggled;
                     config.KeyboardConfig.ArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
-                    config.KeyboardConfig.AllowedArrowPromptKinds =
-                        (_arrowOnKeyboardPromptSwitch.IsToggled ? ArrowPromptKindFlags.OnKeyboard : ArrowPromptKindFlags.None) |
-                        (_arrowSpecialPromptSwitch.IsToggled ? ArrowPromptKindFlags.SpecialPrompt : ArrowPromptKindFlags.None);
-                    config.KeyboardConfig.AllowedArrowRouteKinds =
-                        (_arrowCardinalSwitch.IsToggled ? ArrowRouteKindFlags.Cardinal : ArrowRouteKindFlags.None) |
-                        (_arrowOrdinalSwitch.IsToggled ? ArrowRouteKindFlags.Ordinal : ArrowRouteKindFlags.None);
+                    ArrowPromptFamily promptFamily = GetPickerValue(_arrowPromptFamilyPicker, ArrowPromptFamily.OnKeyboardOnly);
+                    config.KeyboardConfig.AllowedArrowPromptKinds = promptFamily switch
+                    {
+                        ArrowPromptFamily.SpecialOnly => ArrowPromptKindFlags.SpecialPrompt,
+                        ArrowPromptFamily.Mixed => ArrowPromptKindFlags.OnKeyboard | ArrowPromptKindFlags.SpecialPrompt,
+                        _ => ArrowPromptKindFlags.OnKeyboard
+                    };
+                    ArrowRouteFamily routeFamily = GetPickerValue(_arrowRouteFamilyPicker, ArrowRouteFamily.CardinalOnly);
+                    config.KeyboardConfig.AllowedArrowRouteKinds = routeFamily switch
+                    {
+                        ArrowRouteFamily.OrdinalOnly => ArrowRouteKindFlags.Ordinal,
+                        ArrowRouteFamily.Mixed => ArrowRouteKindFlags.Cardinal | ArrowRouteKindFlags.Ordinal,
+                        _ => ArrowRouteKindFlags.Cardinal
+                    };
                     config.KeyboardConfig.SpecialArrowMissingTargets =
                         (_arrowMissingStartSwitch.IsToggled ? MissingValueTargetFlags.Addend1 : MissingValueTargetFlags.None) |
                         (_arrowMissingLengthSwitch.IsToggled ? MissingValueTargetFlags.Addend2 : MissingValueTargetFlags.None) |
                         (_arrowMissingEndSwitch.IsToggled ? MissingValueTargetFlags.Sum : MissingValueTargetFlags.None);
                     config.KeyboardConfig.ArrowFeedbackMode = GetPickerValue(_arrowFeedbackPicker, ArrowFeedbackMode.Icon);
                     config.KeyboardConfig.IsHelpNeeded = _isHelpNeededSwitch.IsToggled;
+                    config.KeyboardConfig.IsArrow = config.KeyboardConfig.AllowedArrowPromptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard);
                     break;
                 case CustomStageKind.Logical:
                     config.OperationList = GetSelectedOperations(CustomStageKind.Logical);
@@ -466,7 +516,18 @@ namespace GestureSample.Maui.Views.CustomStages
                     TryApplySuggestedWeightedRange(forceApply: false);
                     break;
                 case CustomStageKind.Arrow:
-                    SetPickerValue(_questionOrderPicker, config.QuestionOrder);
+                    SetPickerValue(_arrowDirectionPicker, config.KeyboardConfig?.ArrowDirectionMode switch
+                    {
+                        ArrowDirectionMode.LeftToRight or ArrowDirectionMode.RightToLeft or ArrowDirectionMode.Alternating or ArrowDirectionMode.Random
+                            => config.KeyboardConfig.ArrowDirectionMode,
+                        _ => config.QuestionOrder switch
+                        {
+                            QuestionOrder.ToLeft => ArrowDirectionMode.RightToLeft,
+                            QuestionOrder.BackAndForth => ArrowDirectionMode.Alternating,
+                            QuestionOrder.Random => ArrowDirectionMode.Random,
+                            _ => ArrowDirectionMode.LeftToRight
+                        }
+                    });
                     SetPickerValue(_syncTypePicker, config.KeyboardConfig?.SyncType ?? SyncType.Sync);
                     _minAddendEntry.Text = config.MinAddend.ToString();
                     _maxAddendEntry.Text = config.MaxAddend.ToString();
@@ -482,8 +543,12 @@ namespace GestureSample.Maui.Views.CustomStages
                         promptKinds = config.KeyboardConfig?.ArrowLabelExerciseMode == ArrowLabelExerciseMode.None
                             ? ArrowPromptKindFlags.OnKeyboard
                             : ArrowPromptKindFlags.SpecialPrompt;
-                    _arrowOnKeyboardPromptSwitch.IsToggled = promptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard);
-                    _arrowSpecialPromptSwitch.IsToggled = promptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt);
+                    SetPickerValue(_arrowPromptFamilyPicker, promptKinds switch
+                    {
+                        ArrowPromptKindFlags.SpecialPrompt => ArrowPromptFamily.SpecialOnly,
+                        ArrowPromptKindFlags.OnKeyboard | ArrowPromptKindFlags.SpecialPrompt => ArrowPromptFamily.Mixed,
+                        _ => ArrowPromptFamily.OnKeyboardOnly
+                    });
 
                     ArrowRouteKindFlags routeKinds = config.KeyboardConfig?.AllowedArrowRouteKinds ?? ArrowRouteKindFlags.None;
                     if (routeKinds == ArrowRouteKindFlags.None)
@@ -491,8 +556,12 @@ namespace GestureSample.Maui.Views.CustomStages
                                      config.KeyboardConfig?.ArrowType == ArrowType.Rounded
                             ? ArrowRouteKindFlags.Ordinal
                             : ArrowRouteKindFlags.Cardinal;
-                    _arrowCardinalSwitch.IsToggled = routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal);
-                    _arrowOrdinalSwitch.IsToggled = routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal);
+                    SetPickerValue(_arrowRouteFamilyPicker, routeKinds switch
+                    {
+                        ArrowRouteKindFlags.Ordinal => ArrowRouteFamily.OrdinalOnly,
+                        ArrowRouteKindFlags.Cardinal | ArrowRouteKindFlags.Ordinal => ArrowRouteFamily.Mixed,
+                        _ => ArrowRouteFamily.CardinalOnly
+                    });
 
                     MissingValueTargetFlags missingTargets = config.KeyboardConfig?.SpecialArrowMissingTargets ?? MissingValueTargetFlags.None;
                     if (missingTargets == MissingValueTargetFlags.None)

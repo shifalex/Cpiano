@@ -62,6 +62,11 @@ namespace GestureSample.Maui.Handlers
                 LastCompletedAt = DateTime.Now;
                 UpdateState(false, $"Synced {LastCompletedAt:HH:mm}", null);
             }
+            catch (SupabaseService.SyncOfflineException ex)
+            {
+                LastCompletedAt = DateTime.Now;
+                UpdateState(false, "Offline - will sync later", ex.Message);
+            }
             catch (Exception ex)
             {
                 LastCompletedAt = DateTime.Now;

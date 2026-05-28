@@ -47,7 +47,15 @@ namespace GestureSample.Maui.Models
         private int _arrowLabelStartValue;
         private int _arrowLabelEndValue;
         private int _arrowLabelDistance;
+        private int? _arrowLabelMiddleValue;
         private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private ArrowLabelExerciseMode _primaryArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private ArrowLabelExerciseMode _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private MissingValueTargetFlags _activeArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private MissingValueTargetFlags _primaryArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private MissingValueTargetFlags _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private bool _isArrowLabelRetryAlternateActive;
+        private bool _pendingArrowLabelKeyboardQuestion;
         private bool _usesActiveOnKeyboardArrow;
         private ArrowType _activeArrowType = ArrowType.Straight;
         private bool[]? _stagedArrowFirstBits;
@@ -92,6 +100,213 @@ namespace GestureSample.Maui.Models
             return Config?.KeyboardConfig?.ArrowType ?? ArrowType.Straight;
         }
 
+        private static ArrowType GetArrowTypeForPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode == ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? ArrowType.Rounded
+                : ArrowType.Straight;
+        }
+
+        private static ArrowLabelExerciseMode GetPromptModeForMissingTarget(MissingValueTargetFlags target, ArrowRouteKindFlags routeKinds)
+        {
+            if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) && target.HasFlag(MissingValueTargetFlags.Sum))
+                return ArrowLabelExerciseMode.OrdinalStartAndLength;
+
+            if (target.HasFlag(MissingValueTargetFlags.Addend1))
+                return ArrowLabelExerciseMode.EndAndLengthWithMissingStart;
+
+            if (target.HasFlag(MissingValueTargetFlags.Addend2))
+                return ArrowLabelExerciseMode.StartAndEndWithMissingLength;
+
+            return ArrowLabelExerciseMode.StartAndLength;
+        }
+
+        private static MissingValueTargetFlags GetMissingTargetForPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode switch
+            {
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength => MissingValueTargetFlags.Addend2,
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => MissingValueTargetFlags.Addend1,
+                ArrowLabelExerciseMode.None => MissingValueTargetFlags.None,
+                _ => MissingValueTargetFlags.Sum
+            };
+        }
+
+        private MissingValueTargetFlags GetCurrentArrowLabelMissingTarget()
+        {
+            if (SupportsComposedArrowVariants())
+                return _activeArrowLabelMissingTarget == MissingValueTargetFlags.None
+                    ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                    : _activeArrowLabelMissingTarget;
+
+            MissingValueTargetFlags configuredTarget = Config?.ArrowLabelMissingValueTarget ?? MissingValueTargetFlags.None;
+            return configuredTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(GetCurrentArrowLabelExerciseMode())
+                : configuredTarget;
+        }
+
+        private void SetActiveArrowLabelMissingTarget(MissingValueTargetFlags target)
+        {
+            _activeArrowLabelMissingTarget = target;
+            if (Config != null)
+                Config.ArrowLabelMissingValueTarget = target;
+        }
+
+        private ArrowLabelExerciseMode GetArrowLabelRetryAlternateMode()
+        {
+            return Config?.KeyboardConfig?.ArrowLabelRetryAlternateMode ?? ArrowLabelExerciseMode.None;
+        }
+
+        private bool UsesArrowLabelRetry()
+        {
+            return Config?.KeyboardConfig?.EnableArrowLabelRetry == true ||
+                   Config?.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.None;
+        }
+
+        private List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> GetArrowLabelRetryAlternatePrompts()
+        {
+            List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> prompts = new();
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            if (keyboardConfig == null || !UsesArrowLabelRetry())
+                return prompts;
+
+            ArrowRouteKindFlags routeKinds = keyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.None
+                ? ArrowRouteKindFlags.Cardinal
+                : keyboardConfig.AllowedArrowRouteKinds;
+
+            MissingValueTargetFlags retryTargets = keyboardConfig.SpecialArrowRetryAlternateTargets;
+            if (retryTargets != MissingValueTargetFlags.None)
+            {
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Sum))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Sum, routeKinds), MissingValueTargetFlags.Sum));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Addend2))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Addend2, routeKinds), MissingValueTargetFlags.Addend2));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.TotalDistance))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.TotalDistance, routeKinds), MissingValueTargetFlags.TotalDistance));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Addend1))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Addend1, routeKinds), MissingValueTargetFlags.Addend1));
+            }
+
+            ArrowLabelExerciseMode singleAlternateMode = GetArrowLabelRetryAlternateMode();
+            if (singleAlternateMode != ArrowLabelExerciseMode.None)
+                prompts.Add((singleAlternateMode, GetMissingTargetForPromptMode(singleAlternateMode)));
+
+            return prompts
+                .Where(prompt => prompt.Mode != ArrowLabelExerciseMode.None &&
+                                 (prompt.Mode != _primaryArrowLabelExerciseMode ||
+                                  prompt.Target != _primaryArrowLabelMissingTarget))
+                .Distinct()
+                .ToList();
+        }
+
+        private void CapturePrimaryArrowLabelPromptMode()
+        {
+            _primaryArrowLabelExerciseMode = GetCurrentArrowLabelExerciseMode();
+            _primaryArrowLabelMissingTarget = GetCurrentArrowLabelMissingTarget();
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _isArrowLabelRetryAlternateActive = false;
+        }
+
+        private void QueueArrowLabelPrompt(ArrowLabelExerciseMode mode, MissingValueTargetFlags target)
+        {
+            _pendingArrowLabelExerciseMode = mode;
+            _pendingArrowLabelMissingTarget = target;
+        }
+
+        public bool ApplyPendingArrowLabelPromptMode()
+        {
+            if (_pendingArrowLabelExerciseMode == ArrowLabelExerciseMode.None &&
+                !_pendingArrowLabelKeyboardQuestion)
+            {
+                return false;
+            }
+
+            if (_pendingArrowLabelKeyboardQuestion)
+            {
+                _pendingArrowLabelKeyboardQuestion = false;
+                _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+                _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+                _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.None);
+                _usesActiveOnKeyboardArrow = true;
+                _activeArrowType = ArrowType.Straight;
+                _isArrowLabelRetryAlternateActive = true;
+                return true;
+            }
+
+            _activeArrowLabelExerciseMode = _pendingArrowLabelExerciseMode;
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            SetActiveArrowLabelMissingTarget(_pendingArrowLabelMissingTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : _pendingArrowLabelMissingTarget);
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _usesActiveOnKeyboardArrow = false;
+            _activeArrowType = GetArrowTypeForPromptMode(_activeArrowLabelExerciseMode);
+            _isArrowLabelRetryAlternateActive =
+                _activeArrowLabelExerciseMode != _primaryArrowLabelExerciseMode ||
+                GetCurrentArrowLabelMissingTarget() != _primaryArrowLabelMissingTarget;
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+            return true;
+        }
+
+        private bool TryQueueArrowLabelRetryAlternatePrompt()
+        {
+            if (!UsesArrowLabelRetry() ||
+                Config?.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.None)
+                return false;
+
+            if (_isArrowLabelRetryAlternateActive)
+            {
+                return false;
+            }
+
+            List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> alternatePrompts = GetArrowLabelRetryAlternatePrompts();
+            if (alternatePrompts.Count == 0)
+                return false;
+
+            (ArrowLabelExerciseMode alternateMode, MissingValueTargetFlags alternateTarget) =
+                alternatePrompts[Random.Shared.Next(alternatePrompts.Count)];
+            QueueArrowLabelPrompt(alternateMode, alternateTarget);
+            return true;
+        }
+
+        private bool TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess()
+        {
+            if (!UsesArrowLabelRetry() ||
+                !_isArrowLabelRetryAlternateActive ||
+                _primaryArrowLabelExerciseMode == ArrowLabelExerciseMode.None)
+            {
+                return false;
+            }
+
+            QueueArrowLabelPrompt(_primaryArrowLabelExerciseMode, _primaryArrowLabelMissingTarget);
+            return true;
+        }
+
+        public bool QueueArrowLabelRetryKeyboardQuestion()
+        {
+            if (!UsesArrowLabelRetry() ||
+                _isArrowLabelRetryAlternateActive ||
+                _primaryArrowLabelExerciseMode == ArrowLabelExerciseMode.None)
+            {
+                return false;
+            }
+
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _pendingArrowLabelKeyboardQuestion = true;
+            return true;
+        }
+
+        public bool IsActiveOnKeyboardArrowQuestion => UsesOnKeyboardArrowExercise();
+
+        public void HideCurrentArrowLabelMissingValue()
+        {
+            if (UsesArrowLabelExercise())
+                ApplyArrowLabelPpwState(revealMissingValue: false);
+        }
+
         private bool UsesOnKeyboardArrowExercise()
         {
             if (SupportsComposedArrowVariants())
@@ -106,13 +321,18 @@ namespace GestureSample.Maui.Models
                 ArrowLabelExerciseMode.StartAndLength or
                 ArrowLabelExerciseMode.StartAndEndWithMissingLength or
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
-                ArrowLabelExerciseMode.OrdinalStartAndLength;
+                ArrowLabelExerciseMode.OrdinalStartAndLength or
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance;
         }
 
         private void ResolveCurrentArrowVariant(Random r)
         {
             KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
             _activeArrowLabelExerciseMode = keyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+            SetActiveArrowLabelMissingTarget(Config?.ArrowLabelMissingValueTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : Config?.ArrowLabelMissingValueTarget ?? MissingValueTargetFlags.None);
             _usesActiveOnKeyboardArrow = keyboardConfig?.IsArrow == true;
             _activeArrowType = keyboardConfig?.ArrowType ?? ArrowType.Straight;
 
@@ -129,46 +349,66 @@ namespace GestureSample.Maui.Models
                 ? MissingValueTargetFlags.Sum
                 : keyboardConfig.SpecialArrowMissingTargets;
 
-            List<(bool UseOnKeyboard, ArrowLabelExerciseMode LabelMode, ArrowType ArrowType)> variants = new();
+            List<(bool UseOnKeyboard, ArrowLabelExerciseMode LabelMode, MissingValueTargetFlags MissingTarget, ArrowType ArrowType)> variants = new();
 
             if (promptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard))
             {
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
-                    variants.Add((true, ArrowLabelExerciseMode.None, ArrowType.Straight));
+                    variants.Add((true, ArrowLabelExerciseMode.None, MissingValueTargetFlags.None, ArrowType.Straight));
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal))
-                    variants.Add((true, ArrowLabelExerciseMode.None, ArrowType.Rounded));
+                    variants.Add((true, ArrowLabelExerciseMode.None, MissingValueTargetFlags.None, ArrowType.Rounded));
             }
 
             if (promptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt))
             {
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
                 {
+                    bool useConfiguredComplexPrompt =
+                        keyboardConfig.ArrowLabelExerciseMode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                            ArrowLabelExerciseMode.ComplexLongDistance;
+                    ArrowLabelExerciseMode distancePromptMode = useConfiguredComplexPrompt
+                        ? keyboardConfig.ArrowLabelExerciseMode
+                        : ArrowLabelExerciseMode.StartAndLength;
+                    ArrowLabelExerciseMode endPromptMode = useConfiguredComplexPrompt
+                        ? keyboardConfig.ArrowLabelExerciseMode
+                        : ArrowLabelExerciseMode.StartAndLength;
+
                     if (missingTargets.HasFlag(MissingValueTargetFlags.Sum))
-                        variants.Add((false, ArrowLabelExerciseMode.StartAndLength, ArrowType.Straight));
+                        variants.Add((false, endPromptMode, MissingValueTargetFlags.Sum, ArrowType.Straight));
                     if (missingTargets.HasFlag(MissingValueTargetFlags.Addend2))
-                        variants.Add((false, ArrowLabelExerciseMode.StartAndEndWithMissingLength, ArrowType.Straight));
+                    {
+                        variants.Add((false, useConfiguredComplexPrompt
+                            ? keyboardConfig.ArrowLabelExerciseMode
+                            : ArrowLabelExerciseMode.StartAndEndWithMissingLength, MissingValueTargetFlags.Addend2, ArrowType.Straight));
+                        if (!useConfiguredComplexPrompt)
+                            variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend2, ArrowType.Straight));
+                    }
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.TotalDistance))
+                        variants.Add((false, distancePromptMode, MissingValueTargetFlags.TotalDistance, ArrowType.Straight));
                     if (missingTargets.HasFlag(MissingValueTargetFlags.Addend1))
-                        variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, ArrowType.Straight));
+                        variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend1, ArrowType.Straight));
                 }
 
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) &&
                     missingTargets.HasFlag(MissingValueTargetFlags.Sum))
                 {
-                    variants.Add((false, ArrowLabelExerciseMode.OrdinalStartAndLength, ArrowType.Rounded));
+                    variants.Add((false, ArrowLabelExerciseMode.OrdinalStartAndLength, MissingValueTargetFlags.Sum, ArrowType.Rounded));
                 }
             }
 
             if (variants.Count == 0)
             {
                 _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength;
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.Sum);
                 _usesActiveOnKeyboardArrow = false;
                 _activeArrowType = ArrowType.Straight;
                 return;
             }
 
-            (bool useOnKeyboard, ArrowLabelExerciseMode labelMode, ArrowType arrowType) = variants[r.Next(variants.Count)];
+            (bool useOnKeyboard, ArrowLabelExerciseMode labelMode, MissingValueTargetFlags missingTarget, ArrowType arrowType) = variants[r.Next(variants.Count)];
             _usesActiveOnKeyboardArrow = useOnKeyboard;
             _activeArrowLabelExerciseMode = useOnKeyboard ? ArrowLabelExerciseMode.None : labelMode;
+            SetActiveArrowLabelMissingTarget(useOnKeyboard ? MissingValueTargetFlags.None : missingTarget);
             _activeArrowType = arrowType;
         }
 
@@ -184,16 +424,96 @@ namespace GestureSample.Maui.Models
             return withoutZero ? value - 1 : value;
         }
 
+        private int GetMaxArrowLabelDistance(int maxPossibleDistance)
+        {
+            int configuredMaxDistance = Config?.KeyboardConfig?.MaxArrowLabelDistance ?? 0;
+            if (configuredMaxDistance <= 0)
+                return maxPossibleDistance;
+
+            return Math.Max(1, Math.Min(maxPossibleDistance, configuredMaxDistance));
+        }
+
         private void GenerateArrowLabelExercise(Random r)
         {
-            int keyCount = BitArrayQuestion.Length;
+            int keyCount = Math.Max(
+                BitArrayQuestion?.Length ?? 0,
+                Math.Max(1, (Config?.KeyboardConfig?.Rows ?? 1) * (Config?.KeyboardConfig?.KeysInRow ?? 1)));
             int minValue = GetKeyboardValueAtIndex(0);
             int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
+            int maxArrowLabelDistance = GetMaxArrowLabelDistance(maxValue - minValue);
+            _arrowLabelMiddleValue = null;
 
-            _arrowLabelStartValue = r.Next(minValue, maxValue);
-            _arrowLabelDistance = r.Next(1, (maxValue - _arrowLabelStartValue) + 1);
-            _arrowLabelEndValue = _arrowLabelStartValue + _arrowLabelDistance;
+            switch (GetCurrentArrowLabelExerciseMode())
+            {
+                case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
+                {
+                    List<(int Start, int End, int Middle)> candidates = new();
+                    for (int start = minValue; start < maxValue; start++)
+                    {
+                        int middle = ((start + 10) / 10) * 10;
+                        int endMin = middle + 1;
+                        int endMax = Math.Min(middle + 9, maxValue);
 
+                        if (middle <= start || endMin > endMax)
+                            continue;
+                        if (middle != 10)
+                            continue;
+
+                        for (int end = endMin; end <= endMax; end++)
+                        {
+                            int distance = end - start;
+                            if (start >= 10 || distance >= 10 || distance > maxArrowLabelDistance)
+                                continue;
+
+                            candidates.Add((start, end, middle));
+                        }
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end, int middle) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = middle;
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
+                case ArrowLabelExerciseMode.ComplexLongDistance:
+                {
+                    List<(int Start, int End)> candidates = new();
+                    for (int start = minValue; start <= maxValue - 2; start++)
+                    {
+                        int endMax = Math.Min(maxValue, start + maxArrowLabelDistance);
+                        for (int end = start + 2; end <= endMax; end++)
+                            candidates.Add((start, end));
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = Math.Min(maxValue, Math.Max(start + 1, start + ((end - start + 1) / 2)));
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
+                default:
+                    _arrowLabelStartValue = r.Next(minValue, maxValue);
+                    int maxDistanceFromStart = GetMaxArrowLabelDistance(maxValue - _arrowLabelStartValue);
+                    _arrowLabelDistance = r.Next(1, maxDistanceFromStart + 1);
+                    _arrowLabelEndValue = _arrowLabelStartValue + _arrowLabelDistance;
+                    break;
+            }
+
+            CapturePrimaryArrowLabelPromptMode();
             ApplyArrowLabelPpwState(revealMissingValue: false);
 
             int answerStartValue = _arrowLabelStartValue + 1;
@@ -209,7 +529,10 @@ namespace GestureSample.Maui.Models
         public int ArrowLabelAddend1Value => _arrowLabelStartValue;
 
         public int? ArrowLabelAddend2Value =>
-            GetCurrentArrowLabelExerciseMode() is
+            GetCurrentArrowLabelExerciseMode() is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance
+                ? _arrowLabelMiddleValue
+                : GetCurrentArrowLabelExerciseMode() is
                 ArrowLabelExerciseMode.StartAndLength or
                 ArrowLabelExerciseMode.StartAndEndWithMissingLength or
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
@@ -218,13 +541,15 @@ namespace GestureSample.Maui.Models
                 : null;
 
         public int ArrowLabelSumValue => _arrowLabelEndValue;
+        public int ArrowLabelDistanceValue => _arrowLabelDistance;
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
+        public MissingValueTargetFlags CurrentArrowLabelMissingTarget => GetCurrentArrowLabelMissingTarget();
 
         protected override int GetPersistedQuestionAnswerAddend1()
         {
             if (UsesArrowLabelExercise())
             {
-                return GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.EndAndLengthWithMissingStart &&
+                return GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Addend1 &&
                        _status != Statement.True
                     ? NAN
                     : _arrowLabelStartValue;
@@ -237,7 +562,7 @@ namespace GestureSample.Maui.Models
         {
             if (UsesArrowLabelExercise())
             {
-                return GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.StartAndEndWithMissingLength &&
+                return GetCurrentArrowLabelMissingTarget() is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) &&
                        _status != Statement.True
                     ? NAN
                     : _arrowLabelDistance;
@@ -250,7 +575,7 @@ namespace GestureSample.Maui.Models
         {
             if (UsesArrowLabelExercise())
             {
-                return GetCurrentArrowLabelExerciseMode() is ArrowLabelExerciseMode.StartAndLength or ArrowLabelExerciseMode.OrdinalStartAndLength &&
+                return GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Sum &&
                        _status != Statement.True
                     ? NAN
                     : _arrowLabelEndValue;
@@ -541,7 +866,78 @@ namespace GestureSample.Maui.Models
                 lengthIndexes = length;
             }
 
+            ApplyOnKeyboardArrowDistanceConstraints(r, keys, ref fromIndex, ref lengthIndexes);
             return (fromIndex, lengthIndexes);
+        }
+
+        private void ApplyOnKeyboardArrowDistanceConstraints(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            int configuredMaxDistance = Config?.KeyboardConfig?.MaxArrowLabelDistance ?? 0;
+            bool needsDistanceCap = configuredMaxDistance > 0;
+            bool needsThroughTen = Config?.OnlyThrougTen == true;
+            if (!needsDistanceCap && !needsThroughTen)
+                return;
+
+            int maxDistance = needsDistanceCap
+                ? Math.Max(1, Math.Min(keys - 1, configuredMaxDistance))
+                : keys - 1;
+
+            bool currentIsValid =
+                lengthIndexes <= maxDistance &&
+                (!needsThroughTen || ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys));
+            if (currentIsValid)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, needsThroughTen);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, needsThroughTen);
+
+            if (candidates.Count == 0)
+            {
+                if (needsThroughTen)
+                    AddArrowDistanceCandidates(candidates, Direction.Right, keys, keys - 1, mustCrossTen: true);
+                if (needsThroughTen)
+                    AddArrowDistanceCandidates(candidates, Direction.Left, keys, keys - 1, mustCrossTen: true);
+            }
+
+            if (candidates.Count == 0)
+            {
+                length = Math.Min(length, maxDistance);
+                lengthIndexes = Math.Min(lengthIndexes, maxDistance);
+                return;
+            }
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private static void AddArrowDistanceCandidates(
+            List<(int Above, int Length, Direction Direction)> candidates,
+            Direction candidateDirection,
+            int keys,
+            int maxDistance,
+            bool mustCrossTen)
+        {
+            for (int start = 1; start <= keys; start++)
+            {
+                for (int candidateLength = 1; candidateLength <= maxDistance; candidateLength++)
+                {
+                    if (mustCrossTen && !ArrowWrapsKeyboardBoundary(start, candidateLength, candidateDirection, keys))
+                        continue;
+
+                    candidates.Add((start, candidateLength, candidateDirection));
+                }
+            }
+        }
+
+        private static bool ArrowWrapsKeyboardBoundary(int start, int candidateLength, Direction candidateDirection, int keys)
+        {
+            return candidateDirection == Direction.Right
+                ? start + candidateLength > keys
+                : start - candidateLength < 1;
         }
 
         private (int firstSegmentLength, int secondSegmentLength) ResolveStagedArrowSegments(int keys)
@@ -613,12 +1009,60 @@ namespace GestureSample.Maui.Models
         public BitArrayGamePlay(GameConfig config) : base(config)
         {
             ArrayQuestionType = config.UIQuestionType;
-            BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
-            BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
+            int keyCount = Math.Max(1, config.KeyboardConfig.Rows * config.KeyboardConfig.KeysInRow);
+            BitArrayQuestion = new bool[keyCount];
+            BitArrayQuestion2 = new bool[keyCount];
+            _activeArrowLabelExerciseMode = config.KeyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+            _activeArrowLabelMissingTarget = config.ArrowLabelMissingValueTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : config.ArrowLabelMissingValueTarget;
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _chainSeed = Config?.Plan?.Seed ?? Environment.TickCount;
 
+        }
+
+        public override async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
+        {
+            if (!UsesArrowLabelExercise())
+                return await base.EvaluateAsync(a1, a2, s);
+
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
+            bool isCorrect = GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue,
+                ArrowLabelExerciseMode.ComplexLongDistance =>
+                    a1 == _arrowLabelStartValue &&
+                    (missingTarget is not (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ||
+                     a2 == _arrowLabelDistance) &&
+                    s == _arrowLabelEndValue,
+                _ =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue
+            };
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            IncrementGuessNumber();
+
+            if (isCorrect)
+            {
+                ApplyArrowLabelPpwState(revealMissingValue: true);
+
+                if (TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+
+                _prevBitArrayAnswer = BitArrayCorrectAnswer?.ToArray() ?? BitArrayQuestion.ToArray();
+                GameCompletionResult? completion = await RegisterSuccessfulAttemptAsync();
+                return CreateCheckResult(isCorrect: true, completion: completion);
+            }
+
+            GameCompletionResult? failedCompletion = await RegisterFailedAttemptAsync();
+            bool shouldRefreshCurrentQuestion = failedCompletion == null && TryQueueArrowLabelRetryAlternatePrompt();
+            return CreateCheckResult(isCorrect: false, completion: failedCompletion, refreshCurrentQuestion: shouldRefreshCurrentQuestion);
         }
 
         public override async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
@@ -646,9 +1090,33 @@ namespace GestureSample.Maui.Models
 
             if (result)
             {
+                if (_isArrowLabelRetryAlternateActive &&
+                    _primaryArrowLabelExerciseMode != ArrowLabelExerciseMode.None &&
+                    UsesOnKeyboardArrowExercise())
+                {
+                    QueueArrowLabelPrompt(_primaryArrowLabelExerciseMode, _primaryArrowLabelMissingTarget);
+                    ApplyPendingArrowLabelPromptMode();
+                    ApplyArrowLabelPpwState(revealMissingValue: true);
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+                }
+
                 if (UsesArrowLabelExercise())
                     ApplyArrowLabelPpwState(revealMissingValue: true);
+
+                if (TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+
                 _prevBitArrayAnswer = submittedKeyboard.ToArray();
+            }
+            else if (_isArrowLabelRetryAlternateActive &&
+                     _primaryArrowLabelExerciseMode != ArrowLabelExerciseMode.None &&
+                     UsesOnKeyboardArrowExercise())
+            {
+                GameCompletionResult? failedCompletion = await RegisterFailedAttemptAsync();
+                if (failedCompletion == null && TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: false, refreshCurrentQuestion: true);
+
+                return CreateCheckResult(isCorrect: false, completion: failedCompletion);
             }
 
             GameCompletionResult? completion = result
@@ -663,25 +1131,42 @@ namespace GestureSample.Maui.Models
             if (!UsesArrowLabelExercise() || Config?.KeyboardConfig == null)
                 return;
 
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
             switch (GetCurrentArrowLabelExerciseMode())
             {
                 case ArrowLabelExerciseMode.StartAndLength:
                 case ArrowLabelExerciseMode.OrdinalStartAndLength:
-                    addend1 = _arrowLabelStartValue;
-                    addend2 = _arrowLabelDistance;
-                    Sum = revealMissingValue ? _arrowLabelEndValue : NAN;
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
                     break;
 
                 case ArrowLabelExerciseMode.StartAndEndWithMissingLength:
-                    addend1 = _arrowLabelStartValue;
-                    addend2 = revealMissingValue ? _arrowLabelDistance : NAN;
-                    Sum = _arrowLabelEndValue;
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
                     break;
 
                 case ArrowLabelExerciseMode.EndAndLengthWithMissingStart:
-                    addend1 = revealMissingValue ? _arrowLabelStartValue : NAN;
-                    addend2 = _arrowLabelDistance;
-                    Sum = _arrowLabelEndValue;
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue
+                        ? NAN
+                        : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.ComplexLongDistance:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue
+                        ? NAN
+                        : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
                     break;
             }
         }
@@ -836,16 +1321,25 @@ namespace GestureSample.Maui.Models
                 return base.GetKeyboardQuestionPromptText();
 
             const string arrowLine = "|--->";
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
+            string startText = missingTarget == MissingValueTargetFlags.Addend1 ? "?" : _arrowLabelStartValue.ToString();
+            string distanceText = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ? "?" : _arrowLabelDistance.ToString();
+            string endText = missingTarget == MissingValueTargetFlags.Sum ? "?" : _arrowLabelEndValue.ToString();
+
             return GetCurrentArrowLabelExerciseMode() switch
             {
                 ArrowLabelExerciseMode.StartAndLength =>
-                    $"   {_arrowLabelDistance}\n{arrowLine}\n{_arrowLabelStartValue}",
+                    $"   {distanceText}\n{arrowLine}\n{startText}",
                 ArrowLabelExerciseMode.StartAndEndWithMissingLength =>
-                    $"   ?\n{arrowLine}\n{_arrowLabelStartValue}      {_arrowLabelEndValue}",
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart =>
-                    $"   {_arrowLabelDistance}\n{arrowLine}\n?      {_arrowLabelEndValue}",
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
                 ArrowLabelExerciseMode.OrdinalStartAndLength =>
-                    $"   {_arrowLabelDistance}\n(ordinal)\n{_arrowLabelStartValue}",
+                    $"   {distanceText}\n(ordinal)\n{startText}",
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.ComplexLongDistance =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
                 _ => base.GetKeyboardQuestionPromptText()
             };
         }
