@@ -1513,6 +1513,69 @@ namespace GestureSample.Views
             KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
         }
     })),
+    new PageConfig("->", "Arrow Label - complex numpad", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - complex numpad",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexTwoStep,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Arrow Label - complex to 5", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - complex to 5",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexTwoStepToFive,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Arrow Label - complex to 10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - complex to 10",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 20,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 20,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexTwoStepToTen,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
     new PageConfig("->", "Arrow Label - missing distance", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Arrow Label - missing distance",
@@ -2295,6 +2358,17 @@ namespace GestureSample.Views
         GameName = "Level 3.2",
         MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
         OnlyCloseTriad=true,
+        AllowCloseTriadSumChange=true,
+        DefaultTriad= new PPWObject(30, 30, 60),
+        ShowPrev=true
+    })),
+    new PageConfig("+ -", "Level 3.2b - Benchmarks pairs", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 3.2 Benchmark Pairs",
+        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
+        OnlyCloseTriad=true,
+        AllowCloseTriadSumChange=true,
+        UsePairedCloseTriadBenchmark=true,
         DefaultTriad= new PPWObject(30, 30, 60),
         ShowPrev=true
     })),

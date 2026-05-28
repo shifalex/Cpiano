@@ -569,6 +569,8 @@ namespace GestureSample.Maui.Models
         }
 
         int oldA1, oldA2, oldS;
+        private bool _isCurrentPairedBenchmarkAnchor;
+
         public virtual async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
         {
             oldA1 = addend1; oldA2 = addend2; oldS = Sum;
@@ -582,6 +584,25 @@ namespace GestureSample.Maui.Models
         {
             return (await EvaluateAsync(a1, a2, s)).IsCorrect;
         }
+
+        public void SetCurrentBenchmarkAnchor(int a1, int a2, int s)
+        {
+            if (!IsTriadWithinConfig(a1, a2, s))
+                return;
+
+            addend1 = a1;
+            addend2 = a2;
+            Sum = s;
+            _prevResolvedTriad = new PPWObject(a1, a2, s);
+            SnapshotPrevPPWQuestion();
+        }
+
+        public bool IsCurrentPairedBenchmarkAnchor =>
+            Config?.UsePairedCloseTriadBenchmark == true &&
+            _isCurrentPairedBenchmarkAnchor &&
+            addend1 != NAN &&
+            addend2 != NAN &&
+            Sum != NAN;
 
         public virtual async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
         {
@@ -1037,6 +1058,8 @@ namespace GestureSample.Maui.Models
 
         private void GenerateNewPPWQuestion(Random r)
         {
+            _isCurrentPairedBenchmarkAnchor = IsPairedCloseTriadBenchmarkAnchorQuestion();
+
             // pick factor set depending on operation
             int[] factors = UsesWeightedCustomStageTargets()
                 ? BuildWeightedCustomStageFactors(r)
@@ -1055,7 +1078,7 @@ namespace GestureSample.Maui.Models
 
             _prevResolvedTriad = new PPWObject(factors[0], factors[1], factors[2]);
 
-            if (!TryApplyDistortedRepeatVariant(factors))
+            if (!_isCurrentPairedBenchmarkAnchor && !TryApplyDistortedRepeatVariant(factors))
             {
                 foreach (int index in ChooseHiddenValueIndexes(r, factors))
                     factors[index] = NAN;
@@ -1064,6 +1087,12 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
+
+        private bool IsPairedCloseTriadBenchmarkAnchorQuestion()
+        {
+            return Config?.UsePairedCloseTriadBenchmark == true &&
+                   _questionNumber % 2 == 0;
         }
 
         private bool TryApplyDistortedRepeatVariant(int[] factors)
@@ -1353,13 +1382,27 @@ namespace GestureSample.Maui.Models
 
                 if (Config.OnlyCloseTriad)
                 {
+                    if (Config.UsePairedCloseTriadBenchmark &&
+                        _questionNumber > 1 &&
+                        _questionNumber % 2 == 0)
+                    {
+                        int randomTriadIndex = r.Next(PossibleTriads.Count);
+                        factors[2] = PossibleTriads[randomTriadIndex].Sum;
+                        factors[0] = PossibleTriads[randomTriadIndex].Addend1;
+                        factors[1] = PossibleTriads[randomTriadIndex].Addend2;
+                        return factors;
+                    }
+
+                    int[] closeTriadMoveOptions = Config.AllowCloseTriadSumChange
+                        ? new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }
+                        : new[] { 0, 5, 6, 7, 8, 9, 10, 11 };
                     int chosenClosedTriad;
                     do
                     {
                         factors[2] = this.Sum;
                         factors[0] = this.addend1;
                         factors[1] = this.addend2;
-                        chosenClosedTriad = r.Next(12);
+                        chosenClosedTriad = closeTriadMoveOptions[r.Next(closeTriadMoveOptions.Length)];
                         switch (chosenClosedTriad)
                         {
                             case 0: case 7: case 8: 
