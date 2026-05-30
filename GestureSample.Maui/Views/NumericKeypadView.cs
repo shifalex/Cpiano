@@ -64,10 +64,10 @@ namespace GestureSample.Maui.Views
                 },
                 RowDefinitions =
                 {
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto },
-                    new RowDefinition { Height = GridLength.Auto }
+                    new RowDefinition { Height = new GridLength(54) },
+                    new RowDefinition { Height = new GridLength(54) },
+                    new RowDefinition { Height = new GridLength(54) },
+                    new RowDefinition { Height = new GridLength(54) }
                 }
             };
 
@@ -97,12 +97,14 @@ namespace GestureSample.Maui.Views
             backspaceButton.MinimumWidthRequest = 72;
 
             Button submitButton = CreateActionButton("V", () => SubmitPressed?.Invoke());
-            grid.Add(submitButton, 3, 1);
+            Grid.SetColumn(submitButton, 3);
+            Grid.SetRow(submitButton, 1);
             Grid.SetRowSpan(submitButton, 3);
             submitButton.VerticalOptions = LayoutOptions.Fill;
             submitButton.HeightRequest = (54 * 3) + (6 * 2);
             submitButton.MinimumHeightRequest = submitButton.HeightRequest;
             submitButton.MinimumWidthRequest = 72;
+            grid.Children.Add(submitButton);
 
             return grid;
         }

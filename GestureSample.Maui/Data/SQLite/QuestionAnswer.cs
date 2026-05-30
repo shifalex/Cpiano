@@ -75,7 +75,8 @@ namespace GestureSample.Maui.Data.SQLite
         public Color Addend1Color { get; set; } = Colors.White;
         public Color Addend2Color { get; set; } = Colors.White;
         public Color SumColor { get; set; } = Colors.White;
-        public Color TimeColor { get { return TimeOnTask > 6 ? Colors.Yellow : Colors.White; } }
+        public double TimeWarningSeconds { get; set; } = 6;
+        public Color TimeColor { get { return TimeOnTask > TimeWarningSeconds ? Colors.Yellow : Colors.White; } }
         public DateTimeOffset? StartTime { get; set; } = null;
 
         public Color RowBackgroundColor { get; set; }
@@ -84,6 +85,8 @@ namespace GestureSample.Maui.Data.SQLite
         public string OpDString { get; set; }
         public List<ShowQuestionAnswerPartRow> HelperRows { get; set; } = new();
         public bool HasHelperRows => HelperRows.Count > 0;
+        public string ComplexArrowPathText { get; set; } = string.Empty;
+        public bool HasComplexArrowPathText => !string.IsNullOrWhiteSpace(ComplexArrowPathText);
         public bool HasSecondaryPpw =>
             SecondaryAddend1 != EmptyPpwValue ||
             SecondaryAddend2 != EmptyPpwValue ||

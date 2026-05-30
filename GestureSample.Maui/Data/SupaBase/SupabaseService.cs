@@ -36,6 +36,7 @@ namespace GestureSample.Maui.Data.SupaBase
         private sealed class LocalRelatedSyncBatch
         {
             public Dictionary<Guid, List<SQLite.QuestionAnswer>> QuestionAnswersByGameId { get; init; } = new();
+            public Dictionary<Guid, List<SQLite.QuestionAnswerPart>> QuestionAnswerPartsByGameId { get; init; } = new();
             public Dictionary<Guid, List<SQLite.KeyboardQuestion>> KeyboardQuestionsByGameId { get; init; } = new();
             public Dictionary<Guid, List<SQLite.KeyEvent>> KeyEventsByGameId { get; init; } = new();
         }
@@ -497,19 +498,33 @@ namespace GestureSample.Maui.Data.SupaBase
         private static async Task<LocalRelatedSyncBatch> LoadRelatedDataForGamesAsync(List<Guid> gameIds)
         {
             var qaRepo = ServiceHelper.GetService<QuestionAnswerRepository>();
+            var qaPartRepo = ServiceHelper.GetService<QuestionAnswerPartRepository>();
             var keyboardQuestionRepo = ServiceHelper.GetService<KeyboardQuestionRepository>();
             var keyEventRepo = ServiceHelper.GetService<KeyEventRepository>();
 
             var allQuestionAnswersTask = qaRepo.GetByGameIdsAsync(gameIds);
+            var allQuestionAnswerPartsTask = qaPartRepo.GetByGameIdsAsync(gameIds);
             var allKeyboardQuestionsTask = keyboardQuestionRepo.GetByGameIdsAsync(gameIds);
             var allKeyEventsTask = keyEventRepo.GetByGameIdsAsync(gameIds);
 
-            await Task.WhenAll(allQuestionAnswersTask, allKeyboardQuestionsTask, allKeyEventsTask);
+            await Task.WhenAll(allQuestionAnswersTask, allQuestionAnswerPartsTask, allKeyboardQuestionsTask, allKeyEventsTask);
 
             Dictionary<Guid, List<SQLite.QuestionAnswer>> questionAnswersByGameId = allQuestionAnswersTask.Result
                 .Where(qa => !string.IsNullOrWhiteSpace(qa.GameId))
                 .GroupBy(qa => Guid.Parse(qa.GameId))
                 .ToDictionary(group => group.Key, group => group.OrderBy(item => item.Time).ToList());
+
+            Dictionary<Guid, List<SQLite.QuestionAnswerPart>> questionAnswerPartsByGameId = allQuestionAnswerPartsTask.Result
+                .Where(part => !string.IsNullOrWhiteSpace(part.GameId))
+                .GroupBy(part => Guid.Parse(part.GameId))
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderBy(item => item.QuestionNumber)
+                        .ThenBy(item => item.AttemptNumber)
+                        .ThenBy(item => item.RecordedAt)
+                        .ThenBy(item => item.Id)
+                        .ToList());
 
             Dictionary<Guid, List<SQLite.KeyboardQuestion>> keyboardQuestionsByGameId = allKeyboardQuestionsTask.Result
                 .Where(question => !string.IsNullOrWhiteSpace(question.GameId))
@@ -535,6 +550,7 @@ namespace GestureSample.Maui.Data.SupaBase
             return new LocalRelatedSyncBatch
             {
                 QuestionAnswersByGameId = questionAnswersByGameId,
+                QuestionAnswerPartsByGameId = questionAnswerPartsByGameId,
                 KeyboardQuestionsByGameId = keyboardQuestionsByGameId,
                 KeyEventsByGameId = keyEventsByGameId
             };
@@ -545,6 +561,9 @@ namespace GestureSample.Maui.Data.SupaBase
             var gameIdsWithQuestionAnswers = gameIds
                 .Where(gameId => relatedData.QuestionAnswersByGameId.ContainsKey(gameId))
                 .ToList();
+            var gameIdsWithQuestionAnswerParts = gameIds
+                .Where(gameId => relatedData.QuestionAnswerPartsByGameId.ContainsKey(gameId))
+                .ToList();
             var gameIdsWithKeyboardQuestions = gameIds
                 .Where(gameId => relatedData.KeyboardQuestionsByGameId.ContainsKey(gameId))
                 .ToList();
@@ -553,6 +572,7 @@ namespace GestureSample.Maui.Data.SupaBase
                 .ToList();
 
             LogInfo($"QuestionAnswer sync will touch {gameIdsWithQuestionAnswers.Count} game(s).");
+            LogInfo($"QuestionAnswerPart sync will touch {gameIdsWithQuestionAnswerParts.Count} game(s).");
             LogInfo($"KeyboardQuestion sync will touch {gameIdsWithKeyboardQuestions.Count} game(s).");
             LogInfo($"KeyEvent sync will touch {gameIdsWithKeyEvents.Count} game(s).");
 
@@ -560,6 +580,11 @@ namespace GestureSample.Maui.Data.SupaBase
                 gameIdsWithQuestionAnswers,
                 async gameId => await ReplaceQuestionAnswersForGameAsync(gameId, relatedData.QuestionAnswersByGameId[gameId]),
                 "QuestionAnswer");
+
+            RelatedSyncSummary questionAnswerPartSummary = await ProcessGamesInParallelAsync(
+                gameIdsWithQuestionAnswerParts,
+                async gameId => await ReplaceQuestionAnswerPartsForGameAsync(gameId, relatedData.QuestionAnswerPartsByGameId[gameId]),
+                "QuestionAnswerPart");
 
             RelatedSyncSummary keyboardQuestionSummary = await ProcessGamesInParallelAsync(
                 gameIdsWithKeyboardQuestions,
@@ -572,6 +597,7 @@ namespace GestureSample.Maui.Data.SupaBase
                 "KeyEvent");
 
             LogInfo($"{questionAnswerSummary.Label} sync summary: {questionAnswerSummary.GamesTouched} game(s), {questionAnswerSummary.RecordsInserted} record(s).");
+            LogInfo($"{questionAnswerPartSummary.Label} sync summary: {questionAnswerPartSummary.GamesTouched} game(s), {questionAnswerPartSummary.RecordsInserted} record(s).");
             LogInfo($"{keyboardQuestionSummary.Label} sync summary: {keyboardQuestionSummary.GamesTouched} game(s), {keyboardQuestionSummary.RecordsInserted} record(s).");
             LogInfo($"{keyEventSummary.Label} sync summary: {keyEventSummary.GamesTouched} game(s), {keyEventSummary.RecordsInserted} record(s).");
         }
@@ -616,6 +642,25 @@ namespace GestureSample.Maui.Data.SupaBase
 
             await Client.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
             return supabaseQAs.Count;
+        }
+
+        private static async Task<int> ReplaceQuestionAnswerPartsForGameAsync(Guid gameId, List<SQLite.QuestionAnswerPart> localParts)
+        {
+            if (localParts == null || localParts.Count == 0)
+                return 0;
+
+            string gameIdText = gameId.ToString();
+
+            await Client.From<SupaBase.QuestionAnswerPart>()
+                .Where(part => part.GameId == gameIdText)
+                .Delete();
+
+            var supabaseParts = localParts
+                .Select(part => ConvertFrom<SQLite.QuestionAnswerPart, SupaBase.QuestionAnswerPart>(part))
+                .ToList();
+
+            await Client.From<SupaBase.QuestionAnswerPart>().Insert(supabaseParts);
+            return supabaseParts.Count;
         }
 
         private static async Task<int> ReplaceKeyboardQuestionsForGameAsync(Guid gameId, List<SQLite.KeyboardQuestion> localQuestions)

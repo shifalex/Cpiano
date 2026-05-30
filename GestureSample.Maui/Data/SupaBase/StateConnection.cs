@@ -35,6 +35,7 @@ namespace GestureSample.Maui.Data.SupaBase
             Console.WriteLine($"Database created successfully");
 
             await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
+            await CreateTableAsync<QuestionAnswerPart>().ConfigureAwait(false);
             await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
             await CreateTableAsync<Game>().ConfigureAwait(false);
             await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
@@ -42,6 +43,11 @@ namespace GestureSample.Maui.Data.SupaBase
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "PartKind", "TEXT NOT NULL DEFAULT 'Visible'").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "EntryName", "TEXT NOT NULL DEFAULT ''").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "IsCorrect", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "RecordedAt", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardJson", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "SubmittedTime", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "MoveByLength", "INTEGER").ConfigureAwait(false);

@@ -2,6 +2,7 @@ using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
+using GestureSample.Maui;
 using System.Data;
 using System.Collections.ObjectModel;
 
@@ -344,6 +345,8 @@ namespace GestureSample.Views
                 ShowState s = new(state);
                 if (helperPartsByQuestion.TryGetValue(s.QuestionNumber, out List<QuestionAnswerPart>? questionParts))
                     s.SetHelperParts(questionParts);
+                s.TimeWarningSeconds = GetTimeWarningSeconds();
+                s.ComplexArrowPathText = BuildComplexArrowPathText(s);
                 Color color = Colors.LightGray;
                 if (s.Sum == PPWGamePlay.NAN || s.Addend1 == PPWGamePlay.NAN || s.Addend2 == PPWGamePlay.NAN) // Assuming Sum is the property to be checked
                 {
@@ -409,6 +412,53 @@ namespace GestureSample.Views
             }
 
             
+        }
+
+        private string BuildComplexArrowPathText(ShowState state)
+        {
+            if (CurrentGame?.Config?.KeyboardConfig?.ArrowLabelExerciseMode is not
+                (ArrowLabelExerciseMode.ComplexBridgeToNextTen or ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or ArrowLabelExerciseMode.ComplexLongDistance))
+            {
+                return string.Empty;
+            }
+
+            int start = state.Addend1;
+            int totalDistance = state.Addend2;
+            int end = state.Sum;
+            if (start == PPWGamePlay.NAN || totalDistance == PPWGamePlay.NAN || end == PPWGamePlay.NAN)
+                return string.Empty;
+
+            if (totalDistance <= 0 || end <= start)
+                totalDistance = end - start;
+
+            if (totalDistance <= 0)
+                return string.Empty;
+
+            int middle = ((start / 10) + 1) * 10;
+            if (middle <= start || middle >= end)
+                return string.Empty;
+
+            int distance1 = middle - start;
+            int distance2 = end - middle;
+            if (distance1 <= 0 || distance2 <= 0 || distance1 + distance2 != totalDistance)
+                return string.Empty;
+
+            return $"{start} + {totalDistance} = {start} + {distance1} + {distance2} = {middle} + {distance2} = {end}";
+        }
+
+        private double GetTimeWarningSeconds()
+        {
+            return IsComplexArrowLabelExercise(CurrentGame?.Config?.KeyboardConfig?.ArrowLabelExerciseMode)
+                ? 20
+                : 6;
+        }
+
+        private static bool IsComplexArrowLabelExercise(ArrowLabelExerciseMode? mode)
+        {
+            return mode.HasValue &&
+                   mode.Value is ArrowLabelExerciseMode.ComplexBridgeToNextTen
+                       or ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen
+                       or ArrowLabelExerciseMode.ComplexLongDistance;
         }
 
 

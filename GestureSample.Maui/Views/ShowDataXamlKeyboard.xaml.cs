@@ -911,6 +911,8 @@ namespace GestureSample.Views
         public bool HasReplay => SubItems != null && SubItems.Count > 0;
         public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
         public bool HasTimingSummary => !string.IsNullOrWhiteSpace(TimingSummaryText);
+        public bool HasComplexArrowEquation => !string.IsNullOrWhiteSpace(ComplexArrowEquationText);
+        public string ComplexArrowEquationText => BuildComplexArrowEquationText(Question);
         public string ReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - {Question.AttemptText}";
         public string CombinedReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - All Trials";
 
@@ -936,6 +938,27 @@ namespace GestureSample.Views
 
                 return string.Join("  |  ", parts);
             }
+        }
+
+        private static string BuildComplexArrowEquationText(KeyboardQuestion? question)
+        {
+            if (question?.IsSpecialArrowPrompt != true ||
+                !question.aboveNumber.HasValue ||
+                !question.length.HasValue)
+            {
+                return string.Empty;
+            }
+
+            int start = question.aboveNumber.Value;
+            int totalDistance = question.length.Value;
+            int end = start + totalDistance;
+            int middle = ((start / 10) + 1) * 10;
+            if (middle <= start || middle >= end)
+                return string.Empty;
+
+            int distance1 = middle - start;
+            int distance2 = end - middle;
+            return $"{start} + {totalDistance} = {start} + {distance1} + {distance2} = {middle} + {distance2} = {end}";
         }
 
         private DateTime? GetReplayStartTime()

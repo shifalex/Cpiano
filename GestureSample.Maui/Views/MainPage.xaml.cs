@@ -1715,7 +1715,10 @@ namespace GestureSample.Views
             HideMainKeyboard = true,
             SecondsPressingToAnswer = 2,
             ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToNextTen,
-            MaxArrowLabelDistance = 4,
+            MaxArrowLabelDistance = 9,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
             ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
             KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
         }
@@ -1741,8 +1744,37 @@ namespace GestureSample.Views
             HideMainKeyboard = true,
             SecondsPressingToAnswer = 2,
             ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToNextTen,
-            MaxArrowLabelDistance = 4,
+            MaxArrowLabelDistance = 9,
             ArrowLabelRetryMode = ArrowLabelRetryMode.RevealComplexThroughTen,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Arrow Label - complex close tens numpad", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - complex close tens numpad",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 90,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 9,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen,
+            MaxArrowLabelDistance = 9,
             AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
             AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
             SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
