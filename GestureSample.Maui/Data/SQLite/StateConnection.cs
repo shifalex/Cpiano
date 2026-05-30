@@ -52,6 +52,11 @@ namespace GestureSample.Maui.Data.SQLite
             await EnsureColumnAsync("QuestionAnswer", "SecondarySumEnabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "PartKind", "TEXT NOT NULL DEFAULT 'Visible'").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "EntryName", "TEXT NOT NULL DEFAULT ''").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "IsCorrect", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "RecordedAt", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);

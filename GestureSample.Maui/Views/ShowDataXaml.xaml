@@ -86,6 +86,17 @@
                                 <Label Text="{Binding Sum}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
                             </Frame>
 
+                            <Label Grid.Row="1"
+                                   Grid.Column="1"
+                                   Grid.ColumnSpan="7"
+                                   Text="{Binding ComplexArrowPathText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="DarkSlateGray"
+                                   LineBreakMode="NoWrap"
+                                   Margin="0,6,0,0"
+                                   IsVisible="{Binding HasComplexArrowPathText}" />
+
                             <Grid Grid.Row="1"
                                   Grid.Column="3"
                                   Grid.ColumnSpan="5"

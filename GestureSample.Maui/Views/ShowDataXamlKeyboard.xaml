@@ -223,6 +223,13 @@
                                 </Frame>
                             </Grid>
 
+                            <Label Text="{Binding ComplexArrowEquationText}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="DarkSlateGray"
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding HasComplexArrowEquation}" />
+
                             <HorizontalStackLayout Spacing="8"
                                                    IsVisible="{Binding Question.HasPromptText}">
                                 <Label Text="Q"

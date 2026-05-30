@@ -304,7 +304,8 @@
         EndAndLengthWithMissingStart = 3,
         OrdinalStartAndLength = 4,
         ComplexBridgeToNextTen = 5,
-        ComplexLongDistance = 6
+        ComplexLongDistance = 6,
+        ComplexBridgeToAnyNextTen = 7
     }
 
     [Flags]

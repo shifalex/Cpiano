@@ -132,6 +132,13 @@ namespace GestureSample.Maui.Models
             };
         }
 
+        private static bool IsComplexArrowLabelPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance;
+        }
+
         private MissingValueTargetFlags GetCurrentArrowLabelMissingTarget()
         {
             if (SupportsComposedArrowVariants())
@@ -323,6 +330,7 @@ namespace GestureSample.Maui.Models
                 ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
                 ArrowLabelExerciseMode.OrdinalStartAndLength or
                 ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or
                 ArrowLabelExerciseMode.ComplexLongDistance;
         }
 
@@ -364,8 +372,7 @@ namespace GestureSample.Maui.Models
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
                 {
                     bool useConfiguredComplexPrompt =
-                        keyboardConfig.ArrowLabelExerciseMode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
-                            ArrowLabelExerciseMode.ComplexLongDistance;
+                        IsComplexArrowLabelPromptMode(keyboardConfig.ArrowLabelExerciseMode);
                     ArrowLabelExerciseMode distancePromptMode = useConfiguredComplexPrompt
                         ? keyboardConfig.ArrowLabelExerciseMode
                         : ArrowLabelExerciseMode.StartAndLength;
@@ -482,6 +489,45 @@ namespace GestureSample.Maui.Models
                     goto default;
                 }
 
+                case ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen:
+                {
+                    List<(int Start, int End, int Middle)> candidates = new();
+                    for (int middle = 20; middle < maxValue; middle += 10)
+                    {
+                        int startMin = Math.Max(minValue, middle - 9);
+                        int startMax = middle - 1;
+                        int endMin = middle + 1;
+                        int endMax = Math.Min(maxValue, middle + 9);
+
+                        if (startMin > startMax || endMin > endMax)
+                            continue;
+
+                        for (int start = startMin; start <= startMax; start++)
+                        {
+                            for (int end = endMin; end <= endMax; end++)
+                            {
+                                int distance = end - start;
+                                if (distance > 9 || distance > maxArrowLabelDistance)
+                                    continue;
+
+                                candidates.Add((start, end, middle));
+                            }
+                        }
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end, int middle) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = middle;
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
                 case ArrowLabelExerciseMode.ComplexLongDistance:
                 {
                     List<(int Start, int End)> candidates = new();
@@ -529,8 +575,7 @@ namespace GestureSample.Maui.Models
         public int ArrowLabelAddend1Value => _arrowLabelStartValue;
 
         public int? ArrowLabelAddend2Value =>
-            GetCurrentArrowLabelExerciseMode() is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
-                ArrowLabelExerciseMode.ComplexLongDistance
+            IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode())
                 ? _arrowLabelMiddleValue
                 : GetCurrentArrowLabelExerciseMode() is
                 ArrowLabelExerciseMode.StartAndLength or
@@ -1034,6 +1079,10 @@ namespace GestureSample.Maui.Models
                     a1 == _arrowLabelStartValue &&
                     a2 == _arrowLabelDistance &&
                     s == _arrowLabelEndValue,
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue,
                 ArrowLabelExerciseMode.ComplexLongDistance =>
                     a1 == _arrowLabelStartValue &&
                     (missingTarget is not (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ||
@@ -1154,6 +1203,7 @@ namespace GestureSample.Maui.Models
                     break;
 
                 case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
+                case ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen:
                     addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
                     addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue
                         ? NAN
@@ -1337,6 +1387,8 @@ namespace GestureSample.Maui.Models
                 ArrowLabelExerciseMode.OrdinalStartAndLength =>
                     $"   {distanceText}\n(ordinal)\n{startText}",
                 ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen =>
                     $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
                 ArrowLabelExerciseMode.ComplexLongDistance =>
                     $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
