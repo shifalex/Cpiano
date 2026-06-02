@@ -48,6 +48,7 @@ namespace GestureSample.Maui.Models
         private int _arrowLabelEndValue;
         private int _arrowLabelDistance;
         private int? _arrowLabelMiddleValue;
+        private bool _usesRtlComplexPrompt;
         private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
         private ArrowLabelExerciseMode _primaryArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
         private ArrowLabelExerciseMode _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
@@ -137,6 +138,12 @@ namespace GestureSample.Maui.Models
             return mode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
                 ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or
                 ArrowLabelExerciseMode.ComplexLongDistance;
+        }
+
+        private bool UsesRtlComplexThroughTenPrompt()
+        {
+            return _usesRtlComplexPrompt ||
+                   Config?.GameName?.Contains("rtl complex", StringComparison.OrdinalIgnoreCase) == true;
         }
 
         private MissingValueTargetFlags GetCurrentArrowLabelMissingTarget()
@@ -393,7 +400,9 @@ namespace GestureSample.Maui.Models
                     if (missingTargets.HasFlag(MissingValueTargetFlags.TotalDistance))
                         variants.Add((false, distancePromptMode, MissingValueTargetFlags.TotalDistance, ArrowType.Straight));
                     if (missingTargets.HasFlag(MissingValueTargetFlags.Addend1))
-                        variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend1, ArrowType.Straight));
+                        variants.Add((false, useConfiguredComplexPrompt
+                            ? keyboardConfig.ArrowLabelExerciseMode
+                            : ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend1, ArrowType.Straight));
                 }
 
                 if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) &&
@@ -449,30 +458,50 @@ namespace GestureSample.Maui.Models
             int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
             int maxArrowLabelDistance = GetMaxArrowLabelDistance(maxValue - minValue);
             _arrowLabelMiddleValue = null;
+            _usesRtlComplexPrompt = false;
 
             switch (GetCurrentArrowLabelExerciseMode())
             {
                 case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
                 {
                     List<(int Start, int End, int Middle)> candidates = new();
-                    for (int start = minValue; start < maxValue; start++)
+                    _usesRtlComplexPrompt = Config?.GameName?.Contains("rtl complex", StringComparison.OrdinalIgnoreCase) == true;
+                    if (_usesRtlComplexPrompt)
                     {
-                        int middle = ((start + 10) / 10) * 10;
-                        int endMin = middle + 1;
-                        int endMax = Math.Min(middle + 9, maxValue);
-
-                        if (middle <= start || endMin > endMax)
-                            continue;
-                        if (middle != 10)
-                            continue;
-
-                        for (int end = endMin; end <= endMax; end++)
+                        const int middle = 10;
+                        for (int start = Math.Max(minValue, 1); start < middle; start++)
                         {
-                            int distance = end - start;
-                            if (start >= 10 || distance >= 10 || distance > maxArrowLabelDistance)
+                            for (int end = middle + 1; end <= Math.Min(maxValue, 19); end++)
+                            {
+                                int distance = end - start;
+                                if (distance >= 10 || distance > maxArrowLabelDistance)
+                                    continue;
+
+                                candidates.Add((start, end, middle));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int start = minValue; start < maxValue; start++)
+                        {
+                            int middle = ((start + 10) / 10) * 10;
+                            int endMin = middle + 1;
+                            int endMax = Math.Min(middle + 9, maxValue);
+
+                            if (middle <= start || endMin > endMax)
+                                continue;
+                            if (middle != 10)
                                 continue;
 
-                            candidates.Add((start, end, middle));
+                            for (int end = endMin; end <= endMax; end++)
+                            {
+                                int distance = end - start;
+                                if (start >= 10 || distance >= 10 || distance > maxArrowLabelDistance)
+                                    continue;
+
+                                candidates.Add((start, end, middle));
+                            }
                         }
                     }
 
@@ -492,12 +521,16 @@ namespace GestureSample.Maui.Models
                 case ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen:
                 {
                     List<(int Start, int End, int Middle)> candidates = new();
+                    bool learnerChosenMiddle = Config?.KeyboardConfig?.AllowLearnerChosenComplexMiddle == true;
+                    _usesRtlComplexPrompt = !learnerChosenMiddle &&
+                                            Config?.KeyboardConfig?.AllowRtlComplexPrompts == true &&
+                                            Random.Shared.Next(2) == 0;
                     for (int middle = 20; middle < maxValue; middle += 10)
                     {
-                        int startMin = Math.Max(minValue, middle - 9);
+                        int startMin = Math.Max(minValue, middle - (learnerChosenMiddle ? 89 : 9));
                         int startMax = middle - 1;
                         int endMin = middle + 1;
-                        int endMax = Math.Min(maxValue, middle + 9);
+                        int endMax = Math.Min(maxValue, middle + (learnerChosenMiddle ? 89 : 9));
 
                         if (startMin > startMax || endMin > endMax)
                             continue;
@@ -507,8 +540,12 @@ namespace GestureSample.Maui.Models
                             for (int end = endMin; end <= endMax; end++)
                             {
                                 int distance = end - start;
-                                if (distance > 9 || distance > maxArrowLabelDistance)
+                                if ((!learnerChosenMiddle && distance > 9) ||
+                                    distance > maxArrowLabelDistance ||
+                                    (learnerChosenMiddle && (start < 10 || end < 10 || distance < 10)))
+                                {
                                     continue;
+                                }
 
                                 candidates.Add((start, end, middle));
                             }
@@ -559,6 +596,13 @@ namespace GestureSample.Maui.Models
                     break;
             }
 
+            if (UsesRtlComplexThroughTenPrompt() &&
+                IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode()) &&
+                GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Sum)
+            {
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.TotalDistance);
+            }
+
             CapturePrimaryArrowLabelPromptMode();
             ApplyArrowLabelPpwState(revealMissingValue: false);
 
@@ -589,6 +633,7 @@ namespace GestureSample.Maui.Models
         public int ArrowLabelDistanceValue => _arrowLabelDistance;
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
         public MissingValueTargetFlags CurrentArrowLabelMissingTarget => GetCurrentArrowLabelMissingTarget();
+        public bool UsesRtlComplexPrompt => UsesRtlComplexThroughTenPrompt();
 
         protected override int GetPersistedQuestionAnswerAddend1()
         {
