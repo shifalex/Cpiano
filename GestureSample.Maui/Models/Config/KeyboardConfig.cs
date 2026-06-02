@@ -497,6 +497,9 @@
         public bool UseKeyboardQuestionAfterArrowLabelHelp { get; set; } = false;
         public ArrowLabelExerciseMode ArrowLabelRetryAlternateMode { get; set; } = ArrowLabelExerciseMode.None;
         public MissingValueTargetFlags SpecialArrowRetryAlternateTargets { get; set; } = MissingValueTargetFlags.None;
+        public bool UseFixedComplexMiddle { get; set; } = false;
+        public bool AllowRtlComplexPrompts { get; set; } = false;
+        public bool AllowLearnerChosenComplexMiddle { get; set; } = false;
         public ArrowPromptKindFlags AllowedArrowPromptKinds { get; set; } = ArrowPromptKindFlags.None;
         public ArrowRouteKindFlags AllowedArrowRouteKinds { get; set; } = ArrowRouteKindFlags.None;
         public MissingValueTargetFlags SpecialArrowMissingTargets { get; set; } = MissingValueTargetFlags.None;
