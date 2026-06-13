@@ -41,6 +41,8 @@ namespace GestureSample.Maui.Models
         protected readonly Color SECOND_COLOR = Colors.LightGreen;
         protected readonly Color THIRD_COLOR = Colors.Blue;
         protected readonly Color REMOVE_COLOR = Colors.Red;
+        protected static readonly Color SECOND_ARROW_TRACE_YELLOW = Color.FromRgb(255, 255, 180);
+        protected static readonly Color SECOND_ARROW_TRACE_RED = Color.FromRgb(255, 170, 170);
         public Color[] colors;
 
 
@@ -60,6 +62,8 @@ namespace GestureSample.Maui.Models
 
         public readonly double MAX_KEY_WIDTH = 105;
         public double ActualKeyWidth { get; private set; }
+        public ArrowMovementMode CurrentArrowMovementMode { get; private set; } = ArrowMovementMode.Legacy;
+        public string LastArrowDrawingDebugText { get; private set; } = string.Empty;
 
         public IReadOnlyList<MR.Gestures.Button> KeyButtons => btnKeys;
         public int KeyCount => btnKeys?.Length ?? 0;
@@ -118,7 +122,7 @@ namespace GestureSample.Maui.Models
                 if (overlayColor is Color visibleColor)
                 {
                     overlayViews[i].BackgroundColor = visibleColor.WithAlpha(1f);
-                    overlayViews[i].Opacity = 1;
+                    overlayViews[i].Opacity = visibleColor.Alpha < 1f ? visibleColor.Alpha : 1;
                     overlayViews[i].IsVisible = true;
                 }
                 else
@@ -279,10 +283,16 @@ namespace GestureSample.Maui.Models
         }
 
 
-        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=102.5, int columnspan=2, bool isSecondArrow=false, string? labelTextOverride = null)
+        public void AddArrow(Direction direction, int aboveKeyNumber, int numberAbove = -1, int row = 1, double columnWidth=102.5, int columnspan=2, bool isSecondArrow=false, string? labelTextOverride = null, ArrowMovementMode movementMode = ArrowMovementMode.Legacy)
         {
             Console.WriteLine("Adding arrow: {0} {1} {2} {3}", direction, aboveKeyNumber, numberAbove, row);
-            if (!isSecondArrow) { AboveNumber =aboveKeyNumber ; ArrowLength = numberAbove; Direction = direction; } // Set the properties for the first arrow
+            if (!isSecondArrow)
+            {
+                AboveNumber = aboveKeyNumber;
+                ArrowLength = numberAbove;
+                Direction = direction;
+                CurrentArrowMovementMode = movementMode;
+            } // Set the properties for the first arrow
             columnWidth = ActualKeyWidth > 0 ? ActualKeyWidth : columnWidth; // Use ActualKeyWidth if available, otherwise use provided columnWidth
             if (columnWidth > MAX_KEY_WIDTH) columnWidth = MAX_KEY_WIDTH;
             double border_width = 5;
@@ -311,6 +321,8 @@ namespace GestureSample.Maui.Models
             int colSpan;
             double arrowStart, arrowEnd, arrowEdgeX;
             bool toAddSeperator = false;
+            bool splitAtKeyboardBoundary = false;
+            bool forceFixedArrowVisual = Config.EnableSecondArrowLeftTrace;
             if (direction == Direction.Right)
             {
                 arrowStart = 0;
@@ -332,11 +344,12 @@ namespace GestureSample.Maui.Models
                         
                         if (aboveKeyNumber -1 + numberAbove > NUMBER_OF_KEYS)//aboveKeyNumber is the number that it is to it's left
                         {
+                            splitAtKeyboardBoundary = true;
                             colSpan = NUMBER_OF_KEYS - aboveKeyNumber + 1;
                             int secondArrowColSpan = aboveKeyNumber + numberAbove - NUMBER_OF_KEYS - 1;
                             //secondArrowColSpan = (secondArrowColSpan>FINGER_SEPERATOR)? secondArrowColSpan+1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
-                            AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan, true);
+                            AddArrow(Direction.Right, 1,-1,1, columnWidth, secondArrowColSpan, true, movementMode: movementMode);
                             arrowEnd += 3*arrow_reduction;
                         }
                         if (aboveKeyNumber <= FINGER_SEPERATOR && aboveKeyNumber -1 + numberAbove > FINGER_SEPERATOR)
@@ -356,6 +369,13 @@ namespace GestureSample.Maui.Models
                     }
                     
                  }
+                if (forceFixedArrowVisual)
+                {
+                    colSpan = aboveKeyNumber == NUMBER_OF_KEYS ? 1 : 2;
+                    toAddSeperator = aboveKeyNumber == FINGER_SEPERATOR && colSpan > 1;
+                    splitAtKeyboardBoundary = false;
+                    arrowEnd = 0;
+                }
                 arrowEnd += arrowStart + (columnWidth + border_width) * colSpan+(toAddSeperator? seperator_width : 0) -border_width- arrow_reduction ;
 
                 arrowEdgeX = arrowEnd - arrow_reduction;
@@ -381,12 +401,13 @@ namespace GestureSample.Maui.Models
                         colSpan = numberAbove;
                         if (aboveKeyNumber - numberAbove < 0)
                         {
+                            splitAtKeyboardBoundary = true;
                             colSpan = aboveKeyNumber; if (colSpan > FINGER_SEPERATOR) toAddSeperator = true;
                             int secondArrowColSpan = numberAbove-aboveKeyNumber;
 
                             secondArrowColSpan = (secondArrowColSpan > FINGER_SEPERATOR) ? secondArrowColSpan + 1 : secondArrowColSpan;
                             Console.WriteLine("Adding second arrow with colSpan {0}", secondArrowColSpan);
-                            AddArrow(Direction.Left, NUMBER_OF_KEYS, -1 , 1, columnWidth, secondArrowColSpan, true);
+                            AddArrow(Direction.Left, NUMBER_OF_KEYS, -1 , 1, columnWidth, secondArrowColSpan, true, movementMode: movementMode);
                             arrowEnd -= 3 * arrow_reduction;
                         }
                         if (aboveKeyNumber > FINGER_SEPERATOR && aboveKeyNumber - numberAbove <= FINGER_SEPERATOR)
@@ -403,6 +424,13 @@ namespace GestureSample.Maui.Models
                         arrowEnd -= 2*STROKE_THICKNESS;                        
                     }
                 }
+                if (forceFixedArrowVisual)
+                {
+                    colSpan = aboveKeyNumber == 1 ? 1 : 2;
+                    toAddSeperator = aboveKeyNumber == FINGER_SEPERATOR + 1 && colSpan > 1;
+                    splitAtKeyboardBoundary = false;
+                    arrowEnd = 0;
+                }
                 arrowStart += colSpan * (columnWidth+border_width) + (toAddSeperator ? seperator_width : 0) - border_width - STROKE_THICKNESS; 
                 
                 
@@ -410,8 +438,17 @@ namespace GestureSample.Maui.Models
                 arrowEdgeX = arrowEnd + arrow_reduction;
                 //numberLabel.HorizontalOptions = LayoutOptions.End;
             }
+            ArrowType visualArrowType = movementMode is ArrowMovementMode.JumpToEnd or ArrowMovementMode.OneByOne or ArrowMovementMode.JumpThroughMiddle
+                ? ArrowType.Rounded
+                : Config.ArrowType;
+            ArrowMovementMode visualMovementMode = movementMode == ArrowMovementMode.Splited &&
+                                                   (splitAtKeyboardBoundary || isSecondArrow)
+                ? ArrowMovementMode.Legacy
+                : movementMode;
+
             string pathData = KeyboardArrowPathBuilder.BuildPathData(
-                Config.ArrowType,
+                visualArrowType,
+                visualMovementMode,
                 direction,
                 aboveKeyNumber,
                 columnWidth,
@@ -419,11 +456,21 @@ namespace GestureSample.Maui.Models
                 arrowEnd,
                 arrowEdgeX);
 
-            if (Config.ArrowType != ArrowType.Rounded)
+            if (visualArrowType != ArrowType.Rounded)
                 Console.WriteLine("Arrow path data: " + pathData + " colspan {0}", colSpan);
 
             Console.WriteLine(pathData);
-            Grid arrowVisual = KeyboardArrowVisualFactory.CreateArrowVisual(pathData, numberAbove, STROKE_THICKNESS, labelTextOverride);
+            double? labelCenterX = visualArrowType == ArrowType.Rounded && movementMode != ArrowMovementMode.JumpThroughMiddle
+                ? KeyboardArrowPathBuilder.GetRoundedLabelCenterX(direction, aboveKeyNumber, columnWidth)
+                : (arrowStart + arrowEnd) / 2;
+            LastArrowDrawingDebugText =
+                $"ArrowDraw mode={movementMode} visual={visualMovementMode} dir={direction} above={aboveKeyNumber} len={numberAbove} span={colSpan} start={FormatArrowNumber(arrowStart)} end={FormatArrowNumber(arrowEnd)} edge={FormatArrowNumber(arrowEdgeX)} label={FormatArrowNumber(labelCenterX ?? -1)} path={pathData}";
+            Grid arrowVisual = KeyboardArrowVisualFactory.CreateArrowVisual(
+                pathData,
+                numberAbove,
+                STROKE_THICKNESS,
+                labelTextOverride,
+                labelCenterX);
 
 
             //if(aboveKeyNumber==0)aboveKeyNumber = 1;
@@ -452,6 +499,11 @@ namespace GestureSample.Maui.Models
             Console.WriteLine("Arrow added!!! at column {0} row {1} colSpan {2}", column, row, colSpan);
 
             if (Arrow1 == null) Arrow1 = Arrow; else Arrow2 = Arrow;
+        }
+
+        private static string FormatArrowNumber(double value)
+        {
+            return Math.Round(value, 1).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         public void RemoveArrows()
@@ -529,7 +581,7 @@ namespace GestureSample.Maui.Models
                 Direction dir = Direction;
 
                 RemoveArrows();
-                AddArrow(dir, aboveNumber, arrowLength, 1, ActualKeyWidth);
+                AddArrow(dir, aboveNumber, arrowLength, 1, ActualKeyWidth, movementMode: CurrentArrowMovementMode);
             }
 
         }
@@ -644,17 +696,18 @@ namespace GestureSample.Maui.Models
                         column,
                         row);
 
+                    bool useFullKeyTraceOverlay = config.EnableSecondArrowLeftTrace;
                     this.Add(
                         _traceOverlaySecondaryViews[keyIndex] = new Microsoft.Maui.Controls.BoxView
                         {
                             InputTransparent = true,
                             IsVisible = false,
                             BackgroundColor = Colors.Transparent,
-                            Margin = new Thickness(12, 40, 12, 0),
+                            Margin = useFullKeyTraceOverlay ? new Thickness(0, 5, 0, 0) : new Thickness(12, 40, 12, 0),
                             HorizontalOptions = LayoutOptions.Fill,
-                            VerticalOptions = LayoutOptions.Start,
-                            HeightRequest = 14,
-                            Opacity = 1,
+                            VerticalOptions = useFullKeyTraceOverlay ? LayoutOptions.Fill : LayoutOptions.Start,
+                            HeightRequest = useFullKeyTraceOverlay ? -1 : 14,
+                            Opacity = useFullKeyTraceOverlay ? 0.5 : 1,
                             ZIndex = 18
                         },
                         column,
@@ -666,11 +719,11 @@ namespace GestureSample.Maui.Models
                             InputTransparent = true,
                             IsVisible = false,
                             BackgroundColor = Colors.Transparent,
-                            Margin = new Thickness(8, 18, 8, 0),
+                            Margin = useFullKeyTraceOverlay ? new Thickness(0, 5, 0, 0) : new Thickness(8, 18, 8, 0),
                             HorizontalOptions = LayoutOptions.Fill,
-                            VerticalOptions = LayoutOptions.Start,
-                            HeightRequest = 14,
-                            Opacity = 1,
+                            VerticalOptions = useFullKeyTraceOverlay ? LayoutOptions.Fill : LayoutOptions.Start,
+                            HeightRequest = useFullKeyTraceOverlay ? -1 : 14,
+                            Opacity = useFullKeyTraceOverlay ? 0.5 : 1,
                             ZIndex = 20
                         },
                         column,
@@ -938,8 +991,28 @@ namespace GestureSample.Maui.Models
         {
             bool[] bitArray = new bool[btnKeys.Length];
             for (int i = 0; i < btnKeys.Length; i++)
-                bitArray[i] = btnKeys[i].BackgroundColor != COLOR_FREE;
+                bitArray[i] = IsLogicalPressedColor(btnKeys[i].BackgroundColor);
             return bitArray;
+        }
+
+        protected bool IsLogicalPressedColor(Color color)
+        {
+            return color != COLOR_FREE &&
+                   !(Config.EnableSecondArrowLeftTrace && IsSecondArrowTraceColor(color));
+        }
+
+        protected static bool IsSecondArrowTraceColor(Color color)
+        {
+            return AreColorsClose(color, SECOND_ARROW_TRACE_YELLOW) ||
+                   AreColorsClose(color, SECOND_ARROW_TRACE_RED);
+        }
+
+        private static bool AreColorsClose(Color a, Color b)
+        {
+            return Math.Abs(a.Red - b.Red) < 0.01f &&
+                   Math.Abs(a.Green - b.Green) < 0.01f &&
+                   Math.Abs(a.Blue - b.Blue) < 0.01f &&
+                   Math.Abs(a.Alpha - b.Alpha) < 0.01f;
         }
 
         public int GetColorCount(Color color)
@@ -970,7 +1043,7 @@ namespace GestureSample.Maui.Models
             int count = 0;
             for (int i = 0; i < btnKeys.Length; i++)
             {
-                if (btnKeys[i].BackgroundColor != COLOR_FREE)
+                if (IsLogicalPressedColor(btnKeys[i].BackgroundColor))
                     count++;
             }
 

@@ -888,6 +888,67 @@ After:
                     Console.WriteLine("Sound service is null");
             }
         }
+
+        private void RefreshSecondArrowLeftTraceOverlay()
+        {
+            if (!_pianoConfig.EnableSecondArrowLeftTrace ||
+                _gamePlay is not BitArrayGamePlay bitArrayGamePlay ||
+                btnKeys == null)
+            {
+                return;
+            }
+
+            ClearTraceOverlay();
+            ClearSecondArrowTraceKeyBackgrounds();
+
+            bool[] pressedKeys = ToBitArray();
+            int leftmostPressedIndex = Array.FindIndex(pressedKeys, pressed => pressed);
+            if (leftmostPressedIndex < 0)
+            {
+                return;
+            }
+
+            bool isRtl = bitArrayGamePlay.dir == Direction.Left;
+            Color traceColor = SECOND_ARROW_TRACE_YELLOW;
+
+            for (int i = 0; i < pressedKeys.Length; i++)
+            {
+                if (pressedKeys[i])
+                {
+                    btnKeys[i].BackgroundColor = isRtl
+                        ? REMOVE_COLOR
+                        : COLOR_PRESSED;
+                }
+            }
+
+            if (leftmostPressedIndex == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < leftmostPressedIndex; i++)
+            {
+                if (!pressedKeys[i])
+                {
+                    btnKeys[i].BackgroundColor = traceColor;
+                }
+            }
+        }
+
+        private void ClearSecondArrowTraceKeyBackgrounds()
+        {
+            if (btnKeys == null)
+                return;
+
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                if (IsSecondArrowTraceColor(btnKeys[i].BackgroundColor))
+                {
+                    btnKeys[i].BackgroundColor = COLOR_FREE;
+                }
+            }
+        }
+
         private async Task OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
         {
             
@@ -931,6 +992,7 @@ After:
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
             EnsureAllKeyTextIsBlack();
+            RefreshSecondArrowLeftTraceOverlay();
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
             int keyNumber = 0;
             int row = 0;

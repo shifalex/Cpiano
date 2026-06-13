@@ -1431,7 +1431,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer  = 5,
-            MaxArrowLabelDistance = 4,
+            MaxArrowLabelDistance = 3,
             IsArrow = true
         }
     })),
@@ -1447,7 +1447,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer  = 3,
-            MaxArrowLabelDistance = 4,
+            MaxArrowLabelDistance = 3,
             IsArrow = true,
             IsNumberVoice = true,
             ShowNumbersOnKeys = true,
@@ -1489,6 +1489,56 @@ namespace GestureSample.Views
             ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
             SecondsPressingToAnswer=2,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Experimental Arrow Vocabulary", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Experimental Arrow Vocabulary",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 1,
+        MaxSum = 10,
+        OnlyToTen = true,
+        IncludeTutorials = true,
+        NumberOfTasksToWin = 20,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            IsArrowLengthDynamic = true,
+            ShowNumbersOnKeys = true,
+            SecondsPressingToAnswer = 2,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowMovementModes = ArrowMovementModeFlags.All,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Second Arrow", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Second Arrow",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 1,
+        MaxSum = 10,
+        OnlyToTen = true,
+        IncludeTutorials = true,
+        NumberOfTasksToWin = 20,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            IsArrowLengthDynamic = false,
+            ShowNumbersOnKeys = true,
+            SecondsPressingToAnswer = 2,
+            MaxArrowLabelDistance = 4,
+            EnableSecondArrowLeftTrace = true,
             KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
         }
     })),
@@ -2267,6 +2317,39 @@ namespace GestureSample.Views
         UseDistortedVariantInRepeatSequence = true,
         NumberOfTasksToWin=60,
         NumberOfMistakesToLose=5
+    })),
+    new PageConfig("+ -", "Level 1N - Sum minus larger addend", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 1N - Sum minus larger addend",
+        OperationList = new() { Operation.Sum },
+        MinAddend = -8,
+        MaxAddend = 9,
+        MinSum = 1,
+        MaxSum = 10,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 2,
+        UseSumMinusLargerAddendRepeatSequence = true,
+        NumberOfTasksToWin = 40,
+        NumberOfMistakesToLose = 5
+    })),
+    new PageConfig("+ -", "Level 1M - Minus missing result", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 1M - Minus missing result",
+        UIQuestionType = UIQuestionType.SimpleEquation,
+        OperationList = new() { Operation.Minus },
+        MinAddend = 0,
+        MaxAddend = 10,
+        MinAddend2 = -10,
+        MaxAddend2 = 10,
+        MinSum = 0,
+        MaxSum = 10,
+        HiddenValueCount = 1,
+        AllowedMissingValueTargets = MissingValueTargetFlags.Addend2,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        EnforceOperationLabel = true,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5
     })),
      new PageConfig("+ -", "Level 1.1 - No repetition", () => new SimpleViewCellsPage(new GameConfig
     {
