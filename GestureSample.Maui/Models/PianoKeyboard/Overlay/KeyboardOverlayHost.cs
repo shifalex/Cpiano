@@ -49,6 +49,11 @@ namespace GestureSample.Maui.Models
             public Color SpawnColor { get; set; } = Colors.Yellow;
             public List<MultiAnimGroup> MultiAnimGroups { get; set; } = new();
             public List<MultiSpawnGroup> MultiSpawnGroups { get; set; } = new();
+            public int[] TutorialArcIndices { get; set; } = Array.Empty<int>();
+            public float TutorialArcAlpha { get; set; } = 0.92f;
+            public Color TutorialArcColor { get; set; } = Colors.White;
+            public int TutorialArcCompletedSegments { get; set; } = int.MaxValue;
+            public float TutorialArcCurrentSegmentProgress { get; set; } = 1f;
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -78,6 +83,8 @@ namespace GestureSample.Maui.Models
                 );
 
                 DrawSpawnBits(canvas);
+
+                DrawTutorialArcs(canvas);
 
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
             }
@@ -221,6 +228,84 @@ namespace GestureSample.Maui.Models
                 }
             }
 
+            void DrawTutorialArcs(ICanvas canvas)
+            {
+                if (TutorialArcIndices == null || TutorialArcIndices.Length < 2)
+                    return;
+
+                canvas.StrokeColor = TutorialArcColor.WithAlpha(TutorialArcAlpha);
+                canvas.StrokeSize = 4;
+                canvas.StrokeLineCap = LineCap.Round;
+                canvas.StrokeLineJoin = LineJoin.Round;
+
+                for (int i = 1; i < TutorialArcIndices.Length; i++)
+                {
+                    int segmentIndex = i - 1;
+                    float progress;
+                    if (segmentIndex < TutorialArcCompletedSegments)
+                        progress = 1f;
+                    else if (segmentIndex == TutorialArcCompletedSegments)
+                        progress = TutorialArcCurrentSegmentProgress;
+                    else
+                        continue;
+
+                    int from = TutorialArcIndices[i - 1];
+                    int to = TutorialArcIndices[i];
+                    if (from < 0 || to < 0 || from >= KeyRects.Length || to >= KeyRects.Length || from == to)
+                        continue;
+
+                    DrawArcSegment(canvas, KeyRects[from], KeyRects[to], i == TutorialArcIndices.Length - 1, progress);
+                }
+            }
+
+            private static void DrawArcSegment(ICanvas canvas, RectF fromRect, RectF toRect, bool drawArrowHead, float progress)
+            {
+                progress = Math.Clamp(progress, 0f, 1f);
+                if (progress <= 0f)
+                    return;
+
+                float startX = fromRect.X + (fromRect.Width / 2f);
+                float endX = toRect.X + (toRect.Width / 2f);
+                float baselineY = MathF.Min(fromRect.Top, toRect.Top) - 10;
+                float arcHeight = MathF.Min(54, MathF.Max(24, MathF.Abs(endX - startX) * 0.22f));
+                float controlX = (startX + endX) / 2f;
+                float controlY = MathF.Max(6, baselineY - arcHeight);
+
+                const int steps = 18;
+                PointF previous = QuadraticPoint(startX, baselineY, controlX, controlY, endX, baselineY, 0);
+                int visibleSteps = Math.Max(1, (int)MathF.Ceiling(steps * progress));
+                for (int step = 1; step <= visibleSteps; step++)
+                {
+                    float t = MathF.Min(progress, step / (float)steps);
+                    PointF current = QuadraticPoint(startX, baselineY, controlX, controlY, endX, baselineY, t);
+                    canvas.DrawLine(previous, current);
+                    previous = current;
+                }
+
+                if (!drawArrowHead || progress < 0.98f)
+                    return;
+
+                PointF tip = QuadraticPoint(startX, baselineY, controlX, controlY, endX, baselineY, 1f);
+                PointF beforeTip = QuadraticPoint(startX, baselineY, controlX, controlY, endX, baselineY, 0.9f);
+                float angle = MathF.Atan2(tip.Y - beforeTip.Y, tip.X - beforeTip.X);
+                const float headLength = 13;
+                const float headAngle = 0.72f;
+                canvas.DrawLine(tip, new PointF(
+                    tip.X - (headLength * MathF.Cos(angle - headAngle)),
+                    tip.Y - (headLength * MathF.Sin(angle - headAngle))));
+                canvas.DrawLine(tip, new PointF(
+                    tip.X - (headLength * MathF.Cos(angle + headAngle)),
+                    tip.Y - (headLength * MathF.Sin(angle + headAngle))));
+            }
+
+            private static PointF QuadraticPoint(float startX, float startY, float controlX, float controlY, float endX, float endY, float t)
+            {
+                float oneMinusT = 1f - t;
+                float x = (oneMinusT * oneMinusT * startX) + (2 * oneMinusT * t * controlX) + (t * t * endX);
+                float y = (oneMinusT * oneMinusT * startY) + (2 * oneMinusT * t * controlY) + (t * t * endY);
+                return new PointF(x, y);
+            }
+
 
 
         }
@@ -349,7 +434,87 @@ namespace GestureSample.Maui.Models
             _patternDrawable.MultiAnimGroups.Clear();
             _patternDrawable.MultiSpawnGroups.Clear();
             _patternDrawable.CursorIndex = null;
+            _patternDrawable.TutorialArcIndices = Array.Empty<int>();
             Keyboard.InvalidateOverlay();
+        }
+
+        public void ShowTutorialArcs(IReadOnlyList<int> indices, Color? color = null, float alpha = 0.92f)
+        {
+            TrySyncOverlay();
+
+            _patternDrawable.TutorialArcIndices = indices?
+                .Where(index => index >= 0)
+                .ToArray() ?? Array.Empty<int>();
+            _patternDrawable.TutorialArcColor = color ?? Colors.White;
+            _patternDrawable.TutorialArcAlpha = Math.Clamp(alpha, 0f, 1f);
+            _patternDrawable.TutorialArcCompletedSegments = int.MaxValue;
+            _patternDrawable.TutorialArcCurrentSegmentProgress = 1f;
+            Keyboard.InvalidateOverlay();
+        }
+
+        public void ClearTutorialArcs()
+        {
+            _patternDrawable.TutorialArcIndices = Array.Empty<int>();
+            _patternDrawable.TutorialArcCompletedSegments = int.MaxValue;
+            _patternDrawable.TutorialArcCurrentSegmentProgress = 1f;
+            Keyboard.InvalidateOverlay();
+        }
+
+        public Task AnimateTutorialArcPrefixAsync(
+            IReadOnlyList<int> indices,
+            int visiblePointCount,
+            uint ms = 420,
+            Color? color = null,
+            float alpha = 0.92f,
+            string animName = "TutArcPrefix")
+        {
+            if (indices == null || visiblePointCount < 2)
+                return Task.CompletedTask;
+
+            TrySyncOverlay();
+            int pointCount = Math.Min(visiblePointCount, indices.Count);
+            _patternDrawable.TutorialArcIndices = indices.Take(pointCount).ToArray();
+            _patternDrawable.TutorialArcColor = color ?? Colors.White;
+            _patternDrawable.TutorialArcAlpha = Math.Clamp(alpha, 0f, 1f);
+            _patternDrawable.TutorialArcCompletedSegments = Math.Max(0, pointCount - 2);
+            _patternDrawable.TutorialArcCurrentSegmentProgress = 0f;
+            Keyboard.InvalidateOverlay();
+
+            return RunProgressAnimation(animName, ms, t =>
+            {
+                _patternDrawable.TutorialArcCurrentSegmentProgress = t;
+                if (t >= 1f)
+                {
+                    _patternDrawable.TutorialArcCompletedSegments = int.MaxValue;
+                    _patternDrawable.TutorialArcCurrentSegmentProgress = 1f;
+                }
+            });
+        }
+
+        public async Task AnimateTutorialArcsOneByOneAsync(
+            IReadOnlyList<int> indices,
+            uint stepMs = 150,
+            uint holdMs = 160,
+            Color? color = null,
+            float alpha = 0.92f)
+        {
+            if (indices == null || indices.Count < 2)
+                return;
+
+            TrySyncOverlay();
+            List<int> visibleIndices = new() { indices[0] };
+            _patternDrawable.TutorialArcColor = color ?? Colors.White;
+            _patternDrawable.TutorialArcAlpha = Math.Clamp(alpha, 0f, 1f);
+
+            for (int i = 1; i < indices.Count; i++)
+            {
+                visibleIndices.Add(indices[i]);
+                _patternDrawable.TutorialArcIndices = visibleIndices.ToArray();
+                Keyboard.InvalidateOverlay();
+                await Task.Delay((int)stepMs);
+            }
+
+            await Task.Delay((int)holdMs);
         }
 
         public void ShowHighlightedBits(bool[] bits, Color? color = null, float alpha = 0.55f)

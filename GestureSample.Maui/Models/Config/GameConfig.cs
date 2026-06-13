@@ -412,6 +412,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
         public int RepeatingTimesOfTriad { get; set; } = 1;
         public int RepeatingTimesOfSum { get; set; } = 1;
         public bool UseDistortedVariantInRepeatSequence { get; set; } = false;
+        public bool UseSumMinusLargerAddendRepeatSequence { get; set; } = false;
 
         // Readability aliases that preserve the existing config surface.
         public bool PreferLargerAddend1 { get => isLargerAddend1; set => isLargerAddend1 = value; }

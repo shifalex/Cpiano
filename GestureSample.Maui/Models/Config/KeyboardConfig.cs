@@ -239,6 +239,18 @@
         Rounded
     }
 
+    public enum ArrowMovementMode
+    {
+        Legacy = 0,
+        AllTogether = 1,
+        Arpeggio = 2,
+        Splited = 3,
+        MiddleSplited = 4,
+        JumpToEnd = 5,
+        OneByOne = 6,
+        JumpThroughMiddle = 7
+    }
+
     [Flags]
     public enum KeyboardFeatureFlags
     {
@@ -263,6 +275,21 @@
         None = 0,
         DynamicLength = 1,
         Rounded = 2
+    }
+
+    [Flags]
+    public enum ArrowMovementModeFlags
+    {
+        None = 0,
+        AllTogether = 1,
+        Arpeggio = 2,
+        Splited = 4,
+        MiddleSplited = 8,
+        JumpToEnd = 16,
+        OneByOne = 32,
+        JumpThroughMiddle = 64,
+        CountOn = OneByOne,
+        All = AllTogether | Arpeggio | Splited | MiddleSplited | JumpToEnd | OneByOne | JumpThroughMiddle
     }
 
     [Flags]
@@ -500,11 +527,15 @@
         public bool UseFixedComplexMiddle { get; set; } = false;
         public bool AllowRtlComplexPrompts { get; set; } = false;
         public bool AllowLearnerChosenComplexMiddle { get; set; } = false;
+        public bool StartArrowLabelRetryWithEquation { get; set; } = false;
         public ArrowPromptKindFlags AllowedArrowPromptKinds { get; set; } = ArrowPromptKindFlags.None;
         public ArrowRouteKindFlags AllowedArrowRouteKinds { get; set; } = ArrowRouteKindFlags.None;
         public MissingValueTargetFlags SpecialArrowMissingTargets { get; set; } = MissingValueTargetFlags.None;
         public ArrowFeedbackMode ArrowFeedbackMode { get; set; } = ArrowFeedbackMode.Icon;
         public ArrowDirectionMode ArrowDirectionMode { get; set; } = ArrowDirectionMode.Auto;
+        public ArrowMovementMode ArrowMovementMode { get; set; } = ArrowMovementMode.Legacy;
+        public ArrowMovementModeFlags AllowedArrowMovementModes { get; set; } = ArrowMovementModeFlags.None;
+        public bool EnableSecondArrowLeftTrace { get; set; } = false;
         public KeyLabelVerticalPosition KeyLabelVerticalPosition { get; set; } = KeyLabelVerticalPosition.Middle;
         public int GroupByColorColorCount { get; set; } = 2;
         public int[]? GroupByColorCounts { get; set; }

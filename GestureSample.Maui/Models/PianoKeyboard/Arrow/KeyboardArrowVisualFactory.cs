@@ -4,7 +4,12 @@ namespace GestureSample.Maui.Models
 {
     internal static class KeyboardArrowVisualFactory
     {
-        public static Grid CreateArrowVisual(string pathData, int numberAbove, int strokeThickness, string? labelTextOverride = null)
+        public static Grid CreateArrowVisual(
+            string pathData,
+            int numberAbove,
+            int strokeThickness,
+            string? labelTextOverride = null,
+            double? labelCenterX = null)
         {
             Grid arrowVisual = new()
             {
@@ -33,6 +38,13 @@ namespace GestureSample.Maui.Models
                 FlowDirection = FlowDirection.LeftToRight,
                 IsVisible = labelTextOverride != string.Empty && (labelTextOverride != null || numberAbove > -1)
             };
+            if (labelCenterX != null)
+            {
+                const double labelWidth = 44;
+                numberLabel.WidthRequest = labelWidth;
+                numberLabel.HorizontalOptions = LayoutOptions.Start;
+                numberLabel.TranslationX = Math.Max(0, labelCenterX.Value - (labelWidth / 2));
+            }
 
             Microsoft.Maui.Controls.Shapes.Path arrow = new()
             {

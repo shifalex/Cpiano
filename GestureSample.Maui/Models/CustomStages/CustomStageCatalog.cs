@@ -65,7 +65,7 @@ namespace GestureSample.Maui.Models.CustomStages
                 },
                 CustomStageKind.Arrow => new GameConfig
                 {
-                    GameName = "Custom Arrow",
+                    GameName = "Experimental Arrow",
                     UIQuestionType = UIQuestionType.OnlyKeyboard,
                     QuestionOrder = QuestionOrder.FromLeft,
                     MinAddend = 1,
@@ -73,16 +73,20 @@ namespace GestureSample.Maui.Models.CustomStages
                     MinSum = 1,
                     MaxSum = 10,
                     OnlyToTen = true,
+                    IncludeTutorials = true,
                     NumberOfTasksToWin = 20,
-                    NumberOfMistakesToLose = 3,
+                    NumberOfMistakesToLose = -1,
                     KeyboardConfig = new KeyboardConfig
                     {
                         SyncType = SyncType.Sync,
                         IsArrow = true,
+                        IsArrowLengthDynamic = true,
                         SecondsPressingToAnswer = 2,
+                        MaxArrowLabelDistance = 3,
                         ArrowDirectionMode = ArrowDirectionMode.LeftToRight,
                         AllowedArrowPromptKinds = ArrowPromptKindFlags.OnKeyboard,
                         AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+                        AllowedArrowMovementModes = ArrowMovementModeFlags.All,
                         SpecialArrowMissingTargets = MissingValueTargetFlags.Sum,
                         ArrowFeedbackMode = ArrowFeedbackMode.Icon
                     }
@@ -232,7 +236,8 @@ namespace GestureSample.Maui.Models.CustomStages
                     $"Weighted  {string.Join(",", config.KeyboardConfig.WeightsArray ?? Array.Empty<int>())}  sum {config.MinSum}-{config.MaxSum}" +
                     (config.KeyboardConfig.AllowImpossibleWeightedAnswer ? "  + XXX" : string.Empty),
                 CustomStageKind.PPWScheme =>
-                    $"{config.OperationList.FirstOrDefault().ToDString()}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.UIQuestionType}",
+                    $"{config.OperationList.FirstOrDefault().ToDString()}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.UIQuestionType}" +
+                    (config.UseSumMinusLargerAddendRepeatSequence ? "  sum-larger" : string.Empty),
                 CustomStageKind.Arrow =>
                     $"{config.KeyboardConfig?.ArrowDirectionMode}  {config.MinAddend}-{config.MaxAddend}  sum {config.MinSum}-{config.MaxSum}  {config.KeyboardConfig?.SyncType}  {DescribeArrowPromptFamily(config.KeyboardConfig)}  {DescribeArrowRouteFamily(config.KeyboardConfig)}  {config.KeyboardConfig?.ArrowFeedbackMode}",
                 CustomStageKind.Logical =>

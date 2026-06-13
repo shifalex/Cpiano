@@ -29,6 +29,10 @@ namespace GestureSample.Maui.Models
             Colors.LightGreen,
             Colors.Blue
         };
+        private const int ArrowGroupPressMaxGapMs = 220;
+        private const int ArrowSequenceMinGapMs = 220;
+        private const int ArrowSplitMinGapMs = 260;
+        private const int ArrowAttemptResetGapMs = 2000;
 
         private int _nextArrowAboveNumber = 1;
         private Direction _prevDir = Direction.Right;
@@ -59,6 +63,8 @@ namespace GestureSample.Maui.Models
         private bool _pendingArrowLabelKeyboardQuestion;
         private bool _usesActiveOnKeyboardArrow;
         private ArrowType _activeArrowType = ArrowType.Straight;
+        private ArrowMovementMode _activeArrowMovementMode = ArrowMovementMode.Legacy;
+        private string _lastArrowMovementDebugText = string.Empty;
         private bool[]? _stagedArrowFirstBits;
         private bool[]? _stagedArrowSecondBits;
         private readonly List<bool[]> _groupByColorQuestionGroups = new();
@@ -70,9 +76,11 @@ namespace GestureSample.Maui.Models
         private void GenerateArrowExercise()
         {
             var r = new Random();
+            SelectActiveArrowMovementMode(r);
             var (fromIndex, lengthIndexes) = PrepareArrowFields(r);
             SetBitArrayForArrow(fromIndex, lengthIndexes);
             CaptureStagedArrowOverlayState();
+            SetArrowMovementDebug("generated");
             Console.WriteLine("above number:{0}", aboveNumber);
         }
 
@@ -95,10 +103,59 @@ namespace GestureSample.Maui.Models
 
         private ArrowType GetCurrentArrowType()
         {
+            if (GetCurrentArrowMovementMode() is ArrowMovementMode.JumpToEnd or ArrowMovementMode.OneByOne or ArrowMovementMode.JumpThroughMiddle)
+                return ArrowType.Rounded;
+
             if (SupportsComposedArrowVariants())
                 return _activeArrowType;
 
             return Config?.KeyboardConfig?.ArrowType ?? ArrowType.Straight;
+        }
+
+        private ArrowMovementMode GetCurrentArrowMovementMode()
+        {
+            return _activeArrowMovementMode != ArrowMovementMode.Legacy
+                ? _activeArrowMovementMode
+                : Config?.KeyboardConfig?.ArrowMovementMode ?? ArrowMovementMode.Legacy;
+        }
+
+        private void SelectActiveArrowMovementMode(Random r)
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            _activeArrowMovementMode = ArrowMovementMode.Legacy;
+            if (keyboardConfig == null)
+                return;
+
+            List<ArrowMovementMode> movementModes = GetAllowedArrowMovementModes(keyboardConfig.AllowedArrowMovementModes);
+            if (movementModes.Count == 0)
+            {
+                _activeArrowMovementMode = keyboardConfig.ArrowMovementMode;
+                return;
+            }
+
+            int index = r.Next(movementModes.Count);
+            _activeArrowMovementMode = movementModes[index];
+        }
+
+        private static List<ArrowMovementMode> GetAllowedArrowMovementModes(ArrowMovementModeFlags flags)
+        {
+            List<ArrowMovementMode> modes = new();
+            if (flags.HasFlag(ArrowMovementModeFlags.AllTogether))
+                modes.Add(ArrowMovementMode.AllTogether);
+            if (flags.HasFlag(ArrowMovementModeFlags.Arpeggio))
+                modes.Add(ArrowMovementMode.Arpeggio);
+            if (flags.HasFlag(ArrowMovementModeFlags.Splited))
+                modes.Add(ArrowMovementMode.Splited);
+            if (flags.HasFlag(ArrowMovementModeFlags.MiddleSplited))
+                modes.Add(ArrowMovementMode.MiddleSplited);
+            if (flags.HasFlag(ArrowMovementModeFlags.JumpToEnd))
+                modes.Add(ArrowMovementMode.JumpToEnd);
+            if (flags.HasFlag(ArrowMovementModeFlags.OneByOne))
+                modes.Add(ArrowMovementMode.OneByOne);
+            if (flags.HasFlag(ArrowMovementModeFlags.JumpThroughMiddle))
+                modes.Add(ArrowMovementMode.JumpThroughMiddle);
+
+            return modes;
         }
 
         private static ArrowType GetArrowTypeForPromptMode(ArrowLabelExerciseMode mode)
@@ -957,7 +1014,83 @@ namespace GestureSample.Maui.Models
             }
 
             ApplyOnKeyboardArrowDistanceConstraints(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureSplitedArrowIsShort(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureMiddleSplitedArrowIsShort(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureJumpThroughMiddleHasMiddle(r, keys, ref fromIndex, ref lengthIndexes);
             return (fromIndex, lengthIndexes);
+        }
+
+        private void EnsureSplitedArrowIsShort(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.Splited)
+                return;
+
+            int maxDistance = GetMaxArrowLabelDistance(keys - 1);
+            if (lengthIndexes > 1 &&
+                lengthIndexes <= maxDistance &&
+                !ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys))
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, mustCrossTen: false);
+            candidates = candidates
+                .Where(candidate => candidate.Length > 1 &&
+                                    !ArrowWrapsKeyboardBoundary(candidate.Above, candidate.Length, candidate.Direction, keys))
+                .ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private void EnsureMiddleSplitedArrowIsShort(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.MiddleSplited)
+                return;
+
+            int maxDistance = GetMaxArrowLabelDistance(keys - 1);
+            if (lengthIndexes > 1 && lengthIndexes <= maxDistance)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, mustCrossTen: false);
+            candidates = candidates.Where(candidate => candidate.Length > 1).ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private void EnsureJumpThroughMiddleHasMiddle(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.JumpThroughMiddle)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, 2, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, 2, mustCrossTen: false);
+            candidates = candidates.Where(candidate => candidate.Length == 2).ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
         }
 
         private void ApplyOnKeyboardArrowDistanceConstraints(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
@@ -965,22 +1098,26 @@ namespace GestureSample.Maui.Models
             int configuredMaxDistance = Config?.KeyboardConfig?.MaxArrowLabelDistance ?? 0;
             bool needsDistanceCap = configuredMaxDistance > 0;
             bool needsThroughTen = Config?.OnlyThrougTen == true;
-            if (!needsDistanceCap && !needsThroughTen)
+            bool needsToTen = Config?.OnlyToTen == true &&
+                              Config?.KeyboardConfig?.EnableSecondArrowLeftTrace == true;
+            if (!needsDistanceCap && !needsThroughTen && !needsToTen)
                 return;
 
             int maxDistance = needsDistanceCap
                 ? Math.Max(1, Math.Min(keys - 1, configuredMaxDistance))
                 : keys - 1;
 
+            bool wrapsKeyboardBoundary = ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys);
             bool currentIsValid =
                 lengthIndexes <= maxDistance &&
-                (!needsThroughTen || ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys));
+                (!needsThroughTen || wrapsKeyboardBoundary) &&
+                (!needsToTen || !wrapsKeyboardBoundary);
             if (currentIsValid)
                 return;
 
             List<(int Above, int Length, Direction Direction)> candidates = new();
-            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, needsThroughTen);
-            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, needsThroughTen);
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, needsThroughTen, needsToTen);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, needsThroughTen, needsToTen);
 
             if (candidates.Count == 0)
             {
@@ -1009,13 +1146,18 @@ namespace GestureSample.Maui.Models
             Direction candidateDirection,
             int keys,
             int maxDistance,
-            bool mustCrossTen)
+            bool mustCrossTen,
+            bool mustStayWithinTen = false)
         {
             for (int start = 1; start <= keys; start++)
             {
                 for (int candidateLength = 1; candidateLength <= maxDistance; candidateLength++)
                 {
-                    if (mustCrossTen && !ArrowWrapsKeyboardBoundary(start, candidateLength, candidateDirection, keys))
+                    bool wrapsKeyboardBoundary = ArrowWrapsKeyboardBoundary(start, candidateLength, candidateDirection, keys);
+                    if (mustCrossTen && !wrapsKeyboardBoundary)
+                        continue;
+
+                    if (mustStayWithinTen && wrapsKeyboardBoundary)
                         continue;
 
                     candidates.Add((start, candidateLength, candidateDirection));
@@ -1167,10 +1309,14 @@ namespace GestureSample.Maui.Models
             }
 
             bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
+            ArrowMovementMode movementMode = GetCurrentArrowMovementMode();
             bool result = CheckOnly(submittedKeyboard);
+            DateTime submittedTime = DateTime.Now;
+            if (result)
+                result = await CheckArrowMovementTimingAsync();
+
             _status = result ? Statement.True : Statement.False;
             IncrementGuessNumber();
-            DateTime submittedTime = DateTime.Now;
             var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
                 GameId.ToString(),
                 _questionNumber,
@@ -1218,6 +1364,308 @@ namespace GestureSample.Maui.Models
                 : await RegisterFailedAttemptAsync();
 
             return CreateCheckResult(result, completion: completion);
+        }
+
+        private async Task<bool> CheckArrowMovementTimingAsync()
+        {
+            ArrowMovementMode movementMode = GetCurrentArrowMovementMode();
+            if (!UsesOnKeyboardArrowExercise() || movementMode == ArrowMovementMode.Legacy)
+                return true;
+
+            if (_keyEventRepository == null)
+            {
+                SetArrowMovementDebug("timing skipped: no repository");
+                return true;
+            }
+
+            List<Data.SQLite.KeyEvent> pendingEvents = await _keyEventRepository.GetPendingEventsAsync(GameId.ToString(), _questionNumber);
+            List<Data.SQLite.KeyEvent> rawDownEvents = pendingEvents
+                .Where(item => item.EventType == 1 && item.KeyNumber > 0)
+                .OrderBy(item => item.EventTime)
+                .ThenBy(item => item.id)
+                .ToList();
+
+            List<int> expectedKeys = GetExpectedArrowMovementKeyNumbers(movementMode);
+
+            if (expectedKeys.Count == 0 || rawDownEvents.Count == 0)
+            {
+                SetArrowMovementDebug("timing failed: missing expected or actual key-downs", expectedKeys, rawDownEvents);
+                return false;
+            }
+
+            List<Data.SQLite.KeyEvent> attemptEvents = GetLatestArrowAttemptByIdleGap(rawDownEvents);
+            List<Data.SQLite.KeyEvent> downEvents = GetLatestArrowAttemptDownEvents(attemptEvents, expectedKeys.Count, movementMode);
+            string attemptWindowDebug = rawDownEvents.Count == downEvents.Count
+                ? string.Empty
+                : $" raw={FormatKeys(rawDownEvents.Select(item => item.KeyNumber))}";
+
+            string reason;
+            bool isCorrect;
+            switch (movementMode)
+            {
+                case ArrowMovementMode.AllTogether:
+                    isCorrect = MatchesAllTogetherTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.Arpeggio:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.Splited:
+                    isCorrect = MatchesSplitTiming(downEvents, expectedKeys, GetVisibleArrowSplitFirstCount(expectedKeys.Count), out reason);
+                    break;
+                case ArrowMovementMode.MiddleSplited:
+                    isCorrect = MatchesSplitTiming(downEvents, expectedKeys, (int)Math.Ceiling(expectedKeys.Count / 2.0), out reason);
+                    break;
+                case ArrowMovementMode.JumpToEnd:
+                    isCorrect = MatchesJumpToEndCurrentAttemptTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.JumpThroughMiddle:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.OneByOne:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                default:
+                    isCorrect = true;
+                    reason = "timing skipped";
+                    break;
+            }
+
+            SetArrowMovementDebug(isCorrect ? $"timing ok: {reason}{attemptWindowDebug}" : $"timing failed: {reason}{attemptWindowDebug}", expectedKeys, downEvents);
+            return isCorrect;
+        }
+
+        private static List<Data.SQLite.KeyEvent> GetLatestArrowAttemptDownEvents(
+            IReadOnlyList<Data.SQLite.KeyEvent> downEvents,
+            int expectedKeyCount,
+            ArrowMovementMode movementMode)
+        {
+            if (movementMode == ArrowMovementMode.JumpToEnd)
+                return downEvents.ToList();
+
+            int attemptKeyCount = expectedKeyCount;
+            if (attemptKeyCount <= 0 || downEvents.Count <= attemptKeyCount)
+                return downEvents.ToList();
+
+            return downEvents.Skip(downEvents.Count - attemptKeyCount).ToList();
+        }
+
+        private static List<Data.SQLite.KeyEvent> GetLatestArrowAttemptByIdleGap(IReadOnlyList<Data.SQLite.KeyEvent> downEvents)
+        {
+            if (downEvents.Count <= 1)
+                return downEvents.ToList();
+
+            int startIndex = 0;
+            for (int i = 1; i < downEvents.Count; i++)
+            {
+                int gapMs = ToMilliseconds(downEvents[i].EventTime - downEvents[i - 1].EventTime);
+                if (gapMs >= ArrowAttemptResetGapMs)
+                    startIndex = i;
+            }
+
+            return downEvents.Skip(startIndex).ToList();
+        }
+
+        private List<int> GetExpectedArrowMovementKeyNumbers(ArrowMovementMode movementMode)
+        {
+            List<int> routeKeys = GetArrowTutorialStepIndices()
+                .Select(index => index + 1)
+                .Where(keyNumber => keyNumber > 0)
+                .ToList();
+
+            if (movementMode == ArrowMovementMode.JumpToEnd && routeKeys.Count > 0)
+                return new List<int> { routeKeys[^1] };
+
+            if (movementMode != ArrowMovementMode.JumpThroughMiddle || routeKeys.Count <= 1)
+                return routeKeys;
+
+            int middleIndex = Math.Max(0, (routeKeys.Count - 1) / 2);
+            int endKey = routeKeys[^1];
+            int middleKey = routeKeys[middleIndex];
+            return middleKey == endKey
+                ? new List<int> { endKey }
+                : new List<int> { middleKey, endKey };
+        }
+
+        private static bool MatchesAllTogetherTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.OrderBy(key => key)))
+            {
+                reason = "keys differ";
+                return false;
+            }
+
+            int maxGapMs = GetMaxGapMs(downEvents);
+            reason = $"max gap {maxGapMs}ms <= {ArrowGroupPressMaxGapMs}ms";
+            return maxGapMs <= ArrowGroupPressMaxGapMs;
+        }
+
+        private static bool MatchesSequentialTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).SequenceEqual(expectedKeys))
+            {
+                reason = "order differs";
+                return false;
+            }
+
+            int minGapMs = GetMinGapMs(downEvents);
+            reason = downEvents.Count <= 1
+                ? "single key"
+                : $"min gap {minGapMs}ms >= {ArrowSequenceMinGapMs}ms";
+            return downEvents.Count <= 1 || minGapMs >= ArrowSequenceMinGapMs;
+        }
+
+        private static bool MatchesSplitTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, int firstCount, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count || expectedKeys.Count <= 1)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            firstCount = Math.Max(1, Math.Min(expectedKeys.Count - 1, firstCount));
+            List<Data.SQLite.KeyEvent> firstEvents = downEvents.Take(firstCount).ToList();
+            List<Data.SQLite.KeyEvent> secondEvents = downEvents.Skip(firstCount).ToList();
+
+            if (secondEvents.Count == 0)
+            {
+                reason = "missing second group";
+                return false;
+            }
+
+            if (!firstEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.Take(firstCount).OrderBy(key => key)))
+            {
+                reason = "first group keys differ";
+                return false;
+            }
+
+            if (!secondEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.Skip(firstCount).OrderBy(key => key)))
+            {
+                reason = "second group keys differ";
+                return false;
+            }
+
+            int splitGapMs = ToMilliseconds(secondEvents[0].EventTime - firstEvents[^1].EventTime);
+            if (splitGapMs < ArrowSplitMinGapMs)
+            {
+                reason = $"split gap {splitGapMs}ms < {ArrowSplitMinGapMs}ms";
+                return false;
+            }
+
+            int firstMaxGapMs = GetMaxGapMs(firstEvents);
+            int secondMaxGapMs = GetMaxGapMs(secondEvents);
+            reason = $"split gap {splitGapMs}ms, group gaps {firstMaxGapMs}/{secondMaxGapMs}ms";
+            return firstMaxGapMs <= ArrowGroupPressMaxGapMs &&
+                   secondMaxGapMs <= ArrowGroupPressMaxGapMs;
+        }
+
+        private static bool MatchesJumpToEndCurrentAttemptTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"current attempt count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).SequenceEqual(expectedKeys))
+            {
+                reason = "end key differs";
+                return false;
+            }
+
+            reason = $"single end key {expectedKeys[^1]}";
+            return true;
+        }
+
+        private void SetArrowMovementDebug(string reason)
+        {
+            List<int> expectedKeys = GetExpectedArrowMovementKeyNumbers(GetCurrentArrowMovementMode());
+
+            SetArrowMovementDebug(reason, expectedKeys, null);
+        }
+
+        private void SetArrowMovementDebug(
+            string reason,
+            IReadOnlyList<int> expectedKeys,
+            IReadOnlyList<Data.SQLite.KeyEvent>? downEvents)
+        {
+            string actualText = downEvents == null
+                ? "-"
+                : FormatKeys(downEvents.Select(item => item.KeyNumber));
+            _lastArrowMovementDebugText =
+                $"ArrowDebug mode={GetCurrentArrowMovementMode()} expected={FormatKeys(expectedKeys)} actual={actualText} {reason}";
+            Console.WriteLine(_lastArrowMovementDebugText);
+            DevLog.Write(_lastArrowMovementDebugText);
+        }
+
+        private static string FormatKeys(IEnumerable<int> keys)
+        {
+            return string.Join(",", keys);
+        }
+
+        private int GetVisibleArrowSplitFirstCount(int tutorialStepCount)
+        {
+            if (tutorialStepCount <= 1)
+                return tutorialStepCount;
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return Math.Max(1, tutorialStepCount / 2);
+
+            int firstCount = dir == Direction.Right
+                ? keyCount - aboveNumber + 1
+                : aboveNumber;
+
+            if (firstCount <= 0 || firstCount >= tutorialStepCount)
+                firstCount = (int)Math.Ceiling(tutorialStepCount / 2.0);
+
+            return Math.Max(1, Math.Min(tutorialStepCount - 1, firstCount));
+        }
+
+        private static int GetMaxGapMs(IReadOnlyList<Data.SQLite.KeyEvent> events)
+        {
+            if (events.Count <= 1)
+                return 0;
+
+            int maxGap = 0;
+            for (int i = 1; i < events.Count; i++)
+                maxGap = Math.Max(maxGap, ToMilliseconds(events[i].EventTime - events[i - 1].EventTime));
+
+            return maxGap;
+        }
+
+        private static int GetMinGapMs(IReadOnlyList<Data.SQLite.KeyEvent> events)
+        {
+            if (events.Count <= 1)
+                return int.MaxValue;
+
+            int minGap = int.MaxValue;
+            for (int i = 1; i < events.Count; i++)
+                minGap = Math.Min(minGap, ToMilliseconds(events[i].EventTime - events[i - 1].EventTime));
+
+            return minGap;
+        }
+
+        private static int ToMilliseconds(TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero)
+                duration = TimeSpan.Zero;
+
+            return (int)Math.Round(duration.TotalMilliseconds);
         }
 
         private void ApplyArrowLabelPpwState(bool revealMissingValue)
@@ -1686,6 +2134,10 @@ namespace GestureSample.Maui.Models
                    GetCurrentArrowType() == ArrowType.Rounded;
         }
 
+        public ArrowMovementMode CurrentArrowMovementMode => GetCurrentArrowMovementMode();
+
+        public string LastArrowMovementDebugText => _lastArrowMovementDebugText;
+
         public bool IsSpecialOrdinalArrowTutorial()
         {
             return UsesArrowLabelExercise() &&
@@ -1787,6 +2239,58 @@ namespace GestureSample.Maui.Models
             }
 
             return indices;
+        }
+
+        public IReadOnlyList<int> GetArrowMovementTutorialStepIndices()
+        {
+            IReadOnlyList<int> routeIndices = GetArrowTutorialStepIndices();
+            if (GetCurrentArrowMovementMode() == ArrowMovementMode.JumpToEnd && routeIndices.Count > 0)
+                return new List<int> { routeIndices[^1] };
+
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.JumpThroughMiddle || routeIndices.Count <= 1)
+                return routeIndices;
+
+            int middleIndex = Math.Max(0, (routeIndices.Count - 1) / 2);
+            int endIndex = routeIndices[^1];
+            int middle = routeIndices[middleIndex];
+            return middle == endIndex
+                ? new List<int> { endIndex }
+                : new List<int> { middle, endIndex };
+        }
+
+        public IReadOnlyList<int> GetArrowTutorialArcIndices()
+        {
+            if (!IsOrdinalArrowTutorial())
+                return Array.Empty<int>();
+
+            List<int> routeIndices = GetArrowTutorialStepIndices().ToList();
+            if (routeIndices.Count == 0)
+                return Array.Empty<int>();
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return routeIndices;
+
+            int startIndex;
+            if (UsesArrowLabelExercise())
+            {
+                bool leftToRight = Config?.QuestionOrder != QuestionOrder.ToLeft;
+                int startValue = leftToRight ? _arrowLabelStartValue : _arrowLabelEndValue;
+                startIndex = GetKeyboardIndexForValue(startValue);
+            }
+            else
+            {
+                int directionStep = dir == Direction.Right ? 1 : -1;
+                startIndex = (routeIndices[0] - directionStep + keyCount) % keyCount;
+            }
+
+            if (startIndex >= 0 && startIndex < keyCount && startIndex != routeIndices[0])
+                routeIndices.Insert(0, startIndex);
+
+            if (GetCurrentArrowMovementMode() == ArrowMovementMode.JumpToEnd && routeIndices.Count > 1)
+                return new List<int> { routeIndices[0], routeIndices[^1] };
+
+            return routeIndices;
         }
 
         public bool[] GetPrimaryColorTargetBits()

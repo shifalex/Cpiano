@@ -500,6 +500,7 @@ namespace GestureSample.Maui.Models
             {
                 Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
                 Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
+                Operation.Minus => (Sum - addend1 == addend2) ? Statement.True : Statement.False,
                 _ => Statement.True
             };
 
@@ -1042,7 +1043,9 @@ namespace GestureSample.Maui.Models
                 ? BuildWeightedCustomStageFactors(r)
                 : UsesWeightedSingleTargetKeyboardStage()
                     ? BuildWeightedSingleTargetFactors(r)
-                    : (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide ? FactorsMultiplication : Factors);
+                    : Config.UseSumMinusLargerAddendRepeatSequence && CurrentOperation == Operation.Sum
+                        ? BuildSumMinusLargerAddendFactors(r)
+                        : (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide ? FactorsMultiplication : Factors);
 
             ConfigureDynamicKeyboardMultiplicationWeights(r, factors);
 
@@ -1055,7 +1058,8 @@ namespace GestureSample.Maui.Models
 
             _prevResolvedTriad = new PPWObject(factors[0], factors[1], factors[2]);
 
-            if (!TryApplyDistortedRepeatVariant(factors))
+            if (!TryApplySumMinusLargerAddendRepeatVariant(r, factors) &&
+                !TryApplyDistortedRepeatVariant(factors))
             {
                 foreach (int index in ChooseHiddenValueIndexes(r, factors))
                     factors[index] = NAN;
@@ -1064,6 +1068,70 @@ namespace GestureSample.Maui.Models
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
+
+        private int[] BuildSumMinusLargerAddendFactors(Random r)
+        {
+            if (_currentTriadIndex > 0 && _prevResolvedTriad != null)
+                return new[] { _prevResolvedTriad.Addend1, _prevResolvedTriad.Addend2, _prevResolvedTriad.Sum };
+
+            List<PPWObject> candidates = new();
+            int minLargerAddend = Math.Max(1, Config.MinAddend);
+            int maxLargerAddend = Math.Max(minLargerAddend, Config.MaxAddend);
+
+            for (int sumValue = Math.Max(1, Config.MinSum); sumValue <= Config.MaxSum; sumValue++)
+            {
+                for (int largerAddend = minLargerAddend; largerAddend <= maxLargerAddend; largerAddend++)
+                {
+                    int negativeAddend = sumValue - largerAddend;
+                    int distance = largerAddend - sumValue;
+
+                    if (distance <= 0)
+                        continue;
+
+                    if (!IsTriadWithinConfig(negativeAddend, largerAddend, sumValue))
+                        continue;
+
+                    if (!IsTriadWithinConfig(sumValue, distance, largerAddend))
+                        continue;
+
+                    candidates.Add(new PPWObject(sumValue, distance, largerAddend));
+                }
+            }
+
+            if (candidates.Count == 0)
+                return Factors;
+
+            PPWObject chosen = candidates[r.Next(candidates.Count)];
+            return new[] { chosen.Addend1, chosen.Addend2, chosen.Sum };
+        }
+
+        private bool TryApplySumMinusLargerAddendRepeatVariant(Random r, int[] factors)
+        {
+            if (!Config.UseSumMinusLargerAddendRepeatSequence ||
+                factors == null ||
+                factors.Length < 3 ||
+                Config.RepeatingTimesOfTriad <= 1 ||
+                _currentTriadIndex <= 0 ||
+                _currentTriadIndex >= Config.RepeatingTimesOfTriad ||
+                CurrentOperation != Operation.Sum ||
+                _prevResolvedTriad == null)
+            {
+                return false;
+            }
+
+            int sumValue = _prevResolvedTriad.Addend1;
+            int largerAddend = _prevResolvedTriad.Sum;
+            int negativeAddend = sumValue - largerAddend;
+
+            if (!IsTriadWithinConfig(negativeAddend, largerAddend, sumValue))
+                return false;
+
+            bool hideLeftNegativeAddend = r.Next(2) == 0;
+            factors[0] = hideLeftNegativeAddend ? NAN : largerAddend;
+            factors[1] = hideLeftNegativeAddend ? largerAddend : NAN;
+            factors[2] = sumValue;
+            return true;
         }
 
         private bool TryApplyDistortedRepeatVariant(int[] factors)
@@ -1640,10 +1708,30 @@ namespace GestureSample.Maui.Models
             int minAddend2 = Config.EffectiveMinAddend2;
             int maxAddend2 = Config.EffectiveMaxAddend2;
 
+            if (CurrentOperation == Operation.Minus)
+            {
+                for (int leftValue = minSum; leftValue <= maxSum; leftValue++)
+                    for (int subtrahend = minAddend; subtrahend <= maxAddend; subtrahend++)
+                    {
+                        int result = leftValue - subtrahend;
+                        if (result < minAddend2 || result > maxAddend2)
+                            continue;
+
+                        PossibleTriads.Add(new PPWObject(subtrahend, result, leftValue));
+                        Console.WriteLine("{0} - {1}= {2}", leftValue, subtrahend, result);
+                    }
+
+                return;
+            }
+
             for (int i = minAddend; i <= maxAddend; i++)
                 for (int j = minAddend2; j <= (Config.IsHistorySymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
                 {
-                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
+                    int sum = CurrentOperation switch
+                    {
+                        Operation.Multiplication or Operation.Divide => i * j,
+                        _ => i + j
+                    };
                     if (sum >= minSum && sum <= maxSum)
                         if (!Config.OnlyThrougTen && !Config.OnlyToTen)
                         {
