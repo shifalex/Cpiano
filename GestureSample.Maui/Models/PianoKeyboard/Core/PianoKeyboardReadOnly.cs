@@ -62,6 +62,7 @@ namespace GestureSample.Maui.Models
 
         public readonly double MAX_KEY_WIDTH = 105;
         public double ActualKeyWidth { get; private set; }
+        private double? _exactKeyWidthOverride;
         public ArrowMovementMode CurrentArrowMovementMode { get; private set; } = ArrowMovementMode.Legacy;
         public string LastArrowDrawingDebugText { get; private set; } = string.Empty;
 
@@ -548,22 +549,31 @@ namespace GestureSample.Maui.Models
                 double available = Width;
                 if (available > 0)
                 {
-                    double spacing = (keysInRow - 1) * ColumnSpacing;
-                    double sep = (keysInRow > 10 ? 0 : FINGER_SEPERATOR);
+                    if (_exactKeyWidthOverride.HasValue)
+                    {
+                        ActualKeyWidth = _exactKeyWidthOverride.Value;
+                        if (Math.Abs(Padding.Left) > 0.5 || Math.Abs(Padding.Right) > 0.5)
+                            Padding = new Thickness(0, Padding.Top, 0, Padding.Bottom);
+                    }
+                    else
+                    {
+                        double spacing = (keysInRow - 1) * ColumnSpacing;
+                        double sep = (keysInRow > 10 ? 0 : FINGER_SEPERATOR);
 
-                    double desiredKeyWidth = (available - spacing - sep) / keysInRow;
-                    desiredKeyWidth = Math.Min(desiredKeyWidth, MAX_KEY_WIDTH);
-                    if (desiredKeyWidth < 0) desiredKeyWidth = 0;
+                        double desiredKeyWidth = (available - spacing - sep) / keysInRow;
+                        desiredKeyWidth = Math.Min(desiredKeyWidth, MAX_KEY_WIDTH);
+                        if (desiredKeyWidth < 0) desiredKeyWidth = 0;
 
-                    double contentWidth = keysInRow * desiredKeyWidth + spacing + sep;
-                    double extra = available - contentWidth;
-                    if (extra < 0) extra = 0;
+                        double contentWidth = keysInRow * desiredKeyWidth + spacing + sep;
+                        double extra = available - contentWidth;
+                        if (extra < 0) extra = 0;
 
-                    var newPadding = new Thickness(extra / 2, Padding.Top, extra / 2, Padding.Bottom);
-                    if (Math.Abs(newPadding.Left - Padding.Left) > 0.5)
-                        Padding = newPadding;
+                        var newPadding = new Thickness(extra / 2, Padding.Top, extra / 2, Padding.Bottom);
+                        if (Math.Abs(newPadding.Left - Padding.Left) > 0.5)
+                            Padding = newPadding;
 
-                    ActualKeyWidth = desiredKeyWidth;
+                        ActualKeyWidth = desiredKeyWidth;
+                    }
                 }
             }
 
@@ -586,11 +596,71 @@ namespace GestureSample.Maui.Models
 
         }
 
+        public double SetExactKeyWidth(double keyWidth, double? separatorWidth = null, double? columnSpacing = null)
+        {
+            keyWidth = Math.Clamp(keyWidth, 12, 280);
+            _exactKeyWidthOverride = keyWidth;
+            int keysInRow = Config.KeysInRow;
+            int separatorColumn = keysInRow <= 10 ? keysInRow / 2 : -1;
+            if (columnSpacing.HasValue)
+                ColumnSpacing = Math.Max(0, columnSpacing.Value);
+            double exactSeparatorWidth = separatorWidth.HasValue
+                ? Math.Max(0, separatorWidth.Value)
+                : FINGER_SEPERATOR;
+
+            for (int column = 0; column < ColumnDefinitions.Count; column++)
+            {
+                ColumnDefinitions[column].Width = column == separatorColumn
+                    ? new GridLength(exactSeparatorWidth, GridUnitType.Absolute)
+                    : new GridLength(keyWidth, GridUnitType.Absolute);
+            }
+
+            if (btnKeys != null)
+            {
+                foreach (MR.Gestures.Button keyButton in btnKeys)
+                {
+                    if (keyButton == null)
+                        continue;
+                    keyButton.MinimumWidthRequest = keyWidth;
+                    keyButton.WidthRequest = keyWidth;
+                    keyButton.MaximumWidthRequest = keyWidth;
+                    keyButton.HorizontalOptions = LayoutOptions.Fill;
+                }
+            }
+
+            double totalWidth = ColumnDefinitions.Sum(column => column.Width.Value) +
+                                (Math.Max(0, ColumnDefinitions.Count - 1) * ColumnSpacing);
+            WidthRequest = totalWidth;
+            MaximumWidthRequest = totalWidth;
+            ActualKeyWidth = keyWidth;
+            Padding = new Thickness(0, Padding.Top, 0, Padding.Bottom);
+            FixOverlaySpan();
+            InvalidateOverlay();
+            return totalWidth;
+        }
+
+        public double SetExactKeyHeight(double keyHeight)
+        {
+            keyHeight = Math.Max(24, keyHeight);
+            int keyRowStart = Math.Max(0, RowDefinitions.Count - Config.Rows);
+            for (int row = keyRowStart; row < RowDefinitions.Count; row++)
+                RowDefinitions[row].Height = new GridLength(keyHeight, GridUnitType.Absolute);
+
+            double totalHeight = RowDefinitions.Sum(row => row.Height.IsAbsolute ? row.Height.Value : 0) +
+                                 (Math.Max(0, RowDefinitions.Count - 1) * RowSpacing);
+            HeightRequest = totalHeight;
+            FixOverlaySpan();
+            InvalidateOverlay();
+            return totalHeight;
+        }
+
 
         private void InitializeWithConfig(KeyboardConfig config)
         {
             config.NormalizeWeightedLayout();
             Config = config;
+            if (config.IsVerticalPrecisionPinchExercise && heading_height > 0)
+                heading_height = 52;
             int keysInRow = config.KeysInRow;
             int rows = config.Rows;
             this.ColumnSpacing = 5;

@@ -42,6 +42,13 @@ namespace GestureSample.Maui.Models
 
         public Direction moveBydir = Direction.Right;
         public int moveByLength =0;
+        private int _precisionShiftDelta = 0;
+        private int _precisionShiftLeftDelta;
+        private int _precisionShiftRightDelta;
+        private bool _precisionShiftLeftBaseAtTop;
+        private bool _precisionShiftRightBaseAtTop;
+        private bool _precisionShiftLeftIsShift;
+        private bool _precisionShiftRightIsShift;
         public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
         private int _currentStagedArrowStepIndex;
         private int _completedStagedArrowCycles;
@@ -1817,6 +1824,165 @@ namespace GestureSample.Maui.Models
 
         }
 
+        private bool[] GenerateTwoKeyPinch(Random random, int start, int end)
+        {
+            bool[] pinch = new bool[BitArrayQuestion.Length];
+            if (Config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
+            {
+                int maxInterval = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchMaxInterval,
+                    1,
+                    Math.Max(1, Config.KeyboardConfig.Rows - 1));
+                bool moveUpperOnly = Config.KeyboardConfig.IsPrecisionShiftExercise &&
+                                     Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper;
+                if (Config.KeyboardConfig.PrecisionShiftBothHands)
+                {
+                    if (moveUpperOnly)
+                    {
+                        // The lower finger is the permanent base in this stage. Logical
+                        // row 0 is the visually bottom row; choose the moving finger above it.
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            int upperRow = random.Next(1, Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval) + 1);
+                            pinch[column] = true;
+                            pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
+                    if (!Config.KeyboardConfig.IsPrecisionShiftExercise)
+                    {
+                        // In two-hand vertical COPY, each hand has its own pinch.
+                        // The two row pairs may coincide naturally, but are not coupled.
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            int handFirstRow = random.Next(Config.KeyboardConfig.Rows);
+                            int handSecondRow;
+                            do
+                            {
+                                handSecondRow = random.Next(Config.KeyboardConfig.Rows);
+                            }
+                            while (handSecondRow == handFirstRow ||
+                                   Math.Abs(handSecondRow - handFirstRow) > maxInterval);
+
+                            pinch[(handFirstRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                            pinch[(handSecondRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
+                    if (Config.KeyboardConfig.PrecisionShiftStaggerHandsInitially &&
+                        Config.KeyboardConfig.Rows >= 5 &&
+                        Config.KeyboardConfig.KeysInRow >= 2)
+                    {
+                        // Stage 9 starts with the left pinch high and the right pinch low.
+                        pinch[Config.KeyboardConfig.KeysInRow] = true;
+                        pinch[(2 * Config.KeyboardConfig.KeysInRow)] = true;
+                        pinch[1] = true;
+                        pinch[Config.KeyboardConfig.KeysInRow + 1] = true;
+                        return pinch;
+                    }
+
+                    int firstRow = random.Next(Config.KeyboardConfig.Rows);
+                    int secondRow;
+                    do
+                    {
+                        secondRow = random.Next(Config.KeyboardConfig.Rows);
+                    }
+                    while (secondRow == firstRow ||
+                           Math.Abs(secondRow - firstRow) > maxInterval ||
+                           (Math.Min(firstRow, secondRow) == 0 &&
+                            Math.Max(firstRow, secondRow) == Config.KeyboardConfig.Rows - 1) ||
+                           IsTerminalUpperOnlyPinch(firstRow, secondRow));
+
+                    for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                    {
+                        pinch[(firstRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        pinch[(secondRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                    }
+                    return pinch;
+                }
+
+                int firstColumn = Config.KeyboardConfig.PrecisionShiftBothHands ? 0 : random.Next(0, 2);
+                int lastColumn = Config.KeyboardConfig.PrecisionShiftBothHands ? 1 : firstColumn;
+                for (int column = firstColumn; column <= lastColumn; column++)
+                {
+                    if (moveUpperOnly)
+                    {
+                        int upperRow = random.Next(1, Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval) + 1);
+                        pinch[column] = true;
+                        pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        continue;
+                    }
+
+                    int[] columnIndices = Enumerable.Range(0, Config.KeyboardConfig.Rows)
+                        .Select(row => (row * Config.KeyboardConfig.KeysInRow) + column)
+                        .Where(index => index >= 0 && index < pinch.Length)
+                        .ToArray();
+                    int firstPosition = random.Next(columnIndices.Length);
+                    int secondPosition;
+                    do
+                    {
+                        secondPosition = random.Next(columnIndices.Length);
+                    }
+                    while (secondPosition == firstPosition ||
+                           Math.Abs(secondPosition - firstPosition) > maxInterval ||
+                           (Config.KeyboardConfig.IsPrecisionShiftExercise &&
+                            Math.Min(firstPosition, secondPosition) == 0 &&
+                            Math.Max(firstPosition, secondPosition) == columnIndices.Length - 1) ||
+                           IsTerminalUpperOnlyPinch(firstPosition, secondPosition));
+
+                    pinch[columnIndices[firstPosition]] = true;
+                    pinch[columnIndices[secondPosition]] = true;
+                }
+                return pinch;
+            }
+
+            if (Config.KeyboardConfig?.PrecisionShiftBothHands == true)
+            {
+                int half = pinch.Length / 2;
+                AddTwoRandomKeys(random, pinch, 0, half);
+                AddTwoRandomKeys(random, pinch, half, pinch.Length);
+                return pinch;
+            }
+
+            int first = random.Next(start, end);
+            int second;
+            do
+            {
+                second = random.Next(start, end);
+            }
+            while (second == first);
+
+            pinch[first] = true;
+            pinch[second] = true;
+            return pinch;
+        }
+
+        private bool IsTerminalUpperOnlyPinch(int firstRow, int secondRow)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            return keyboard.IsPrecisionShiftExercise &&
+                   keyboard.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper &&
+                   Math.Min(firstRow, secondRow) == keyboard.Rows - 2 &&
+                   Math.Max(firstRow, secondRow) == keyboard.Rows - 1;
+        }
+
+        private static void AddTwoRandomKeys(Random random, bool[] bits, int start, int end)
+        {
+            int first = random.Next(start, end);
+            int second;
+            do
+            {
+                second = random.Next(start, end);
+            }
+            while (second == first ||
+                   (Math.Min(first, second) == start && Math.Max(first, second) == end - 1));
+
+            bits[first] = true;
+            bits[second] = true;
+        }
+
         private (int from, int length) ChooseFromAndLength(Random r, int minLength, int start =0, int end = -1)
         {
             if( end == -1) end = BitArrayQuestion.Length;
@@ -1931,6 +2097,15 @@ namespace GestureSample.Maui.Models
                 {
                     BitArrayQuestion = _prevBitArrayAnswer.ToArray();
                     BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
+                    if (Config.KeyboardConfig?.IsTransformativePrecisionCopyExercise == true)
+                    {
+                        TransformPrecisionCopyQuestion(r);
+                    }
+                    else if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                    {
+                        MaybeTransferOneHandPrecisionPinch(r);
+                        ConfigurePrecisionShift(r);
+                    }
                     BuildCorrectAnswer();
                     return;
                 }
@@ -1938,6 +2113,104 @@ namespace GestureSample.Maui.Models
 
             // Otherwise: NewQuestion (plan) OR legacy mode
             GenerateNewQuestion(r);
+        }
+
+        private void TransformPrecisionCopyQuestion(Random random)
+        {
+            if (BitArrayQuestion == null)
+                return;
+
+            // Make hand alternation an explicit, even choice. Previously changing hands
+            // was only one candidate among several same-hand movements, which allowed
+            // long runs on one side (most noticeably the left hand).
+            if (random.Next(2) == 0)
+            {
+                BitArrayQuestion = TransferPrecisionPinchToOtherHand(BitArrayQuestion);
+                whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                    ? Direction.Left
+                    : Direction.Right;
+                return;
+            }
+
+            List<bool[]> candidates = new();
+
+            bool leftSide = GetPrecisionSideActiveIndices(leftSide: true).Length > 0;
+            int[] active = GetPrecisionSideActiveIndices(leftSide);
+            if (active.Length == 2)
+            {
+                foreach (int delta in new[] { -1, 1 })
+                {
+                    int[] shifted = active.Select(index => GetPrecisionShiftTarget(index, delta)).ToArray();
+                    if (shifted.All(target => IsPrecisionTargetOnSide(target, leftSide)) &&
+                        shifted.Distinct().Count() == active.Length)
+                    {
+                        bool[] result = new bool[BitArrayQuestion.Length];
+                        foreach (int target in shifted)
+                            result[target] = true;
+                        candidates.Add(result);
+                    }
+
+                    for (int movingPosition = 0; movingPosition < active.Length; movingPosition++)
+                    {
+                        int target = GetPrecisionShiftTarget(active[movingPosition], delta);
+                        int fixedIndex = active[1 - movingPosition];
+                        bool preservesOrder = movingPosition == 0
+                            ? target < fixedIndex
+                            : target > fixedIndex;
+                        if (!preservesOrder || !IsPrecisionTargetOnSide(target, leftSide))
+                            continue;
+
+                        bool[] result = BitArrayQuestion.ToArray();
+                        result[active[movingPosition]] = false;
+                        result[target] = true;
+                        candidates.Add(result);
+                    }
+                }
+            }
+
+            if (candidates.Count > 0)
+                BitArrayQuestion = candidates[random.Next(candidates.Count)];
+            whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                ? Direction.Left
+                : Direction.Right;
+        }
+
+        private bool[] TransferPrecisionPinchToOtherHand(bool[] source)
+        {
+            bool[] transferred = new bool[source.Length];
+            if (Config.KeyboardConfig.IsVerticalPrecisionPinchExercise)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                for (int index = 0; index < source.Length; index++)
+                {
+                    if (!source[index])
+                        continue;
+                    int row = index / columns;
+                    int oppositeColumn = columns - 1 - (index % columns);
+                    transferred[(row * columns) + oppositeColumn] = true;
+                }
+            }
+            else
+            {
+                for (int index = 0; index < source.Length; index++)
+                {
+                    if (source[index])
+                        transferred[source.Length - 1 - index] = true;
+                }
+            }
+            return transferred;
+        }
+
+        private void MaybeTransferOneHandPrecisionPinch(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (BitArrayQuestion == null || keyboard.PrecisionShiftBothHands || random.Next(2) == 0)
+                return;
+
+            BitArrayQuestion = TransferPrecisionPinchToOtherHand(BitArrayQuestion);
+            whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                ? Direction.Left
+                : Direction.Right;
         }
 
         private void GenerateNewQuestion(Random r)
@@ -1969,13 +2242,21 @@ namespace GestureSample.Maui.Models
                 DevLog.Write("Question is\t\t: "+ FormatBits(BitArrayQuestion));
                 DevLog.Write("Correct answer is\t: "+ FormatBits(BitArrayCorrectAnswer));
                 DevLog.Write("Is it ok?\t\t\t: "+(!(
-                    (Config.KeyboardOnly && hasCanonicalCorrectAnswer && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) && CurrentOperation != Operation.Copy) ||
+                    (Config.KeyboardOnly &&
+                     hasCanonicalCorrectAnswer &&
+                     AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) &&
+                     CurrentOperation != Operation.Copy &&
+                     Config.KeyboardConfig?.IsPrecisionShiftExercise != true) ||
                     !IsAllowedQuestion2Combination(BitArrayQuestion, BitArrayQuestion2))).ToString());
 
             }
             while ( quantity < Config.MinSum ||
                     quantity > Config.MaxSum ||
-                    (Config.KeyboardOnly && BitArrayCorrectAnswer != null && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer)&& CurrentOperation!=Operation.Copy) ||
+                    (Config.KeyboardOnly &&
+                     BitArrayCorrectAnswer != null &&
+                     AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) &&
+                     CurrentOperation != Operation.Copy &&
+                     Config.KeyboardConfig?.IsPrecisionShiftExercise != true) ||
                     !IsAllowedQuestion2Combination(BitArrayQuestion, BitArrayQuestion2) ||
                     (CurrentOperation == Operation.SUMM &&
                     SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length)
@@ -2086,12 +2367,20 @@ namespace GestureSample.Maui.Models
         protected override ExerciseGenerationResult CreateGeneratedExerciseResult()
         {
             string actionText = CurrentOperation.ToDString();
+            if (CurrentOperation == Operation.Copy &&
+                Config.KeyboardConfig?.CopyPrecisionPinchToOtherHand == true)
+            {
+                actionText = "COPY TO OTHER HAND";
+            }
             if (CurrentOperation == Operation.MoveBy)
             {
+                if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                {
+                    actionText = BuildPrecisionShiftActionText();
+                    return new ExerciseGenerationResult { ActionText = actionText };
+                }
                 string strDir = moveBydir == Direction.Right ? "RIGHT" : "LEFT";
                 actionText += " " + strDir + " BY " + moveByLength;
-                strDir = moveBydir == Direction.Right ? "->" : "<-";
-                actionText += "\n" + strDir + moveByLength;
             }
             else if (CurrentOperation == Operation.GroupByColor)
             {
@@ -2102,6 +2391,126 @@ namespace GestureSample.Maui.Models
             {
                 ActionText = actionText
             };
+        }
+
+        private string BuildPrecisionShiftActionText()
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (keyboard.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                if (keyboard.PrecisionShiftBothHands)
+                {
+                    string left = BuildPrecisionSideActionText(leftSide: true);
+                    string right = BuildPrecisionSideActionText(leftSide: false);
+                    return $"LEFT: {left}     |     RIGHT: {right}";
+                }
+
+                return BuildPrecisionSideActionText(IsLeftPrecisionColumnActive());
+            }
+
+            int distance = Math.Max(1, Math.Abs(_precisionShiftDelta));
+            if (keyboard.PrecisionShiftBothHands)
+            {
+                string left = FormatHorizontalSideInstruction(_precisionShiftLeftDelta, isLeftSide: true);
+                string right = FormatHorizontalSideInstruction(_precisionShiftRightDelta, isLeftSide: false);
+                return $"{left} | {right}";
+            }
+
+            string direction = _precisionShiftDelta >= 0 ? "RIGHT" : "LEFT";
+            string line = _precisionShiftDelta >= 0 ? $"|------{distance}----->" : $"|------<-----{distance}";
+            return $"{line}  MOVE PINCH {direction} BY {distance}";
+        }
+
+        private string BuildPrecisionSideActionText(bool leftSide)
+        {
+            int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            if (delta == 0)
+                return "HOLD";
+
+            bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+            bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+            string operation = isShift
+                ? "SHIFT"
+                : baseAtTop
+                    ? "MOVE LOWER"
+                    : "MOVE UPPER";
+            string direction = delta > 0 ? "UP" : "DOWN";
+            return $"{operation} {direction} BY {Math.Abs(delta)}";
+        }
+
+        private static string BuildVerticalSideInstructions(int leftDelta, int rightDelta)
+        {
+            string[] left = FormatVerticalSideInstruction(leftDelta);
+            string[] right = FormatVerticalSideInstruction(rightDelta);
+            return string.Join("\n", Enumerable.Range(0, left.Length)
+                .Select(row => $"{left[row],-5}     {right[row],5}"));
+        }
+
+        private static string[] FormatVerticalSideInstruction(int delta)
+        {
+            if (delta > 0)
+                return new[] { "↑", "│", Math.Abs(delta).ToString(), "│", "──" };
+            if (delta < 0)
+                return new[] { "──", "│", Math.Abs(delta).ToString(), "│", "↓" };
+            return new[] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        }
+
+        public string GetVerticalShiftSideInstruction(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true ||
+                Config.KeyboardConfig.PrecisionShiftAxis != PrecisionShiftAxis.Vertical)
+                return string.Empty;
+
+            int delta = Config.KeyboardConfig.PrecisionShiftBothHands
+                ? (leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta)
+                : IsLeftPrecisionColumnActive() == leftSide ? _precisionShiftDelta : 0;
+            return string.Join("\n", FormatVerticalSideInstruction(delta));
+        }
+
+        public int GetPrecisionShiftSideDelta(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true)
+                return 0;
+
+            if (Config.KeyboardConfig.PrecisionShiftBothHands)
+                return leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+
+            return IsLeftPrecisionColumnActive() == leftSide ? _precisionShiftDelta : 0;
+        }
+
+        public bool GetPrecisionShiftSideBaseAtTop(bool leftSide) =>
+            leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+
+        public bool IsPrecisionShiftSideGenericShift(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true)
+                return false;
+            return leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+        }
+
+        private bool IsLeftPrecisionColumnActive()
+        {
+            if (BitArrayQuestion == null)
+                return false;
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return BitArrayQuestion
+                .Select((active, index) => (active, index))
+                .Any(item => item.active &&
+                    (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        ? item.index % columns == 0
+                        : item.index < half));
+        }
+
+        private static string FormatHorizontalSideInstruction(int delta, bool isLeftSide)
+        {
+            if (delta == 0)
+                return string.Empty;
+
+            int distance = Math.Abs(delta);
+            if (delta > 0)
+                return $"--{distance}-->";
+            return $"<--{distance}--";
         }
 
         public bool[] GetTutorialQuestionBits()
@@ -2120,6 +2529,38 @@ namespace GestureSample.Maui.Models
                 BuildCorrectAnswer();
 
             return BitArrayCorrectAnswer?.ToArray() ?? GetTutorialQuestionBits();
+        }
+
+        public bool UsesPrecisionShiftTutorial() =>
+            Config?.KeyboardConfig?.IsPrecisionShiftExercise == true &&
+            CurrentOperation == Operation.MoveBy;
+
+        public int[] GetPrecisionShiftTutorialTargets()
+        {
+            int length = BitArrayQuestion?.Length ?? 0;
+            int[] targets = Enumerable.Range(0, length).ToArray();
+            if (!UsesPrecisionShiftTutorial())
+                return targets;
+
+            foreach (bool leftSide in new[] { true, false })
+            {
+                int[] active = GetPrecisionSideActiveIndices(leftSide);
+                if (active.Length == 0)
+                    continue;
+                int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+                bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+                bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+                // Vertical key indices increase visually upward (row 0 is drawn at the
+                // bottom), so Max is the upper key and Min is the lower key.
+                int fixedIndex = baseAtTop ? active.Max() : active.Min();
+                foreach (int index in active)
+                {
+                    if (isShift || index != fixedIndex)
+                        targets[index] = GetPrecisionShiftTarget(index, delta);
+                }
+            }
+
+            return targets;
         }
 
         public bool UsesArrowDirectionTutorial()
@@ -2458,12 +2899,32 @@ namespace GestureSample.Maui.Models
             }
 
                 // first pair (preserve original behavior: min length 1)
+            if (Config.KeyboardConfig?.IsPrecisionPinchExercise == true)
+            {
+                BitArrayQuestion = GenerateTwoKeyPinch(r, start, end);
+            }
+            else
+            {
                 (from, length) = ChooseFromAndLength(r, 1, start, end);
-            BitArrayQuestion = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+                BitArrayQuestion = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            }
 
             // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
-            (from, length) = ChooseFromAndLength(r, 0, start, end);
-            BitArrayQuestion2 = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            if (Config.KeyboardConfig?.IsPrecisionPinchExercise == true)
+            {
+                BitArrayQuestion2 = GenerateTwoKeyPinch(r, start, end);
+            }
+            else
+            {
+                (from, length) = ChooseFromAndLength(r, 0, start, end);
+                BitArrayQuestion2 = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            }
+
+            if (CurrentOperation == Operation.MoveBy && Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+            {
+                ConfigurePrecisionShift(r);
+                return;
+            }
 
             // move-by configuration
             moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -2520,6 +2981,212 @@ namespace GestureSample.Maui.Models
                 moveByLength = r.Next(1, BitArrayQuestion.Length);
             }
 
+        }
+
+        private void ConfigurePrecisionShift(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            _precisionShiftLeftDelta = 0;
+            _precisionShiftRightDelta = 0;
+            _precisionShiftLeftIsShift = false;
+            _precisionShiftRightIsShift = false;
+            int minimum = Math.Max(1, keyboard.PrecisionShiftMinDistance);
+            int maximum = Math.Max(minimum, keyboard.PrecisionShiftMaxDistance);
+            bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
+            bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
+
+            if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
+                    GetPrecisionSideTransformCandidates(true, minimum, maximum);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> rightCandidates =
+                    GetPrecisionSideTransformCandidates(false, minimum, maximum);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> sharedCandidates = leftCandidates
+                    .Where(left => rightCandidates.Contains(left))
+                    .ToList();
+                if (sharedCandidates.Count > 0)
+                {
+                    var shared = sharedCandidates[random.Next(sharedCandidates.Count)];
+                    _precisionShiftLeftDelta = _precisionShiftRightDelta = shared.Delta;
+                    _precisionShiftLeftIsShift = _precisionShiftRightIsShift = shared.IsShift;
+                    _precisionShiftLeftBaseAtTop = _precisionShiftRightBaseAtTop = shared.BaseAtTop;
+                }
+            }
+            else if (leftIsActive)
+                ChoosePrecisionSideTransform(random, true, minimum, maximum,
+                    out _precisionShiftLeftDelta, out _precisionShiftLeftIsShift, out _precisionShiftLeftBaseAtTop);
+            if (rightIsActive && !keyboard.PrecisionShiftSynchronizeHands)
+                ChoosePrecisionSideTransform(random, false, minimum, maximum,
+                    out _precisionShiftRightDelta, out _precisionShiftRightIsShift, out _precisionShiftRightBaseAtTop);
+
+            _precisionShiftDelta = leftIsActive ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            moveByLength = Math.Max(Math.Abs(_precisionShiftLeftDelta), Math.Abs(_precisionShiftRightDelta));
+            if (moveByLength == 0)
+                moveByLength = minimum;
+            moveBydir = _precisionShiftDelta >= 0 ? Direction.Right : Direction.Left;
+
+            // Finalize legality here, before action text, arrows, tutorial targets and
+            // the correct answer are exposed. Every consumer now sees the same shift.
+            EnsurePrecisionShiftTransformsAreLegal();
+        }
+
+        private void ChoosePrecisionSideTransform(
+            Random random,
+            bool leftSide,
+            int minimum,
+            int maximum,
+            out int delta,
+            out bool isShift,
+            out bool baseAtTop)
+        {
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates =
+                GetPrecisionSideTransformCandidates(leftSide, minimum, maximum);
+
+            if (candidates.Count == 0)
+            {
+                delta = 0;
+                isShift = false;
+                baseAtTop = false;
+                return;
+            }
+
+            bool preferSingleKeyMovement =
+                !Config.KeyboardConfig.PrecisionShiftBothHands &&
+                Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.All;
+            if (preferSingleKeyMovement)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> singleKeyCandidates =
+                    candidates.Where(candidate => !candidate.IsShift).ToList();
+                List<(int Delta, bool IsShift, bool BaseAtTop)> wholeShiftCandidates =
+                    candidates.Where(candidate => candidate.IsShift).ToList();
+
+                // Stage 4 is primarily about transforming one finger around its fixed
+                // base. Keep occasional whole-grip shifts so the full vocabulary remains.
+                bool chooseSingleKey = singleKeyCandidates.Count > 0 &&
+                                       (wholeShiftCandidates.Count == 0 || random.Next(5) != 0);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> weightedPool =
+                    chooseSingleKey ? singleKeyCandidates : wholeShiftCandidates;
+                (delta, isShift, baseAtTop) = weightedPool[random.Next(weightedPool.Count)];
+                return;
+            }
+
+            (delta, isShift, baseAtTop) = candidates[random.Next(candidates.Count)];
+        }
+
+        private List<(int Delta, bool IsShift, bool BaseAtTop)> GetPrecisionSideTransformCandidates(
+            bool leftSide,
+            int minimum,
+            int maximum)
+        {
+            PrecisionPinchMoveOptions options = Config.KeyboardConfig.PrecisionPinchMoveOptions;
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates = new();
+            for (int distance = minimum; distance <= maximum; distance++)
+            {
+                foreach (int signedDistance in new[] { -distance, distance })
+                {
+                    if (options.HasFlag(PrecisionPinchMoveOptions.ShiftWhole) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: true, baseAtTop: false))
+                        candidates.Add((signedDistance, true, false));
+
+                    if (options.HasFlag(PrecisionPinchMoveOptions.MoveUpper) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: false, baseAtTop: false))
+                        candidates.Add((signedDistance, false, false));
+                    if (options.HasFlag(PrecisionPinchMoveOptions.MoveLower) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: false, baseAtTop: true))
+                        candidates.Add((signedDistance, false, true));
+                }
+            }
+            return candidates;
+        }
+
+        private bool CanApplyPrecisionSideTransform(bool leftSide, int delta, bool isShift, bool baseAtTop)
+        {
+            int[] active = GetPrecisionSideActiveIndices(leftSide);
+            if (active.Length != 2)
+                return false;
+
+            int fixedIndex = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (baseAtTop ? active.Max() : active.Min())
+                : (baseAtTop ? active.Min() : active.Max());
+            List<int> transformed = new(active.Length);
+            foreach (int index in active)
+            {
+                if (!isShift && index == fixedIndex)
+                {
+                    transformed.Add(index);
+                    continue;
+                }
+
+                int target = GetPrecisionShiftTarget(index, delta);
+                if (!IsPrecisionTargetOnSide(target, leftSide))
+                    return false;
+                transformed.Add(target);
+
+                if (!isShift)
+                {
+                    // The moving finger must remain on its original side of the fixed
+                    // finger: equality would merge them and passing it would cross them.
+                    bool preservesOrder = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        // Vertical indices increase visually upward.
+                        ? (baseAtTop ? target < fixedIndex : target > fixedIndex)
+                        : (baseAtTop ? target > fixedIndex : target < fixedIndex);
+                    if (!preservesOrder)
+                        return false;
+                }
+            }
+
+            if (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                int maximumInterval = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchMaxInterval,
+                    1,
+                    Math.Max(1, Config.KeyboardConfig.Rows - 1));
+                int[] rows = transformed.Select(index => index / columns).ToArray();
+                if (rows.Max() - rows.Min() > maximumInterval)
+                    return false;
+            }
+            return true;
+        }
+
+        private int[] GetPrecisionSideActiveIndices(bool leftSide)
+        {
+            if (BitArrayQuestion == null)
+                return Array.Empty<int>();
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return Enumerable.Range(0, BitArrayQuestion.Length)
+                .Where(index => BitArrayQuestion[index] &&
+                    (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        ? (index % columns == 0) == leftSide
+                        : (index < half) == leftSide))
+                .OrderBy(index => index)
+                .ToArray();
+        }
+
+        private int GetPrecisionShiftTarget(int index, int delta)
+        {
+            if (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                // The keyboard grid draws logical row 0 at the bottom. Increasing the
+                // logical row therefore moves visually upward.
+                return index + (delta * columns);
+            }
+            return index + delta;
+        }
+
+        private bool IsPrecisionTargetOnSide(int target, bool leftSide)
+        {
+            if (target < 0 || BitArrayQuestion == null || target >= BitArrayQuestion.Length)
+                return false;
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (target % columns == 0) == leftSide
+                : (target < half) == leftSide;
         }
 
         private void GenerateGroupByColorExercise(Random r)
@@ -2846,7 +3513,9 @@ namespace GestureSample.Maui.Models
             switch (CurrentOperation)
             {
                 case Operation.Copy:
-                    BitArrayCorrectAnswer = BitArrayQuestion.ToArray();
+                    BitArrayCorrectAnswer = Config.KeyboardConfig?.CopyPrecisionPinchToOtherHand == true
+                        ? TransferPrecisionPinchToOtherHand(BitArrayQuestion)
+                        : BitArrayQuestion.ToArray();
                     break;
 
                 case Operation.Mirror:
@@ -2894,9 +3563,12 @@ namespace GestureSample.Maui.Models
 
                 case Operation.MoveBy:
                     {
-                        int moveIndex = moveBydir == Direction.Right ? moveByLength : len - moveByLength;
-                        for (int k = 0; k < len; k++)
-                            BitArrayCorrectAnswer[k] = BitArrayQuestion[(k - moveIndex + len) % len];
+                        if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                        {
+                            ApplyPrecisionShiftAnswer();
+                            break;
+                        }
+                        ApplyLegacyMoveAnswer();
                     }
                     break;
 
@@ -2935,6 +3607,135 @@ namespace GestureSample.Maui.Models
                     // Quantity allows any array with the same count — keep BitArrayCorrectAnswer null so fallback
                     BitArrayCorrectAnswer = null;
                     break;
+            }
+        }
+
+        private void ApplyPrecisionShiftAnswer()
+        {
+            foreach (bool leftSide in new[] { true, false })
+            {
+                int[] active = GetPrecisionSideActiveIndices(leftSide);
+                if (active.Length == 0)
+                    continue;
+                int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+                bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+                bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+                int fixedIndex = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                    ? (baseAtTop ? active.Max() : active.Min())
+                    : (baseAtTop ? active.Min() : active.Max());
+                foreach (int index in active)
+                {
+                    int target = isShift || index != fixedIndex
+                        ? GetPrecisionShiftTarget(index, delta)
+                        : index;
+                    if (target >= 0 && target < BitArrayCorrectAnswer.Length)
+                        BitArrayCorrectAnswer[target] = true;
+                }
+            }
+        }
+
+        private void EnsurePrecisionShiftTransformsAreLegal()
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            int minimum = Math.Max(1, keyboard.PrecisionShiftMinDistance);
+            int maximum = Math.Max(minimum, keyboard.PrecisionShiftMaxDistance);
+            bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
+            bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
+
+            if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
+            {
+                bool currentIsLegal =
+                    CanApplyPrecisionSideTransform(true, _precisionShiftLeftDelta,
+                        _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) &&
+                    CanApplyPrecisionSideTransform(false, _precisionShiftRightDelta,
+                        _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop);
+                if (!currentIsLegal)
+                {
+                    List<(int Delta, bool IsShift, bool BaseAtTop)> sharedCandidates =
+                        GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                            .Where(candidate => GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                                .Contains(candidate))
+                            .ToList();
+                    if (sharedCandidates.Count > 0)
+                    {
+                        var replacement = ChooseClosestLegalPrecisionTransform(
+                            sharedCandidates,
+                            _precisionShiftLeftDelta,
+                            _precisionShiftLeftIsShift,
+                            _precisionShiftLeftBaseAtTop);
+                        _precisionShiftLeftDelta = _precisionShiftRightDelta = replacement.Delta;
+                        _precisionShiftLeftIsShift = _precisionShiftRightIsShift = replacement.IsShift;
+                        _precisionShiftLeftBaseAtTop = _precisionShiftRightBaseAtTop = replacement.BaseAtTop;
+                    }
+                }
+            }
+            else
+            {
+                if (leftIsActive)
+                    EnsurePrecisionSideTransformIsLegal(true, minimum, maximum);
+                if (rightIsActive)
+                    EnsurePrecisionSideTransformIsLegal(false, minimum, maximum);
+            }
+
+            _precisionShiftDelta = leftIsActive ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            moveByLength = Math.Max(Math.Abs(_precisionShiftLeftDelta), Math.Abs(_precisionShiftRightDelta));
+            moveBydir = _precisionShiftDelta >= 0 ? Direction.Right : Direction.Left;
+        }
+
+        private void EnsurePrecisionSideTransformIsLegal(bool leftSide, int minimum, int maximum)
+        {
+            int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+            bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+            if (CanApplyPrecisionSideTransform(leftSide, delta, isShift, baseAtTop))
+                return;
+
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates =
+                GetPrecisionSideTransformCandidates(leftSide, minimum, maximum);
+            if (candidates.Count == 0)
+                return;
+
+            var replacement = ChooseClosestLegalPrecisionTransform(candidates, delta, isShift, baseAtTop);
+            if (leftSide)
+            {
+                _precisionShiftLeftDelta = replacement.Delta;
+                _precisionShiftLeftIsShift = replacement.IsShift;
+                _precisionShiftLeftBaseAtTop = replacement.BaseAtTop;
+            }
+            else
+            {
+                _precisionShiftRightDelta = replacement.Delta;
+                _precisionShiftRightIsShift = replacement.IsShift;
+                _precisionShiftRightBaseAtTop = replacement.BaseAtTop;
+            }
+        }
+
+        private static (int Delta, bool IsShift, bool BaseAtTop) ChooseClosestLegalPrecisionTransform(
+            IEnumerable<(int Delta, bool IsShift, bool BaseAtTop)> candidates,
+            int requestedDelta,
+            bool requestedIsShift,
+            bool requestedBaseAtTop) =>
+            candidates
+                .OrderBy(candidate => candidate.IsShift == requestedIsShift ? 0 : 1)
+                .ThenBy(candidate => candidate.BaseAtTop == requestedBaseAtTop ? 0 : 1)
+                .ThenBy(candidate => Math.Abs(Math.Abs(candidate.Delta) - Math.Abs(requestedDelta)))
+                .First();
+
+        private void ApplyLegacyMoveAnswer()
+        {
+            int length = BitArrayQuestion.Length;
+            int signedDistance = moveBydir == Direction.Right ? moveByLength : -moveByLength;
+            bool wraps = !Config.OnlyToTen;
+            for (int index = 0; index < length; index++)
+            {
+                if (!BitArrayQuestion[index])
+                    continue;
+
+                int target = index + signedDistance;
+                if (wraps)
+                    target = ((target % length) + length) % length;
+                if (target >= 0 && target < length)
+                    BitArrayCorrectAnswer[target] = true;
             }
         }
 

@@ -528,6 +528,12 @@ namespace GestureSample.Views.Tests
         private Label _arrowEquationRightLabel;
         private Entry _arrowEquationAnswerEntry;
         private Label _lblAction;
+        private GraphicsView _verticalLeftShiftInstruction;
+        private GraphicsView _verticalRightShiftInstruction;
+        private PrecisionShiftInstructionDrawable _verticalLeftShiftDrawable;
+        private PrecisionShiftInstructionDrawable _verticalRightShiftDrawable;
+        private GraphicsView _legacyShiftInstructionView;
+        private PrecisionShiftInstructionDrawable _legacyShiftInstructionDrawable;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
         private Label _logicalColorRightArrow;
@@ -578,6 +584,7 @@ namespace GestureSample.Views.Tests
         private string _previousActionText = string.Empty;
         private ExerciseGenerationResult? _lastGeneratedExercise;
         private bool _hasLoadedInitialExercise = false;
+        private bool _isPageVisible;
         private int _consecutiveWrongAnswers = 0;
         private static readonly Color[] ArrowBackgroundCycle =
         {
@@ -612,6 +619,7 @@ namespace GestureSample.Views.Tests
         private readonly TimerChangeEventRepository _timerChangeEventRepository;
         private readonly GameRepository _gameRepository;
         private bool _isApplyingAutoTune;
+        private bool _hasManualAnswerTimeOverride;
 
         //VerticalStackLayout _vsl;
         protected IDispatcherTimer timer;
@@ -621,7 +629,8 @@ namespace GestureSample.Views.Tests
             timer.Interval = TimeSpan.FromSeconds(1);
             timer.Tick += (s, e) =>
             {
-                MainThread.BeginInvokeOnMainThread(UpdateStatement);
+                if (_isPageVisible)
+                    UpdateStatement();
             };
         }
         private void UpdateStatement()
@@ -1358,18 +1367,35 @@ namespace GestureSample.Views.Tests
             EnsureCustomProgressVisual();
             EnsureCalmAttemptIndicator();
 
+            bool compactVerticalPrecision = _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true;
+            double progressRowHeight = compactVerticalPrecision ? 50 : 55;
+            double statusWidth = compactVerticalPrecision ? 160 : 220;
+            if (compactVerticalPrecision && _centerFeedbackBadge != null && _centerFeedbackBadgeLabel != null)
+            {
+                _centerFeedbackBadge.WidthRequest = statusWidth;
+                _centerFeedbackBadge.HeightRequest = progressRowHeight;
+                _centerFeedbackBadgeLabel.FontSize = 42;
+            }
             Grid statusActionHost = new()
             {
-                WidthRequest = 220,
-                HeightRequest = 55,
+                WidthRequest = statusWidth,
+                HeightRequest = progressRowHeight,
                 BackgroundColor = Colors.Transparent,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
-                Margin = new Thickness(0, 6, 0, 6),
+                Margin = compactVerticalPrecision ? new Thickness(0, 2) : new Thickness(0, 6),
                 InputTransparent = false
             };
             if (_customProgressHost != null)
+            {
+                _customProgressHost.WidthRequest = statusWidth;
+                _customProgressHost.HeightRequest = progressRowHeight;
                 statusActionHost.Add(_customProgressHost);
+            }
+            if (_pianoPressProgress != null)
+                _pianoPressProgress.WidthRequest = statusWidth;
+            if (_customProgressFill != null)
+                _customProgressFill.HeightRequest = progressRowHeight;
             if (_calmAttemptIndicator != null)
                 statusActionHost.Add(_calmAttemptIndicator);
             if (_centerFeedbackBadge != null)
@@ -1388,7 +1414,6 @@ namespace GestureSample.Views.Tests
                 ZIndex = 10,
                 Content = statusActionHost
             };
-
             RefreshKeyboardControlBar();
             return _keyboardControlBar;
         }
@@ -1404,14 +1429,15 @@ namespace GestureSample.Views.Tests
             if (_keyboardControlBar != null)
                 _keyboardControlBar.IsVisible = shouldShowHostedKeyboard;
 
+            double progressRowHeight = _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true ? 50 : 55;
             if (_pianoPressProgress != null)
-                _pianoPressProgress.HeightRequest = 55;
+                _pianoPressProgress.HeightRequest = progressRowHeight;
 
             if (_customProgressHost != null)
-                _customProgressHost.HeightRequest = 55;
+                _customProgressHost.HeightRequest = progressRowHeight;
 
             if (_customProgressFill != null)
-                _customProgressFill.HeightRequest = 55;
+                _customProgressFill.HeightRequest = progressRowHeight;
 
             RefreshStatusActionSlot();
             RefreshAnswerTimeTuner();
@@ -1849,6 +1875,16 @@ namespace GestureSample.Views.Tests
         {
             if (_tutorialRunning) return;
 
+            // Reset the answer keyboard before publishing the new prompt. Previously the
+            // prompt could become visible first, so a fast initial press was accepted and
+            // then erased by the later PianoInit call.
+            bool preparedAnswerKeyboardEarly = newExercise && _isKeyboard && !_config.FromNumToNum;
+            if (preparedAnswerKeyboardEarly)
+            {
+                PrepareAnswerKeyboardForCurrentExercise();
+                SetKeyboardInteractionEnabled(false);
+            }
+
             UpdateStatement();
             RefreshKeyboardArrowPromptView();
             RefreshManagedNumericInputVisibility();
@@ -2063,18 +2099,53 @@ namespace GestureSample.Views.Tests
                     _pianoKeyboard.initColors = _pianoKeyboard.ToBitArray();
                 }
                 if (_lblAction != null) _lblAction.Text = BuildActionTextWithDebug(_lastGeneratedExercise?.ActionText ?? _gamePlay.CurrentOperation.ToDString());
-                RefreshPreviousPreview();
-                if (_isKeyboard && !_config.FromNumToNum)
+                if (_gamePlay is BitArrayGamePlay shiftGamePlay && _legacyShiftInstructionView != null)
                 {
-                    if (!ApplyConfiguredKeyboardSeedState())
-                        _pianoKeyboard.PianoInit();
-
-                    if (_config.KeyboardConfig?.IsArrow == true && _gamePlay is BitArrayGamePlay arrowGamePlay)
-                        _pianoKeyboard.SetTraceOverlayColors(
-                            arrowGamePlay.GetStagedArrowTraceOverlayColors(),
-                            arrowGamePlay.GetStagedArrowSecondaryTraceOverlayColors());
-                    else
-                        _pianoKeyboard.ClearTraceOverlay();
+                    bool useVectorShift = shiftGamePlay.CurrentOperation == Operation.MoveBy &&
+                                          _config.KeyboardConfig?.IsPrecisionShiftExercise != true;
+                    _legacyShiftInstructionView.IsVisible = useVectorShift;
+                    if (_lblAction != null)
+                        _lblAction.IsVisible = true;
+                    if (useVectorShift && _legacyShiftInstructionDrawable != null)
+                    {
+                        _legacyShiftInstructionDrawable.Delta = shiftGamePlay.moveBydir == Direction.Right
+                            ? Math.Max(1, shiftGamePlay.moveByLength)
+                            : -Math.Max(1, shiftGamePlay.moveByLength);
+                        _legacyShiftInstructionView.Invalidate();
+                    }
+                }
+                if (_gamePlay is BitArrayGamePlay verticalShiftGamePlay &&
+                    _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
+                {
+                    if (_verticalLeftShiftDrawable != null && _verticalLeftShiftInstruction != null)
+                    {
+                        _verticalLeftShiftDrawable.Delta = verticalShiftGamePlay.GetPrecisionShiftSideDelta(leftSide: true);
+                        _verticalLeftShiftDrawable.BaseAtTop = verticalShiftGamePlay.GetPrecisionShiftSideBaseAtTop(leftSide: true);
+                        _verticalLeftShiftDrawable.IsShift = verticalShiftGamePlay.IsPrecisionShiftSideGenericShift(leftSide: true);
+                        _verticalLeftShiftInstruction.Invalidate();
+                    }
+                    if (_verticalRightShiftDrawable != null && _verticalRightShiftInstruction != null)
+                    {
+                        _verticalRightShiftDrawable.Delta = verticalShiftGamePlay.GetPrecisionShiftSideDelta(leftSide: false);
+                        _verticalRightShiftDrawable.BaseAtTop = verticalShiftGamePlay.GetPrecisionShiftSideBaseAtTop(leftSide: false);
+                        _verticalRightShiftDrawable.IsShift = verticalShiftGamePlay.IsPrecisionShiftSideGenericShift(leftSide: false);
+                        _verticalRightShiftInstruction.Invalidate();
+                    }
+                }
+                if (preparedAnswerKeyboardEarly &&
+                    _isPageVisible &&
+                    _config.SecondsTillAllowInput <= 0)
+                {
+                    // At this point the prompt, direction and question keyboard all match.
+                    // No later initialization is allowed to clear this first response.
+                    SetPageInteractionEnabled(true);
+                    if (_pianoKeyboard is PianoKeyboardSync readySyncKeyboard)
+                        readySyncKeyboard.NotifyQuestionReadyForInput();
+                }
+                RefreshPreviousPreview();
+                if (_isKeyboard && !_config.FromNumToNum && !preparedAnswerKeyboardEarly)
+                {
+                    PrepareAnswerKeyboardForCurrentExercise();
                 }
                 if (tasks.Count > 0) _ = Task.WhenAll(tasks);
 
@@ -2084,11 +2155,32 @@ namespace GestureSample.Views.Tests
             {
                 if (UsesManagedNumericInput)
                 {
-                    Entry? preferredManagedEntry = GetPreferredNumericEntry();
+                    // A new two-multiplier exercise must not inherit the second
+                    // multiplier selection from the previous exercise. This path is
+                    // used by the in-app keypad, so native-focus handling below does
+                    // not protect it.
+                    bool resetToFirstMultiplier =
+                        newExercise &&
+                        _config.RequiresBothAddendsInput &&
+                        IsEntryEditable(_txtAddend1);
+                    Entry? preferredManagedEntry = resetToFirstMultiplier
+                        ? _txtAddend1
+                        : GetPreferredNumericEntry();
                     if (preferredManagedEntry != null)
                     {
                         LogNumericInputDebug("UpdateView:ManagedFocus", $"target={GetNumericEntryName(preferredManagedEntry)}");
-                        await ForceFocusAsync(preferredManagedEntry);
+                        if (resetToFirstMultiplier)
+                        {
+                            // Apply immediately. ForceFocusAsync intentionally delays
+                            // normal focus changes, which left a short window where a
+                            // fast first keypad press still went to multiplier 2.
+                            SelectNumericEntry(preferredManagedEntry);
+                            Debug.Assert(ReferenceEquals(_activeNumericEntry, _txtAddend1));
+                        }
+                        else
+                        {
+                            await ForceFocusAsync(preferredManagedEntry);
+                        }
                     }
                     else
                     {
@@ -2099,7 +2191,15 @@ namespace GestureSample.Views.Tests
                     return;
                 }
 
-                if (_gamePlay.Status == Statement.False ||
+                if (newExercise && _config.RequiresBothAddendsInput && IsEntryEditable(_txtAddend1))
+                {
+                    // A fresh two-multiplier question must always begin at multiplier 1.
+                    // Keeping _lastFocused from the previous question could reopen the
+                    // native keyboard on multiplier 2 and submit an empty first value.
+                    _lastFocused = _txtAddend1;
+                    await ForceFocusAsync(_txtAddend1, delayMilliseconds: 0);
+                }
+                else if (_gamePlay.Status == Statement.False ||
          _gamePlay.Status == Statement.WrongInput ||
          _gamePlay.Status == Statement.New)
                     await ForceFocusAsync(_lastFocused);
@@ -3456,13 +3556,18 @@ namespace GestureSample.Views.Tests
             int windowStart = Math.Clamp(centerIndex - (windowSize / 2), 0, Math.Max(0, keyCount - windowSize));
             int windowEnd = Math.Min(keyCount - 1, windowStart + windowSize - 1);
 
-            int[] targetBits = new int[5];
-            for (int i = 0; i < windowSize; i++)
+            int[] targetBits = _config.KeyboardConfig?.IsPrecisionPinchExercise == true
+                ? new[] { 1, 1, 0, 0, 0 }
+                : new int[5];
+            if (_config.KeyboardConfig?.IsPrecisionPinchExercise != true)
             {
-                int sourceIndex = windowStart + i;
-                bool isActive = sourceIndex < questionBits.Length && questionBits[sourceIndex];
-                int handIndex = isLeftHand ? (windowSize - 1 - i) : i;
-                targetBits[handIndex] = isActive ? 1 : 0;
+                for (int i = 0; i < windowSize; i++)
+                {
+                    int sourceIndex = windowStart + i;
+                    bool isActive = sourceIndex < questionBits.Length && questionBits[sourceIndex];
+                    int handIndex = isLeftHand ? (windowSize - 1 - i) : i;
+                    targetBits[handIndex] = isActive ? 1 : 0;
+                }
             }
 
             var startButton = _pianoKeyboard.KeyButtons[windowStart];
@@ -3508,6 +3613,9 @@ namespace GestureSample.Views.Tests
             koh.SyncOverlay();
             await koh.EnsureOverlaySyncedAsync();
 
+            if (await RunXorQuestionKeyboardTutorialAsync(gp))
+                return;
+
             if (UsesFullHandTutorial())
             {
                 await koh.FadeStaticOverlayAlphaAsync(0.22f, ScaleTutorialMs(180u), "TutStaticDimIn");
@@ -3518,6 +3626,26 @@ namespace GestureSample.Views.Tests
                 finally
                 {
                     await koh.FadeStaticOverlayAlphaAsync(KeyboardOverlayHost.DefaultStaticOverlayAlpha, ScaleTutorialMs(180u), "TutStaticDimOut");
+                }
+                return;
+            }
+
+            if (gp.UsesPrecisionShiftTutorial())
+            {
+                await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "PrecisionShiftDimIn");
+                try
+                {
+                    await koh.AnimateToTargetsAsync(
+                        gp.GetTutorialQuestionBits(),
+                        gp.GetPrecisionShiftTutorialTargets(),
+                        ScaleTutorialMs(2200u));
+                }
+                finally
+                {
+                    await koh.FadeStaticOverlayAlphaAsync(
+                        KeyboardOverlayHost.DefaultStaticOverlayAlpha,
+                        ScaleTutorialMs(220u),
+                        "PrecisionShiftDimOut");
                 }
                 return;
             }
@@ -3732,6 +3860,87 @@ namespace GestureSample.Views.Tests
 
             int move = gp.moveByLength * (gp.moveBydir == Direction.Right ? 1 : -1);
             await koh.Animate(gp.GetTutorialQuestionBits(), gp.CurrentOperation, move, ScaleTutorialMs(4000u));
+        }
+
+        private async Task<bool> RunXorQuestionKeyboardTutorialAsync(BitArrayGamePlay gp)
+        {
+            if (_config.UIQuestionType != UIQuestionType.LogicalKeyboards ||
+                gp.CurrentOperation != Operation.ExclusiveOr)
+            {
+                return false;
+            }
+
+            bool[] question = gp.GetTutorialQuestionBits();
+            bool[] question2 = gp.GetTutorialQuestionBits2();
+            int bitCount = Math.Min(question.Length, question2.Length);
+            if (bitCount == 0)
+                return false;
+
+            bool[] differences = new bool[bitCount];
+            for (int i = 0; i < bitCount; i++)
+                differences[i] = question[i] ^ question2[i];
+
+            if (!differences.Any(bit => bit))
+                return true;
+
+            if (_config.UsesCombinedLogicalKeyboard)
+            {
+                if (_task1Host == null || _keyboardTask1 == null)
+                    return false;
+
+                _task1Host.SyncOverlay();
+                await _task1Host.EnsureOverlaySyncedAsync();
+
+                int combinedLength = Math.Max(_keyboardTask1.KeyCount, bitCount * 2);
+                bool[] combinedDifferences = new bool[combinedLength];
+                for (int i = 0; i < bitCount; i++)
+                {
+                    if (!differences[i])
+                        continue;
+
+                    if (i < combinedDifferences.Length)
+                        combinedDifferences[i] = true;
+                    if (i + bitCount < combinedDifferences.Length)
+                        combinedDifferences[i + bitCount] = true;
+                }
+
+                await _task1Host.FadeInHighlightedBitsThenClearAsync(
+                    combinedDifferences,
+                    Colors.Yellow,
+                    targetAlpha: 0.58f,
+                    fadeInMs: ScaleTutorialMs(1000u),
+                    highlightBand: KeyboardOverlayHost.HighlightBand.TowardMiddleBetweenRows,
+                    animName: "XorQuestionCombinedFadeIn");
+
+                return true;
+            }
+
+            if (_task1Host == null || _task2Host == null)
+                return false;
+
+            _task1Host.SyncOverlay();
+            _task2Host.SyncOverlay();
+            await Task.WhenAll(
+                _task1Host.EnsureOverlaySyncedAsync(),
+                _task2Host.EnsureOverlaySyncedAsync());
+
+            await Task.WhenAll(
+                _task2Host.FadeInHighlightedBitsThenClearAsync(
+                    differences,
+                    Colors.Yellow,
+                    targetAlpha: 0.58f,
+                    fadeInMs: ScaleTutorialMs(1000u),
+                    highlightBand: KeyboardOverlayHost.HighlightBand.UpperRowBottomThird,
+                    animName: "XorQuestionTopFadeIn"),
+                _task1Host.FadeInHighlightedBitsThenClearAsync(
+                    differences,
+                    Colors.Yellow,
+                    targetAlpha: 0.58f,
+                    fadeInMs: ScaleTutorialMs(1000u),
+                    highlightBand: KeyboardOverlayHost.HighlightBand.LowerRowTopThird,
+                    animName: "XorQuestionBottomFadeIn"));
+
+            return true;
         }
 
         private static int GetVisibleArrowSplitFirstCount(BitArrayGamePlay gp, int tutorialStepCount)
@@ -3966,7 +4175,15 @@ namespace GestureSample.Views.Tests
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _isPageVisible = true;
             _syncToolbarStatusController.Attach();
+            if (timer != null && !timer.IsRunning)
+                timer.Start();
+            if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)
+            {
+                syncKeyboard.CheckCompletedAsync = checkResult => HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
+                syncKeyboard.SetLifecycleActive(true);
+            }
 
             if (!_hasLoadedInitialExercise)
             {
@@ -3985,6 +4202,13 @@ namespace GestureSample.Views.Tests
 
         protected override void OnDisappearing()
         {
+            _isPageVisible = false;
+            timer?.Stop();
+            if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)
+            {
+                syncKeyboard.SetLifecycleActive(false);
+                syncKeyboard.CheckCompletedAsync = null;
+            }
             _syncToolbarStatusController.Detach();
             base.OnDisappearing();
         }
@@ -4375,6 +4599,12 @@ namespace GestureSample.Views.Tests
                 return;
 
             bool showCorrectExpressionFeedback = ShouldShowCorrectExpressionFeedback(checkResult);
+            // Keep vertical precision practice quick, while leaving enough time to
+            // perceive the result. Other stages continue to use their configured delay.
+            int feedbackDelayMilliseconds =
+                _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true
+                    ? 1000
+                    : _config.SecondsTillNextExercise * 1000;
 
             if (_config.SecondsTillNextExercise <= 0)
             {
@@ -4402,7 +4632,7 @@ namespace GestureSample.Views.Tests
                     if (showCorrectExpressionFeedback)
                         await ShowCorrectExpressionFeedbackAsync();
                     else
-                        await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                        await Task.Delay(feedbackDelayMilliseconds);
                 }
                 finally
                 {
@@ -4419,7 +4649,7 @@ namespace GestureSample.Views.Tests
                 if (showCorrectExpressionFeedback)
                     await ShowCorrectExpressionFeedbackAsync();
                 else
-                    await Task.Delay(_config.SecondsTillNextExercise * 1000);
+                    await Task.Delay(feedbackDelayMilliseconds);
             }
             finally
             {
@@ -4527,17 +4757,29 @@ namespace GestureSample.Views.Tests
                 _arrowEquationAnswerEntry.Text = string.Empty;
             _complexPromptEntryValidationStates.Clear();
             await AnimateBenchmarkQuestionAdvanceOutAsync();
+            await ApplyAutoAnswerTimeTuningAsync("AutoTuneNextQuestion");
+            if (!_isPageVisible)
+                return;
+
             ExerciseGenerationResult generatedExercise = await _gamePlay.GenerateExerciseAsync();
+            if (!_isPageVisible)
+            {
+                if (generatedExercise.PersistenceTask != null)
+                    await generatedExercise.PersistenceTask;
+                return;
+            }
             _pianoKeyboard?.RefreshKeyCaptions();
             await UpdateView(true, generatedExercise: generatedExercise);
             await AnimateBenchmarkQuestionAdvanceInAsync();
-            await ApplyAutoAnswerTimeTuningAsync("AutoTuneNextQuestion");
-            await EnsureInitialTimerSettingSavedAsync();
-            await PersistVisibleQuestionPartsAsync();
-            await PersistSecondaryPpwAsync();
-            if (generatedExercise.PersistenceTask != null)
-                await generatedExercise.PersistenceTask;
-            await PersistKeyboardQuestionDisplayMetadataAsync();
+
+            // Once the question is visible, a fresh key-down can safely begin the answer.
+            // Persistence and tuning below must not leave an already-rendered keyboard disabled.
+            if (_isPageVisible && _isKeyboard && _config.SecondsTillAllowInput <= 0)
+            {
+                SetPageInteractionEnabled(true);
+                SetKeyboardInteractionEnabled(true);
+            }
+
             SetPageInteractionEnabled(true);
             if (_isKeyboard)
             {
@@ -4547,6 +4789,34 @@ namespace GestureSample.Views.Tests
                 {
                     _pianoKeyboard.IsEnabled = true;
                 }
+            }
+
+            // Analytics persistence must not keep PianoKeyboardSync in its checking state
+            // after the next question is already visible and accepting an answer.
+            _ = PersistDisplayedExerciseAsync(generatedExercise);
+        }
+
+        private async Task PersistDisplayedExerciseAsync(ExerciseGenerationResult generatedExercise)
+        {
+            try
+            {
+                // Start each save immediately so it captures the currently displayed
+                // question before the learner can advance again.
+                List<Task> persistenceTasks = new()
+                {
+                    EnsureInitialTimerSettingSavedAsync(),
+                    PersistVisibleQuestionPartsAsync(),
+                    PersistSecondaryPpwAsync(),
+                    PersistKeyboardQuestionDisplayMetadataAsync()
+                };
+                if (generatedExercise.PersistenceTask != null)
+                    persistenceTasks.Add(generatedExercise.PersistenceTask);
+
+                await Task.WhenAll(persistenceTasks);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ExercisePersistence] Background save failed: {ex}");
             }
         }
 
@@ -4569,7 +4839,8 @@ namespace GestureSample.Views.Tests
 
         private async Task ApplyAutoAnswerTimeTuningAsync(string source)
         {
-            if (_isApplyingAutoTune ||
+            if (_hasManualAnswerTimeOverride ||
+                _isApplyingAutoTune ||
                 _gameRepository == null ||
                 _keyboardQuestionRepository == null ||
                 _pianoKeyboard is not PianoKeyboardSync syncKeyboard)
@@ -4617,6 +4888,11 @@ namespace GestureSample.Views.Tests
                 if (syncKeyboard.AnswerTimeSetting == desiredSetting)
                     return;
 
+                // A manual change may have happened while the recommendation query was
+                // running. Manual timing always wins over automatic tuning.
+                if (_hasManualAnswerTimeOverride)
+                    return;
+
                 await ApplyAnswerTimeSettingAsync(desiredSetting, source);
             }
             finally
@@ -4636,6 +4912,26 @@ namespace GestureSample.Views.Tests
 
             _pianoKeyboard.PianoInit(initialColors);
             return true;
+        }
+
+        private void PrepareAnswerKeyboardForCurrentExercise()
+        {
+            if (!_isKeyboard || _pianoKeyboard == null || _config.FromNumToNum)
+                return;
+
+            if (!ApplyConfiguredKeyboardSeedState())
+                _pianoKeyboard.PianoInit();
+
+            if (_config.KeyboardConfig?.IsArrow == true && _gamePlay is BitArrayGamePlay arrowGamePlay)
+            {
+                _pianoKeyboard.SetTraceOverlayColors(
+                    arrowGamePlay.GetStagedArrowTraceOverlayColors(),
+                    arrowGamePlay.GetStagedArrowSecondaryTraceOverlayColors());
+            }
+            else
+            {
+                _pianoKeyboard.ClearTraceOverlay();
+            }
         }
 
         private async Task PersistVisibleQuestionPartsAsync()
@@ -5611,6 +5907,9 @@ namespace GestureSample.Views.Tests
             if (_pianoKeyboard is not PianoKeyboardSync syncKeyboard)
                 return;
 
+            if (!source.StartsWith("AutoTune", StringComparison.Ordinal))
+                _hasManualAnswerTimeOverride = true;
+
             int oldSetting = syncKeyboard.AnswerTimeSetting;
             syncKeyboard.UpdateAnswerTimeSetting(newSetting);
             if (newSetting != 0)
@@ -5632,6 +5931,7 @@ namespace GestureSample.Views.Tests
 
             if (syncKeyboard.AnswerTimeSetting == 0)
             {
+                _hasManualAnswerTimeOverride = true;
                 int oldDesiredSetting = _lastNonZeroAnswerTimeSetting;
                 _lastNonZeroAnswerTimeSetting = signedValue;
                 await RecordTimerChangeAsync(oldDesiredSetting, signedValue, "AnswerTimeModeWhileOff");
@@ -5902,6 +6202,7 @@ namespace GestureSample.Views.Tests
         // Changed to async so we can await tutorial animation without changing constructor call site.
         private void InitializeUI()
         {
+            bool isVerticalPrecisionLayout = _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true;
             bool isPianoHigh = UsesSyncKeyboardSubmissionMode() &&
                                (_config.UIQuestionType == UIQuestionType.OnlyKeyboard || !_config.KeyboardConfig.KeyboardOnlyForHelp);
             int pianoHeight = _isKeyboard ? (isPianoHigh ? 120 : 80) : 1;
@@ -5911,9 +6212,9 @@ namespace GestureSample.Views.Tests
                 BackgroundColor = Colors.AntiqueWhite,
                 RowDefinitions =
             {
-                new RowDefinition { Height = new GridLength(40, GridUnitType.Star) },
+                new RowDefinition { Height = isVerticalPrecisionLayout ? GridLength.Auto : new GridLength(40, GridUnitType.Star) },
                 new RowDefinition { Height = _isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp ? GridLength.Auto : new GridLength(0) },
-                new RowDefinition { Height = new GridLength(pianoHeight, GridUnitType.Star) }
+                new RowDefinition { Height = isVerticalPrecisionLayout ? GridLength.Star : new GridLength(pianoHeight, GridUnitType.Star) }
             },
                 ColumnDefinitions =
             {
@@ -6292,8 +6593,35 @@ namespace GestureSample.Views.Tests
                 {
                     _taskMainHost = new KeyboardOverlayHost(_pianoKeyboard);
                     _taskMainHost.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
-                    grid.Add(_taskMainHost);
-                    Grid.SetRow(_taskMainHost, 2);
+                    if (_config.KeyboardConfig.IsPrecisionPinchExercise)
+                    {
+                        if (!isVerticalPrecisionLayout)
+                        {
+                            grid.RowDefinitions[0].Height = new GridLength(0);
+                            grid.RowDefinitions[1].Height = new GridLength(0);
+                        }
+                        View precisionKeyboardStage = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise
+                            ? BuildVerticalPrecisionMainKeyboard()
+                            : BuildHorizontalPrecisionMainKeyboard();
+                        grid.Add(precisionKeyboardStage);
+                        Grid.SetRow(precisionKeyboardStage, 2);
+
+                        if (isVerticalPrecisionLayout &&
+                            (!_config.KeyboardConfig.IsPrecisionShiftExercise ||
+                             _config.KeyboardConfig.PrecisionShiftSynchronizeHands))
+                        {
+                            _lblAction.IsVisible = true;
+                            _lblAction.HorizontalOptions = LayoutOptions.Center;
+                            _lblAction.VerticalOptions = LayoutOptions.Center;
+                            grid.Add(_lblAction);
+                            Grid.SetRow(_lblAction, 0);
+                        }
+                    }
+                    else
+                    {
+                        grid.Add(_taskMainHost);
+                        Grid.SetRow(_taskMainHost, 2);
+                    }
                     View keyboardControlBar = BuildKeyboardControlBar();
                     keyboardControlBar.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
                     grid.Add(keyboardControlBar);
@@ -6533,7 +6861,13 @@ namespace GestureSample.Views.Tests
                 if (rightOverlayButtons.Children.Count > 0)
                     overlayButtons.Add(rightOverlayButtons, 2, 0);
 
-                if (_taskMainHost != null)
+                if (isVerticalPrecisionLayout)
+                {
+                    overlayButtons.Margin = new Thickness(5, 9, 5, 0);
+                    overlayButtons.VerticalOptions = LayoutOptions.Start;
+                    _taskMainHost?.Children.Add(overlayButtons);
+                }
+                else if (_taskMainHost != null)
                 {
                     _taskMainHost.Children.Add(overlayButtons);
                 }
@@ -6613,13 +6947,587 @@ namespace GestureSample.Views.Tests
         }
 
 
+        private View BuildHorizontalPrecisionMainKeyboard()
+        {
+            Slider widthSlider = new()
+            {
+                Minimum = 280,
+                Maximum = 800,
+                Value = 600,
+                HorizontalOptions = LayoutOptions.Fill
+            };
+            Label savedLabel = new()
+            {
+                Text = "Choose your preferred key width",
+                FontSize = 12,
+                TextColor = Colors.Black,
+                HorizontalTextAlignment = TextAlignment.Center
+            };
+            Border sliderPanel = new()
+            {
+                IsVisible = false,
+                Padding = new Thickness(8, 2),
+                BackgroundColor = Colors.White.WithAlpha(0.94f),
+                Stroke = Colors.Gray,
+                StrokeThickness = 1,
+                Content = new VerticalStackLayout
+                {
+                    Spacing = 0,
+                    Children = { widthSlider, savedLabel }
+                }
+            };
+            Button sliderButton = new()
+            {
+                Text = "↔",
+                FontSize = 18,
+                WidthRequest = 42,
+                HeightRequest = 36,
+                Padding = 0,
+                HorizontalOptions = LayoutOptions.End,
+                BackgroundColor = Colors.White.WithAlpha(0.94f)
+            };
+            sliderButton.Clicked += (_, _) => sliderPanel.IsVisible = !sliderPanel.IsVisible;
+            _pianoKeyboard.KeyPressStarted += () => sliderPanel.IsVisible = false;
+            foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                keyButton.Down += (_, _) => sliderPanel.IsVisible = false;
+
+            _lblAction.FontSize = 28;
+            _lblAction.HorizontalTextAlignment = TextAlignment.Center;
+            Grid controls = new()
+            {
+                Padding = new Thickness(12, 4),
+                RowSpacing = 2,
+                RowDefinitions =
+                {
+                    new RowDefinition(GridLength.Auto),
+                    new RowDefinition(GridLength.Auto)
+                },
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                }
+            };
+            controls.Add(_lblAction, 0, 0);
+            Grid.SetColumnSpan(_lblAction, 2);
+            controls.Add(sliderPanel, 0, 1);
+            controls.Add(sliderButton, 1, 1);
+
+            Grid stage = new()
+            {
+                BackgroundColor = Colors.AntiqueWhite,
+                RowSpacing = 4,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill,
+                RowDefinitions =
+                {
+                    new RowDefinition(GridLength.Auto),
+                    new RowDefinition(GridLength.Star)
+                }
+            };
+            stage.Add(controls, 0, 0);
+            stage.Add(_taskMainHost, 0, 1);
+            _taskMainHost.HorizontalOptions = LayoutOptions.Center;
+            _taskMainHost.VerticalOptions = LayoutOptions.Fill;
+            _pianoKeyboard.VerticalOptions = LayoutOptions.Fill;
+
+            Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
+            string preferenceKey = $"precision-pinch-keyboard-width-{activeUserId?.ToString() ?? "anonymous"}";
+            double savedWidth = Preferences.Default.Get(preferenceKey, -1d);
+            bool initialized = false;
+
+            void ApplyWidth(double requestedWidth)
+            {
+                if (stage.Width <= 0)
+                    return;
+
+                double maximum = stage.Width;
+                double minimum = Math.Min(260, maximum);
+                requestedWidth = Math.Clamp(requestedWidth, minimum, maximum);
+                int keyColumns = _config.KeyboardConfig.KeysInRow;
+                int visualColumns = keyColumns + 1;
+                double chromeWidth = 5 + ((visualColumns - 1) * 5);
+                double keyWidth = Math.Max(12, (requestedWidth - chromeWidth) / keyColumns);
+                double exactWidth = _pianoKeyboard.SetExactKeyWidth(keyWidth);
+                _taskMainHost.WidthRequest = Math.Min(exactWidth, maximum);
+                _taskMainHost.MaximumWidthRequest = Math.Min(exactWidth, maximum);
+                _taskMainHost.SyncOverlay();
+            }
+
+            stage.SizeChanged += (_, _) =>
+            {
+                if (stage.Width <= 0)
+                    return;
+
+                widthSlider.Maximum = stage.Width;
+                widthSlider.Minimum = Math.Min(260, stage.Width);
+                if (!initialized)
+                {
+                    initialized = true;
+                    widthSlider.Value = savedWidth > 0
+                        ? Math.Clamp(savedWidth, widthSlider.Minimum, widthSlider.Maximum)
+                        : widthSlider.Maximum;
+                }
+                ApplyWidth(widthSlider.Value);
+            };
+            widthSlider.ValueChanged += (_, args) =>
+            {
+                ApplyWidth(args.NewValue);
+                if (!initialized)
+                    return;
+
+                Preferences.Default.Set(preferenceKey, args.NewValue);
+                savedLabel.Text = $"Preferred width saved ({args.NewValue:0})";
+            };
+
+            return stage;
+        }
+
+        private static void ApplyArrowDrawableTuning(
+            PrecisionShiftInstructionDrawable drawable,
+            PrecisionArrowDesignSettings settings)
+        {
+            drawable.TowardArrowTipFromBase = (float)settings.ArrowTipFromBase;
+            drawable.TowardNumberFromBase = (float)settings.NumberFromBase;
+            drawable.TowardShaftStopFromBase = (float)settings.ShaftStopFromBase;
+        }
+
+        private View BuildPrecisionArrowDesignLabPanel(Action<PrecisionArrowDesignSettings> changed)
+        {
+            PrecisionArrowDesignSettings settings = PrecisionArrowDesignSettings.Load();
+            Grid controls = new()
+            {
+                ColumnSpacing = 8,
+                RowSpacing = 2,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(new GridLength(126)),
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(new GridLength(58))
+                }
+            };
+
+            bool syncing = false;
+            int row = 0;
+            controls.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            Picker presetPicker = new()
+            {
+                Title = "Arrow preset",
+                ItemsSource = PrecisionArrowDesignSettings.Presets.Select(preset => preset.Name).ToList(),
+                HorizontalOptions = LayoutOptions.Fill,
+                HeightRequest = 34
+            };
+            controls.Add(new Label
+            {
+                Text = "Preset",
+                VerticalTextAlignment = TextAlignment.Center,
+                FontAttributes = FontAttributes.Bold
+            }, 0, row);
+            controls.Add(presetPicker, 1, row);
+            Grid.SetColumnSpan(presetPicker, 2);
+            row++;
+
+            Slider AddTuningSlider(
+                string label,
+                double minimum,
+                double maximum,
+                double value,
+                Action<double> setter,
+                string format)
+            {
+                controls.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                Label valueLabel = new()
+                {
+                    Text = value.ToString(format),
+                    HorizontalTextAlignment = TextAlignment.End,
+                    VerticalTextAlignment = TextAlignment.Center
+                };
+                Slider slider = new()
+                {
+                    Minimum = minimum,
+                    Maximum = maximum,
+                    Value = value,
+                    HeightRequest = 30
+                };
+                slider.ValueChanged += (_, args) =>
+                {
+                    valueLabel.Text = args.NewValue.ToString(format);
+                    setter(args.NewValue);
+                    if (syncing)
+                        return;
+                    settings.Save();
+                    changed(settings);
+                };
+                controls.Add(new Label
+                {
+                    Text = label,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    FontSize = 12
+                }, 0, row);
+                controls.Add(slider, 1, row);
+                controls.Add(valueLabel, 2, row);
+                row++;
+                return slider;
+            }
+
+            Slider tipSlider = AddTuningSlider("Arrow position", 0.08, 0.75,
+                settings.ArrowTipFromBase, value => settings.ArrowTipFromBase = value, "0.00");
+            Slider numberSlider = AddTuningSlider("Number position", 0.12, 0.92,
+                settings.NumberFromBase, value => settings.NumberFromBase = value, "0.00");
+            Slider stopSlider = AddTuningSlider("Line stop", 0, 0.25,
+                settings.ShaftStopFromBase, value => settings.ShaftStopFromBase = value, "0.00");
+            Slider gapSlider = AddTuningSlider("Keyboard gap", 0, 60,
+                settings.SideGap, value => settings.SideGap = value, "0");
+            Slider verticalSlider = AddTuningSlider("Up / down", -180, 180,
+                settings.VerticalOffset, value => settings.VerticalOffset = value, "0");
+
+            presetPicker.SelectedIndexChanged += (_, _) =>
+            {
+                int index = presetPicker.SelectedIndex;
+                if (index < 0 || index >= PrecisionArrowDesignSettings.Presets.Count)
+                    return;
+
+                syncing = true;
+                settings.Apply(PrecisionArrowDesignSettings.Presets[index]);
+                tipSlider.Value = settings.ArrowTipFromBase;
+                numberSlider.Value = settings.NumberFromBase;
+                stopSlider.Value = settings.ShaftStopFromBase;
+                gapSlider.Value = settings.SideGap;
+                verticalSlider.Value = settings.VerticalOffset;
+                syncing = false;
+                settings.Save();
+                changed(settings);
+            };
+
+            return new Border
+            {
+                Padding = new Thickness(10, 6),
+                Margin = new Thickness(8),
+                Stroke = Colors.Gray,
+                StrokeThickness = 1,
+                StrokeShape = new RoundRectangle { CornerRadius = 10 },
+                BackgroundColor = Colors.White.WithAlpha(0.96f),
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.End,
+                MaximumWidthRequest = 620,
+                ZIndex = 50,
+                Content = controls
+            };
+        }
+
+        private View BuildVerticalPrecisionMainKeyboard()
+        {
+            double screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+            double screenHeight = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
+            bool phoneLayout = DeviceInfo.Current.Idiom == DeviceIdiom.Phone || screenWidth < 600;
+            bool landscapeLayout = screenWidth > screenHeight;
+            PrecisionArrowDesignSettings arrowDesign = PrecisionArrowDesignSettings.Load();
+            // Keep the two-column keyboard broad, but compact around the screen centre.
+            // The controls are overlays and must never participate in centring the keyboard.
+            double maximumVerticalKeyWidth = landscapeLayout ? 180 : phoneLayout ? 150 : 180;
+            bool showSideInstructions = _config.KeyboardConfig.IsPrecisionShiftExercise;
+            bool showResizeSlider = !_config.KeyboardConfig.IsPrecisionShiftExercise;
+            double instructionWidth = phoneLayout ? 42 : 50;
+            double controlsWidth = phoneLayout ? 42 : 48;
+            double controlGap = phoneLayout ? 3 : 6;
+            double sliderPanelWidth = phoneLayout ? 46 : 52;
+            double buttonGap = sliderPanelWidth + controlGap + 8;
+            double instructionGap = Math.Max(0, arrowDesign.SideGap);
+            double sideClearance = (showResizeSlider ? controlsWidth + controlGap : 0) +
+                                   (showSideInstructions ? instructionWidth + instructionGap : 0);
+            double initialAvailableKeyWidth = Math.Max(36, (screenWidth - (sideClearance * 2) - 8) / 2);
+            double keyWidth = Math.Min(maximumVerticalKeyWidth, initialAvailableKeyWidth);
+            double keyboardWidth = _pianoKeyboard.SetExactKeyWidth(
+                keyWidth,
+                separatorWidth: 2,
+                columnSpacing: 2);
+            const double keyboardHeaderHeight = 52;
+            _taskMainHost.WidthRequest = keyboardWidth;
+            _taskMainHost.HorizontalOptions = LayoutOptions.Center;
+            _taskMainHost.VerticalOptions = LayoutOptions.Center;
+
+            Slider heightSlider = new()
+            {
+                Minimum = 260,
+                Maximum = 520,
+                Value = 420,
+                Rotation = -90,
+                WidthRequest = 280,
+                HeightRequest = 42,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            Grid sliderTrack = new()
+            {
+                WidthRequest = sliderPanelWidth,
+                HeightRequest = 300,
+                Children = { heightSlider }
+            };
+            TapGestureRecognizer sliderTrackTap = new();
+            sliderTrackTap.Tapped += (_, args) =>
+            {
+                Point? position = args.GetPosition(sliderTrack);
+                if (position is null || sliderTrack.Height <= 0)
+                    return;
+
+                // The slider is rotated counter-clockwise: its maximum is at the top.
+                // Ignore the small end-cap area so a tap maps exactly to the usable track.
+                const double endInset = 10;
+                double usableHeight = Math.Max(1, sliderTrack.Height - (endInset * 2));
+                double y = Math.Clamp(position.Value.Y - endInset, 0, usableHeight);
+                double fractionFromBottom = 1 - (y / usableHeight);
+                heightSlider.Value = heightSlider.Minimum +
+                                     (fractionFromBottom * (heightSlider.Maximum - heightSlider.Minimum));
+            };
+            sliderTrack.GestureRecognizers.Add(sliderTrackTap);
+            Border sliderPanel = new()
+            {
+                IsVisible = false,
+                Padding = 2,
+                BackgroundColor = Colors.White.WithAlpha(0.94f),
+                Stroke = Colors.Gray,
+                StrokeThickness = 1,
+                Content = sliderTrack,
+                HorizontalOptions = LayoutOptions.Center
+            };
+            Button sliderButton = new()
+            {
+                Text = "↕",
+                FontSize = 18,
+                WidthRequest = phoneLayout ? 40 : 42,
+                HeightRequest = 36,
+                Padding = 0,
+                CornerRadius = 18,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                BackgroundColor = phoneLayout
+                    ? Colors.Black.WithAlpha(0.25f)
+                    : Colors.White.WithAlpha(0.94f),
+                TextColor = phoneLayout ? Colors.White : Colors.Black
+            };
+            sliderButton.Clicked += (_, _) => sliderPanel.IsVisible = !sliderPanel.IsVisible;
+            _pianoKeyboard.KeyPressStarted += () => sliderPanel.IsVisible = false;
+            foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                keyButton.Down += (_, _) => sliderPanel.IsVisible = false;
+
+            _lblAction.FontSize = _config.KeyboardConfig.PrecisionShiftBothHands ? 14 : 18;
+            _lblAction.FontFamily = "Consolas";
+            _lblAction.HorizontalTextAlignment = TextAlignment.Center;
+            _lblAction.VerticalTextAlignment = TextAlignment.Center;
+            _lblAction.HeightRequest = 26;
+
+            _verticalLeftShiftDrawable = new PrecisionShiftInstructionDrawable { IsVertical = true };
+            _verticalRightShiftDrawable = new PrecisionShiftInstructionDrawable { IsVertical = true };
+            ApplyArrowDrawableTuning(_verticalLeftShiftDrawable, arrowDesign);
+            ApplyArrowDrawableTuning(_verticalRightShiftDrawable, arrowDesign);
+            _verticalLeftShiftInstruction = new GraphicsView
+            {
+                Drawable = _verticalLeftShiftDrawable,
+                WidthRequest = instructionWidth,
+                HeightRequest = 150,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+            _verticalRightShiftInstruction = new GraphicsView
+            {
+                Drawable = _verticalRightShiftDrawable,
+                WidthRequest = instructionWidth,
+                HeightRequest = 150,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+
+            Grid side = new()
+            {
+                WidthRequest = sliderPanelWidth + controlGap + controlsWidth,
+                VerticalOptions = LayoutOptions.Center,
+                ColumnSpacing = 0,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(new GridLength(sliderPanelWidth)),
+                    new ColumnDefinition(new GridLength(controlGap)),
+                    new ColumnDefinition(new GridLength(controlsWidth))
+                }
+            };
+            side.Add(sliderPanel, 0, 0);
+            side.Add(sliderButton, 2, 0);
+            sliderPanel.ZIndex = 4;
+            sliderButton.ZIndex = 5;
+            Grid stage = new()
+            {
+                BackgroundColor = Colors.AntiqueWhite,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill,
+                Padding = 0
+            };
+            TapGestureRecognizer outsideSliderTap = new();
+            outsideSliderTap.Tapped += (_, args) =>
+            {
+                if (!sliderPanel.IsVisible)
+                    return;
+
+                Point? position = args.GetPosition(side);
+                bool tappedInsideSliderControls =
+                    position is Point point &&
+                    point.X >= 0 && point.X <= side.Width &&
+                    point.Y >= 0 && point.Y <= side.Height;
+                if (!tappedInsideSliderControls)
+                    sliderPanel.IsVisible = false;
+            };
+            _rootGrid.GestureRecognizers.Add(outsideSliderTap);
+            Grid keyboardCluster = new()
+            {
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Start,
+                Padding = 0
+            };
+            keyboardCluster.Children.Add(_taskMainHost);
+            if (showSideInstructions)
+            {
+                _lblAction.IsVisible = false;
+                keyboardCluster.Children.Add(_verticalLeftShiftInstruction);
+                keyboardCluster.Children.Add(_verticalRightShiftInstruction);
+            }
+            side.HorizontalOptions = LayoutOptions.Center;
+            side.VerticalOptions = phoneLayout && showResizeSlider
+                ? LayoutOptions.Start
+                : LayoutOptions.Center;
+            side.TranslationY = phoneLayout && showResizeSlider ? 6 : 0;
+            side.ZIndex = 3;
+            if (showResizeSlider)
+                keyboardCluster.Children.Add(side);
+            stage.Children.Add(keyboardCluster);
+
+            if (_config.KeyboardConfig.IsPrecisionArrowDesignLab)
+            {
+                View designPanel = BuildPrecisionArrowDesignLabPanel(settings =>
+                {
+                    arrowDesign = settings;
+                    instructionGap = Math.Max(0, settings.SideGap);
+                    ApplyArrowDrawableTuning(_verticalLeftShiftDrawable, settings);
+                    ApplyArrowDrawableTuning(_verticalRightShiftDrawable, settings);
+                    _verticalLeftShiftInstruction.TranslationY = settings.VerticalOffset;
+                    _verticalRightShiftInstruction.TranslationY = settings.VerticalOffset;
+                    if (stage.Width > 0)
+                        ApplyResponsiveKeyboardWidth(stage.Width);
+                    _verticalLeftShiftInstruction.Invalidate();
+                    _verticalRightShiftInstruction.Invalidate();
+                });
+                stage.Children.Add(designPanel);
+            }
+
+            Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
+            string preferenceKey = $"precision-pinch-keyboard-height-{activeUserId?.ToString() ?? "anonymous"}";
+            double savedHeight = Preferences.Default.Get(preferenceKey, -1d);
+            bool initialized = false;
+
+            void ApplyResponsiveKeyboardWidth(double availableWidth)
+            {
+                if (availableWidth <= (sideClearance * 2) + 8)
+                    return;
+                double availablePerKey = (availableWidth - (sideClearance * 2) - 8) / 2;
+                double responsiveKeyWidth = Math.Max(36, Math.Min(maximumVerticalKeyWidth, availablePerKey));
+                double exactWidth = _pianoKeyboard.SetExactKeyWidth(
+                    responsiveKeyWidth,
+                    separatorWidth: 2,
+                    columnSpacing: 2);
+                _taskMainHost.WidthRequest = exactWidth;
+                _taskMainHost.MaximumWidthRequest = exactWidth;
+                _taskMainHost.SyncOverlay();
+
+                double keyboardEdge = exactWidth / 2;
+                const double keyboardCenter = 0;
+                _taskMainHost.TranslationX = keyboardCenter;
+                if (showSideInstructions)
+                {
+                    double instructionOffset = keyboardEdge + instructionGap + (instructionWidth / 2);
+                    _verticalLeftShiftInstruction.TranslationX = keyboardCenter - instructionOffset;
+                    _verticalRightShiftInstruction.TranslationX = keyboardCenter + instructionOffset;
+                    _verticalLeftShiftInstruction.TranslationY = arrowDesign.VerticalOffset;
+                    _verticalRightShiftInstruction.TranslationY = arrowDesign.VerticalOffset;
+                    if (showResizeSlider)
+                    {
+                        double buttonCenter = keyboardCenter + keyboardEdge + instructionGap +
+                                              instructionWidth + buttonGap + (controlsWidth / 2);
+                        side.TranslationX = buttonCenter -
+                                            ((sliderPanelWidth + controlGap + controlsWidth) / 2) +
+                                            (controlsWidth / 2);
+                    }
+                }
+                else
+                {
+                    double buttonCenter = phoneLayout && showResizeSlider
+                        // On phones the keyboard nearly fills the screen. Keep the
+                        // resize button inside its black header, just left of Help.
+                        ? keyboardCenter + keyboardEdge - 62
+                        : keyboardCenter + keyboardEdge + buttonGap + (controlsWidth / 2);
+                    side.TranslationX = buttonCenter -
+                                        ((sliderPanelWidth + controlGap + controlsWidth) / 2) +
+                                        (controlsWidth / 2);
+                }
+            }
+
+            void ApplyHeight(double requestedHeight)
+            {
+                if (stage.Height <= 0)
+                    return;
+
+                double actionHeight = 0;
+                double maximum = Math.Max(1, stage.Height - actionHeight);
+                double minimum = Math.Min(220, maximum);
+                requestedHeight = Math.Clamp(requestedHeight, minimum, maximum);
+                double keyHeight = Math.Max(36,
+                    (requestedHeight - keyboardHeaderHeight - 5) / _config.KeyboardConfig.Rows);
+                double exactHeight = _pianoKeyboard.SetExactKeyHeight(keyHeight);
+                _taskMainHost.HeightRequest = Math.Min(exactHeight, maximum);
+                keyboardCluster.HeightRequest = _taskMainHost.HeightRequest;
+                _taskMainHost.SyncOverlay();
+            }
+
+            stage.SizeChanged += (_, _) =>
+            {
+                if (stage.Height <= 0)
+                    return;
+
+                ApplyResponsiveKeyboardWidth(stage.Width);
+
+                double actionHeight = 0;
+                double keyboardAreaHeight = Math.Max(1, stage.Height - actionHeight);
+                heightSlider.Maximum = keyboardAreaHeight;
+                heightSlider.Minimum = Math.Min(220, keyboardAreaHeight);
+                double sliderLength = Math.Clamp(keyboardAreaHeight - 40, 260, 420);
+                heightSlider.WidthRequest = sliderLength;
+                sliderTrack.HeightRequest = sliderLength + 20;
+                if (!initialized)
+                {
+                    initialized = true;
+                    heightSlider.Value = savedHeight > 0
+                        ? Math.Clamp(savedHeight, heightSlider.Minimum, heightSlider.Maximum)
+                        : phoneLayout
+                            ? Math.Clamp(keyboardAreaHeight * 0.68, heightSlider.Minimum, heightSlider.Maximum)
+                            : heightSlider.Maximum;
+                }
+                ApplyHeight(heightSlider.Value);
+            };
+            heightSlider.ValueChanged += (_, args) =>
+            {
+                ApplyHeight(args.NewValue);
+                if (initialized)
+                    Preferences.Default.Set(preferenceKey, args.NewValue);
+            };
+
+            return stage;
+        }
+
         private VerticalStackLayout InitLogicalKeyboardsUI()
         {
             VerticalStackLayout vsl = new();
             _keyboardTask2 = new PianoKeyboardReadOnly(_config.KeyboardConfig)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = PIANO_HEIGHT2
+                HeightRequest = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise ? 300 : PIANO_HEIGHT2
             };
             _lblAction = new Label
             {
@@ -6629,6 +7537,20 @@ namespace GestureSample.Views.Tests
                 TextColor = Colors.Black,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center
+            };
+            _legacyShiftInstructionDrawable = new PrecisionShiftInstructionDrawable
+            {
+                IsVertical = false,
+                IsShift = true
+            };
+            _legacyShiftInstructionView = new GraphicsView
+            {
+                Drawable = _legacyShiftInstructionDrawable,
+                HeightRequest = 62,
+                WidthRequest = 230,
+                HorizontalOptions = LayoutOptions.Center,
+                IsVisible = false,
+                InputTransparent = true
             };
             _logicalColorLeftArrow = new Label
             {
@@ -6655,29 +7577,261 @@ namespace GestureSample.Views.Tests
             };
             KeyboardConfig config1 = new KeyboardConfig
             {
-                Rows = 1,
+                Rows = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise
+                    ? _config.KeyboardConfig.Rows
+                    : 1,
                 KeysInRow = _config.KeyboardConfig.KeysInRow
             };
             if (_config.UsesCombinedLogicalKeyboard) config1.Rows = 2;
             _keyboardTask1 = new PianoKeyboardReadOnly(config1)
             {
                 HorizontalOptions = LayoutOptions.Fill,
-                HeightRequest = (_config.UsesCombinedLogicalKeyboard) ? (PIANO_HEIGHT2 * 2) + 5 : PIANO_HEIGHT2
+                HeightRequest = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise
+                    ? 300
+                    : (_config.UsesCombinedLogicalKeyboard) ? (PIANO_HEIGHT2 * 2) + 5 : PIANO_HEIGHT2
             };
 
             _task2Host = new KeyboardOverlayHost(_keyboardTask2);
             _task1Host = new KeyboardOverlayHost(_keyboardTask1);
 
+            // This stage draws its prompt on the interactive keyboard below.
+            if (_config.KeyboardConfig.IsPrecisionPinchExercise)
+                return vsl;
 
-            //vsl.Add(_keyboardTask2);
-            vsl.Add(_task2Host);
-            vsl.Add(new VerticalStackLayout
+            View task2View = _task2Host;
+            View task1View = _task1Host;
+            if (_config.KeyboardConfig.AllowKeyWidthAdjustment)
             {
-                HorizontalOptions = LayoutOptions.Fill,
-                Spacing = 2,
-                Children = { _lblAction, _logicalColorActionLayout }
-            });
-            vsl.Add(_task1Host);//vsl.Add(_keyboardTask1);
+                bool verticalCalibration = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise;
+                Slider widthSlider = new()
+                {
+                    Minimum = 240,
+                    Maximum = 600,
+                    Value = 600,
+                    Rotation = verticalCalibration ? -90 : 0,
+                    WidthRequest = verticalCalibration ? 230 : -1,
+                    HeightRequest = verticalCalibration ? 40 : -1,
+                    HorizontalOptions = verticalCalibration ? LayoutOptions.End : LayoutOptions.Fill,
+                    VerticalOptions = verticalCalibration ? LayoutOptions.Fill : LayoutOptions.Center
+                };
+                Label widthStatus = new()
+                {
+                    Text = "Move the slider to choose your preferred key width",
+                    FontSize = 12,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    TextColor = Colors.Black
+                };
+                View sliderPanelContent;
+                if (verticalCalibration)
+                {
+                    sliderPanelContent = new Grid
+                    {
+                        WidthRequest = 48,
+                        HeightRequest = 250,
+                        Children = { widthSlider }
+                    };
+                }
+                else
+                {
+                    sliderPanelContent = new VerticalStackLayout
+                    {
+                        Spacing = 0,
+                        Children = { widthSlider, widthStatus }
+                    };
+                }
+                Border widthPanel = new()
+                {
+                    IsVisible = false,
+                    Padding = new Thickness(8, 2),
+                    Margin = verticalCalibration
+                        ? new Thickness(0, 42, 4, 42)
+                        : new Thickness(44, 4, 44, 0),
+                    BackgroundColor = Colors.White.WithAlpha(0.92f),
+                    Stroke = Colors.Gray,
+                    StrokeThickness = 1,
+                    Content = sliderPanelContent,
+                    VerticalOptions = verticalCalibration ? LayoutOptions.Center : LayoutOptions.Start,
+                    HorizontalOptions = verticalCalibration ? LayoutOptions.End : LayoutOptions.Fill,
+                    ZIndex = 101
+                };
+
+                Button widthButton = new()
+                {
+                    Text = verticalCalibration ? "↕" : "↔",
+                    FontSize = 18,
+                    WidthRequest = 40,
+                    HeightRequest = 34,
+                    Padding = 0,
+                    Margin = new Thickness(4),
+                    BackgroundColor = Colors.White.WithAlpha(0.92f),
+                    HorizontalOptions = LayoutOptions.End,
+                    VerticalOptions = LayoutOptions.Start,
+                    ZIndex = 102
+                };
+                widthButton.Clicked += (_, _) =>
+                {
+                    widthPanel.IsVisible = !widthPanel.IsVisible;
+                };
+
+                Grid adjustableTask1;
+                if (verticalCalibration)
+                {
+                    VerticalStackLayout sideControls = new()
+                    {
+                        WidthRequest = 58,
+                        VerticalOptions = LayoutOptions.Fill,
+                        Children = { widthButton, widthPanel }
+                    };
+                    adjustableTask1 = new Grid
+                    {
+                        HorizontalOptions = LayoutOptions.Center,
+                        ColumnSpacing = 4,
+                        ColumnDefinitions =
+                        {
+                            new ColumnDefinition(GridLength.Auto),
+                            new ColumnDefinition(GridLength.Auto)
+                        }
+                    };
+                    adjustableTask1.Add(_task1Host, 0, 0);
+                    adjustableTask1.Add(sideControls, 1, 0);
+                }
+                else
+                {
+                    adjustableTask1 = new Grid
+                    {
+                        HorizontalOptions = LayoutOptions.Fill,
+                        Children = { _task1Host, widthPanel, widthButton }
+                    };
+                }
+                task1View = adjustableTask1;
+
+                if (verticalCalibration)
+                {
+                    double screenWidth = DeviceDisplay.MainDisplayInfo.Width / DeviceDisplay.MainDisplayInfo.Density;
+                    double verticalKeyWidth = Math.Clamp((screenWidth - 148) / 4, 42, 64);
+                    double verticalKeyboardWidth1 = _keyboardTask1.SetExactKeyWidth(verticalKeyWidth);
+                    double verticalKeyboardWidth2 = _keyboardTask2.SetExactKeyWidth(verticalKeyWidth);
+                    _task1Host.WidthRequest = verticalKeyboardWidth1;
+                    _task2Host.WidthRequest = verticalKeyboardWidth2;
+                    _task1Host.HorizontalOptions = LayoutOptions.Center;
+                    _task2Host.HorizontalOptions = LayoutOptions.Center;
+                }
+
+                Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
+                string dimensionName = verticalCalibration ? "height" : "width";
+                string preferenceKey = $"precision-pinch-keyboard-{dimensionName}-{activeUserId?.ToString() ?? "anonymous"}";
+                double savedWidth = Preferences.Default.Get(preferenceKey, -1d);
+                double maximumAvailableWidth = 0;
+                bool sliderInitialized = false;
+                void ApplyKeyboardDimension(double requestedDimension)
+                {
+                    if (maximumAvailableWidth <= 0)
+                        return;
+
+                    requestedDimension = Math.Clamp(requestedDimension, widthSlider.Minimum, maximumAvailableWidth);
+                    if (verticalCalibration)
+                    {
+                        double nonKeyHeight = 5;
+                        double keyHeight = Math.Max(24,
+                            (requestedDimension - nonKeyHeight) / _config.KeyboardConfig.Rows);
+                        double task1Height = _keyboardTask1.SetExactKeyHeight(keyHeight);
+                        double task2Height = _keyboardTask2.SetExactKeyHeight(keyHeight);
+                        _task1Host.HeightRequest = task1Height;
+                        _task2Host.HeightRequest = task2Height;
+                    }
+                    else
+                    {
+                        int keyColumns = _config.KeyboardConfig.KeysInRow;
+                        int visualColumns = keyColumns + (keyColumns <= 10 ? 1 : 0);
+                        double chromeWidth = (keyColumns <= 10 ? 5 : 0) +
+                                             (Math.Max(0, visualColumns - 1) * 5);
+                        double keyWidth = Math.Max(12, (requestedDimension - chromeWidth) / keyColumns);
+                        double task1Width = _keyboardTask1.SetExactKeyWidth(keyWidth);
+                        double task2Width = _keyboardTask2.SetExactKeyWidth(keyWidth);
+                        _task1Host.HorizontalOptions = LayoutOptions.Center;
+                        _task2Host.HorizontalOptions = LayoutOptions.Center;
+                        _task1Host.WidthRequest = task1Width;
+                        _task2Host.WidthRequest = task2Width;
+                    }
+                    _task1Host.SyncOverlay();
+                    _task2Host.SyncOverlay();
+                }
+
+                adjustableTask1.SizeChanged += (_, _) =>
+                {
+                    if (adjustableTask1.Width <= 0)
+                        return;
+
+                    maximumAvailableWidth = verticalCalibration
+                        ? Math.Min(420, DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density * 0.32)
+                        : Math.Max(maximumAvailableWidth, adjustableTask1.Width);
+                    widthSlider.Maximum = maximumAvailableWidth;
+                    widthSlider.Minimum = Math.Min(verticalCalibration ? 180 : 240, maximumAvailableWidth);
+                    if (!sliderInitialized)
+                    {
+                        sliderInitialized = true;
+                        widthSlider.Value = savedWidth > 0
+                            ? Math.Clamp(savedWidth, widthSlider.Minimum, maximumAvailableWidth)
+                            : maximumAvailableWidth;
+                    }
+                    ApplyKeyboardDimension(widthSlider.Value);
+                };
+                widthSlider.ValueChanged += (_, args) =>
+                {
+                    ApplyKeyboardDimension(args.NewValue);
+                    if (!sliderInitialized)
+                        return;
+
+                    Preferences.Default.Set(preferenceKey, args.NewValue);
+                    widthStatus.Text = $"Preferred {dimensionName} saved ({args.NewValue:0})";
+                };
+            }
+
+            if (_config.KeyboardConfig.IsVerticalPrecisionPinchExercise)
+            {
+                Label directionArrow = new()
+                {
+                    Text = "→",
+                    FontSize = 30,
+                    TextColor = Colors.Black,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    VerticalTextAlignment = TextAlignment.Center
+                };
+                _lblAction.FontSize = 15;
+                _lblAction.HorizontalTextAlignment = TextAlignment.Center;
+                Grid verticalExercise = new()
+                {
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Fill,
+                    ColumnSpacing = 8,
+                    ColumnDefinitions =
+                    {
+                        new ColumnDefinition(GridLength.Auto),
+                        new ColumnDefinition(new GridLength(48)),
+                        new ColumnDefinition(GridLength.Auto)
+                    }
+                };
+                verticalExercise.Add(task2View, 0, 0);
+                verticalExercise.Add(new VerticalStackLayout
+                {
+                    VerticalOptions = LayoutOptions.Center,
+                    Spacing = 0,
+                    Children = { directionArrow, _lblAction, _logicalColorActionLayout }
+                }, 1, 0);
+                verticalExercise.Add(task1View, 2, 0);
+                vsl.Add(verticalExercise);
+            }
+            else
+            {
+                vsl.Add(task2View);
+                vsl.Add(new VerticalStackLayout
+                {
+                    HorizontalOptions = LayoutOptions.Fill,
+                    Spacing = 2,
+                    Children = { _lblAction, _legacyShiftInstructionView, _logicalColorActionLayout }
+                });
+                vsl.Add(task1View);
+            }
             return vsl;
         }
 

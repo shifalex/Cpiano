@@ -6,6 +6,8 @@ using GestureSample.Maui.Views;
 using GestureSample.Maui.Views.CustomStages;
 using GestureSample.Views;
 using GestureSample.Maui.Models;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 namespace GestureSample.Views
 {
     public partial class MainPage
@@ -21,9 +23,10 @@ namespace GestureSample.Views
             new PageConfig(null, "Weighted Keyboard", null, true),
             new PageConfig(null, "+-X:- mixed advanced ", null),
             new PageConfig(null, "&& ||", null, true),
+            new PageConfig(null, "Gripping", null),
             new PageConfig(null, "Data", null),
 
-            new PageConfig(null, string.Format("Switch User({0})",ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name),  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig(null, GetUserSettingsTitle(), () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
 
             new PageConfig(null, "Tutorial", null, true),
             new PageConfig(null, "Custom stages", null),
@@ -33,6 +36,41 @@ namespace GestureSample.Views
             new PageConfig("Custom stages", "Arrow Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Arrow)),
             new PageConfig("Custom stages", "Logical Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Logical)),
             new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
+
+            new PageConfig("Gripping", "Stage 1 - Vertical transformative COPY", () =>
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Vertical transformative COPY", bothHands: false, copyOtherHand: false, transformative: true))),
+            new PageConfig("Gripping", "Stage 1.1 - COPY to other hand", () =>
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("COPY to other hand", bothHands: false, copyOtherHand: true, transformative: true))),
+
+            new PageConfig("Gripping", "Stage 2 - Full shifts up/down by 1-2", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full shifts up/down by 1-2", bothHands: false, maxDistance: 2,
+                    moveOptions: PrecisionPinchMoveOptions.ShiftWhole))),
+            new PageConfig("Gripping", "Stage 3 - Move upper only by 1-3", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Move upper only by 1-3", bothHands: false, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.MoveUpper))),
+            new PageConfig("Gripping", "Stage 4 - Full one hand", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full one hand", bothHands: false, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.All))),
+
+            new PageConfig("Gripping", "Stage 5 - Two hands COPY", () =>
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Two hands COPY", bothHands: true, copyOtherHand: false, transformative: false))),
+            new PageConfig("Gripping", "Stage 6 - Two hands full shifts", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Two hands full shifts", bothHands: true, maxDistance: 2,
+                    moveOptions: PrecisionPinchMoveOptions.ShiftWhole))),
+            new PageConfig("Gripping", "Stage 7 - Two hands move upper only", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Two hands move upper only", bothHands: true, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.MoveUpper))),
+            new PageConfig("Gripping", "Stage 8 - Full two hands", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full two hands", bothHands: true, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.All,
+                    rows: GetExpandedPrecisionRows(), maxPinchInterval: 5))),
+            new PageConfig("Gripping", "Stage 9 - Coordinated upper-arrow commands", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Coordinated upper-arrow commands", bothHands: true, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
+                    synchronizeHands: true, staggerHandsInitially: true,
+                    rows: GetExpandedPrecisionRows(), maxPinchInterval: 5))),
+            new PageConfig("Gripping", "Debug - Arrow design lab", () =>
+                new SimpleViewCellsPage(CreatePrecisionArrowDesignLabConfig())),
 
             //OLD MENU
             //
@@ -1419,6 +1457,23 @@ namespace GestureSample.Views
             #endregion
 
             #region Arrow
+    new PageConfig("->", "First -> variable length", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "First -> variable length",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=5,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
+            MaxArrowLabelDistance = 4,
+            IsArrow = true,
+            IsArrowLengthDynamic = true
+        }
+    })),
     new PageConfig("->", "First ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "First ->",
@@ -1432,7 +1487,8 @@ namespace GestureSample.Views
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer  = 5,
             MaxArrowLabelDistance = 3,
-            IsArrow = true
+            IsArrow = true,
+            IsArrowLengthDynamic = false
         }
     })),
      new PageConfig("->", "Till 10 -> count on With Voice", () => new SimpleViewCellsPage(new GameConfig
@@ -1466,6 +1522,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            KeysInRow = 10,
             SecondsPressingToAnswer  = 3,
             MaxArrowLabelDistance = 4,
             IsArrow = true,
@@ -1738,6 +1795,32 @@ namespace GestureSample.Views
             ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
             MaxArrowLabelDistance = 4,
             AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    })),
+    new PageConfig("->", "Arrow Label - mixed missing distance and end piano", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Arrow Label - mixed missing distance and end piano",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        OnlyThrougTen = true,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            ShowNumbersOnKeys = false,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.OnKeyboard | ArrowPromptKindFlags.SpecialPrompt,
             AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
             SpecialArrowMissingTargets = MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
             ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
@@ -2712,6 +2795,145 @@ namespace GestureSample.Views
 
         };
 
+        private static ExercisePlan CreateTransformativePrecisionCopyPlan() => new()
+        {
+            Loop = false,
+            Steps = new()
+            {
+                new ExercisePlanStep
+                {
+                    Kind = PlanStepKind.NewQuestion,
+                    Operation = Operation.Copy,
+                    OpMode = PlanOpMode.Fixed
+                },
+                new ExercisePlanStep
+                {
+                    Kind = PlanStepKind.UsePrevAnswer,
+                    Repeat = 10000,
+                    Operation = Operation.Copy,
+                    OpMode = PlanOpMode.Fixed
+                }
+            }
+        };
+
+        private static GameConfig CreatePrecisionCopyConfig(
+            string name,
+            bool bothHands,
+            bool copyOtherHand,
+            bool transformative)
+        {
+            return new GameConfig
+            {
+                GameName = $"Gripping - {name}",
+                UIQuestionType = UIQuestionType.LogicalKeyboards,
+                OperationList = new() { Operation.Copy },
+                IsOnlyOneHand = !bothHands,
+                isOnlyKeyboard = true,
+                IncludeTutorials = false,
+                NumberOfTasksToWin = 20,
+                // Gripping is calibration/practice: mistakes should provide feedback,
+                // not end the stage with a loss. Finish after 20 correct responses.
+                NumberOfMistakesToLose = -1,
+                Plan = transformative ? CreateTransformativePrecisionCopyPlan() : null,
+                KeyboardConfig = new KeyboardConfig
+                {
+                    SyncType = SyncType.Sync,
+                    IsHelpNeeded = true,
+                    Rows = 5,
+                    KeysInRow = 2,
+                    AllowKeyWidthAdjustment = true,
+                    IsPrecisionPinchExercise = true,
+                    IsTransformativePrecisionCopyExercise = transformative,
+                    CopyPrecisionPinchToOtherHand = copyOtherHand,
+                    IsVerticalPrecisionPinchExercise = true,
+                    PrecisionShiftBothHands = bothHands,
+                    PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    UseFullHandTutorial = false
+                }
+            };
+        }
+
+        private static GameConfig CreatePrecisionShiftConfig(
+            string name,
+            bool bothHands,
+            int maxDistance,
+            PrecisionPinchMoveOptions moveOptions,
+            bool synchronizeHands = false,
+            bool staggerHandsInitially = false,
+            int rows = 5,
+            int maxPinchInterval = int.MaxValue)
+        {
+            return new GameConfig
+            {
+                GameName = name,
+                UIQuestionType = UIQuestionType.LogicalKeyboards,
+                OperationList = new() { Operation.MoveBy },
+                IsOnlyOneHand = !bothHands,
+                isOnlyKeyboard = true,
+                NumberOfTasksToWin = 20,
+                // Gripping is calibration/practice: mistakes should provide feedback,
+                // not end the stage with a loss. Finish after 20 correct responses.
+                NumberOfMistakesToLose = -1,
+                Plan = new ExercisePlan
+                {
+                    Loop = false,
+                    Steps = new()
+                    {
+                        new ExercisePlanStep
+                        {
+                            Kind = PlanStepKind.NewQuestion,
+                            Operation = Operation.MoveBy,
+                            OpMode = PlanOpMode.Fixed
+                        },
+                        new ExercisePlanStep
+                        {
+                            Kind = PlanStepKind.UsePrevAnswer,
+                            Repeat = 10000,
+                            Operation = Operation.MoveBy,
+                            OpMode = PlanOpMode.Fixed
+                        }
+                    }
+                },
+                KeyboardConfig = new KeyboardConfig
+                {
+                    SyncType = SyncType.Sync,
+                    IsHelpNeeded = true,
+                    Rows = rows,
+                    KeysInRow = 2,
+                    AllowKeyWidthAdjustment = true,
+                    IsPrecisionPinchExercise = true,
+                    IsVerticalPrecisionPinchExercise = true,
+                    IsPrecisionShiftExercise = true,
+                    PrecisionShiftBothHands = bothHands,
+                    PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    PrecisionPinchMoveOptions = moveOptions,
+                    PrecisionShiftSynchronizeHands = synchronizeHands,
+                    PrecisionShiftStaggerHandsInitially = staggerHandsInitially,
+                    PrecisionShiftMinDistance = 1,
+                    PrecisionShiftMaxDistance = Math.Max(1, maxDistance),
+                    PrecisionPinchMaxInterval = maxPinchInterval
+                }
+            };
+        }
+
+        private static int GetExpandedPrecisionRows()
+        {
+            DeviceIdiom idiom = DeviceInfo.Current.Idiom;
+            return idiom == DeviceIdiom.Tablet || idiom == DeviceIdiom.Desktop ? 7 : 5;
+        }
+
+        private static GameConfig CreatePrecisionArrowDesignLabConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Arrow design lab",
+                bothHands: false,
+                maxDistance: 3,
+                moveOptions: PrecisionPinchMoveOptions.All);
+            config.NumberOfTasksToWin = 1000;
+            config.KeyboardConfig.IsPrecisionArrowDesignLab = true;
+            return config;
+        }
+
 
         #region MainPage code
         private readonly UserRepository _userRepo;
@@ -2753,21 +2975,53 @@ namespace GestureSample.Views
             IEnumerable<PageConfig> resolvedContents =
                 contents ?? AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
             List<PageConfig> materializedContents = resolvedContents.ToList();
+            if (string.Equals(title, "One operation", StringComparison.OrdinalIgnoreCase))
+                ReorderOneOperationMenu(materializedContents);
 
             if (title == "->")
             {
                 Console.WriteLine($"Arrow menu items ({materializedContents.Count}): {string.Join(" | ", materializedContents.Select(pc => pc.Title))}");
             }
 
-            BindingContext = materializedContents;
-
             InitializeComponent();
+            BindingContext = materializedContents;
+            MenuCollectionView.ItemsSource = materializedContents;
+        }
+
+        private static void ReorderOneOperationMenu(List<PageConfig> items)
+        {
+            int copyIndex = items.FindIndex(item =>
+                string.Equals(item.Title, "Copy", StringComparison.OrdinalIgnoreCase));
+            if (copyIndex < 0)
+                return;
+
+            PageConfig? notItem = items.FirstOrDefault(item =>
+                string.Equals(item.Title, "Not", StringComparison.OrdinalIgnoreCase));
+            PageConfig? mirrorItem = items.FirstOrDefault(item =>
+                string.Equals(item.Title, "Mirror", StringComparison.OrdinalIgnoreCase));
+
+            if (notItem != null)
+                items.Remove(notItem);
+            if (mirrorItem != null)
+                items.Remove(mirrorItem);
+
+            copyIndex = items.FindIndex(item =>
+                string.Equals(item.Title, "Copy", StringComparison.OrdinalIgnoreCase));
+            int insertionIndex = copyIndex + 1;
+            if (notItem != null)
+                items.Insert(insertionIndex++, notItem);
+            if (mirrorItem != null)
+                items.Insert(insertionIndex, mirrorItem);
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
             _syncToolbarStatusController.Attach();
+            CurrentUserSession currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+            currentUserSession.ActiveUserChanged -= OnActiveUserChanged;
+            currentUserSession.ActiveUserChanged += OnActiveUserChanged;
+            RefreshUserSettingsTitle();
 
 
             // Check if navigation to SplashPage is needed
@@ -2788,8 +3042,30 @@ namespace GestureSample.Views
 
         protected override void OnDisappearing()
         {
+            CurrentUserSession currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+            currentUserSession.ActiveUserChanged -= OnActiveUserChanged;
             _syncToolbarStatusController.Detach();
             base.OnDisappearing();
+        }
+
+        private static string GetUserSettingsTitle()
+        {
+            string userName = ServiceHelper.GetService<CurrentUserSession>()?.ActiveUser?.Name?.Trim();
+            return string.IsNullOrWhiteSpace(userName)
+                ? "USER SETTINGS"
+                : $"USER SETTINGS ({userName})";
+        }
+
+        private void OnActiveUserChanged(object sender, EventArgs e)
+        {
+            MainThread.BeginInvokeOnMainThread(RefreshUserSettingsTitle);
+        }
+
+        private void RefreshUserSettingsTitle()
+        {
+            PageConfig userSettings = AllPages.FirstOrDefault(page => page.IsUserSettings);
+            if (userSettings != null)
+                userSettings.Title = GetUserSettingsTitle();
         }
 
         protected override bool OnBackButtonPressed()
@@ -2819,23 +3095,28 @@ namespace GestureSample.Views
                 return true;
             }
         }
-        private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)
+        private async void MenuItem_Tapped(object sender, TappedEventArgs e)
         {
-            var item = (PageConfig)e.Item;
+            if (sender is not BindableObject bindableObject ||
+                bindableObject.BindingContext is not PageConfig item)
+                return;
 
+            await NavigateToMenuItem(item);
+        }
+
+        private async Task NavigateToMenuItem(PageConfig item)
+        {
             try
             {
                 if (item.PageConstructor != null)
                 {
-                    // a sample page
                     var page = item.PageConstructor.Invoke();
                     await Navigation.PushAsync(page);
                 }
                 else
                 {
-                    // a menu page
                     var subpage = item.Title;
-                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >=1100 || !pc.IsLargeScreenOnly));
+                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >= 1100 || !pc.IsLargeScreenOnly));
                     var page = new MainPage(subpage, contents);
                     await Navigation.PushAsync(page);
                 }
@@ -2850,15 +3131,54 @@ namespace GestureSample.Views
 
         #region class PageConfig
 
-        public class PageConfig
+        public class PageConfig : INotifyPropertyChanged
         {
             public string Parent { get; }
-            public string Title { get; }
+            private string _title;
+            public string Title
+            {
+                get => _title;
+                set
+                {
+                    if (_title == value)
+                        return;
+
+                    _title = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayTitle));
+                    OnPropertyChanged(nameof(IconGlyph));
+                    OnPropertyChanged(nameof(IconBackground));
+                }
+            }
             public Func<Page> PageConstructor { get; }
+            public bool IsUserSettings => Title.StartsWith("USER SETTINGS", StringComparison.Ordinal);
 
             public bool IsLargeScreenOnly { get; }
             //public bool HasTutorial => Parent == "One operation" && PageConstructor != null;
             public string DisplayTitle => Title;
+            public string IconGlyph => Title switch
+            {
+                "->" => "→",
+                "+ -" => "±",
+                "X : " => "×",
+                "Weighted Keyboard" => "♬",
+                "+-X:- mixed advanced " => "∑",
+                "&& ||" => "∧",
+                "Data" => "▥",
+                "Tutorial" => "★",
+                "Custom stages" => "◇",
+                _ when IsUserSettings => "●",
+                _ => Parent is null ? "○" : "›"
+            };
+
+            public string IconBackground => Title switch
+            {
+                "Data" => "#40BFA3",
+                "Tutorial" => "#F0A640",
+                "Custom stages" => "#F47B62",
+                _ when IsUserSettings => "#7C68D9",
+                _ => "#3167E3"
+            };
 
             public PageConfig(string parent, string title, Func<Page> pageConstructor, bool largeScreenOnly = false)
             {
@@ -2866,6 +3186,13 @@ namespace GestureSample.Views
                 Title = title;
                 PageConstructor = pageConstructor;
                 IsLargeScreenOnly = largeScreenOnly;
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
         }
 

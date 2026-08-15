@@ -25,38 +25,55 @@ namespace GestureSample.Maui.Models
                 FlowDirection = FlowDirection.LeftToRight
             };
 
+            bool showLabel = labelTextOverride != string.Empty && (labelTextOverride != null || numberAbove > -1);
             Label numberLabel = new()
             {
                 Text = labelTextOverride ?? numberAbove.ToString(),
-                TextColor = Colors.White,
-                FontSize = 25,
+                TextColor = Color.FromArgb("#111827"),
+                FontSize = 20,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Center,
                 HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
                 FontAttributes = Microsoft.Maui.Controls.FontAttributes.Bold,
                 FontFamily = DeviceInfo.Platform == DevicePlatform.iOS ? "HelveticaNeue-Bold" : null,
-                FlowDirection = FlowDirection.LeftToRight,
-                IsVisible = labelTextOverride != string.Empty && (labelTextOverride != null || numberAbove > -1)
+                FlowDirection = FlowDirection.LeftToRight
+            };
+
+            Border labelChip = new()
+            {
+                Content = numberLabel,
+                BackgroundColor = Color.FromArgb("#F8FAFC"),
+                Stroke = Color.FromArgb("#CBD5E1"),
+                StrokeThickness = 1,
+                StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                HeightRequest = 28,
+                WidthRequest = 42,
+                Padding = new Thickness(0),
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                IsVisible = showLabel
             };
             if (labelCenterX != null)
             {
-                const double labelWidth = 44;
-                numberLabel.WidthRequest = labelWidth;
-                numberLabel.HorizontalOptions = LayoutOptions.Start;
-                numberLabel.TranslationX = Math.Max(0, labelCenterX.Value - (labelWidth / 2));
+                const double labelWidth = 42;
+                labelChip.HorizontalOptions = LayoutOptions.Start;
+                labelChip.TranslationX = Math.Max(0, labelCenterX.Value - (labelWidth / 2));
             }
 
             Microsoft.Maui.Controls.Shapes.Path arrow = new()
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(pathData),
                 Fill = Colors.Transparent,
-                Stroke = Colors.White,
+                Stroke = Color.FromArgb("#F8FAFC"),
                 StrokeThickness = strokeThickness,
+                StrokeLineCap = PenLineCap.Round,
+                StrokeLineJoin = PenLineJoin.Round,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Center
             };
 
-            arrowVisual.Add(numberLabel, 0, 0);
+            arrowVisual.Add(labelChip, 0, 0);
             arrowVisual.Add(arrow, 0, 1);
             return arrowVisual;
         }

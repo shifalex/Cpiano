@@ -2,9 +2,22 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="GestureSample.Maui.Views.SplashPage"
-             Title="SplashPage">
-    <VerticalStackLayout Padding="30" Spacing="20" HorizontalOptions="Center" VerticalOptions="Center">
-        <ActivityIndicator IsRunning="True" />
-        <Label Text="Checking users..." HorizontalOptions="Center"/>
-    </VerticalStackLayout>
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource Canvas}">
+    <Grid Padding="32">
+        <VerticalStackLayout Spacing="18" HorizontalOptions="Center" VerticalOptions="Center">
+            <Border WidthRequest="128" HeightRequest="128" BackgroundColor="White"
+                    Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 36">
+                <Border.Shadow>
+                    <Shadow Brush="#17366F" Opacity="0.14" Radius="20" Offset="0,8" />
+                </Border.Shadow>
+                <Image Source="cpiano_mark.svg" Margin="22" Aspect="AspectFit" />
+            </Border>
+            <Label Text="Cpiano" FontFamily="OpenSansSemibold" FontSize="30"
+                   TextColor="{StaticResource Ink}" HorizontalOptions="Center" />
+            <Label Text="Preparing your learning space…" FontSize="14"
+                   TextColor="{StaticResource MutedInk}" HorizontalOptions="Center" />
+            <ActivityIndicator IsRunning="True" WidthRequest="28" HeightRequest="28" Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>

@@ -29,6 +29,7 @@ namespace GestureSample.Maui.Models
 
         protected readonly KeyboardConfig _pianoConfig;
         public event Action? HeadingTapped;
+        public event Action? KeyPressStarted;
 
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;
@@ -175,7 +176,10 @@ After:
             _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
             _visibilityChangeEventRepository = ServiceHelper.GetService<VisibilityChangeEventRepository>();
-            _patterns = pianoConfig.SyncType == SyncType.Spatial || pianoConfig.ImposeEdges || pianoConfig.IsMulticolor || pianoConfig.WeightsArray!=null;
+            _patterns = pianoConfig.SyncType == SyncType.Spatial ||
+                pianoConfig.ImposeEdges ||
+                pianoConfig.IsMulticolor ||
+                pianoConfig.WeightsArray != null;
             _imposeEdges = pianoConfig.ImposeEdges;
             int textBoxesQuantity = pianoConfig.TextBoxesQuantity;
             _gamePlay = gamePlay;
@@ -863,6 +867,7 @@ After:
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
+            KeyPressStarted?.Invoke();
             await OnKey(e, true);
 
             if (Config.IsNumberVoice || Config.IsVoice)

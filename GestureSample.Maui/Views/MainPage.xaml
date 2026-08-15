@@ -1,17 +1,102 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-					   xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-					   x:Class="GestureSample.Views.MainPage">
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="GestureSample.Views.MainPage"
+             x:Name="RootPage"
+             BackgroundColor="{StaticResource Canvas}">
 
-	<ListView ItemsSource="{Binding}" ItemTapped="ListItem_Tapped">
-		<ListView.ItemTemplate>
-			<DataTemplate>
-                <!--<ViewCell>
-                    <Label Text="{Binding Title}" VerticalOptions="Center" Margin="16,0,0,0" BackgroundColor="White" TextColor="Black" />
-                </ViewCell>-->
-                <TextCell Text="{Binding Title}" />
-            </DataTemplate>
-		</ListView.ItemTemplate>
-	</ListView>
+    <Grid RowDefinitions="Auto,*" Padding="16,14,16,10" RowSpacing="12">
+        <VerticalStackLayout Spacing="4">
+            <Label
+                Text="{Binding Source={x:Reference RootPage}, Path=Title}"
+                FontFamily="OpenSansSemibold"
+                FontSize="28"
+                TextColor="{StaticResource Ink}" />
+            <Label
+                Text="Choose an activity to begin"
+                FontSize="14"
+                TextColor="{StaticResource MutedInk}" />
+        </VerticalStackLayout>
+
+        <CollectionView
+            Grid.Row="1"
+            x:Name="MenuCollectionView"
+            ItemsSource="{Binding}"
+            SelectionMode="None"
+            VerticalScrollBarVisibility="Default">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="6" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border
+                        BackgroundColor="#FFFFFF"
+                        Stroke="{StaticResource Outline}"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12"
+                        Padding="10,4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="MenuItem_Tapped" />
+                        </Border.GestureRecognizers>
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup Name="CommonStates">
+                                <VisualState Name="Normal" />
+                                <VisualState Name="PointerOver">
+                                    <VisualState.Setters>
+                                        <Setter Property="BackgroundColor" Value="#F7F9FF" />
+                                        <Setter Property="Stroke" Value="#B8C9F5" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                                <VisualState Name="Pressed">
+                                    <VisualState.Setters>
+                                        <Setter Property="BackgroundColor" Value="#F3F6FC" />
+                                        <Setter Property="Stroke" Value="{StaticResource Outline}" />
+                                    </VisualState.Setters>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+                        <Grid ColumnDefinitions="36,*,20" ColumnSpacing="10" HeightRequest="42">
+                            <Border
+                                Grid.Column="0"
+                                WidthRequest="36"
+                                HeightRequest="36"
+                                BackgroundColor="{Binding IconBackground}"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 10"
+                                VerticalOptions="Center">
+                                <Label
+                                    Text="{Binding IconGlyph}"
+                                    FontFamily="OpenSansSemibold"
+                                    FontSize="17"
+                                    TextColor="White"
+                                    HorizontalTextAlignment="Center"
+                                    VerticalTextAlignment="Center" />
+                            </Border>
+                            <Label
+                                Grid.Column="1"
+                                Text="{Binding DisplayTitle}"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="15"
+                                TextColor="{StaticResource Ink}"
+                                LineBreakMode="TailTruncation"
+                                MaxLines="2"
+                                VerticalOptions="Center" />
+                            <Path
+                                Grid.Column="2"
+                                Data="M 2,1 L 8,7 L 2,13"
+                                Stroke="{StaticResource MutedInk}"
+                                StrokeThickness="2"
+                                StrokeLineCap="Round"
+                                StrokeLineJoin="Round"
+                                WidthRequest="10"
+                                HeightRequest="14"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
 
 </ContentPage>
