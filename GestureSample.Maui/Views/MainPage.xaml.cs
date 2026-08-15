@@ -2909,6 +2909,7 @@ namespace GestureSample.Views
                     PrecisionPinchMoveOptions = moveOptions,
                     PrecisionShiftSynchronizeHands = synchronizeHands,
                     PrecisionShiftStaggerHandsInitially = staggerHandsInitially,
+                    PrecisionShiftNewPinchPercent = 25,
                     PrecisionShiftMinDistance = 1,
                     PrecisionShiftMaxDistance = Math.Max(1, maxDistance),
                     PrecisionPinchMaxInterval = maxPinchInterval
