@@ -7226,7 +7226,9 @@ namespace GestureSample.Views.Tests
             // The controls are overlays and must never participate in centring the keyboard.
             double maximumVerticalKeyWidth = landscapeLayout ? 180 : phoneLayout ? 150 : 180;
             bool showSideInstructions = _config.KeyboardConfig.IsPrecisionShiftExercise;
-            bool showResizeSlider = !_config.KeyboardConfig.IsPrecisionShiftExercise;
+            bool showResizeSlider = _config.KeyboardConfig.AllowKeyWidthAdjustment;
+            bool sliderInKeyboardHeader = showResizeSlider &&
+                                          (phoneLayout || DeviceInfo.Current.Idiom == DeviceIdiom.Tablet);
             double instructionWidth = phoneLayout ? 42 : 50;
             double controlsWidth = phoneLayout ? 42 : 48;
             double controlGap = phoneLayout ? 3 : 6;
@@ -7300,10 +7302,10 @@ namespace GestureSample.Views.Tests
                 CornerRadius = 18,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
-                BackgroundColor = phoneLayout
+                BackgroundColor = sliderInKeyboardHeader
                     ? Colors.Black.WithAlpha(0.25f)
                     : Colors.White.WithAlpha(0.94f),
-                TextColor = phoneLayout ? Colors.White : Colors.Black
+                TextColor = sliderInKeyboardHeader ? Colors.White : Colors.Black
             };
             sliderButton.Clicked += (_, _) => sliderPanel.IsVisible = !sliderPanel.IsVisible;
             _pianoKeyboard.KeyPressStarted += () => sliderPanel.IsVisible = false;
@@ -7391,10 +7393,10 @@ namespace GestureSample.Views.Tests
                 keyboardCluster.Children.Add(_verticalRightShiftInstruction);
             }
             side.HorizontalOptions = LayoutOptions.Center;
-            side.VerticalOptions = phoneLayout && showResizeSlider
+            side.VerticalOptions = sliderInKeyboardHeader
                 ? LayoutOptions.Start
                 : LayoutOptions.Center;
-            side.TranslationY = phoneLayout && showResizeSlider ? 6 : 0;
+            side.TranslationY = sliderInKeyboardHeader ? 6 : 0;
             side.ZIndex = 3;
             if (showResizeSlider)
                 keyboardCluster.Children.Add(side);
@@ -7449,8 +7451,10 @@ namespace GestureSample.Views.Tests
                     _verticalRightShiftInstruction.TranslationY = arrowDesign.VerticalOffset;
                     if (showResizeSlider)
                     {
-                        double buttonCenter = keyboardCenter + keyboardEdge + instructionGap +
-                                              instructionWidth + buttonGap + (controlsWidth / 2);
+                        double buttonCenter = sliderInKeyboardHeader
+                            ? keyboardCenter + keyboardEdge - 62
+                            : keyboardCenter + keyboardEdge + instructionGap +
+                              instructionWidth + buttonGap + (controlsWidth / 2);
                         side.TranslationX = buttonCenter -
                                             ((sliderPanelWidth + controlGap + controlsWidth) / 2) +
                                             (controlsWidth / 2);
@@ -7458,9 +7462,9 @@ namespace GestureSample.Views.Tests
                 }
                 else
                 {
-                    double buttonCenter = phoneLayout && showResizeSlider
-                        // On phones the keyboard nearly fills the screen. Keep the
-                        // resize button inside its black header, just left of Help.
+                    double buttonCenter = sliderInKeyboardHeader
+                        // On phones and iPads, keep the resize button inside the black
+                        // keyboard header, just left of Help.
                         ? keyboardCenter + keyboardEdge - 62
                         : keyboardCenter + keyboardEdge + buttonGap + (controlsWidth / 2);
                     side.TranslationX = buttonCenter -

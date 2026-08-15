@@ -2103,7 +2103,9 @@ namespace GestureSample.Maui.Models
                     }
                     else if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
                     {
-                        MaybeTransferOneHandPrecisionPinch(r);
+                        RefreshPrecisionPinchesByChance(r);
+                        if (!Config.KeyboardConfig.PrecisionShiftBothHands)
+                            MaybeTransferOneHandPrecisionPinch(r);
                         ConfigurePrecisionShift(r);
                     }
                     BuildCorrectAnswer();
@@ -2211,6 +2213,101 @@ namespace GestureSample.Maui.Models
             whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
                 ? Direction.Left
                 : Direction.Right;
+        }
+
+        private void RefreshPrecisionPinchesByChance(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (BitArrayQuestion == null)
+                return;
+
+            int newPinchPercent = Math.Clamp(keyboard.PrecisionShiftNewPinchPercent, 0, 100);
+            if (newPinchPercent <= 0)
+                return;
+
+            if (!keyboard.PrecisionShiftBothHands)
+            {
+                // The single active hand makes one independent 25/75 roll.
+                if (random.Next(100) >= newPinchPercent)
+                    return;
+
+                bool[] previousQuestion = BitArrayQuestion.ToArray();
+                bool[] freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                for (int attempt = 0;
+                     attempt < 12 && PrecisionPinchGeometryMatches(previousQuestion, freshPinch);
+                     attempt++)
+                {
+                    freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                }
+
+                BitArrayQuestion = freshPinch;
+                whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                    ? Direction.Left
+                    : Direction.Right;
+                return;
+            }
+
+            // With two hands, the 25/75 roll and the generated pinch are independent
+            // for each hand. This naturally permits zero, one, or two fresh pinches.
+            foreach (bool leftSide in new[] { true, false })
+            {
+                if (random.Next(100) >= newPinchPercent)
+                    continue;
+
+                bool[] previousQuestion = BitArrayQuestion.ToArray();
+                bool[] freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                for (int attempt = 0;
+                     attempt < 12 && PrecisionSideMatches(previousQuestion, freshPinch, leftSide);
+                     attempt++)
+                {
+                    freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                }
+
+                for (int index = 0; index < BitArrayQuestion.Length; index++)
+                {
+                    if (IsPrecisionIndexOnSide(index, leftSide))
+                        BitArrayQuestion[index] = freshPinch[index];
+                }
+            }
+
+            System.Diagnostics.Debug.Assert(GetPrecisionSideActiveIndices(leftSide: true).Length == 2);
+            System.Diagnostics.Debug.Assert(GetPrecisionSideActiveIndices(leftSide: false).Length == 2);
+        }
+
+        private bool PrecisionPinchGeometryMatches(bool[] first, bool[] second)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = Math.Max(1, first.Length / 2);
+            int[] GetGeometry(bool[] bits) => Enumerable.Range(0, bits.Length)
+                .Where(index => bits[index])
+                .Select(index => Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                    ? index / columns
+                    : index % half)
+                .OrderBy(position => position)
+                .ToArray();
+
+            return GetGeometry(first).SequenceEqual(GetGeometry(second));
+        }
+
+        private bool PrecisionSideMatches(bool[] first, bool[] second, bool leftSide)
+        {
+            int length = Math.Min(first.Length, second.Length);
+            for (int index = 0; index < length; index++)
+            {
+                if (IsPrecisionIndexOnSide(index, leftSide) && first[index] != second[index])
+                    return false;
+            }
+            return true;
+        }
+
+        private bool IsPrecisionIndexOnSide(int index, bool leftSide)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            int half = keyCount / 2;
+            return Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (index % columns == 0) == leftSide
+                : (index < half) == leftSide;
         }
 
         private void GenerateNewQuestion(Random r)
