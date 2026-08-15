@@ -20,6 +20,8 @@ namespace GestureSample.Maui.Models
         protected readonly ProgressBar _pressProgress;
         protected DateTime? _pressStartUtc;
         private bool _isChecking = false;
+        private bool _isLifecycleActive = true;
+        private bool _isTickRunning;
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
             : base(gamePlay, lblTimer, pianoConfig)
@@ -94,11 +96,15 @@ namespace GestureSample.Maui.Models
             timer = Application.Current.Dispatcher.CreateTimer();
             timer.Interval = TimeSpan.FromMilliseconds(16);
 
-            timer.Tick += (s, e) =>
+            timer.Tick += async (s, e) =>
             {
-                MainThread.BeginInvokeOnMainThread(async () =>
+                if (!_isLifecycleActive || _isChecking || _isTickRunning)
+                    return;
+
+                _isTickRunning = true;
+                try
                 {
-                    if (_isChecking)
+                    if (!_isLifecycleActive || _isChecking)
                         return;
 
                     //Debugging.DevLog.Line("What's going on?");
@@ -130,7 +136,11 @@ namespace GestureSample.Maui.Models
                     {
                         await PianoInitWithTimer();
                     }
-                });
+                }
+                finally
+                {
+                    _isTickRunning = false;
+                }
             };
         }
 
@@ -162,8 +172,39 @@ namespace GestureSample.Maui.Models
             finally
             {
                 _isChecking = false;
-                timer.Start();
+                if (_isLifecycleActive)
+                    timer.Start();
             }
+        }
+
+        public void SetLifecycleActive(bool active)
+        {
+            _isLifecycleActive = active;
+            if (!active)
+            {
+                timer?.Stop();
+                _pressStartUtc = null;
+                _seconds_pressed = 0;
+                _isTickRunning = false;
+                ResetProgressVisual();
+                InputTransparent = true;
+                return;
+            }
+
+            InputTransparent = false;
+            if (!_isChecking && timer != null && !timer.IsRunning)
+                timer.Start();
+        }
+
+        public void NotifyQuestionReadyForInput()
+        {
+            if (!_isLifecycleActive)
+                return;
+
+            _isChecking = false;
+            InputTransparent = false;
+            if (timer != null && !timer.IsRunning)
+                timer.Start();
         }
 
         public override void PianoInit()

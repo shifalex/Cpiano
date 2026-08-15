@@ -4,9 +4,17 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <Color x:Key="Primary">#512BD4</Color>
-    <Color x:Key="Secondary">#DFD8F7</Color>
-    <Color x:Key="Tertiary">#2B0B98</Color>
+    <!-- Cpiano: calm, high-contrast learning palette -->
+    <Color x:Key="Primary">#3167E3</Color>
+    <Color x:Key="Secondary">#E9F0FF</Color>
+    <Color x:Key="Tertiary">#17366F</Color>
+    <Color x:Key="Canvas">#F7F8FC</Color>
+    <Color x:Key="Surface">#FFFFFF</Color>
+    <Color x:Key="Ink">#172033</Color>
+    <Color x:Key="MutedInk">#667085</Color>
+    <Color x:Key="Outline">#E2E7F0</Color>
+    <Color x:Key="CoralAccent">#F47B62</Color>
+    <Color x:Key="MintAccent">#40BFA3</Color>
     <Color x:Key="White">White</Color>
     <Color x:Key="Black">Black</Color>
     <Color x:Key="Gray100">#E1E1E1</Color>

@@ -13,6 +13,14 @@ namespace GestureSample.Maui.Models
     {
         public const float DefaultStaticOverlayAlpha = 0.5f;
 
+        public enum HighlightBand
+        {
+            Full,
+            UpperRowBottomThird,
+            LowerRowTopThird,
+            TowardMiddleBetweenRows
+        }
+
         private sealed class PatternDrawable : IDrawable
         {
             public sealed class MultiAnimGroup
@@ -47,6 +55,7 @@ namespace GestureSample.Maui.Models
             public float SpawnAlpha { get; set; } = 0.5f;
             public Color AnimColor { get; set; } = Colors.Yellow;
             public Color SpawnColor { get; set; } = Colors.Yellow;
+            public HighlightBand AnimHighlightBand { get; set; } = HighlightBand.Full;
             public List<MultiAnimGroup> MultiAnimGroups { get; set; } = new();
             public List<MultiSpawnGroup> MultiSpawnGroups { get; set; } = new();
             public int[] TutorialArcIndices { get; set; } = Array.Empty<int>();
@@ -182,13 +191,64 @@ namespace GestureSample.Maui.Models
                 {
                     if (!bits[i]) continue;
 
-                    int target = targets[i];
-                    float current = i + (target - i) * AnimProgress;
-
-                    RectF r = RectForFractionalIndex(current);
+                    int target = Math.Clamp(targets[i], 0, KeyRects.Length - 1);
+                    // Interpolate the actual key rectangles. Numeric interpolation is
+                    // wrong for multi-column keyboards: moving 7 -> 5 passes through key
+                    // 6 in the other column and makes a vertical shift look diagonal.
+                    RectF movingRect = LerpRect(KeyRects[i], KeyRects[target], AnimProgress);
+                    RectF r = ApplyHighlightBand(movingRect, i);
                     canvas.FillRoundedRectangle(r, 6);
                     canvas.DrawRoundedRectangle(r, 6);
                 }
+            }
+
+            RectF ApplyHighlightBand(RectF rect, int index)
+            {
+                const float third = 1f / 3f;
+
+                return AnimHighlightBand switch
+                {
+                    HighlightBand.UpperRowBottomThird => new RectF(
+                        rect.X,
+                        rect.Y + (rect.Height * 2f * third),
+                        rect.Width,
+                        rect.Height * third),
+
+                    HighlightBand.LowerRowTopThird => new RectF(
+                        rect.X,
+                        rect.Y,
+                        rect.Width,
+                        rect.Height * third),
+
+                    HighlightBand.TowardMiddleBetweenRows => IsUpperVisualRow(index)
+                        ? new RectF(
+                            rect.X,
+                            rect.Y + (rect.Height * 2f * third),
+                            rect.Width,
+                            rect.Height * third)
+                        : new RectF(
+                            rect.X,
+                            rect.Y,
+                            rect.Width,
+                            rect.Height * third),
+
+                    _ => rect
+                };
+            }
+
+            bool IsUpperVisualRow(int index)
+            {
+                if (KeyRects == null || KeyRects.Length < 2 || index < 0 || index >= KeyRects.Length)
+                    return false;
+
+                float minCenterY = KeyRects.Min(rect => rect.Y + (rect.Height / 2f));
+                float maxCenterY = KeyRects.Max(rect => rect.Y + (rect.Height / 2f));
+                if (Math.Abs(maxCenterY - minCenterY) < 1f)
+                    return false;
+
+                float middleY = (minCenterY + maxCenterY) / 2f;
+                float centerY = KeyRects[index].Y + (KeyRects[index].Height / 2f);
+                return centerY < middleY;
             }
 
             void DrawSpawnBits(ICanvas canvas)
@@ -428,6 +488,7 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.AnimAlpha = 0.5f;
             _patternDrawable.AnimColor = Colors.Yellow;
+            _patternDrawable.AnimHighlightBand = HighlightBand.Full;
             _patternDrawable.SpawnBits = Array.Empty<bool>();
             _patternDrawable.SpawnAlpha = 0.5f;
             _patternDrawable.SpawnColor = Colors.Yellow;
@@ -517,7 +578,11 @@ namespace GestureSample.Maui.Models
             await Task.Delay((int)holdMs);
         }
 
-        public void ShowHighlightedBits(bool[] bits, Color? color = null, float alpha = 0.55f)
+        public void ShowHighlightedBits(
+            bool[] bits,
+            Color? color = null,
+            float alpha = 0.55f,
+            HighlightBand highlightBand = HighlightBand.Full)
         {
             TrySyncOverlay();
 
@@ -527,10 +592,32 @@ namespace GestureSample.Maui.Models
             _patternDrawable.AnimProgress = 1f;
             _patternDrawable.AnimAlpha = Math.Clamp(alpha, 0f, 1f);
             _patternDrawable.AnimColor = color ?? Colors.Yellow;
+            _patternDrawable.AnimHighlightBand = highlightBand;
             _patternDrawable.SpawnBits = Array.Empty<bool>();
             _patternDrawable.SpawnAlpha = 0f;
+            _patternDrawable.MultiAnimGroups.Clear();
+            _patternDrawable.MultiSpawnGroups.Clear();
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
+        }
+
+        public async Task FadeInHighlightedBitsThenClearAsync(
+            bool[] bits,
+            Color? color = null,
+            float targetAlpha = 0.58f,
+            uint fadeInMs = 2000,
+            HighlightBand highlightBand = HighlightBand.Full,
+            string animName = "TutBitsFadeIn")
+        {
+            ShowHighlightedBits(bits, color, 0f, highlightBand);
+            targetAlpha = Math.Clamp(targetAlpha, 0f, 1f);
+
+            await RunProgressAnimation(animName, fadeInMs, t =>
+            {
+                _patternDrawable.AnimAlpha = targetAlpha * t;
+            });
+
+            ClearAnim();
         }
 
         public Task FadeOutHighlightedBitsAsync(uint ms = 180, string animName = "TutBitsFade")
@@ -1041,6 +1128,27 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             // --- clear animation layer ---
             ClearAnim();
 
+        }
+
+        public async Task AnimateToTargetsAsync(bool[] bits, int[] targets, uint ms = 2200)
+        {
+            TrySyncOverlay();
+            bits ??= Array.Empty<bool>();
+            targets ??= Array.Empty<int>();
+            if (bits.Length == 0 || targets.Length == 0)
+                return;
+
+            _patternDrawable.AnimBits = bits;
+            _patternDrawable.AnimTargets = targets;
+            _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.CursorIndex = null;
+            _patternDrawable.AnimColor = Colors.Yellow;
+            Keyboard.InvalidateOverlay();
+
+            await RunProgressAnimation("PrecisionShiftTutorial", ms,
+                progress => _patternDrawable.AnimProgress = progress);
+            await Task.Delay(900);
+            ClearAnim();
         }
 
         private Task RunProgressAnimation(

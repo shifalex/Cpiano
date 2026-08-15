@@ -379,6 +379,22 @@
         Top = 1
     }
 
+    public enum PrecisionShiftAxis
+    {
+        Horizontal = 0,
+        Vertical = 1
+    }
+
+    [Flags]
+    public enum PrecisionPinchMoveOptions
+    {
+        None = 0,
+        ShiftWhole = 1,
+        MoveLower = 2,
+        MoveUpper = 4,
+        All = ShiftWhole | MoveLower | MoveUpper
+    }
+
     public class KeyboardConfig
     {
         public void NormalizeWeightedLayout()
@@ -419,6 +435,21 @@
         }
 
         public int KeysInRow { get; set; } = 10;
+        public bool AllowKeyWidthAdjustment { get; set; } = false;
+        public bool IsPrecisionPinchExercise { get; set; } = false;
+        public bool IsTransformativePrecisionCopyExercise { get; set; } = false;
+        public bool CopyPrecisionPinchToOtherHand { get; set; } = false;
+        public bool IsVerticalPrecisionPinchExercise { get; set; } = false;
+        public bool IsPrecisionShiftExercise { get; set; } = false;
+        public bool PrecisionShiftBothHands { get; set; } = false;
+        public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
+        public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;
+        public bool PrecisionShiftSynchronizeHands { get; set; } = false;
+        public bool PrecisionShiftStaggerHandsInitially { get; set; } = false;
+        public int PrecisionShiftMinDistance { get; set; } = 1;
+        public int PrecisionShiftMaxDistance { get; set; } = 1;
+        public int PrecisionPinchMaxInterval { get; set; } = int.MaxValue;
+        public bool IsPrecisionArrowDesignLab { get; set; } = false;
         public bool ImposeEdges
         {
             get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ImposeEdges);
