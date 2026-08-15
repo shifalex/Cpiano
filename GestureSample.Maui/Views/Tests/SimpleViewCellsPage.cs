@@ -7295,11 +7295,12 @@ namespace GestureSample.Views.Tests
             Button sliderButton = new()
             {
                 Text = "↕",
-                FontSize = 18,
-                WidthRequest = phoneLayout ? 40 : 42,
-                HeightRequest = 36,
+                FontSize = sliderInKeyboardHeader ? 16 : 18,
+                WidthRequest = sliderInKeyboardHeader ? 34 : 42,
+                HeightRequest = sliderInKeyboardHeader ? 34 : 36,
                 Padding = 0,
-                CornerRadius = 18,
+                CornerRadius = sliderInKeyboardHeader ? 17 : 18,
+                Margin = Thickness.Zero,
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
                 BackgroundColor = sliderInKeyboardHeader
@@ -7396,7 +7397,9 @@ namespace GestureSample.Views.Tests
             side.VerticalOptions = sliderInKeyboardHeader
                 ? LayoutOptions.Start
                 : LayoutOptions.Center;
-            side.TranslationY = sliderInKeyboardHeader ? 6 : 0;
+            side.TranslationY = sliderInKeyboardHeader
+                ? (keyboardHeaderHeight - sliderButton.HeightRequest) / 2
+                : 0;
             side.ZIndex = 3;
             if (showResizeSlider)
                 keyboardCluster.Children.Add(side);
