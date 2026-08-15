@@ -5948,8 +5948,14 @@ namespace GestureSample.Views.Tests
             if (_answerTimeTunerCard != null)
                 _answerTimeTunerCard.IsVisible = isVisible;
 
+            // Do not place a transparent hit-test surface over the keyboard. On iOS in
+            // particular, the native view can keep winning the next touch immediately
+            // after it is hidden. Keyboard input itself dismisses the tuner below.
             if (_answerTimeDismissShield != null)
-                _answerTimeDismissShield.IsVisible = isVisible;
+            {
+                _answerTimeDismissShield.IsVisible = false;
+                _answerTimeDismissShield.InputTransparent = true;
+            }
 
             if (isVisible)
                 PositionAnswerTimeTunerCard();
@@ -6634,15 +6640,18 @@ namespace GestureSample.Views.Tests
                     {
                         BackgroundColor = Colors.Transparent,
                         IsVisible = false,
-                        InputTransparent = false,
+                        InputTransparent = true,
                         ZIndex = 997
                     };
-                    _answerTimeDismissShield.GestureRecognizers.Add(new TapGestureRecognizer
-                    {
-                        Command = new Command(HideAnswerTimeTuner)
-                    });
 
                     View answerTimeTuner = BuildAnswerTimeTuner();
+
+                    // The first key press after editing the timer must both dismiss the
+                    // editor and remain a real keyboard press; no dismiss overlay sits
+                    // between the finger and the keys.
+                    _pianoKeyboard.KeyPressStarted += HideAnswerTimeTuner;
+                    foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                        keyButton.Down += (_, _) => HideAnswerTimeTuner();
 
                     grid.Add(_answerTimeDismissShield);
                     Grid.SetRow(_answerTimeDismissShield, 1);
@@ -7285,6 +7294,7 @@ namespace GestureSample.Views.Tests
             Border sliderPanel = new()
             {
                 IsVisible = false,
+                InputTransparent = true,
                 Padding = 2,
                 BackgroundColor = Colors.White.WithAlpha(0.94f),
                 Stroke = Colors.Gray,
@@ -7292,26 +7302,61 @@ namespace GestureSample.Views.Tests
                 Content = sliderTrack,
                 HorizontalOptions = LayoutOptions.Center
             };
-            Button sliderButton = new()
+            TapGestureRecognizer? outsideSliderTap = null;
+            void SetSliderPanelVisibility(bool isVisible)
             {
-                Text = "↕",
-                FontSize = sliderInKeyboardHeader ? 16 : 18,
+                sliderPanel.IsVisible = isVisible;
+                sliderPanel.InputTransparent = !isVisible;
+
+                if (outsideSliderTap == null)
+                    return;
+
+                bool isAttached = _rootGrid.GestureRecognizers.Contains(outsideSliderTap);
+                if (isVisible && !isAttached)
+                    _rootGrid.GestureRecognizers.Add(outsideSliderTap);
+                else if (!isVisible && isAttached)
+                    _rootGrid.GestureRecognizers.Remove(outsideSliderTap);
+            }
+            Color sliderIconColor = sliderInKeyboardHeader ? Colors.White : Colors.Black;
+            Microsoft.Maui.Controls.Shapes.Path sliderIcon = new()
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(
+                    "M 7,1 L 7,17 M 3,5 L 7,1 L 11,5 M 3,13 L 7,17 L 11,13"),
+                Stroke = sliderIconColor,
+                StrokeThickness = 1.7,
+                StrokeLineCap = PenLineCap.Round,
+                StrokeLineJoin = PenLineJoin.Round,
+                WidthRequest = 14,
+                HeightRequest = 18,
+                Aspect = Stretch.Uniform,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+            Border sliderButton = new()
+            {
                 WidthRequest = sliderInKeyboardHeader ? 34 : 42,
                 HeightRequest = sliderInKeyboardHeader ? 34 : 36,
                 Padding = 0,
-                CornerRadius = sliderInKeyboardHeader ? 17 : 18,
                 Margin = Thickness.Zero,
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle
+                {
+                    CornerRadius = sliderInKeyboardHeader ? 17 : 18
+                },
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
                 BackgroundColor = sliderInKeyboardHeader
                     ? Colors.Black.WithAlpha(0.25f)
                     : Colors.White.WithAlpha(0.94f),
-                TextColor = sliderInKeyboardHeader ? Colors.White : Colors.Black
+                Content = sliderIcon
             };
-            sliderButton.Clicked += (_, _) => sliderPanel.IsVisible = !sliderPanel.IsVisible;
-            _pianoKeyboard.KeyPressStarted += () => sliderPanel.IsVisible = false;
+            TapGestureRecognizer sliderButtonTap = new();
+            sliderButtonTap.Tapped += (_, _) => SetSliderPanelVisibility(!sliderPanel.IsVisible);
+            sliderButton.GestureRecognizers.Add(sliderButtonTap);
+            _pianoKeyboard.KeyPressStarted += () => SetSliderPanelVisibility(false);
             foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
-                keyButton.Down += (_, _) => sliderPanel.IsVisible = false;
+                keyButton.Down += (_, _) => SetSliderPanelVisibility(false);
 
             _lblAction.FontSize = _config.KeyboardConfig.PrecisionShiftBothHands ? 14 : 18;
             _lblAction.FontFamily = "Consolas";
@@ -7365,7 +7410,7 @@ namespace GestureSample.Views.Tests
                 VerticalOptions = LayoutOptions.Fill,
                 Padding = 0
             };
-            TapGestureRecognizer outsideSliderTap = new();
+            outsideSliderTap = new TapGestureRecognizer();
             outsideSliderTap.Tapped += (_, args) =>
             {
                 if (!sliderPanel.IsVisible)
@@ -7377,9 +7422,8 @@ namespace GestureSample.Views.Tests
                     point.X >= 0 && point.X <= side.Width &&
                     point.Y >= 0 && point.Y <= side.Height;
                 if (!tappedInsideSliderControls)
-                    sliderPanel.IsVisible = false;
+                    SetSliderPanelVisibility(false);
             };
-            _rootGrid.GestureRecognizers.Add(outsideSliderTap);
             Grid keyboardCluster = new()
             {
                 HorizontalOptions = LayoutOptions.Fill,
