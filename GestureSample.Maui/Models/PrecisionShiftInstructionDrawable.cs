@@ -7,8 +7,8 @@ namespace GestureSample.Maui.Models
         public bool BaseAtTop { get; set; }
         public bool IsShift { get; set; }
         public Color StrokeColor { get; set; } = Color.FromArgb("#202733");
-        public float TowardArrowTipFromBase { get; set; } = 0.25f;
-        public float TowardNumberFromBase { get; set; } = 0.68f;
+        public float TowardArrowTipFromBase { get; set; } = 0.50f;
+        public float TowardNumberFromBase { get; set; } = 0.75f;
         public float TowardShaftStopFromBase { get; set; } = 0f;
 
         public void Draw(ICanvas canvas, RectF dirtyRect)
@@ -35,9 +35,10 @@ namespace GestureSample.Maui.Models
         private void DrawVertical(ICanvas canvas, RectF bounds)
         {
             float centerX = bounds.Center.X;
-            float top = bounds.Top + 18;
-            float bottom = bounds.Bottom - 18;
-            float middle = (top + bottom) / 2;
+            // Use more of the available height so the moving half has breathing
+            // room around the unchanged distance badge: --1--> -----|.
+            float top = bounds.Top + 10;
+            float bottom = bounds.Bottom - 10;
             float baseHalfWidth = MathF.Min(20, bounds.Width * 0.34f);
             bool movesUp = Delta > 0;
             if (IsShift)
@@ -47,77 +48,57 @@ namespace GestureSample.Maui.Models
             }
             float baseY = BaseAtTop ? top : bottom;
             bool movesAwayFromBase = movesUp != BaseAtTop;
+            float oppositeY = BaseAtTop ? bottom : top;
+            float fromBaseSign = BaseAtTop ? 1 : -1;
+            float span = bottom - top;
+            float splitFraction = Math.Clamp(TowardArrowTipFromBase, 0.20f, 0.80f);
+            float numberFraction = Math.Clamp(TowardNumberFromBase,
+                splitFraction + 0.05f, 0.95f);
+            float stopFraction = Math.Clamp(TowardShaftStopFromBase, 0f, 0.25f);
+            float splitY = baseY + (fromBaseSign * span * splitFraction);
+            // With a 4px round-capped stroke, a 5px geometry gap leaves one
+            // visibly empty pixel between the two halves.
+            const float halfBreak = 2.5f;
+            float fixedHalfStartY = baseY + (fromBaseSign * span * stopFraction);
+            float fixedHalfEndY = splitY - (fromBaseSign * halfBreak);
+            float movingHalfStartY = splitY + (fromBaseSign * halfBreak);
+            float badgeY = baseY + (fromBaseSign * span * numberFraction);
 
-            // Moving back toward the fixed key uses the visual vocabulary
-            // |-----<--1-- : fixed perpendicular bar, continuous shaft, arrow
-            // pointing toward the base, then the distance on the trailing side.
-            if (!movesAwayFromBase)
-            {
-                float oppositeY = BaseAtTop ? bottom : top;
-                float span = bottom - top;
-                float tipFraction = Math.Clamp(TowardArrowTipFromBase, 0.08f, 0.75f);
-                float numberFraction = Math.Clamp(TowardNumberFromBase, 0.12f, 0.92f);
-                float stopFraction = Math.Clamp(TowardShaftStopFromBase, 0f, 0.25f);
-                float towardTipY = BaseAtTop
-                    ? top + (span * tipFraction)
-                    : bottom - (span * tipFraction);
-                float shaftStopY = BaseAtTop
-                    ? top + (span * stopFraction)
-                    : bottom - (span * stopFraction);
-
-                canvas.DrawLine(centerX - baseHalfWidth, baseY, centerX + baseHalfWidth, baseY);
-                canvas.DrawLine(centerX, oppositeY, centerX, shaftStopY);
-                DrawVerticalArrowHead(canvas, centerX, towardTipY, movesUp);
-
-                float badgeY = BaseAtTop
-                    ? top + (span * numberFraction)
-                    : bottom - (span * numberFraction);
-                DrawDistanceBadge(canvas, bounds, centerX, badgeY);
-                return;
-            }
-
-            float tipY;
-            float shaftStartY;
-
-            tipY = movesUp ? top : bottom;
-            shaftStartY = baseY;
-
-            float shaftEndY = movesUp ? tipY + 11 : tipY - 11;
-
-            // The perpendicular bar is the fixed base of the movement.
+            // The fixed and moving halves meet at a deliberate one-pixel break.
             canvas.DrawLine(centerX - baseHalfWidth, baseY, centerX + baseHalfWidth, baseY);
-            canvas.DrawLine(centerX, shaftStartY, centerX, shaftEndY);
+            canvas.DrawLine(centerX, fixedHalfStartY, centerX, fixedHalfEndY);
 
-            const float headWidth = 9;
-            const float headHeight = 12;
-            PathF arrowHead = new();
-            arrowHead.MoveTo(centerX, tipY);
-            if (movesUp)
+            if (movesAwayFromBase)
             {
-                arrowHead.LineTo(centerX - headWidth, tipY + headHeight);
-                arrowHead.LineTo(centerX + headWidth, tipY + headHeight);
+                float tipY = oppositeY;
+                float shaftEndY = movesUp ? tipY + 11 : tipY - 11;
+                canvas.DrawLine(centerX, movingHalfStartY, centerX, shaftEndY);
+                DrawVerticalArrowHead(canvas, centerX, tipY, movesUp);
             }
             else
             {
-                arrowHead.LineTo(centerX - headWidth, tipY - headHeight);
-                arrowHead.LineTo(centerX + headWidth, tipY - headHeight);
+                float tipY = movingHalfStartY;
+                float shaftEndY = movesUp ? tipY + 11 : tipY - 11;
+                canvas.DrawLine(centerX, oppositeY, centerX, shaftEndY);
+                DrawVerticalArrowHead(canvas, centerX, tipY, movesUp);
             }
-            arrowHead.Close();
-            canvas.FillPath(arrowHead);
 
-            DrawDistanceBadge(canvas, bounds, centerX, middle);
+            DrawDistanceBadge(canvas, bounds, centerX, badgeY);
         }
 
         private void DrawVerticalShift(ICanvas canvas, RectF bounds, float centerX, float top, float bottom, bool movesUp)
         {
-            float tipY = movesUp ? top : bottom;
-            float startY = movesUp ? bottom : top;
+            const float extension = 4;
+            float extendedTop = Math.Max(bounds.Top + 12, top - extension);
+            float extendedBottom = Math.Min(bounds.Bottom - 12, bottom + extension);
+            float tipY = movesUp ? extendedTop : extendedBottom;
+            float startY = movesUp ? extendedBottom : extendedTop;
             float shaftEndY = movesUp ? tipY + 11 : tipY - 11;
             canvas.StrokeDashPattern = new[] { 2.5f, 2.5f };
             canvas.DrawLine(centerX, startY, centerX, shaftEndY);
             canvas.StrokeDashPattern = null;
             DrawVerticalArrowHead(canvas, centerX, tipY, movesUp);
-            DrawDistanceBadge(canvas, bounds, centerX, (top + bottom) / 2);
+            DrawDistanceBadge(canvas, bounds, centerX, (extendedTop + extendedBottom) / 2);
         }
 
         private static void DrawVerticalArrowHead(ICanvas canvas, float centerX, float tipY, bool movesUp)
@@ -150,14 +131,17 @@ namespace GestureSample.Maui.Models
 
             if (IsShift)
             {
-                float shiftTipX = movesRight ? right : left;
-                float startX = movesRight ? left : right;
+                const float extension = 4;
+                float extendedLeft = Math.Max(bounds.Left + 12, left - extension);
+                float extendedRight = Math.Min(bounds.Right - 12, right + extension);
+                float shiftTipX = movesRight ? extendedRight : extendedLeft;
+                float startX = movesRight ? extendedLeft : extendedRight;
                 float shiftShaftEndX = movesRight ? shiftTipX - 11 : shiftTipX + 11;
                 canvas.StrokeDashPattern = new[] { 2.5f, 2.5f };
                 canvas.DrawLine(startX, centerY, shiftShaftEndX, centerY);
                 canvas.StrokeDashPattern = null;
                 DrawHorizontalArrowHead(canvas, shiftTipX, centerY, movesRight);
-                DrawDistanceBadge(canvas, bounds, (left + right) / 2, centerY);
+                DrawDistanceBadge(canvas, bounds, (extendedLeft + extendedRight) / 2, centerY);
                 return;
             }
 

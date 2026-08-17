@@ -572,6 +572,7 @@ namespace GestureSample.Views.Tests
         private Button _btnImpossibleWeightedAnswer = null;
         private View _answerTimeTunerCard = null;
         private BoxView _answerTimeDismissShield = null;
+        private TapGestureRecognizer _answerTimeOutsideTap = null;
         private bool _isAnswerTimeTunerVisible = false;
         private int _lastNonZeroAnswerTimeSetting = 0;
         private const int AnswerTimeStateMaxSeconds = 5;
@@ -3635,10 +3636,21 @@ namespace GestureSample.Views.Tests
                 await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "PrecisionShiftDimIn");
                 try
                 {
-                    await koh.AnimateToTargetsAsync(
-                        gp.GetTutorialQuestionBits(),
-                        gp.GetPrecisionShiftTutorialTargets(),
-                        ScaleTutorialMs(2200u));
+                    if (gp.UsesShiftAsMinusFlipTutorial())
+                    {
+                        await koh.AnimateFlipAcrossAxisAsync(
+                            gp.GetShiftAsMinusTutorialBits(),
+                            gp.GetShiftAsMinusFlipTutorialTargets(),
+                            gp.GetShiftAsMinusFlipAxisSourceIndex(),
+                            ScaleTutorialMs(2200u));
+                    }
+                    else
+                    {
+                        await koh.AnimateToTargetsAsync(
+                            gp.GetTutorialQuestionBits(),
+                            gp.GetPrecisionShiftTutorialTargets(),
+                            ScaleTutorialMs(2200u));
+                    }
                 }
                 finally
                 {
@@ -5958,9 +5970,65 @@ namespace GestureSample.Views.Tests
             }
 
             if (isVisible)
+            {
                 PositionAnswerTimeTunerCard();
+                AttachAnswerTimeOutsideTap();
+            }
+            else
+            {
+                DetachAnswerTimeOutsideTap();
+            }
 
             RefreshAnswerTimePanelIcon();
+        }
+
+        private void AttachAnswerTimeOutsideTap()
+        {
+            if (_rootGrid == null)
+                return;
+
+            if (_answerTimeOutsideTap == null)
+            {
+                _answerTimeOutsideTap = new TapGestureRecognizer();
+                _answerTimeOutsideTap.Tapped += (_, args) =>
+                {
+                    if (!_isAnswerTimeTunerVisible || _rootGrid == null)
+                        return;
+
+                    Point? tap = args.GetPosition(_rootGrid);
+                    if (tap == null)
+                        return;
+
+                    if (IsPointInsideAnswerTimeElement(tap.Value, _answerTimeTunerCard as VisualElement) ||
+                        IsPointInsideAnswerTimeElement(tap.Value, _btnAnswerTimePanel))
+                    {
+                        return;
+                    }
+
+                    HideAnswerTimeTuner();
+                };
+            }
+
+            if (!_rootGrid.GestureRecognizers.Contains(_answerTimeOutsideTap))
+                _rootGrid.GestureRecognizers.Add(_answerTimeOutsideTap);
+        }
+
+        private void DetachAnswerTimeOutsideTap()
+        {
+            if (_rootGrid != null && _answerTimeOutsideTap != null)
+                _rootGrid.GestureRecognizers.Remove(_answerTimeOutsideTap);
+        }
+
+        private bool IsPointInsideAnswerTimeElement(Point tap, VisualElement element)
+        {
+            if (element == null || !element.IsVisible)
+                return false;
+
+            PointF origin = GetPointRelativeToRoot(element);
+            double width = element.Width > 0 ? element.Width : element.WidthRequest;
+            double height = element.Height > 0 ? element.Height : element.HeightRequest;
+            return tap.X >= origin.X && tap.X <= origin.X + width &&
+                   tap.Y >= origin.Y && tap.Y <= origin.Y + height;
         }
 
         private void ToggleAnswerTimeTunerVisibility()
@@ -6614,7 +6682,8 @@ namespace GestureSample.Views.Tests
 
                         if (isVerticalPrecisionLayout &&
                             (!_config.KeyboardConfig.IsPrecisionShiftExercise ||
-                             _config.KeyboardConfig.PrecisionShiftSynchronizeHands))
+                             _config.KeyboardConfig.PrecisionShiftSynchronizeHands ||
+                             _config.KeyboardConfig.IsPrecisionGrammarExercise))
                         {
                             _lblAction.IsVisible = true;
                             _lblAction.HorizontalOptions = LayoutOptions.Center;
@@ -7189,6 +7258,37 @@ namespace GestureSample.Views.Tests
                 settings.SideGap, value => settings.SideGap = value, "0");
             Slider verticalSlider = AddTuningSlider("Up / down", -180, 180,
                 settings.VerticalOffset, value => settings.VerticalOffset = value, "0");
+
+            controls.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            Label keyCountValue = new()
+            {
+                Text = settings.AdvancedStageKeyCount.ToString(),
+                HorizontalTextAlignment = TextAlignment.End,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+            Stepper keyCountStepper = new()
+            {
+                Minimum = 6,
+                Maximum = 12,
+                Increment = 1,
+                Value = settings.AdvancedStageKeyCount,
+                HorizontalOptions = LayoutOptions.Fill
+            };
+            keyCountStepper.ValueChanged += (_, args) =>
+            {
+                settings.AdvancedStageKeyCount = (int)Math.Round(args.NewValue);
+                keyCountValue.Text = settings.AdvancedStageKeyCount.ToString();
+                settings.Save();
+            };
+            controls.Add(new Label
+            {
+                Text = "Keys / hand (reopen)",
+                VerticalTextAlignment = TextAlignment.Center,
+                FontSize = 12
+            }, 0, row);
+            controls.Add(keyCountStepper, 1, row);
+            controls.Add(keyCountValue, 2, row);
+            row++;
 
             presetPicker.SelectedIndexChanged += (_, _) =>
             {
