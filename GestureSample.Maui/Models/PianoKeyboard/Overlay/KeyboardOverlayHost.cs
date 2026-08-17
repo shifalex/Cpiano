@@ -63,6 +63,11 @@ namespace GestureSample.Maui.Models
             public Color TutorialArcColor { get; set; } = Colors.White;
             public int TutorialArcCompletedSegments { get; set; } = int.MaxValue;
             public float TutorialArcCurrentSegmentProgress { get; set; } = 1f;
+            public bool UseFlipInterpolation { get; set; }
+            public bool ShowFlipAxis { get; set; }
+            public float FlipAxisY { get; set; }
+            public float FlipAxisLeft { get; set; }
+            public float FlipAxisRight { get; set; }
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
@@ -90,6 +95,8 @@ namespace GestureSample.Maui.Models
                 DrawAnimBits(
                     canvas
                 );
+
+                DrawFlipAxis(canvas);
 
                 DrawSpawnBits(canvas);
 
@@ -195,11 +202,34 @@ namespace GestureSample.Maui.Models
                     // Interpolate the actual key rectangles. Numeric interpolation is
                     // wrong for multi-column keyboards: moving 7 -> 5 passes through key
                     // 6 in the other column and makes a vertical shift look diagonal.
-                    RectF movingRect = LerpRect(KeyRects[i], KeyRects[target], AnimProgress);
+                    RectF movingRect = UseFlipInterpolation
+                        ? FlipRect(KeyRects[i], KeyRects[target], AnimProgress)
+                        : LerpRect(KeyRects[i], KeyRects[target], AnimProgress);
                     RectF r = ApplyHighlightBand(movingRect, i);
                     canvas.FillRoundedRectangle(r, 6);
                     canvas.DrawRoundedRectangle(r, 6);
                 }
+            }
+
+            RectF FlipRect(RectF source, RectF target, float progress)
+            {
+                progress = Math.Clamp(progress, 0f, 1f);
+                RectF collapsedSource = new(source.X, FlipAxisY - 0.5f, source.Width, 1);
+                RectF collapsedTarget = new(target.X, FlipAxisY - 0.5f, target.Width, 1);
+                return progress <= 0.5f
+                    ? LerpRect(source, collapsedSource, progress * 2f)
+                    : LerpRect(collapsedTarget, target, (progress - 0.5f) * 2f);
+            }
+
+            void DrawFlipAxis(ICanvas canvas)
+            {
+                if (!ShowFlipAxis)
+                    return;
+
+                canvas.StrokeColor = Colors.Red;
+                canvas.StrokeSize = 3;
+                canvas.StrokeLineCap = LineCap.Round;
+                canvas.DrawLine(FlipAxisLeft, FlipAxisY, FlipAxisRight, FlipAxisY);
             }
 
             RectF ApplyHighlightBand(RectF rect, int index)
@@ -496,6 +526,8 @@ namespace GestureSample.Maui.Models
             _patternDrawable.MultiSpawnGroups.Clear();
             _patternDrawable.CursorIndex = null;
             _patternDrawable.TutorialArcIndices = Array.Empty<int>();
+            _patternDrawable.UseFlipInterpolation = false;
+            _patternDrawable.ShowFlipAxis = false;
             Keyboard.InvalidateOverlay();
         }
 
@@ -1150,6 +1182,48 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             await Task.Delay(900);
             ClearAnim();
         }
+
+        public async Task AnimateFlipAcrossAxisAsync(
+            bool[] bits,
+            int[] targets,
+            int sourceIndexAdjacentToAxis,
+            uint ms = 2200)
+        {
+            TrySyncOverlay();
+            bits ??= Array.Empty<bool>();
+            targets ??= Array.Empty<int>();
+            if (bits.Length == 0 || targets.Length == 0 ||
+                sourceIndexAdjacentToAxis < 0 || sourceIndexAdjacentToAxis >= _keyRects.Length)
+                return;
+
+            int columns = Math.Max(1, Keyboard.Config?.KeysInRow ?? 1);
+            int lowerNeighborIndex = sourceIndexAdjacentToAxis - columns;
+            if (lowerNeighborIndex < 0 || lowerNeighborIndex >= _keyRects.Length)
+                return;
+
+            RectF sourceRect = _keyRects[sourceIndexAdjacentToAxis];
+            RectF lowerRect = _keyRects[lowerNeighborIndex];
+            _patternDrawable.FlipAxisY = (sourceRect.Bottom + lowerRect.Top) / 2f;
+            _patternDrawable.FlipAxisLeft = sourceRect.Left - 4;
+            _patternDrawable.FlipAxisRight = sourceRect.Right + 4;
+            _patternDrawable.ShowFlipAxis = true;
+            _patternDrawable.UseFlipInterpolation = true;
+            _patternDrawable.AnimBits = bits;
+            _patternDrawable.AnimTargets = targets;
+            _patternDrawable.AnimProgress = 0f;
+            _patternDrawable.CursorIndex = null;
+            _patternDrawable.AnimColor = Colors.Yellow;
+            Keyboard.InvalidateOverlay();
+
+            await Task.Delay(ScaleDuration(ms, 0.18));
+            await RunProgressAnimation("PrecisionShiftFlipTutorial", ms,
+                progress => _patternDrawable.AnimProgress = progress);
+            await Task.Delay(900);
+            ClearAnim();
+        }
+
+        private static int ScaleDuration(uint duration, double factor) =>
+            Math.Max(1, (int)Math.Round(duration * factor));
 
         private Task RunProgressAnimation(
     string name,

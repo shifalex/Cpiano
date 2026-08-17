@@ -446,6 +446,7 @@
         public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;
         public bool PrecisionShiftSynchronizeHands { get; set; } = false;
         public bool PrecisionShiftStaggerHandsInitially { get; set; } = false;
+        public bool IsPrecisionGrammarExercise { get; set; } = false;
         public int PrecisionShiftNewPinchPercent { get; set; } = 0;
         public int PrecisionShiftMinDistance { get; set; } = 1;
         public int PrecisionShiftMaxDistance { get; set; } = 1;

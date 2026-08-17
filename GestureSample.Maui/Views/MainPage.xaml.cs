@@ -68,7 +68,12 @@ namespace GestureSample.Views
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Coordinated upper-arrow commands", bothHands: true, maxDistance: 3,
                     moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
                     synchronizeHands: true, staggerHandsInitially: true,
-                    rows: GetExpandedPrecisionRows(), maxPinchInterval: 5))),
+                    rows: GetAdvancedPrecisionRows(), maxPinchInterval: 5))),
+            new PageConfig("Gripping", "Stage 10 - Grammar transformations", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Grammar transformations", bothHands: true, maxDistance: 3,
+                    moveOptions: PrecisionPinchMoveOptions.All,
+                    rows: GetAdvancedPrecisionRows(), maxPinchInterval: 5,
+                    continueFromPrevious: false, grammarExercise: true))),
             new PageConfig("Gripping", "Debug - Arrow design lab", () =>
                 new SimpleViewCellsPage(CreatePrecisionArrowDesignLabConfig())),
 
@@ -2861,7 +2866,10 @@ namespace GestureSample.Views
             bool synchronizeHands = false,
             bool staggerHandsInitially = false,
             int rows = 5,
-            int maxPinchInterval = int.MaxValue)
+            int maxPinchInterval = int.MaxValue,
+            int newPinchPercent = 25,
+            bool continueFromPrevious = true,
+            bool grammarExercise = false)
         {
             return new GameConfig
             {
@@ -2874,26 +2882,28 @@ namespace GestureSample.Views
                 // Gripping is calibration/practice: mistakes should provide feedback,
                 // not end the stage with a loss. Finish after 20 correct responses.
                 NumberOfMistakesToLose = -1,
-                Plan = new ExercisePlan
-                {
-                    Loop = false,
-                    Steps = new()
+                Plan = continueFromPrevious
+                    ? new ExercisePlan
                     {
-                        new ExercisePlanStep
+                        Loop = false,
+                        Steps = new()
                         {
-                            Kind = PlanStepKind.NewQuestion,
-                            Operation = Operation.MoveBy,
-                            OpMode = PlanOpMode.Fixed
-                        },
-                        new ExercisePlanStep
-                        {
-                            Kind = PlanStepKind.UsePrevAnswer,
-                            Repeat = 10000,
-                            Operation = Operation.MoveBy,
-                            OpMode = PlanOpMode.Fixed
+                            new ExercisePlanStep
+                            {
+                                Kind = PlanStepKind.NewQuestion,
+                                Operation = Operation.MoveBy,
+                                OpMode = PlanOpMode.Fixed
+                            },
+                            new ExercisePlanStep
+                            {
+                                Kind = PlanStepKind.UsePrevAnswer,
+                                Repeat = 10000,
+                                Operation = Operation.MoveBy,
+                                OpMode = PlanOpMode.Fixed
+                            }
                         }
                     }
-                },
+                    : null,
                 KeyboardConfig = new KeyboardConfig
                 {
                     SyncType = SyncType.Sync,
@@ -2909,7 +2919,8 @@ namespace GestureSample.Views
                     PrecisionPinchMoveOptions = moveOptions,
                     PrecisionShiftSynchronizeHands = synchronizeHands,
                     PrecisionShiftStaggerHandsInitially = staggerHandsInitially,
-                    PrecisionShiftNewPinchPercent = 25,
+                    IsPrecisionGrammarExercise = grammarExercise,
+                    PrecisionShiftNewPinchPercent = Math.Clamp(newPinchPercent, 0, 100),
                     PrecisionShiftMinDistance = 1,
                     PrecisionShiftMaxDistance = Math.Max(1, maxDistance),
                     PrecisionPinchMaxInterval = maxPinchInterval
@@ -2923,13 +2934,17 @@ namespace GestureSample.Views
             return idiom == DeviceIdiom.Tablet || idiom == DeviceIdiom.Desktop ? 7 : 5;
         }
 
+        private static int GetAdvancedPrecisionRows() =>
+            Math.Clamp(PrecisionArrowDesignSettings.Load().AdvancedStageKeyCount, 6, 12);
+
         private static GameConfig CreatePrecisionArrowDesignLabConfig()
         {
             GameConfig config = CreatePrecisionShiftConfig(
                 "Arrow design lab",
                 bothHands: false,
                 maxDistance: 3,
-                moveOptions: PrecisionPinchMoveOptions.All);
+                moveOptions: PrecisionPinchMoveOptions.All,
+                rows: GetAdvancedPrecisionRows());
             config.NumberOfTasksToWin = 1000;
             config.KeyboardConfig.IsPrecisionArrowDesignLab = true;
             return config;
