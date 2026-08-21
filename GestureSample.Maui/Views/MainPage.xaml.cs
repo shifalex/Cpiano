@@ -41,6 +41,12 @@ namespace GestureSample.Views
                 new SimpleViewCellsPage(CreatePrecisionCopyConfig("Vertical transformative COPY", bothHands: false, copyOtherHand: false, transformative: true))),
             new PageConfig("Gripping", "Stage 1.1 - COPY to other hand", () =>
                 new SimpleViewCellsPage(CreatePrecisionCopyConfig("COPY to other hand", bothHands: false, copyOtherHand: true, transformative: true))),
+            new PageConfig("Gripping", "Stage 1.2 - Memorize pinch", () =>
+                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false))),
+            new PageConfig("Gripping", "Stage 1.3 - Sequence memorize", () =>
+                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: true, sequenceMaxDistance: 1))),
+            new PageConfig("Gripping", "Stage 1.4 - Sequence memorize 1-3", () =>
+                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: true, sequenceMaxDistance: 3))),
 
             new PageConfig("Gripping", "Stage 2 - Full shifts up/down by 1-2", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full shifts up/down by 1-2", bothHands: false, maxDistance: 2,
@@ -50,7 +56,7 @@ namespace GestureSample.Views
                     moveOptions: PrecisionPinchMoveOptions.MoveUpper))),
             new PageConfig("Gripping", "Stage 4 - Full one hand", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full one hand", bothHands: false, maxDistance: 3,
-                    moveOptions: PrecisionPinchMoveOptions.All))),
+                    moveOptions: PrecisionPinchMoveOptions.All, moveLowerPercent: 5))),
 
             new PageConfig("Gripping", "Stage 5 - Two hands COPY", () =>
                 new SimpleViewCellsPage(CreatePrecisionCopyConfig("Two hands COPY", bothHands: true, copyOtherHand: false, transformative: false))),
@@ -63,7 +69,7 @@ namespace GestureSample.Views
             new PageConfig("Gripping", "Stage 8 - Full two hands", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full two hands", bothHands: true, maxDistance: 3,
                     moveOptions: PrecisionPinchMoveOptions.All,
-                    rows: GetExpandedPrecisionRows(), maxPinchInterval: 5))),
+                    rows: GetExpandedPrecisionRows(), maxPinchInterval: 5, moveLowerPercent: 5))),
             new PageConfig("Gripping", "Stage 9 - Coordinated upper-arrow commands", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Coordinated upper-arrow commands", bothHands: true, maxDistance: 3,
                     moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
@@ -2843,6 +2849,7 @@ namespace GestureSample.Views
                 KeyboardConfig = new KeyboardConfig
                 {
                     SyncType = SyncType.Sync,
+                    SecondsPressingToAnswer = 1,
                     IsHelpNeeded = true,
                     Rows = 5,
                     KeysInRow = 2,
@@ -2853,6 +2860,7 @@ namespace GestureSample.Views
                     IsVerticalPrecisionPinchExercise = true,
                     PrecisionShiftBothHands = bothHands,
                     PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    SeparatePrecisionPinchColumnsOnTablet = !bothHands,
                     UseFullHandTutorial = false
                 }
             };
@@ -2869,7 +2877,8 @@ namespace GestureSample.Views
             int maxPinchInterval = int.MaxValue,
             int newPinchPercent = 25,
             bool continueFromPrevious = true,
-            bool grammarExercise = false)
+            bool grammarExercise = false,
+            int moveLowerPercent = -1)
         {
             return new GameConfig
             {
@@ -2907,6 +2916,7 @@ namespace GestureSample.Views
                 KeyboardConfig = new KeyboardConfig
                 {
                     SyncType = SyncType.Sync,
+                    SecondsPressingToAnswer = 1,
                     IsHelpNeeded = true,
                     Rows = rows,
                     KeysInRow = 2,
@@ -2916,7 +2926,9 @@ namespace GestureSample.Views
                     IsPrecisionShiftExercise = true,
                     PrecisionShiftBothHands = bothHands,
                     PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    SeparatePrecisionPinchColumnsOnTablet = !bothHands,
                     PrecisionPinchMoveOptions = moveOptions,
+                    PrecisionMoveLowerPercent = moveLowerPercent,
                     PrecisionShiftSynchronizeHands = synchronizeHands,
                     PrecisionShiftStaggerHandsInitially = staggerHandsInitially,
                     IsPrecisionGrammarExercise = grammarExercise,
@@ -2926,6 +2938,31 @@ namespace GestureSample.Views
                     PrecisionPinchMaxInterval = maxPinchInterval
                 }
             };
+        }
+
+        private static GameConfig CreatePrecisionMemorizeConfig(bool sequence, int sequenceMaxDistance = 1)
+        {
+            GameConfig config = CreatePrecisionCopyConfig(
+                sequence ? "Sequence memorize" : "Memorize pinch",
+                bothHands: false,
+                copyOtherHand: false,
+                transformative: false);
+
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
+            config.KeyboardConfig.SecondsPressingToAnswer = 1;
+
+            if (sequence)
+            {
+                // Both items are presented as COPY prompts. Their relationship is
+                // encoded in the generated pinches, so no movement arrows are shown.
+                config.OperationList = new() { Operation.Copy };
+                config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
+                config.KeyboardConfig.PrecisionPinchSequenceSecondMaxDistance =
+                    Math.Clamp(sequenceMaxDistance, 1, 3);
+                config.Plan = null;
+            }
+
+            return config;
         }
 
         private static int GetExpandedPrecisionRows()

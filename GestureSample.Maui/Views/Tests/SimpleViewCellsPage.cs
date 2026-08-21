@@ -282,7 +282,13 @@ namespace GestureSample.Views.Tests
 
             _tutorialRunning = true;
             SetPlayUiState(PlayUiState.Tutorial);
-            host.SetTutorialMode(true);
+            bool useAndroidPinchInputBlock =
+                DeviceInfo.Platform == DevicePlatform.Android &&
+                _config.KeyboardConfig?.IsPrecisionPinchExercise == true;
+            if (useAndroidPinchInputBlock)
+                _pianoKeyboard.InputTransparent = true;
+            else
+                host.SetTutorialMode(true);
 
             try
             {
@@ -292,7 +298,17 @@ namespace GestureSample.Views.Tests
             {
                 ClearTutorialStepCounter();
                 _pianoKeyboard?.ClearTutorialStepLabels();
-                host.SetTutorialMode(false);
+                if (useAndroidPinchInputBlock)
+                {
+                    if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)
+                        syncKeyboard.NotifyQuestionReadyForInput();
+                    else if (_pianoKeyboard != null)
+                        _pianoKeyboard.InputTransparent = false;
+                }
+                else
+                {
+                    host.SetTutorialMode(false);
+                }
                 _tutorialRunning = false;
                 RestoreReadyForInputState();
             }
@@ -349,16 +365,29 @@ namespace GestureSample.Views.Tests
         private async Task RunRecordedKeyboardTutorialAsync(KeyboardOverlayHost host)
         {
             await MarkCurrentKeyboardQuestionTutorialUsedAsync();
+
+            if (_config.KeyboardConfig?.PrecisionPinchMemorizeDelaySeconds > 0 &&
+                _gamePlay is BitArrayGamePlay memorizeGamePlay)
+            {
+                await RunMemorizeHelpAsync(host, memorizeGamePlay);
+                return;
+            }
+
+            bool preserveAndroidPinchColors =
+                DeviceInfo.Platform == DevicePlatform.Android &&
+                _config.KeyboardConfig?.IsPrecisionPinchExercise == true;
             Color[]? keyboardSnapshot = CaptureLiveKeyboardColors();
             try
             {
-                ClearLiveKeyboardState();
+                if (!preserveAndroidPinchColors)
+                    ClearLiveKeyboardState();
                 host.SyncOverlay();
                 await RunTutorialAsync(host);
             }
             finally
             {
-                RestoreLiveKeyboardState(keyboardSnapshot);
+                if (!preserveAndroidPinchColors)
+                    RestoreLiveKeyboardState(keyboardSnapshot);
                 host.SyncOverlay();
             }
         }
@@ -534,6 +563,10 @@ namespace GestureSample.Views.Tests
         private PrecisionShiftInstructionDrawable _verticalRightShiftDrawable;
         private GraphicsView _legacyShiftInstructionView;
         private PrecisionShiftInstructionDrawable _legacyShiftInstructionDrawable;
+        private Action<double>? _applyPrecisionHandGap;
+        private Action? _togglePrecisionHandGapSlider;
+        private View? _precisionHandGapButton;
+        private double _precisionHandGap = 2;
         private HorizontalStackLayout _logicalColorActionLayout;
         private Label _logicalColorLeftArrow;
         private Label _logicalColorRightArrow;
@@ -2066,7 +2099,40 @@ namespace GestureSample.Views.Tests
                         if (_taskMainHost != null && (_config.IncludeTutorials || _config.KeyboardOnly))
                         {
                             if (_config.KeyboardOnly)
+                            {
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                                _taskMainHost.SetPrecisionPinchGuideVisible(
+                                    _config.KeyboardConfig.IsPrecisionPinchExercise &&
+                                    _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+
+                                int memorizeDelay = _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds;
+                                if (memorizeDelay > 0)
+                                {
+                                    _pianoKeyboard.InputTransparent = true;
+                                    BitArrayGamePlay memorizeGamePlay = (BitArrayGamePlay)_gamePlay;
+                                    bool showFullSequence =
+                                        _config.KeyboardConfig.IsPrecisionPinchSequenceMemorize &&
+                                        memorizeGamePlay.IsSequenceMemorizeFirstResponse();
+
+                                    if (showFullSequence)
+                                    {
+                                        await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
+                                        _taskMainHost.SetStaticBits(
+                                            memorizeGamePlay.GetSequenceMemorizeSecondPreview());
+                                        await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
+                                    }
+                                    else if (!_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
+                                    {
+                                        await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
+                                    }
+
+                                    _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                                    if (_pianoKeyboard is PianoKeyboardSync memorizeKeyboard)
+                                        memorizeKeyboard.NotifyQuestionReadyForInput();
+                                    else
+                                        _pianoKeyboard.InputTransparent = false;
+                                }
+                            }
                             if (_config.IncludeTutorials)
                             {
                                 await RunRecordedKeyboardTutorialAsync(_taskMainHost);
@@ -4832,6 +4898,56 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private async Task RunMemorizeHelpAsync(
+            KeyboardOverlayHost host,
+            BitArrayGamePlay gamePlay)
+        {
+            if (_tutorialRunning)
+                return;
+
+            _tutorialRunning = true;
+            SetPlayUiState(PlayUiState.Tutorial);
+            bool useAndroidInputBlock = DeviceInfo.Platform == DevicePlatform.Android;
+            if (useAndroidInputBlock)
+                _pianoKeyboard.InputTransparent = true;
+            else
+                host.SetTutorialMode(true);
+            int seconds = Math.Max(
+                1, _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds);
+
+            try
+            {
+                if (_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
+                {
+                    host.SetStaticBits(gamePlay.GetSequenceMemorizeFirstPreview());
+                    await Task.Delay(TimeSpan.FromSeconds(seconds));
+                    host.SetStaticBits(gamePlay.GetSequenceMemorizeSecondPreview());
+                }
+                else
+                {
+                    host.SetStaticBits(gamePlay.GetTutorialQuestionBits());
+                }
+                await Task.Delay(TimeSpan.FromSeconds(seconds));
+            }
+            finally
+            {
+                host.SetStaticBits(Array.Empty<bool>());
+                if (useAndroidInputBlock)
+                {
+                    if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)
+                        syncKeyboard.NotifyQuestionReadyForInput();
+                    else
+                        _pianoKeyboard.InputTransparent = false;
+                }
+                else
+                {
+                    host.SetTutorialMode(false);
+                }
+                _tutorialRunning = false;
+                RestoreReadyForInputState();
+            }
+        }
+
         private async Task EnsureInitialTimerSettingSavedAsync()
         {
             if (_timerChangeEventRepository == null ||
@@ -6825,6 +6941,76 @@ namespace GestureSample.Views.Tests
                     RefreshAnswerTimePanelIcon();
                 }
 
+                if (_config.KeyboardConfig.IsPrecisionPinchExercise)
+                {
+                    Button btnGuideLine = new()
+                    {
+                        Text = _config.KeyboardConfig.IsVerticalPrecisionPinchExercise ? "┃" : "━",
+                        FontSize = 16,
+                        WidthRequest = 34,
+                        HeightRequest = 34,
+                        Padding = 0,
+                        CornerRadius = 17,
+                        BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                        TextColor = _config.KeyboardConfig.ShowPrecisionPinchGuideLine ? Colors.Red : Colors.Gray,
+                        HorizontalOptions = LayoutOptions.Start,
+                        VerticalOptions = LayoutOptions.Center,
+                        Margin = Thickness.Zero
+                    };
+                    btnGuideLine.Clicked += (_, _) =>
+                    {
+                        _config.KeyboardConfig.ShowPrecisionPinchGuideLine =
+                            !_config.KeyboardConfig.ShowPrecisionPinchGuideLine;
+                        btnGuideLine.TextColor = _config.KeyboardConfig.ShowPrecisionPinchGuideLine
+                            ? Colors.Red
+                            : Colors.Gray;
+                        _taskMainHost?.SetPrecisionPinchGuideVisible(
+                            _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+                    };
+                    leftOverlayButtons.Add(btnGuideLine);
+                    _taskMainHost?.SetPrecisionPinchGuideVisible(
+                        _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+
+                    if (_config.KeyboardConfig.IsVerticalPrecisionPinchExercise &&
+                        DeviceInfo.Platform == DevicePlatform.iOS &&
+                        DeviceInfo.Current.Idiom == DeviceIdiom.Tablet)
+                    {
+                        Microsoft.Maui.Controls.Shapes.Path handGapIcon = new()
+                        {
+                            Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(
+                                "M 1,7 L 17,7 M 5,3 L 1,7 L 5,11 M 13,3 L 17,7 L 13,11"),
+                            Stroke = Colors.White,
+                            StrokeThickness = 1.7,
+                            StrokeLineCap = PenLineCap.Round,
+                            StrokeLineJoin = PenLineJoin.Round,
+                            WidthRequest = 18,
+                            HeightRequest = 14,
+                            Aspect = Stretch.Uniform,
+                            HorizontalOptions = LayoutOptions.Center,
+                            VerticalOptions = LayoutOptions.Center,
+                            InputTransparent = true
+                        };
+                        Border btnHandGap = new()
+                        {
+                            WidthRequest = 34,
+                            HeightRequest = 34,
+                            Padding = 0,
+                            Margin = Thickness.Zero,
+                            StrokeThickness = 0,
+                            StrokeShape = new RoundRectangle { CornerRadius = 17 },
+                            BackgroundColor = Colors.Black.WithAlpha(0.25f),
+                            Content = handGapIcon,
+                            HorizontalOptions = LayoutOptions.Start,
+                            VerticalOptions = LayoutOptions.Center
+                        };
+                        TapGestureRecognizer handGapTap = new();
+                        handGapTap.Tapped += (_, _) => _togglePrecisionHandGapSlider?.Invoke();
+                        btnHandGap.GestureRecognizers.Add(handGapTap);
+                        _precisionHandGapButton = btnHandGap;
+                        leftOverlayButtons.Add(btnHandGap);
+                    }
+                }
+
                 overlayButtons.Add(leftOverlayButtons, 0, 0);
 
                 HorizontalStackLayout rightOverlayButtons = new()
@@ -7054,6 +7240,7 @@ namespace GestureSample.Views.Tests
                     Children = { widthSlider, savedLabel }
                 }
             };
+
             Button sliderButton = new()
             {
                 Text = "↔",
@@ -7330,6 +7517,17 @@ namespace GestureSample.Views.Tests
             double screenHeight = DeviceDisplay.MainDisplayInfo.Height / DeviceDisplay.MainDisplayInfo.Density;
             bool phoneLayout = DeviceInfo.Current.Idiom == DeviceIdiom.Phone || screenWidth < 600;
             bool landscapeLayout = screenWidth > screenHeight;
+            bool separateHandZones = DeviceInfo.Current.Idiom == DeviceIdiom.Tablet &&
+                                     _config.KeyboardConfig.SeparatePrecisionPinchColumnsOnTablet;
+            Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
+            string handGapPreferenceKey =
+                $"precision-pinch-hand-gap-{activeUserId?.ToString() ?? "anonymous"}";
+            double configuredColumnGap = separateHandZones
+                ? Math.Max(2, _config.KeyboardConfig.PrecisionPinchTabletColumnGap)
+                : 2;
+            double precisionColumnGap = Math.Clamp(
+                Preferences.Default.Get(handGapPreferenceKey, configuredColumnGap), 2, 240);
+            _precisionHandGap = precisionColumnGap;
             PrecisionArrowDesignSettings arrowDesign = PrecisionArrowDesignSettings.Load();
             // Keep the two-column keyboard broad, but compact around the screen centre.
             // The controls are overlays and must never participate in centring the keyboard.
@@ -7346,11 +7544,13 @@ namespace GestureSample.Views.Tests
             double instructionGap = Math.Max(0, arrowDesign.SideGap);
             double sideClearance = (showResizeSlider ? controlsWidth + controlGap : 0) +
                                    (showSideInstructions ? instructionWidth + instructionGap : 0);
-            double initialAvailableKeyWidth = Math.Max(36, (screenWidth - (sideClearance * 2) - 8) / 2);
+            double initialAvailableKeyWidth = Math.Max(
+                36,
+                (screenWidth - (sideClearance * 2) - precisionColumnGap - 8) / 2);
             double keyWidth = Math.Min(maximumVerticalKeyWidth, initialAvailableKeyWidth);
             double keyboardWidth = _pianoKeyboard.SetExactKeyWidth(
                 keyWidth,
-                separatorWidth: 2,
+                separatorWidth: precisionColumnGap,
                 columnSpacing: 2);
             const double keyboardHeaderHeight = 52;
             _taskMainHost.WidthRequest = keyboardWidth;
@@ -7452,11 +7652,97 @@ namespace GestureSample.Views.Tests
                 Content = sliderIcon
             };
             TapGestureRecognizer sliderButtonTap = new();
-            sliderButtonTap.Tapped += (_, _) => SetSliderPanelVisibility(!sliderPanel.IsVisible);
             sliderButton.GestureRecognizers.Add(sliderButtonTap);
             _pianoKeyboard.KeyPressStarted += () => SetSliderPanelVisibility(false);
             foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
                 keyButton.Down += (_, _) => SetSliderPanelVisibility(false);
+
+            Slider handGapSlider = new()
+            {
+                Minimum = 2,
+                Maximum = 240,
+                Value = precisionColumnGap,
+                WidthRequest = 280,
+                HeightRequest = 42,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            Grid handGapSliderTrack = new()
+            {
+                WidthRequest = 300,
+                HeightRequest = sliderPanelWidth,
+                Children = { handGapSlider }
+            };
+            Border handGapSliderPanel = new()
+            {
+                IsVisible = false,
+                InputTransparent = true,
+                Padding = 2,
+                BackgroundColor = Colors.White.WithAlpha(0.94f),
+                Stroke = Colors.Gray,
+                StrokeThickness = 1,
+                Content = handGapSliderTrack,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Start,
+                TranslationY = keyboardHeaderHeight + 4,
+                ZIndex = 20
+            };
+            TapGestureRecognizer? handGapOutsideTap = null;
+            void SetHandGapSliderVisibility(bool isVisible)
+            {
+                handGapSliderPanel.IsVisible = isVisible;
+                handGapSliderPanel.InputTransparent = !isVisible;
+                if (isVisible)
+                {
+                    SetSliderPanelVisibility(false);
+                    handGapSlider.Value = _precisionHandGap;
+                }
+
+                if (handGapOutsideTap == null)
+                    return;
+
+                bool isAttached = _rootGrid.GestureRecognizers.Contains(handGapOutsideTap);
+                if (isVisible && !isAttached)
+                    _rootGrid.GestureRecognizers.Add(handGapOutsideTap);
+                else if (!isVisible && isAttached)
+                    _rootGrid.GestureRecognizers.Remove(handGapOutsideTap);
+            }
+            _togglePrecisionHandGapSlider = () =>
+                SetHandGapSliderVisibility(!handGapSliderPanel.IsVisible);
+            sliderButtonTap.Tapped += (_, _) =>
+            {
+                bool show = !sliderPanel.IsVisible;
+                if (show)
+                    SetHandGapSliderVisibility(false);
+                SetSliderPanelVisibility(show);
+            };
+            handGapSlider.ValueChanged += (_, args) =>
+            {
+                double gap = Math.Clamp(args.NewValue, 2, 240);
+                _applyPrecisionHandGap?.Invoke(gap);
+            };
+            handGapOutsideTap = new TapGestureRecognizer();
+            handGapOutsideTap.Tapped += (_, args) =>
+            {
+                if (!handGapSliderPanel.IsVisible)
+                    return;
+
+                Point? panelPosition = args.GetPosition(handGapSliderPanel);
+                bool insidePanel = panelPosition is Point panelPoint &&
+                                   panelPoint.X >= 0 && panelPoint.X <= handGapSliderPanel.Width &&
+                                   panelPoint.Y >= 0 && panelPoint.Y <= handGapSliderPanel.Height;
+                Point? buttonPosition = _precisionHandGapButton == null
+                    ? null
+                    : args.GetPosition(_precisionHandGapButton);
+                bool insideButton = buttonPosition is Point buttonPoint &&
+                                    buttonPoint.X >= 0 && buttonPoint.X <= _precisionHandGapButton!.Width &&
+                                    buttonPoint.Y >= 0 && buttonPoint.Y <= _precisionHandGapButton.Height;
+                if (!insidePanel && !insideButton)
+                    SetHandGapSliderVisibility(false);
+            };
+            _pianoKeyboard.KeyPressStarted += () => SetHandGapSliderVisibility(false);
+            foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                keyButton.Down += (_, _) => SetHandGapSliderVisibility(false);
 
             _lblAction.FontSize = _config.KeyboardConfig.PrecisionShiftBothHands ? 14 : 18;
             _lblAction.FontFamily = "Consolas";
@@ -7531,6 +7817,7 @@ namespace GestureSample.Views.Tests
                 Padding = 0
             };
             keyboardCluster.Children.Add(_taskMainHost);
+            keyboardCluster.Children.Add(handGapSliderPanel);
             if (showSideInstructions)
             {
                 _lblAction.IsVisible = false;
@@ -7567,7 +7854,6 @@ namespace GestureSample.Views.Tests
                 stage.Children.Add(designPanel);
             }
 
-            Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
             string preferenceKey = $"precision-pinch-keyboard-height-{activeUserId?.ToString() ?? "anonymous"}";
             double savedHeight = Preferences.Default.Get(preferenceKey, -1d);
             bool initialized = false;
@@ -7576,11 +7862,12 @@ namespace GestureSample.Views.Tests
             {
                 if (availableWidth <= (sideClearance * 2) + 8)
                     return;
-                double availablePerKey = (availableWidth - (sideClearance * 2) - 8) / 2;
+                double availablePerKey =
+                    (availableWidth - (sideClearance * 2) - precisionColumnGap - 8) / 2;
                 double responsiveKeyWidth = Math.Max(36, Math.Min(maximumVerticalKeyWidth, availablePerKey));
                 double exactWidth = _pianoKeyboard.SetExactKeyWidth(
                     responsiveKeyWidth,
-                    separatorWidth: 2,
+                    separatorWidth: precisionColumnGap,
                     columnSpacing: 2);
                 _taskMainHost.WidthRequest = exactWidth;
                 _taskMainHost.MaximumWidthRequest = exactWidth;
@@ -7619,6 +7906,15 @@ namespace GestureSample.Views.Tests
                                         (controlsWidth / 2);
                 }
             }
+
+            _applyPrecisionHandGap = requestedGap =>
+            {
+                precisionColumnGap = Math.Clamp(requestedGap, 2, 240);
+                _precisionHandGap = precisionColumnGap;
+                Preferences.Default.Set(handGapPreferenceKey, precisionColumnGap);
+                double availableWidth = stage.Width > 0 ? stage.Width : screenWidth;
+                ApplyResponsiveKeyboardWidth(availableWidth);
+            };
 
             void ApplyHeight(double requestedHeight)
             {

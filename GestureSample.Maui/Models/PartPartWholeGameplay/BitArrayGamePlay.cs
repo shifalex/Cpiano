@@ -51,6 +51,10 @@ namespace GestureSample.Maui.Models
         private bool _precisionShiftRightIsShift;
         private string _precisionGrammarCondition = string.Empty;
         private bool _isPrecisionShiftAsMinus;
+        private bool[]? _sequenceMemorizeFirstPinch;
+        private bool[]? _sequenceMemorizeSecondPinch;
+        private bool _sequenceMemorizeGenerateSecond;
+        private bool _sequenceMemorizeCurrentIsFirst;
         public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
         private int _currentStagedArrowStepIndex;
         private int _completedStagedArrowCycles;
@@ -2151,6 +2155,12 @@ namespace GestureSample.Maui.Models
 
         private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
         {
+            if (Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true)
+            {
+                ResolveSequenceMemorizeQuestion(r);
+                return;
+            }
+
             if (step != null)
             {
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevBitArrayQuestion != null)
@@ -2183,6 +2193,137 @@ namespace GestureSample.Maui.Models
 
             // Otherwise: NewQuestion (plan) OR legacy mode
             GenerateNewQuestion(r);
+        }
+
+        private void ResolveSequenceMemorizeQuestion(Random random)
+        {
+            CurrentOperation = Operation.Copy;
+
+            if (!_sequenceMemorizeGenerateSecond)
+            {
+                if (_sequenceMemorizeFirstPinch == null)
+                {
+                    GenerateNewQuestion(random);
+                }
+                else
+                {
+                    BitArrayQuestion = ChooseNextSequenceFirstPinch(
+                        random, _sequenceMemorizeFirstPinch);
+                    BitArrayQuestion2 = Array.Empty<bool>();
+                    BuildCorrectAnswer();
+                }
+
+                _sequenceMemorizeFirstPinch = BitArrayQuestion.ToArray();
+                int maximumDistance = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchSequenceSecondMaxDistance, 1, 3);
+                _sequenceMemorizeSecondPinch = ChooseSequenceSecondPinch(
+                    random, _sequenceMemorizeFirstPinch, maximumDistance);
+                _sequenceMemorizeGenerateSecond = true;
+                _sequenceMemorizeCurrentIsFirst = true;
+                return;
+            }
+
+            BitArrayQuestion = _sequenceMemorizeSecondPinch?.ToArray() ??
+                               _sequenceMemorizeFirstPinch!.ToArray();
+            BitArrayQuestion2 = Array.Empty<bool>();
+            BuildCorrectAnswer();
+            _sequenceMemorizeGenerateSecond = false;
+            _sequenceMemorizeCurrentIsFirst = false;
+        }
+
+        public bool IsSequenceMemorizeFirstResponse() =>
+            Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true &&
+            _sequenceMemorizeCurrentIsFirst;
+
+        public bool[] GetSequenceMemorizeSecondPreview() =>
+            _sequenceMemorizeSecondPinch?.ToArray() ?? Array.Empty<bool>();
+
+        public bool[] GetSequenceMemorizeFirstPreview() =>
+            _sequenceMemorizeFirstPinch?.ToArray() ?? Array.Empty<bool>();
+
+        private bool[] ChooseNextSequenceFirstPinch(Random random, bool[] previousFirst)
+        {
+            List<bool[]> candidates = new() { previousFirst.ToArray() }; // COPY
+            candidates.Add(TransferPrecisionPinchToOtherHand(previousFirst));
+            candidates.AddRange(BuildSequenceTransforms(previousFirst, maximumDistance: 1));
+            bool[] selected = candidates
+                .GroupBy(bits => string.Concat(bits.Select(bit => bit ? '1' : '0')))
+                .Select(group => group.First())
+                .OrderBy(_ => random.Next())
+                .First();
+            UpdateSequenceMemorizeHand(selected);
+            return selected;
+        }
+
+        private bool[] ChooseSequenceSecondPinch(Random random, bool[] first, int maximumDistance)
+        {
+            List<bool[]> candidates = BuildSequenceTransforms(first, maximumDistance);
+            if (candidates.Count == 0)
+                return first.ToArray();
+
+            bool[] selected = candidates[random.Next(candidates.Count)];
+            UpdateSequenceMemorizeHand(selected);
+            return selected;
+        }
+
+        private List<bool[]> BuildSequenceTransforms(bool[] source, int maximumDistance)
+        {
+            List<bool[]> candidates = new();
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int[] active = source
+                .Select((isActive, index) => (isActive, index))
+                .Where(item => item.isActive)
+                .Select(item => item.index)
+                .OrderBy(index => index)
+                .ToArray();
+            if (active.Length != 2 || active[0] % columns != active[1] % columns)
+                return candidates;
+
+            int lower = active[0];
+            int upper = active[1];
+            for (int distance = 1; distance <= maximumDistance; distance++)
+            {
+                foreach (int delta in new[] { -distance, distance })
+                {
+                    int shiftedLower = GetPrecisionShiftTarget(lower, delta);
+                    int shiftedUpper = GetPrecisionShiftTarget(upper, delta);
+                    if (IsSequenceTargetValid(shiftedLower, lower, columns, source.Length) &&
+                        IsSequenceTargetValid(shiftedUpper, upper, columns, source.Length))
+                    {
+                        bool[] shifted = new bool[source.Length];
+                        shifted[shiftedLower] = true;
+                        shifted[shiftedUpper] = true;
+                        candidates.Add(shifted);
+                    }
+
+                    int movedUpper = GetPrecisionShiftTarget(upper, delta);
+                    if (movedUpper > lower &&
+                        IsSequenceTargetValid(movedUpper, upper, columns, source.Length))
+                    {
+                        bool[] resized = source.ToArray();
+                        resized[upper] = false;
+                        resized[movedUpper] = true;
+                        candidates.Add(resized);
+                    }
+                }
+            }
+
+            return candidates
+                .GroupBy(bits => string.Concat(bits.Select(bit => bit ? '1' : '0')))
+                .Select(group => group.First())
+                .ToList();
+        }
+
+        private static bool IsSequenceTargetValid(
+            int target, int source, int columns, int length) =>
+            target >= 0 && target < length && target % columns == source % columns;
+
+        private void UpdateSequenceMemorizeHand(bool[] pinch)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int first = Array.FindIndex(pinch, bit => bit);
+            if (first >= 0)
+                whichHand = first % columns < columns / 2 ? Direction.Left : Direction.Right;
         }
 
         private void TransformPrecisionCopyQuestion(Random random)
@@ -3488,6 +3629,27 @@ namespace GestureSample.Maui.Models
                 isShift = false;
                 baseAtTop = false;
                 return;
+            }
+
+            int moveLowerPercent = Config.KeyboardConfig.PrecisionMoveLowerPercent;
+            if (moveLowerPercent >= 0)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> moveLowerCandidates =
+                    candidates.Where(candidate => !candidate.IsShift && candidate.BaseAtTop).ToList();
+                List<(int Delta, bool IsShift, bool BaseAtTop)> otherCandidates =
+                    candidates.Where(candidate => candidate.IsShift || !candidate.BaseAtTop).ToList();
+                bool chooseMoveLower = moveLowerCandidates.Count > 0 &&
+                                       (otherCandidates.Count == 0 ||
+                                        random.Next(100) < Math.Clamp(moveLowerPercent, 0, 100));
+                if (chooseMoveLower)
+                {
+                    (delta, isShift, baseAtTop) =
+                        moveLowerCandidates[random.Next(moveLowerCandidates.Count)];
+                    return;
+                }
+
+                if (otherCandidates.Count > 0)
+                    candidates = otherCandidates;
             }
 
             bool preferSingleKeyMovement =
