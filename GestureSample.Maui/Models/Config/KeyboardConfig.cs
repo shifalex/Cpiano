@@ -437,6 +437,12 @@
         public int KeysInRow { get; set; } = 10;
         public bool AllowKeyWidthAdjustment { get; set; } = false;
         public bool IsPrecisionPinchExercise { get; set; } = false;
+        public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
+        public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
+        public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
+        public bool ShowPrecisionPinchGuideLine { get; set; } = true;
+        public bool SeparatePrecisionPinchColumnsOnTablet { get; set; } = false;
+        public double PrecisionPinchTabletColumnGap { get; set; } = 96;
         public bool IsTransformativePrecisionCopyExercise { get; set; } = false;
         public bool CopyPrecisionPinchToOtherHand { get; set; } = false;
         public bool IsVerticalPrecisionPinchExercise { get; set; } = false;
@@ -444,6 +450,7 @@
         public bool PrecisionShiftBothHands { get; set; } = false;
         public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
         public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;
+        public int PrecisionMoveLowerPercent { get; set; } = -1;
         public bool PrecisionShiftSynchronizeHands { get; set; } = false;
         public bool PrecisionShiftStaggerHandsInitially { get; set; } = false;
         public bool IsPrecisionGrammarExercise { get; set; } = false;

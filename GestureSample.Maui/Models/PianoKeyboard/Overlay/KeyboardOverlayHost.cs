@@ -65,6 +65,7 @@ namespace GestureSample.Maui.Models
             public float TutorialArcCurrentSegmentProgress { get; set; } = 1f;
             public bool UseFlipInterpolation { get; set; }
             public bool ShowFlipAxis { get; set; }
+            public bool ShowPrecisionPinchGuide { get; set; }
             public float FlipAxisY { get; set; }
             public float FlipAxisLeft { get; set; }
             public float FlipAxisRight { get; set; }
@@ -102,8 +103,59 @@ namespace GestureSample.Maui.Models
 
                 DrawTutorialArcs(canvas);
 
+                DrawPrecisionPinchGuide(canvas);
+
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
             }
+
+            void DrawPrecisionPinchGuide(ICanvas canvas)
+            {
+                if (!ShowPrecisionPinchGuide)
+                    return;
+
+                bool useAnimation = AnimBits?.Any(bit => bit) == true &&
+                                    AnimTargets != null && AnimTargets.Length > 0;
+                bool[] bits = useAnimation ? AnimBits : StaticBits;
+                if (bits == null || bits.Length == 0)
+                    return;
+
+                int columns = Math.Max(1, KeyboardColumns);
+                canvas.StrokeColor = Colors.Red;
+                canvas.StrokeSize = 5;
+                canvas.StrokeLineCap = LineCap.Round;
+
+                for (int column = 0; column < columns; column++)
+                {
+                    List<int> selected = new();
+                    for (int index = column; index < Math.Min(bits.Length, KeyRects.Length); index += columns)
+                    {
+                        if (bits[index])
+                            selected.Add(index);
+                    }
+
+                    if (selected.Count < 2)
+                        continue;
+
+                    RectF first = GuideRect(selected.First(), useAnimation);
+                    RectF last = GuideRect(selected.Last(), useAnimation);
+                    canvas.DrawLine(
+                        first.X + first.Width / 2f, first.Y + first.Height / 2f,
+                        last.X + last.Width / 2f, last.Y + last.Height / 2f);
+                }
+            }
+
+            RectF GuideRect(int index, bool animated)
+            {
+                if (!animated || AnimTargets == null || index >= AnimTargets.Length)
+                    return KeyRects[index];
+
+                int target = Math.Clamp(AnimTargets[index], 0, KeyRects.Length - 1);
+                return UseFlipInterpolation
+                    ? FlipRect(KeyRects[index], KeyRects[target], AnimProgress)
+                    : LerpRect(KeyRects[index], KeyRects[target], AnimProgress);
+            }
+
+            public int KeyboardColumns { get; set; } = 1;
 
             void DrawStaticBits(ICanvas canvas, bool[] bits, float shiftKeys, float alpha)
             {
@@ -411,11 +463,15 @@ namespace GestureSample.Maui.Models
         public KeyboardOverlayHost(PianoKeyboardReadOnly keyboard)
         {
             Keyboard = keyboard;
+            _patternDrawable.KeyboardColumns = Math.Max(1, keyboard.Config?.KeysInRow ?? 1);
             Children.Add(Keyboard);
 
             _inputShield = new BoxView
             {
-                BackgroundColor = Color.FromRgba(0, 0, 0, 0),
+                // A zero-alpha black surface can be composited as opaque black by
+                // some Android GPU/Material combinations. A nearly transparent white
+                // surface remains hit-testable without visually darkening the keys.
+                BackgroundColor = Colors.White.WithAlpha(0.001f),
                 IsVisible = false,
                 InputTransparent = false, // IMPORTANT: must intercept touches
                 ZIndex = 99999
@@ -448,6 +504,12 @@ namespace GestureSample.Maui.Models
 
             // Keep it above anything the page adds later (buttons, etc.)
             _inputShield.ZIndex = 999999;
+        }
+
+        public void SetPrecisionPinchGuideVisible(bool visible)
+        {
+            _patternDrawable.ShowPrecisionPinchGuide = visible;
+            Keyboard.InvalidateOverlay();
         }
 
         public void SetStaticOverlayAlpha(float alpha)

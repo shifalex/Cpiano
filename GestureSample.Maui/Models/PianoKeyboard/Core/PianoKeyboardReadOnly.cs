@@ -4,6 +4,10 @@ using static Supabase.Postgrest.Constants;
 #if IOS
 using UIKit;
 #endif
+#if ANDROID
+using Android.Content.Res;
+using Microsoft.Maui.Platform;
+#endif
 
 namespace GestureSample.Maui.Models
 {
@@ -968,6 +972,19 @@ namespace GestureSample.Maui.Models
             ApplyKeyLabelLayout(button);
             button.TextColor = Colors.Black;
             button.Opacity = 1;
+
+#if ANDROID
+            // MaterialButton keeps a native state tint which can override MAUI's
+            // BackgroundColor when a tutorial blocks/unblocks input. Pin that tint
+            // to the logical key color so white keys cannot turn black on Android.
+            if (button.Handler?.PlatformView is Android.Widget.Button nativeButton)
+            {
+                Android.Graphics.Color nativeColor = button.BackgroundColor.ToPlatform();
+                nativeButton.BackgroundTintList = ColorStateList.ValueOf(nativeColor);
+                nativeButton.SetTextColor(Android.Graphics.Color.Black);
+                nativeButton.Alpha = 1f;
+            }
+#endif
 
 #if IOS
             if (button.Handler?.PlatformView is UIButton nativeButton)
