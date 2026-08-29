@@ -140,6 +140,21 @@ namespace GestureSample.Maui.Models
                     PointF lowerCenter = lowerRect.Center;
                     PointF upperCenter = upperRect.Center;
 
+                    int trailOriginIndex = column < PrecisionLearningTrailOrigins.Length
+                        ? PrecisionLearningTrailOrigins[column]
+                        : -1;
+
+                    // For a resize, the black |-- is the original sign. Do not let
+                    // its moving endpoint advance on continuation steps; otherwise a
+                    // black tip briefly appears ahead of and alters the blue tail.
+                    if (!isShift && trailOriginIndex >= 0 && trailOriginIndex < KeyRects.Length)
+                    {
+                        if (baseAtTop)
+                            lowerCenter = KeyRects[trailOriginIndex].Center;
+                        else
+                            upperCenter = KeyRects[trailOriginIndex].Center;
+                    }
+
                     // During a whole-pinch shift, the dashed interval is part of the
                     // moving grip, so keep it attached to the animated yellow keys.
                     if (isShift)
@@ -181,9 +196,6 @@ namespace GestureSample.Maui.Models
                         : KeyRects[movingTarget].Center;
                     PointF current = LerpPoint(source, destination, AnimProgress);
 
-                    int trailOriginIndex = column < PrecisionLearningTrailOrigins.Length
-                        ? PrecisionLearningTrailOrigins[column]
-                        : -1;
                     PointF trailOrigin = trailOriginIndex >= 0 && trailOriginIndex < KeyRects.Length
                         ? KeyRects[trailOriginIndex].Center
                         : source;
