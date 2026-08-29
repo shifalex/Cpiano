@@ -2201,6 +2201,19 @@ namespace GestureSample.Maui.Models
 
             if (!_sequenceMemorizeGenerateSecond)
             {
+                if (Config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                {
+                    (_sequenceMemorizeFirstPinch, _sequenceMemorizeSecondPinch) =
+                        GenerateTwoHandCombinationPair(random);
+                    BitArrayQuestion = _sequenceMemorizeFirstPinch.ToArray();
+                    BitArrayQuestion2 = Array.Empty<bool>();
+                    BuildCorrectAnswer();
+                    _sequenceMemorizeGenerateSecond = true;
+                    _sequenceMemorizeCurrentIsFirst = true;
+                    whichHand = null;
+                    return;
+                }
+
                 if (_sequenceMemorizeFirstPinch == null)
                 {
                     GenerateNewQuestion(random);
@@ -2231,9 +2244,103 @@ namespace GestureSample.Maui.Models
             _sequenceMemorizeCurrentIsFirst = false;
         }
 
+        private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random)
+        {
+            int rows = Math.Max(7, Config.KeyboardConfig.Rows);
+            int combination = random.Next(9);
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) first;
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) second;
+
+            switch (combination)
+            {
+                case 0: // Commutativity: exchange the order of two touching intervals.
+                    first = ((0, 2), (3, 4));
+                    second = ((2, 4), (0, 1));
+                    break;
+                case 1: // Associativity: move the shared boundary.
+                    first = ((0, 2), (3, 5));
+                    second = random.Next(2) == 0
+                        ? ((0, 3), (4, 5))
+                        : ((0, 1), (2, 5));
+                    break;
+                case 2: // Put one separated hand directly above the other.
+                    first = ((0, 1), (4, 5));
+                    second = ((0, 1), (2, 3));
+                    break;
+                case 3: // Touching hands: move the upper endpoint of the upper hand.
+                    first = ((0, 1), (2, 4));
+                    second = ((0, 1), (2, Math.Min(rows - 1, 5)));
+                    break;
+                case 4: // Resize lower hand and shift upper hand to remain attached.
+                    first = ((0, 2), (3, 4));
+                    second = ((0, 3), (4, 5));
+                    break;
+                case 5: // Addition/subtraction: flip the upper interval across boundary.
+                    first = ((0, 2), (3, 5));
+                    second = ((0, 2), (0, 2));
+                    if (random.Next(2) == 0)
+                        (first, second) = (second, first);
+                    break;
+                case 6: // Subtraction/difference: move smaller from top to bottom contact.
+                    first = ((0, 4), (3, 4));
+                    second = ((0, 4), (0, 1));
+                    if (random.Next(2) == 0)
+                        (first, second) = (second, first);
+                    break;
+                case 7: // Move the lone combination farther by the lower hand's top.
+                    first = ((0, 2), (5, 6));
+                    second = ((0, 3), (5, 6));
+                    break;
+                default: // Split: full interval stays; other hand changes part grips.
+                    first = ((0, rows - 1), (0, 2));
+                    second = ((0, rows - 1), (3, rows - 1));
+                    if (random.Next(2) == 0)
+                        (first, second) = (second, first);
+                    break;
+            }
+
+            // Randomize which physical hand carries each interval, without changing
+            // the mathematical relationship between the two displayed combinations.
+            if (random.Next(2) == 0)
+            {
+                first = (first.Right, first.Left);
+                second = (second.Right, second.Left);
+            }
+
+            return (BuildTwoHandCombinationBits(first.Left, first.Right, rows),
+                    BuildTwoHandCombinationBits(second.Left, second.Right, rows));
+        }
+
+        private static bool[] BuildTwoHandCombinationBits(
+            (int Lower, int Upper) left,
+            (int Lower, int Upper) right,
+            int rows)
+        {
+            const int columns = 2;
+            bool[] bits = new bool[rows * columns];
+            bits[Math.Clamp(left.Lower, 0, rows - 1) * columns] = true;
+            bits[Math.Clamp(left.Upper, 0, rows - 1) * columns] = true;
+            bits[(Math.Clamp(right.Lower, 0, rows - 1) * columns) + 1] = true;
+            bits[(Math.Clamp(right.Upper, 0, rows - 1) * columns) + 1] = true;
+            return bits;
+        }
+
         public bool IsSequenceMemorizeFirstResponse() =>
             Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true &&
             _sequenceMemorizeCurrentIsFirst;
+
+        public bool AdvanceSequenceMemorizeToLastResponse()
+        {
+            if (!IsSequenceMemorizeFirstResponse() || _sequenceMemorizeSecondPinch == null)
+                return false;
+
+            BitArrayQuestion = _sequenceMemorizeSecondPinch.ToArray();
+            BitArrayQuestion2 = Array.Empty<bool>();
+            BuildCorrectAnswer();
+            _sequenceMemorizeCurrentIsFirst = false;
+            _sequenceMemorizeGenerateSecond = false;
+            return true;
+        }
 
         public bool[] GetSequenceMemorizeSecondPreview() =>
             _sequenceMemorizeSecondPinch?.ToArray() ?? Array.Empty<bool>();
@@ -3350,6 +3457,13 @@ namespace GestureSample.Maui.Models
             bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
             bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
 
+            if (keyboard.IsPrecisionSignLearningExercise && _questionNumber < 3)
+            {
+                ConfigurePrecisionSignLearningIntro(_questionNumber);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
             if (keyboard.IsPrecisionGrammarExercise)
             {
                 const int maximumStartAttempts = 24;
@@ -3392,6 +3506,60 @@ namespace GestureSample.Maui.Models
                     out _precisionShiftRightDelta, out _precisionShiftRightIsShift, out _precisionShiftRightBaseAtTop);
 
             FinalizePrecisionShiftConfiguration(minimum);
+        }
+
+        private void ConfigurePrecisionSignLearningIntro(int exerciseIndex)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int rows = Math.Max(5, Config.KeyboardConfig.Rows);
+            int column = Math.Min(exerciseIndex % Math.Min(2, columns), columns - 1);
+            bool[] pinch = new bool[BitArrayQuestion.Length];
+
+            // 1: enlarge upward by two rows.
+            // 2: squeeze downward by two rows.
+            // 3: shift the complete grip downward by two rows.
+            int lowerRow;
+            int upperRow;
+            int delta;
+            bool isShift;
+            switch (exerciseIndex)
+            {
+                case 0:
+                    lowerRow = 0;
+                    upperRow = Math.Min(2, rows - 3);
+                    delta = 2;
+                    isShift = false;
+                    break;
+                case 1:
+                    lowerRow = 0;
+                    upperRow = Math.Min(4, rows - 1);
+                    delta = -2;
+                    isShift = false;
+                    break;
+                default:
+                    lowerRow = 2;
+                    upperRow = Math.Min(4, rows - 1);
+                    delta = -2;
+                    isShift = true;
+                    break;
+            }
+
+            pinch[(lowerRow * columns) + column] = true;
+            pinch[(upperRow * columns) + column] = true;
+            BitArrayQuestion = pinch;
+
+            if (column == 0)
+            {
+                _precisionShiftLeftDelta = delta;
+                _precisionShiftLeftIsShift = isShift;
+                _precisionShiftLeftBaseAtTop = false;
+            }
+            else
+            {
+                _precisionShiftRightDelta = delta;
+                _precisionShiftRightIsShift = isShift;
+                _precisionShiftRightBaseAtTop = false;
+            }
         }
 
         private bool ConfigurePrecisionGrammarMission(

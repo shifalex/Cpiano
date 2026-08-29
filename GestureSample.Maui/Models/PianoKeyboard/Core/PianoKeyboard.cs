@@ -39,6 +39,7 @@ namespace GestureSample.Maui.Models
         private readonly VisibilityChangeEventRepository _visibilityChangeEventRepository;
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
+        private readonly Dictionary<MR.Gestures.Button, MR.Gestures.Button> _glidingPrecisionKeys = new();
         protected virtual Color TraceSecondColor => SECOND_COLOR.WithAlpha(0.82f);
         protected virtual Color TraceThirdColor => THIRD_COLOR.WithAlpha(0.7f);
         private Microsoft.Maui.Controls.Entry? _headerResultEntry;
@@ -195,6 +196,18 @@ After:
                 //var wEHU = new WeakEventHandler<MR.Gestures.DownUpEventArgs>(OnUp);
                 btnKeys[i].DownCommand = new Command<MR.Gestures.DownUpEventArgs>(OnDown);
                 btnKeys[i].UpCommand = new Command<MR.Gestures.DownUpEventArgs>(OnUp);
+                // A key owns the native touch once the finger goes down, so its
+                // parent grid does not reliably receive pan events on Android/iOS.
+                btnKeys[i].Panning += OnKeyboardPanning;
+                btnKeys[i].Panned += OnKeyboardPanned;
+                if (_pianoConfig.IsPrecisionPinchExercise)
+                {
+                    MR.Gestures.Button glideOrigin = btnKeys[i];
+                    PanGestureRecognizer glideRecognizer = new();
+                    glideRecognizer.PanUpdated += async (_, args) =>
+                        await OnPrecisionKeyPanUpdatedAsync(glideOrigin, args);
+                    btnKeys[i].GestureRecognizers.Add(glideRecognizer);
+                }
 
             }
             AddDummies();
@@ -809,12 +822,19 @@ After:
             return true;
         }
 
-        private void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
+        private async void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
         {
-            if (!_draggingKeyIndex.HasValue || !EnablesColorDrag() || e.Touches == null || e.Touches.Length == 0)
+            Point[] touches = ConvertScreenTouchesToLayout(e.Touches, sender as View, e.ViewPosition);
+            if (_pianoConfig.IsPrecisionPinchExercise)
+            {
+                await GlidePrecisionKeysAsync(touches);
+                return;
+            }
+
+            if (!_draggingKeyIndex.HasValue || !EnablesColorDrag() || touches.Length == 0)
                 return;
 
-            int targetIndex = GetKeyIndexAt(e.Touches[0]);
+            int targetIndex = GetKeyIndexAt(touches[0]);
             if (targetIndex < 0 || targetIndex == _draggingKeyIndex.Value)
                 return;
 
@@ -831,6 +851,134 @@ After:
         {
             _draggingKeyIndex = null;
             _draggingKeyColor = Colors.Transparent;
+        }
+
+        private async Task GlidePrecisionKeysAsync(Point[]? touches)
+        {
+            if (touches == null || touches.Length == 0 || _glidingPrecisionKeys.Count == 0)
+                return;
+
+            bool changed = false;
+            var availableTouches = touches.ToList();
+            foreach (MR.Gestures.Button origin in _glidingPrecisionKeys.Keys.ToArray())
+            {
+                MR.Gestures.Button current = _glidingPrecisionKeys[origin];
+                if (availableTouches.Count == 0)
+                    break;
+
+                Point touch = availableTouches
+                    .OrderBy(point => DistanceSquared(point, current))
+                    .First();
+                availableTouches.Remove(touch);
+
+                int targetIndex = GetKeyIndexAt(touch);
+                if (targetIndex < 0)
+                    continue;
+
+                MR.Gestures.Button target = btnKeys[targetIndex];
+                if (target == current || target.BackgroundColor != COLOR_FREE)
+                    continue;
+
+                target.BackgroundColor = current.BackgroundColor;
+                current.BackgroundColor = COLOR_FREE;
+                _glidingPrecisionKeys[origin] = target;
+                changed = true;
+            }
+
+            if (!changed)
+                return;
+
+            RecalculateKeyboardStateFromColors();
+            OnPropertyChanged(nameof(Addend1));
+            OnPropertyChanged(nameof(Addend2));
+            OnPropertyChanged(nameof(Sum));
+            EnsureAllKeyTextIsBlack();
+            await OnKeyStateChangedAsync(isDown: true);
+        }
+
+        private async Task OnPrecisionKeyPanUpdatedAsync(
+            MR.Gestures.Button origin,
+            PanUpdatedEventArgs args)
+        {
+            if (!_glidingPrecisionKeys.ContainsKey(origin))
+                return;
+            if (args.StatusType is GestureStatus.Completed or GestureStatus.Canceled)
+            {
+                await CompletePrecisionGlideAsync(origin);
+                return;
+            }
+            if (args.StatusType != GestureStatus.Running)
+                return;
+
+            (double x, double y) = GetAbsolutePosition(origin);
+            Point targetPoint = new(
+                x + (origin.Width / 2) + args.TotalX,
+                y + (origin.Height / 2) + args.TotalY);
+            await GlidePrecisionKeyAsync(origin, targetPoint);
+        }
+
+        private async Task GlidePrecisionKeyAsync(MR.Gestures.Button origin, Point targetPoint)
+        {
+            if (!_glidingPrecisionKeys.TryGetValue(origin, out MR.Gestures.Button? current))
+                return;
+
+            int targetIndex = GetKeyIndexAt(targetPoint);
+            if (targetIndex < 0)
+                return;
+
+            MR.Gestures.Button target = btnKeys[targetIndex];
+            if (target == current || target.BackgroundColor != COLOR_FREE)
+                return;
+
+            target.BackgroundColor = current.BackgroundColor;
+            current.BackgroundColor = COLOR_FREE;
+            _glidingPrecisionKeys[origin] = target;
+            RecalculateKeyboardStateFromColors();
+            OnPropertyChanged(nameof(Addend1));
+            OnPropertyChanged(nameof(Addend2));
+            OnPropertyChanged(nameof(Sum));
+            EnsureAllKeyTextIsBlack();
+            await OnKeyStateChangedAsync(isDown: true);
+        }
+
+        private async Task CompletePrecisionGlideAsync(MR.Gestures.Button origin)
+        {
+            if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current))
+                return;
+
+            if (await OnBeforeKeyUpAsync())
+                return;
+
+            if (InnerKeyUp(current) && _patterns)
+                setAddendsByPattern();
+            OnPropertyChanged(nameof(Addend1));
+            OnPropertyChanged(nameof(Addend2));
+            OnPropertyChanged(nameof(Sum));
+            EnsureAllKeyTextIsBlack();
+            await OnKeyStateChangedAsync(isDown: false);
+        }
+
+        private static double DistanceSquared(Point touch, View view)
+        {
+            (double x, double y) = GetAbsolutePosition(view);
+            double dx = touch.X - (x + (view.Width / 2));
+            double dy = touch.Y - (y + (view.Height / 2));
+            return (dx * dx) + (dy * dy);
+        }
+
+        private static Point[] ConvertScreenTouchesToLayout(Point[]? touches, View? eventView, Rect viewScreenPosition)
+        {
+            if (touches == null || touches.Length == 0)
+                return Array.Empty<Point>();
+            if (eventView == null)
+                return touches;
+
+            (double layoutX, double layoutY) = GetAbsolutePosition(eventView);
+            double screenOffsetX = viewScreenPosition.X - layoutX;
+            double screenOffsetY = viewScreenPosition.Y - layoutY;
+            return touches
+                .Select(touch => new Point(touch.X - screenOffsetX, touch.Y - screenOffsetY))
+                .ToArray();
         }
 
         private int GetKeyIndexAt(Point touch)
@@ -868,6 +1016,9 @@ After:
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
             KeyPressStarted?.Invoke();
+            if (_pianoConfig.IsPrecisionPinchExercise && e.Sender is MR.Gestures.Button pressedKey)
+                _glidingPrecisionKeys[pressedKey] = pressedKey;
+
             await OnKey(e, true);
 
             if (Config.IsNumberVoice || Config.IsVoice)
@@ -883,7 +1034,24 @@ After:
         }
         private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
-            await OnKey(e, false);
+            MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
+            if (_pianoConfig.IsPrecisionPinchExercise &&
+                e.Cancelled &&
+                _glidingPrecisionKeys.ContainsKey(releasedKey))
+            {
+                return;
+            }
+
+            if (_pianoConfig.IsPrecisionPinchExercise &&
+                _glidingPrecisionKeys.Remove(releasedKey, out MR.Gestures.Button? glidedKey))
+            {
+                releasedKey = glidedKey;
+            }
+
+            if (await OnBeforeKeyUpAsync())
+                return;
+
+            await OnKey(e, false, releasedKey);
             if (Config.IsNumberVoice || Config.IsVoice)
             {
                 Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
@@ -954,11 +1122,14 @@ After:
             }
         }
 
-        private async Task OnKey(MR.Gestures.DownUpEventArgs e, bool isDown)
+        private async Task OnKey(
+            MR.Gestures.DownUpEventArgs e,
+            bool isDown,
+            MR.Gestures.Button? keyOverride = null)
         {
             
             if (!IsEnabled) { return; }
-            MR.Gestures.Button sender = (MR.Gestures.Button)e.Sender;
+            MR.Gestures.Button sender = keyOverride ?? (MR.Gestures.Button)e.Sender;
             sender.TextColor = Colors.Black;
             sender.Opacity = 1;
             NormalizePianoKeyVisual(sender);
@@ -1021,6 +1192,11 @@ After:
             });
 
             ScheduleNormalizeAllPianoKeyVisuals();
+            await OnKeyStateChangedAsync(isDown);
         }
+
+        protected virtual Task OnKeyStateChangedAsync(bool isDown) => Task.CompletedTask;
+
+        protected virtual Task<bool> OnBeforeKeyUpAsync() => Task.FromResult(false);
     }
 }

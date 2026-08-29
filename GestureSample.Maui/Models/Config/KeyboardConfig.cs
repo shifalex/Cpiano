@@ -439,6 +439,9 @@
         public bool IsPrecisionPinchExercise { get; set; } = false;
         public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
         public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
+        public bool IsTwoHandCombinationMemorize { get; set; } = false;
+        public bool AllowImmediateCorrectPrecisionAnswer { get; set; } = false;
+        public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
         public bool ShowPrecisionPinchGuideLine { get; set; } = true;
         public bool SeparatePrecisionPinchColumnsOnTablet { get; set; } = false;
@@ -447,6 +450,7 @@
         public bool CopyPrecisionPinchToOtherHand { get; set; } = false;
         public bool IsVerticalPrecisionPinchExercise { get; set; } = false;
         public bool IsPrecisionShiftExercise { get; set; } = false;
+        public bool IsPrecisionSignLearningExercise { get; set; } = false;
         public bool PrecisionShiftBothHands { get; set; } = false;
         public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
         public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;

@@ -66,6 +66,13 @@ namespace GestureSample.Maui.Models
             public bool UseFlipInterpolation { get; set; }
             public bool ShowFlipAxis { get; set; }
             public bool ShowPrecisionPinchGuide { get; set; }
+            public bool ShowPrecisionLearningSign { get; set; }
+            public int[] PrecisionLearningDeltas { get; set; } = new int[2];
+            public bool[] PrecisionLearningIsShift { get; set; } = new bool[2];
+            public bool[] PrecisionLearningBaseAtTop { get; set; } = new bool[2];
+            public int[] PrecisionLearningTrailOrigins { get; set; } = new[] { -1, -1 };
+            public float PrecisionLearningSignAlpha { get; set; } = 1f;
+            public float PrecisionLearningArrowAlpha { get; set; }
             public float FlipAxisY { get; set; }
             public float FlipAxisLeft { get; set; }
             public float FlipAxisRight { get; set; }
@@ -105,7 +112,149 @@ namespace GestureSample.Maui.Models
 
                 DrawPrecisionPinchGuide(canvas);
 
+                DrawPrecisionLearningSign(canvas);
+
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
+            }
+
+            void DrawPrecisionLearningSign(ICanvas canvas)
+            {
+                if (!ShowPrecisionLearningSign || AnimBits == null || AnimTargets == null)
+                    return;
+
+                int columns = Math.Max(1, KeyboardColumns);
+                for (int column = 0; column < Math.Min(2, columns); column++)
+                {
+                    List<int> active = new();
+                    for (int i = column; i < Math.Min(AnimBits.Length, KeyRects.Length); i += columns)
+                        if (AnimBits[i]) active.Add(i);
+                    if (active.Count < 2 || PrecisionLearningDeltas[column] == 0)
+                        continue;
+
+                    int lower = active.Min();
+                    int upper = active.Max();
+                    bool isShift = PrecisionLearningIsShift[column];
+                    bool baseAtTop = PrecisionLearningBaseAtTop[column];
+                    RectF lowerRect = KeyRects[lower];
+                    RectF upperRect = KeyRects[upper];
+                    PointF lowerCenter = lowerRect.Center;
+                    PointF upperCenter = upperRect.Center;
+
+                    // During a whole-pinch shift, the dashed interval is part of the
+                    // moving grip, so keep it attached to the animated yellow keys.
+                    if (isShift)
+                    {
+                        int lowerTarget = Math.Clamp(AnimTargets[lower], 0, KeyRects.Length - 1);
+                        int upperTarget = Math.Clamp(AnimTargets[upper], 0, KeyRects.Length - 1);
+                        lowerCenter = LerpPoint(lowerCenter, KeyRects[lowerTarget].Center, AnimProgress);
+                        upperCenter = LerpPoint(upperCenter, KeyRects[upperTarget].Center, AnimProgress);
+                    }
+
+                    float signAlpha = Math.Clamp(PrecisionLearningSignAlpha, 0f, 1f);
+                    canvas.StrokeColor = Color.FromArgb("#243447").WithAlpha(0.95f * signAlpha);
+                    canvas.FillColor = Color.FromArgb("#243447").WithAlpha(0.95f * signAlpha);
+                    canvas.StrokeSize = 4;
+                    canvas.StrokeLineCap = LineCap.Round;
+                    canvas.StrokeDashPattern = isShift ? new[] { 7f, 6f } : null;
+                    canvas.DrawLine(lowerCenter.X, lowerCenter.Y, upperCenter.X, upperCenter.Y);
+                    canvas.StrokeDashPattern = null;
+
+                    if (!isShift)
+                    {
+                        PointF pinned = baseAtTop ? upperCenter : lowerCenter;
+                        float halfPin = Math.Max(9, lowerRect.Width * 0.22f);
+                        canvas.DrawLine(pinned.X - halfPin, pinned.Y, pinned.X + halfPin, pinned.Y);
+                    }
+
+                    // A whole-pinch shift is already identified by the dotted sign and
+                    // the persistent direction arrow beside the keyboard. Drawing the
+                    // blue movement arrow here duplicates that instruction.
+                    if (isShift || PrecisionLearningArrowAlpha <= 0)
+                        continue;
+
+                    int movingIndex = isShift ? lower : (baseAtTop ? lower : upper);
+                    int movingTarget = Math.Clamp(AnimTargets[movingIndex], 0, KeyRects.Length - 1);
+                    PointF source = KeyRects[movingIndex].Center;
+                    PointF destination = isShift
+                        ? Midpoint(KeyRects[Math.Clamp(AnimTargets[lower], 0, KeyRects.Length - 1)].Center,
+                                   KeyRects[Math.Clamp(AnimTargets[upper], 0, KeyRects.Length - 1)].Center)
+                        : KeyRects[movingTarget].Center;
+                    PointF current = LerpPoint(source, destination, AnimProgress);
+
+                    int trailOriginIndex = column < PrecisionLearningTrailOrigins.Length
+                        ? PrecisionLearningTrailOrigins[column]
+                        : -1;
+                    PointF trailOrigin = trailOriginIndex >= 0 && trailOriginIndex < KeyRects.Length
+                        ? KeyRects[trailOriginIndex].Center
+                        : source;
+
+                    // Leave one tiny visual break where the arrow first leaves the
+                    // original |-- sign. Later steps reuse this origin, preserving a
+                    // continuous blue trace rather than introducing new gaps.
+                    // The black and blue strokes have rounded caps (4 px and 5 px
+                    // wide), so their centers need about 7 px separation to leave
+                    // an actual ~2 px visible gap between their painted edges.
+                    const float continuationCenterGap = 7f;
+                    PointF trailStart = MovePointToward(trailOrigin, destination, continuationCenterGap);
+                    if (Distance(trailOrigin, current) <= continuationCenterGap)
+                        continue;
+
+                    // Use one solid opacity across the complete accumulated trail.
+                    // During a squeeze the trail keeps growing; no completed part is
+                    // shortened or deleted.
+                    canvas.StrokeColor = Colors.DodgerBlue.WithAlpha(PrecisionLearningArrowAlpha);
+                    canvas.StrokeSize = 5;
+                    canvas.DrawLine(trailStart.X, trailStart.Y, current.X, current.Y);
+                    DrawLearningArrowHead(canvas, trailStart, current, destination, PrecisionLearningArrowAlpha);
+                }
+            }
+
+            static PointF Midpoint(PointF a, PointF b) =>
+                new((a.X + b.X) / 2f, (a.Y + b.Y) / 2f);
+
+            static PointF LerpPoint(PointF a, PointF b, float t) =>
+                new(a.X + ((b.X - a.X) * t), a.Y + ((b.Y - a.Y) * t));
+
+            static float Distance(PointF a, PointF b)
+            {
+                float dx = b.X - a.X;
+                float dy = b.Y - a.Y;
+                return MathF.Sqrt((dx * dx) + (dy * dy));
+            }
+
+            static PointF MovePointToward(PointF source, PointF destination, float distance)
+            {
+                float length = Distance(source, destination);
+                if (length <= 0.001f)
+                    return source;
+
+                float amount = Math.Min(distance, length) / length;
+                return LerpPoint(source, destination, amount);
+            }
+
+            static void DrawLearningArrowHead(ICanvas canvas, PointF source, PointF tip, PointF destination, float alpha)
+            {
+                float dx = destination.X - tip.X;
+                float dy = destination.Y - tip.Y;
+                if (Math.Abs(dx) + Math.Abs(dy) < 0.5f)
+                {
+                    dx = destination.X - source.X;
+                    dy = destination.Y - source.Y;
+                }
+                float length = MathF.Sqrt((dx * dx) + (dy * dy));
+                dx /= length;
+                dy /= length;
+                float px = -dy;
+                float py = dx;
+                const float headLength = 13;
+                const float headWidth = 8;
+                PathF head = new();
+                head.MoveTo(tip.X, tip.Y);
+                head.LineTo(tip.X - (dx * headLength) + (px * headWidth), tip.Y - (dy * headLength) + (py * headWidth));
+                head.LineTo(tip.X - (dx * headLength) - (px * headWidth), tip.Y - (dy * headLength) - (py * headWidth));
+                head.Close();
+                canvas.FillColor = Colors.DodgerBlue.WithAlpha(alpha);
+                canvas.FillPath(head);
             }
 
             void DrawPrecisionPinchGuide(ICanvas canvas)
@@ -590,6 +739,10 @@ namespace GestureSample.Maui.Models
             _patternDrawable.TutorialArcIndices = Array.Empty<int>();
             _patternDrawable.UseFlipInterpolation = false;
             _patternDrawable.ShowFlipAxis = false;
+            _patternDrawable.ShowPrecisionLearningSign = false;
+            _patternDrawable.PrecisionLearningTrailOrigins = new[] { -1, -1 };
+            _patternDrawable.PrecisionLearningSignAlpha = 1f;
+            _patternDrawable.PrecisionLearningArrowAlpha = 0;
             Keyboard.InvalidateOverlay();
         }
 
@@ -1242,6 +1395,105 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             await RunProgressAnimation("PrecisionShiftTutorial", ms,
                 progress => _patternDrawable.AnimProgress = progress);
             await Task.Delay(900);
+            ClearAnim();
+        }
+
+        public async Task AnimatePrecisionSignLearningAsync(
+            bool[] bits,
+            int[] finalTargets,
+            int leftDelta,
+            bool leftIsShift,
+            bool leftBaseAtTop,
+            int rightDelta,
+            bool rightIsShift,
+            bool rightBaseAtTop,
+            uint stepMs = 900)
+        {
+            TrySyncOverlay();
+            bits ??= Array.Empty<bool>();
+            finalTargets ??= Array.Empty<int>();
+            if (bits.Length == 0 || finalTargets.Length == 0)
+                return;
+
+            int columns = Math.Max(1, Keyboard.Config?.KeysInRow ?? 1);
+            List<(int Current, int Target)> movers = bits
+                .Select((selected, index) => (selected, index))
+                .Where(item => item.selected && item.index < finalTargets.Length)
+                .Select(item => (item.index, Math.Clamp(finalTargets[item.index], 0, bits.Length - 1)))
+                .ToList();
+
+            _patternDrawable.ShowPrecisionLearningSign = true;
+            _patternDrawable.PrecisionLearningDeltas = new[] { leftDelta, rightDelta };
+            _patternDrawable.PrecisionLearningIsShift = new[] { leftIsShift, rightIsShift };
+            _patternDrawable.PrecisionLearningBaseAtTop = new[] { leftBaseAtTop, rightBaseAtTop };
+            _patternDrawable.PrecisionLearningTrailOrigins = Enumerable.Range(0, Math.Min(2, columns))
+                .Select(column =>
+                {
+                    List<int> active = new();
+                    for (int index = column; index < bits.Length; index += columns)
+                        if (bits[index]) active.Add(index);
+                    if (active.Count < 2)
+                        return -1;
+                    return (column == 0 ? leftBaseAtTop : rightBaseAtTop)
+                        ? active.Min()
+                        : active.Max();
+                })
+                .Concat(Enumerable.Repeat(-1, Math.Max(0, 2 - Math.Min(2, columns))))
+                .ToArray();
+            _patternDrawable.AnimAlpha = 0.20f;
+            _patternDrawable.AnimColor = Colors.Yellow;
+            _patternDrawable.PrecisionLearningSignAlpha = 1f;
+            _patternDrawable.PrecisionLearningArrowAlpha = 0;
+
+            int stepNumber = 0;
+            while (movers.Any(mover => mover.Current != mover.Target))
+            {
+                bool[] currentBits = new bool[bits.Length];
+                int[] stepTargets = Enumerable.Range(0, bits.Length).ToArray();
+                for (int i = 0; i < movers.Count; i++)
+                {
+                    (int current, int target) = movers[i];
+                    currentBits[current] = true;
+                    if (current == target)
+                        continue;
+
+                    int stride = current % columns == target % columns ? columns : 1;
+                    int next = current + (Math.Sign(target - current) * stride);
+                    if ((target - current) * (target - next) < 0)
+                        next = target;
+                    stepTargets[current] = Math.Clamp(next, 0, bits.Length - 1);
+                }
+
+                _patternDrawable.AnimBits = currentBits;
+                _patternDrawable.AnimTargets = stepTargets;
+                _patternDrawable.AnimProgress = 0;
+                Keyboard.InvalidateOverlay();
+
+                await Task.Delay(stepNumber == 0 ? 650 : 280);
+                if (stepNumber == 0)
+                {
+                    await RunProgressAnimation("PrecisionSignArrowIn", 300,
+                        progress => _patternDrawable.PrecisionLearningArrowAlpha = progress);
+                }
+                await RunProgressAnimation($"PrecisionSignStep_{stepNumber}", stepMs,
+                    progress => _patternDrawable.AnimProgress = progress);
+
+                for (int i = 0; i < movers.Count; i++)
+                {
+                    (int current, int target) = movers[i];
+                    movers[i] = (stepTargets[current], target);
+                }
+                stepNumber++;
+            }
+
+            await Task.Delay(500);
+            await RunProgressAnimation("PrecisionSignCompleteFade", 180,
+                progress =>
+                {
+                    float alpha = 1f - progress;
+                    _patternDrawable.PrecisionLearningArrowAlpha = alpha;
+                    _patternDrawable.PrecisionLearningSignAlpha = alpha;
+                });
             ClearAnim();
         }
 

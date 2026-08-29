@@ -11,6 +11,7 @@ namespace GestureSample.Maui.Models
         protected virtual bool IS_WHOLE_TIMER => _secondsPressingToAnswerSetting < 0;
         protected virtual int SECONDS_TO_ANSWER => _secondsToAnswer;
         public Func<ExerciseCheckResult, Task>? CheckCompletedAsync { get; set; }
+        public event Action<double>? SequenceFirstProgressChanged;
         public virtual bool SupportsAnswerTimeTuner => true;
         public int AnswerTimeSetting => _secondsPressingToAnswerSetting;
 
@@ -22,6 +23,8 @@ namespace GestureSample.Maui.Models
         private bool _isChecking = false;
         private bool _isLifecycleActive = true;
         private bool _isTickRunning;
+        private DateTime? _lastCorrectSequenceFirstUtc;
+        private string? _lastSequenceCueSignature;
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
             : base(gamePlay, lblTimer, pianoConfig)
@@ -124,7 +127,15 @@ namespace GestureSample.Maui.Models
                     _pressStartUtc ??= DateTime.UtcNow;
 
                     TimeSpan elapsed = DateTime.UtcNow - _pressStartUtc.Value;
-                    double progress = elapsed.TotalSeconds / SECONDS_TO_ANSWER;
+                    double progressDelaySeconds = GetSequenceProgressDelaySeconds();
+                    double progressElapsedSeconds = elapsed.TotalSeconds - progressDelaySeconds;
+                    if (progressElapsedSeconds <= 0)
+                    {
+                        HideProgressVisualWithoutResettingTimer();
+                        return;
+                    }
+
+                    double progress = progressElapsedSeconds / SECONDS_TO_ANSWER;
 
                     if (progress < 0) progress = 0;
                     if (progress > 1) progress = 1;
@@ -132,8 +143,15 @@ namespace GestureSample.Maui.Models
                     ShowProgressVisual();
                     _pressProgress.Progress = progress;
 
-                    if (progress >= 1.0)
+                    if (progress >= 1.0 && CanSubmitCurrentSequenceState())
                     {
+                        if (TryShowIncorrectSequenceLastWithoutSubmission())
+                        {
+                            ResetProgressVisual();
+                            _pressStartUtc = null;
+                            return;
+                        }
+
                         await PianoInitWithTimer();
                     }
                 }
@@ -177,6 +195,218 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        private void HideProgressVisualWithoutResettingTimer()
+        {
+            _pressProgress.Progress = 0;
+            _pressProgress.Opacity = 0;
+            _pressProgress.IsVisible = false;
+            _lblTimer.IsVisible = true;
+        }
+
+        private double GetSequenceProgressDelaySeconds()
+        {
+            if (!_pianoConfig.IsPrecisionPinchSequenceMemorize)
+                return 0;
+
+            return IsReadySequenceFinalCandidate() ? 0.5 : double.PositiveInfinity;
+        }
+
+        protected override async Task OnKeyStateChangedAsync(bool isDown)
+        {
+            if (_isChecking)
+            {
+                return;
+            }
+
+            if (isDown)
+            {
+                // A glide into a new key is timing-equivalent to a fresh key press.
+                _pressStartUtc = null;
+                _pressProgress.Progress = 0;
+            }
+
+            if (isDown && TryAcceptSequenceFirstWithoutSubmission())
+                return;
+
+            if (UpdateSequenceFirstProgress() && isDown)
+                return;
+
+            if (!isDown)
+                return;
+
+            if (!_pianoConfig.AllowImmediateCorrectPrecisionAnswer ||
+                !_gamePlay.IsCloseEnough(this, allowedDifferences: 0))
+            {
+                return;
+            }
+
+            if (IsWaitingForSequenceLast())
+                return;
+
+            RememberSequenceFirstIfNeeded();
+            await PianoInitWithTimer();
+        }
+
+        private bool TryAcceptSequenceFirstWithoutSubmission()
+        {
+            if (!_pianoConfig.IsPrecisionPinchSequenceMemorize ||
+                _gamePlay is not BitArrayGamePlay sequenceGame ||
+                !sequenceGame.IsSequenceMemorizeFirstResponse())
+            {
+                return false;
+            }
+
+            bool[] pressed = ToBitArray();
+            bool[] first = sequenceGame.GetSequenceMemorizeFirstPreview();
+            if (!IsCompleteSequenceCombination(pressed, first))
+            {
+                ClearSequenceCue();
+                return false;
+            }
+
+            bool isCorrect = _gamePlay.IsCloseEnough(this, allowedDifferences: 0);
+            ShowSequenceCue(pressed, isCorrect);
+            if (!isCorrect)
+                return true;
+
+            _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            _pressStartUtc = null;
+            _pressProgress.Progress = 0;
+            if (!sequenceGame.AdvanceSequenceMemorizeToLastResponse())
+                return false;
+
+            SequenceFirstProgressChanged?.Invoke(1);
+            return true;
+        }
+
+        protected override async Task<bool> OnBeforeKeyUpAsync()
+        {
+            if (!IsReadySequenceFinalCandidate())
+            {
+                return false;
+            }
+
+            if (TryShowIncorrectSequenceLastWithoutSubmission())
+            {
+                ResetProgressVisual();
+                _pressStartUtc = null;
+                return false;
+            }
+
+            await PianoInitWithTimer();
+            return true;
+        }
+
+        private bool TryShowIncorrectSequenceLastWithoutSubmission()
+        {
+            if (!IsReadySequenceFinalCandidate() ||
+                _gamePlay.IsCloseEnough(this, allowedDifferences: 0))
+            {
+                return false;
+            }
+
+            ShowSequenceCue(ToBitArray(), isCorrect: false);
+            return true;
+        }
+
+        private bool UpdateSequenceFirstProgress()
+        {
+            if (!IsWaitingForSequenceLast() ||
+                _gamePlay is not BitArrayGamePlay sequenceGame)
+            {
+                return false;
+            }
+
+            bool[] pressed = ToBitArray();
+            bool[] first = sequenceGame.GetSequenceMemorizeFirstPreview();
+            if (!IsCompleteSequenceCombination(pressed, first))
+            {
+                ClearSequenceCue();
+                return false;
+            }
+
+            if (!pressed.SequenceEqual(first))
+            {
+                ClearSequenceCue();
+                return false;
+            }
+
+            ShowSequenceCue(pressed, isCorrect: true);
+            _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            _pressStartUtc = null;
+            _pressProgress.Progress = 0;
+            return true;
+        }
+
+        private static bool IsCompleteSequenceCombination(bool[] pressed, bool[] first)
+        {
+            int expectedCount = first.Count(bit => bit);
+            return expectedCount > 0 && pressed.Count(bit => bit) == expectedCount;
+        }
+
+        private void ShowSequenceCue(bool[] pressed, bool isCorrect)
+        {
+            string signature = string.Concat(pressed.Select(bit => bit ? '1' : '0'));
+            if (signature == _lastSequenceCueSignature)
+                return;
+
+            _lastSequenceCueSignature = signature;
+            SequenceFirstProgressChanged?.Invoke(isCorrect ? 1 : -1);
+        }
+
+        private void ClearSequenceCue()
+        {
+            if (_lastSequenceCueSignature == null)
+                return;
+
+            _lastSequenceCueSignature = null;
+            SequenceFirstProgressChanged?.Invoke(0);
+        }
+
+        private void RememberSequenceFirstIfNeeded()
+        {
+            if (_pianoConfig.IsPrecisionPinchSequenceMemorize &&
+                _gamePlay is BitArrayGamePlay sequenceGame &&
+                sequenceGame.IsSequenceMemorizeFirstResponse())
+            {
+                _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            }
+        }
+
+        private bool IsWaitingForSequenceLast()
+        {
+            return _pianoConfig.IsPrecisionPinchSequenceMemorize &&
+                   _gamePlay is BitArrayGamePlay sequenceGame &&
+                   !sequenceGame.IsSequenceMemorizeFirstResponse();
+        }
+
+        private bool HasRecentSequenceFirst()
+        {
+            int seconds = Math.Max(1, _pianoConfig.PrecisionSequenceRecognitionWindowSeconds);
+            return _lastCorrectSequenceFirstUtc.HasValue &&
+                   DateTime.UtcNow - _lastCorrectSequenceFirstUtc.Value <= TimeSpan.FromSeconds(seconds);
+        }
+
+        private bool CanSubmitCurrentSequenceState()
+        {
+            return !_pianoConfig.IsPrecisionPinchSequenceMemorize || IsReadySequenceFinalCandidate();
+        }
+
+        private bool IsReadySequenceFinalCandidate()
+        {
+            if (!IsWaitingForSequenceLast() ||
+                !HasRecentSequenceFirst() ||
+                _gamePlay is not BitArrayGamePlay sequenceGame)
+            {
+                return false;
+            }
+
+            bool[] pressed = ToBitArray();
+            bool[] first = sequenceGame.GetSequenceMemorizeFirstPreview();
+            return IsCompleteSequenceCombination(pressed, first) &&
+                   !pressed.SequenceEqual(first);
+        }
+
         public void SetLifecycleActive(bool active)
         {
             _isLifecycleActive = active;
@@ -217,6 +447,7 @@ namespace GestureSample.Maui.Models
         {
             _seconds_pressed = 0;
             _pressStartUtc = null;
+            _lastSequenceCueSignature = null;
             _isChecking = false;
             InputTransparent = false;
             for (int i = 0; i < pressCounter.Length; i++)
