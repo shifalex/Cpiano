@@ -38,15 +38,17 @@ namespace GestureSample.Views
             new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
 
             new PageConfig("Gripping", "Stage 1 - Vertical transformative COPY", () =>
-                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Vertical transformative COPY", bothHands: false, copyOtherHand: false, transformative: true))),
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Vertical transformative COPY", bothHands: false, copyOtherHand: false, transformative: true, showGuideLine: false))),
             new PageConfig("Gripping", "Stage 1.1 - COPY to other hand", () =>
-                new SimpleViewCellsPage(CreatePrecisionCopyConfig("COPY to other hand", bothHands: false, copyOtherHand: true, transformative: true))),
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("COPY to other hand", bothHands: false, copyOtherHand: true, transformative: true, showGuideLine: false))),
             new PageConfig("Gripping", "Stage 1.2 - Memorize pinch", () =>
                 new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false))),
             new PageConfig("Gripping", "Stage 1.3 - Sequence memorize", () =>
                 new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: true, sequenceMaxDistance: 1))),
             new PageConfig("Gripping", "Stage 1.4 - Sequence memorize 1-3", () =>
                 new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: true, sequenceMaxDistance: 3))),
+            new PageConfig("Gripping", "Stage 1.5 - Animated sign learning", () =>
+                new SimpleViewCellsPage(CreatePrecisionSignLearningConfig())),
 
             new PageConfig("Gripping", "Stage 2 - Full shifts up/down by 1-2", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Full shifts up/down by 1-2", bothHands: false, maxDistance: 2,
@@ -60,6 +62,8 @@ namespace GestureSample.Views
 
             new PageConfig("Gripping", "Stage 5 - Two hands COPY", () =>
                 new SimpleViewCellsPage(CreatePrecisionCopyConfig("Two hands COPY", bothHands: true, copyOtherHand: false, transformative: false))),
+            new PageConfig("Gripping", "Stage 5.1 - Two hands combination memorize", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig())),
             new PageConfig("Gripping", "Stage 6 - Two hands full shifts", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Two hands full shifts", bothHands: true, maxDistance: 2,
                     moveOptions: PrecisionPinchMoveOptions.ShiftWhole))),
@@ -2831,7 +2835,8 @@ namespace GestureSample.Views
             string name,
             bool bothHands,
             bool copyOtherHand,
-            bool transformative)
+            bool transformative,
+            bool showGuideLine = true)
         {
             return new GameConfig
             {
@@ -2855,6 +2860,8 @@ namespace GestureSample.Views
                     KeysInRow = 2,
                     AllowKeyWidthAdjustment = true,
                     IsPrecisionPinchExercise = true,
+                    ShowPrecisionPinchGuideLine = showGuideLine,
+                    AllowImmediateCorrectPrecisionAnswer = true,
                     IsTransformativePrecisionCopyExercise = transformative,
                     CopyPrecisionPinchToOtherHand = copyOtherHand,
                     IsVerticalPrecisionPinchExercise = true,
@@ -2950,6 +2957,8 @@ namespace GestureSample.Views
 
             config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
             config.KeyboardConfig.SecondsPressingToAnswer = 1;
+            config.KeyboardConfig.AllowImmediateCorrectPrecisionAnswer = sequence;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
 
             if (sequence)
             {
@@ -2962,6 +2971,37 @@ namespace GestureSample.Views
                 config.Plan = null;
             }
 
+            return config;
+        }
+
+        private static GameConfig CreatePrecisionSignLearningConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Animated sign learning",
+                bothHands: false,
+                maxDistance: 3,
+                moveOptions: PrecisionPinchMoveOptions.All,
+                continueFromPrevious: false,
+                moveLowerPercent: 20);
+            config.IncludeTutorials = true;
+            config.KeyboardConfig.IsPrecisionSignLearningExercise = true;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+            return config;
+        }
+
+        private static GameConfig CreateTwoHandCombinationMemorizeConfig()
+        {
+            GameConfig config = CreatePrecisionCopyConfig(
+                "Two hands combination memorize",
+                bothHands: true,
+                copyOtherHand: false,
+                transformative: false);
+            config.KeyboardConfig.Rows = Math.Max(7, GetExpandedPrecisionRows());
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
+            config.KeyboardConfig.SecondsPressingToAnswer = 1;
+            config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
+            config.KeyboardConfig.IsTwoHandCombinationMemorize = true;
+            config.Plan = null;
             return config;
         }
 

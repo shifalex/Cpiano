@@ -251,6 +251,23 @@ namespace GestureSample.Views.Tests
             SetInlineKeyboardCheckVisible(false);
         }
 
+        private async void ShowSequenceFirstProgressFeedback(double progress)
+        {
+            if (!_isPageVisible || !_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
+                return;
+
+            int version = ++_sequenceFeedbackChangeVersion;
+            if (progress == 0)
+            {
+                await Task.Delay(800);
+                if (version != _sequenceFeedbackChangeVersion || !_isPageVisible)
+                    return;
+            }
+
+            _sequenceFirstFeedbackProgress = Math.Clamp(progress, -1, 1);
+            RefreshStatusActionSlot();
+        }
+
         private void RestoreReadyForInputState()
         {
             if (_tutorialRunning)
@@ -373,20 +390,21 @@ namespace GestureSample.Views.Tests
                 return;
             }
 
-            bool preserveAndroidPinchColors =
-                DeviceInfo.Platform == DevicePlatform.Android &&
-                _config.KeyboardConfig?.IsPrecisionPinchExercise == true;
+            bool preserveQuestionColors =
+                _config.KeyboardConfig?.IsPrecisionSignLearningExercise == true ||
+                (DeviceInfo.Platform == DevicePlatform.Android &&
+                 _config.KeyboardConfig?.IsPrecisionPinchExercise == true);
             Color[]? keyboardSnapshot = CaptureLiveKeyboardColors();
             try
             {
-                if (!preserveAndroidPinchColors)
+                if (!preserveQuestionColors)
                     ClearLiveKeyboardState();
                 host.SyncOverlay();
                 await RunTutorialAsync(host);
             }
             finally
             {
-                if (!preserveAndroidPinchColors)
+                if (!preserveQuestionColors)
                     RestoreLiveKeyboardState(keyboardSnapshot);
                 host.SyncOverlay();
             }
@@ -532,6 +550,8 @@ namespace GestureSample.Views.Tests
         private Button _btnKeyboardCheckInline = null;
         private Border _centerFeedbackBadge = null;
         private Label _centerFeedbackBadgeLabel = null;
+        private double _sequenceFirstFeedbackProgress;
+        private int _sequenceFeedbackChangeVersion;
         private Label _correctExpressionLabel = null;
         private Border _keyboardControlBar = null;
         private Button _btnThirdArrowVisibility = null;
@@ -1009,6 +1029,9 @@ namespace GestureSample.Views.Tests
                                    _currentUiState == PlayUiState.FeedbackWrong;
             bool usePromptEntryFeedback = UsesArrowCorrectResponseFeedback() && isFeedbackState;
             bool showFeedbackBadge = isFeedbackState && !usePromptEntryFeedback && !showTutorialStepCounter;
+            bool showSequenceFirstFeedback = _sequenceFirstFeedbackProgress != 0 &&
+                                             !isFeedbackState &&
+                                             !showTutorialStepCounter;
             bool usesInlineCheck = ShouldUseInlineKeyboardCheckButton();
             bool currentPressIsCorrect = IsCurrentKeyboardPressAlreadyCorrect();
             bool showInlineCheck = usesInlineCheck &&
@@ -1050,15 +1073,22 @@ namespace GestureSample.Views.Tests
                 _centerFeedbackBadgeLabel.TextColor = Colors.Black;
                 _centerFeedbackBadgeLabel.Text = _tutorialStepCounterText;
             }
-            else if (showFeedbackBadge)
+            else if (showFeedbackBadge || showSequenceFirstFeedback)
             {
                 bool isCorrect = _currentUiState == PlayUiState.FeedbackCorrect;
                 _centerFeedbackBadge.BackgroundColor = Colors.Transparent;
                 _centerFeedbackBadgeLabel.TextColor = Colors.White;
-                _centerFeedbackBadgeLabel.Text = isCorrect ? "💪" : "🤔";
+                _centerFeedbackBadgeLabel.Text = showSequenceFirstFeedback
+                    ? (_sequenceFirstFeedbackProgress > 0 ? "💪" : "🤔")
+                    : (isCorrect ? "💪" : "🤔");
+                _centerFeedbackBadgeLabel.FontSize = showSequenceFirstFeedback
+                    ? 28
+                    : (_config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true ? 42 : 55);
             }
 
-            _centerFeedbackBadge.IsVisible = showTutorialStepCounter || showFeedbackBadge;
+            _centerFeedbackBadge.Scale = showSequenceFirstFeedback ? 0.75 : 1;
+            _centerFeedbackBadge.Opacity = showSequenceFirstFeedback ? 0.78 : 1;
+            _centerFeedbackBadge.IsVisible = showTutorialStepCounter || showFeedbackBadge || showSequenceFirstFeedback;
         }
 
         private void EnsureCorrectExpressionLabel()
@@ -1909,6 +1939,14 @@ namespace GestureSample.Views.Tests
         {
             if (_tutorialRunning) return;
 
+            // Sign learning must first publish the mission and its side direction arrow.
+            // Its automatic animation is deferred until both have been refreshed below.
+            bool deferPrecisionSignLearningTutorial =
+                newExercise &&
+                _config.IncludeTutorials &&
+                _config.KeyboardConfig?.IsPrecisionSignLearningExercise == true &&
+                _gamePlay._questionNumber <= 3;
+
             // Reset the answer keyboard before publishing the new prompt. Previously the
             // prompt could become visible first, so a fast initial press was accepted and
             // then erased by the later PianoInit call.
@@ -2127,13 +2165,20 @@ namespace GestureSample.Views.Tests
                                     }
 
                                     _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                                    // Sequence presentation is not a tutorial overlay.
+                                    // Explicitly clear every possible blocker before
+                                    // enabling multi-touch input on Android tablets.
+                                    _taskMainHost.SetTutorialMode(false);
+                                    SetKeyboardInteractionEnabled(true);
                                     if (_pianoKeyboard is PianoKeyboardSync memorizeKeyboard)
                                         memorizeKeyboard.NotifyQuestionReadyForInput();
                                     else
                                         _pianoKeyboard.InputTransparent = false;
                                 }
                             }
-                            if (_config.IncludeTutorials)
+                            if (_config.IncludeTutorials &&
+                                _config.KeyboardConfig?.IsPrecisionSignLearningExercise != true &&
+                                !deferPrecisionSignLearningTutorial)
                             {
                                 await RunRecordedKeyboardTutorialAsync(_taskMainHost);
                             }
@@ -2198,6 +2243,13 @@ namespace GestureSample.Views.Tests
                         _verticalRightShiftDrawable.IsShift = verticalShiftGamePlay.IsPrecisionShiftSideGenericShift(leftSide: false);
                         _verticalRightShiftInstruction.Invalidate();
                     }
+                }
+                if (deferPrecisionSignLearningTutorial && _taskMainHost != null)
+                {
+                    // Yield once so the mission and side arrow reach the screen before
+                    // the tutorial's introductory pause and movement explanation.
+                    await Task.Yield();
+                    await RunRecordedKeyboardTutorialAsync(_taskMainHost);
                 }
                 if (preparedAnswerKeyboardEarly &&
                     _isPageVisible &&
@@ -3702,7 +3754,20 @@ namespace GestureSample.Views.Tests
                 await koh.FadeStaticOverlayAlphaAsync(0.18f, ScaleTutorialMs(220u), "PrecisionShiftDimIn");
                 try
                 {
-                    if (gp.UsesShiftAsMinusFlipTutorial())
+                    if (_config.KeyboardConfig.IsPrecisionSignLearningExercise)
+                    {
+                        await koh.AnimatePrecisionSignLearningAsync(
+                            gp.GetTutorialQuestionBits(),
+                            gp.GetPrecisionShiftTutorialTargets(),
+                            gp.GetPrecisionShiftSideDelta(leftSide: true),
+                            gp.IsPrecisionShiftSideGenericShift(leftSide: true),
+                            gp.GetPrecisionShiftSideBaseAtTop(leftSide: true),
+                            gp.GetPrecisionShiftSideDelta(leftSide: false),
+                            gp.IsPrecisionShiftSideGenericShift(leftSide: false),
+                            gp.GetPrecisionShiftSideBaseAtTop(leftSide: false),
+                            ScaleTutorialMs(900u));
+                    }
+                    else if (gp.UsesShiftAsMinusFlipTutorial())
                     {
                         await koh.AnimateFlipAcrossAxisAsync(
                             gp.GetShiftAsMinusTutorialBits(),
@@ -4494,6 +4559,13 @@ namespace GestureSample.Views.Tests
 
         private async Task HandleCheckResultAsync(ExerciseCheckResult checkResult, bool isKeyboardSubmission, Action? onCorrect = null)
         {
+            bool growSequenceFeedback = checkResult.IsCorrect && _sequenceFirstFeedbackProgress > 0;
+            if (_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
+            {
+                _sequenceFirstFeedbackProgress = 0;
+                _sequenceFeedbackChangeVersion++;
+            }
+
             bool waitForRetryNextButton =
                 ShouldUseArrowLabelRetryButtons() &&
                 !isKeyboardSubmission &&
@@ -4528,6 +4600,13 @@ namespace GestureSample.Views.Tests
                 ApplyFeedbackUiState(checkResult.IsCorrect);
             else
                 RestoreReadyForInputState();
+
+            if (growSequenceFeedback && _centerFeedbackBadge != null)
+            {
+                _centerFeedbackBadge.Scale = 0.75;
+                _centerFeedbackBadge.Opacity = 1;
+                await _centerFeedbackBadge.ScaleTo(1, 220, Easing.CubicOut);
+            }
 
             await ApplyPostCheckDelayAsync(checkResult, isKeyboardSubmission, willAdvanceToNextExercise);
 
@@ -6776,6 +6855,7 @@ namespace GestureSample.Views.Tests
                         ? syncKeyboard.AnswerTimeSetting
                         : _config.KeyboardConfig.SecondsPressingToAnswer;
                     syncKeyboard.CheckCompletedAsync = checkResult => HandleCheckResultAsync(checkResult, isKeyboardSubmission: true);
+                    syncKeyboard.SequenceFirstProgressChanged += ShowSequenceFirstProgressFeedback;
                 }
 
                 // Always host the keyboard inside an overlay host so we can run tutorials on-demand
@@ -6941,7 +7021,8 @@ namespace GestureSample.Views.Tests
                     RefreshAnswerTimePanelIcon();
                 }
 
-                if (_config.KeyboardConfig.IsPrecisionPinchExercise)
+                if (_config.KeyboardConfig.IsPrecisionPinchExercise &&
+                    !_config.KeyboardConfig.IsPrecisionSignLearningExercise)
                 {
                     Button btnGuideLine = new()
                     {
@@ -6972,7 +7053,6 @@ namespace GestureSample.Views.Tests
                         _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
 
                     if (_config.KeyboardConfig.IsVerticalPrecisionPinchExercise &&
-                        DeviceInfo.Platform == DevicePlatform.iOS &&
                         DeviceInfo.Current.Idiom == DeviceIdiom.Tablet)
                     {
                         Microsoft.Maui.Controls.Shapes.Path handGapIcon = new()
