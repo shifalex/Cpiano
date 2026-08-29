@@ -451,6 +451,7 @@
         public bool IsVerticalPrecisionPinchExercise { get; set; } = false;
         public bool IsPrecisionShiftExercise { get; set; } = false;
         public bool IsPrecisionSignLearningExercise { get; set; } = false;
+        public bool IsPrecisionSynchronousProcessExercise { get; set; } = false;
         public bool PrecisionShiftBothHands { get; set; } = false;
         public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
         public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;

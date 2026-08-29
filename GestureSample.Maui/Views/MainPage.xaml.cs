@@ -79,6 +79,8 @@ namespace GestureSample.Views
                     moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
                     synchronizeHands: true, staggerHandsInitially: true,
                     rows: GetAdvancedPrecisionRows(), maxPinchInterval: 5))),
+            new PageConfig("Gripping", "Test - Synchronous two-hand process", () =>
+                new SimpleViewCellsPage(CreateSynchronousProcessTestConfig())),
             new PageConfig("Gripping", "Stage 10 - Grammar transformations", () =>
                 new SimpleViewCellsPage(CreatePrecisionShiftConfig("Grammar transformations", bothHands: true, maxDistance: 3,
                     moveOptions: PrecisionPinchMoveOptions.All,
@@ -2985,6 +2987,21 @@ namespace GestureSample.Views
                 moveLowerPercent: 20);
             config.IncludeTutorials = true;
             config.KeyboardConfig.IsPrecisionSignLearningExercise = true;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+            return config;
+        }
+
+        private static GameConfig CreateSynchronousProcessTestConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Synchronous two-hand process",
+                bothHands: true,
+                maxDistance: 1,
+                moveOptions: PrecisionPinchMoveOptions.All,
+                rows: Math.Max(7, GetExpandedPrecisionRows()),
+                maxPinchInterval: 5,
+                continueFromPrevious: false);
+            config.KeyboardConfig.IsPrecisionSynchronousProcessExercise = true;
             config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
             return config;
         }

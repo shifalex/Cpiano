@@ -7599,12 +7599,16 @@ namespace GestureSample.Views.Tests
             bool landscapeLayout = screenWidth > screenHeight;
             bool separateHandZones = DeviceInfo.Current.Idiom == DeviceIdiom.Tablet &&
                                      _config.KeyboardConfig.SeparatePrecisionPinchColumnsOnTablet;
+            bool combinationMemorizeStage = _config.KeyboardConfig.IsTwoHandCombinationMemorize;
             Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
             string handGapPreferenceKey =
-                $"precision-pinch-hand-gap-{activeUserId?.ToString() ?? "anonymous"}";
-            double configuredColumnGap = separateHandZones
-                ? Math.Max(2, _config.KeyboardConfig.PrecisionPinchTabletColumnGap)
-                : 2;
+                $"precision-pinch-hand-gap-{(combinationMemorizeStage ? "combination-" : string.Empty)}" +
+                $"{activeUserId?.ToString() ?? "anonymous"}";
+            double configuredColumnGap = combinationMemorizeStage
+                ? 2
+                : separateHandZones
+                    ? Math.Max(2, _config.KeyboardConfig.PrecisionPinchTabletColumnGap)
+                    : 2;
             double precisionColumnGap = Math.Clamp(
                 Preferences.Default.Get(handGapPreferenceKey, configuredColumnGap), 2, 240);
             _precisionHandGap = precisionColumnGap;

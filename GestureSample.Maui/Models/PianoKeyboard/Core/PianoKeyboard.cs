@@ -200,7 +200,13 @@ After:
                 // parent grid does not reliably receive pan events on Android/iOS.
                 btnKeys[i].Panning += OnKeyboardPanning;
                 btnKeys[i].Panned += OnKeyboardPanned;
-                if (_pianoConfig.IsPrecisionPinchExercise)
+                // Native PanGestureRecognizer has no stable pointer identity when
+                // several fingers are down. Two-hand precision stages already get
+                // the complete touch set through MR.Gestures; attaching both paths
+                // makes the native callback take over mid-glide as fingers lift and
+                // sends keys jumping between unrelated positions.
+                if (_pianoConfig.IsPrecisionPinchExercise &&
+                    !_pianoConfig.PrecisionShiftBothHands)
                 {
                     MR.Gestures.Button glideOrigin = btnKeys[i];
                     PanGestureRecognizer glideRecognizer = new();
@@ -498,6 +504,7 @@ After:
         public virtual void PianoInit()
         {
             IsEnabled = true;
+            _glidingPrecisionKeys.Clear();
             _addend1 = 0;
             _addend2 = 0;
             if(_soundService!=null)
@@ -524,6 +531,7 @@ After:
 
         public new void PianoInit(bool[] array)
         {
+            _glidingPrecisionKeys.Clear();
             base.PianoInit(array);
             RecalculateKeyboardStateFromColors();
             AddDummies();
@@ -531,6 +539,7 @@ After:
 
         public new void PianoInit(Color[] array)
         {
+            _glidingPrecisionKeys.Clear();
             base.PianoInit(array);
             RecalculateKeyboardStateFromColors();
             AddDummies();
@@ -824,12 +833,35 @@ After:
 
         private async void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
         {
-            Point[] touches = ConvertScreenTouchesToLayout(e.Touches, sender as View, e.ViewPosition);
             if (_pianoConfig.IsPrecisionPinchExercise)
             {
-                await GlidePrecisionKeysAsync(touches);
+                // Do not use BaseGestureEventArgs.Touches here: it is the global set
+                // of screen touches and is not bound to this key. TotalDistance is
+                // the displacement of the pan owned by e.Sender, so anchor it to the
+                // originating key's real layout rectangle. Scaling by ViewPosition
+                // keeps the displacement correct after the key-height control changes.
+                if (e.Sender is MR.Gestures.Button origin &&
+                    _glidingPrecisionKeys.ContainsKey(origin))
+                {
+                    double scaleX = e.ViewPosition.Width > 0 && origin.Width > 0
+                        ? origin.Width / e.ViewPosition.Width
+                        : 1;
+                    double scaleY = e.ViewPosition.Height > 0 && origin.Height > 0
+                        ? origin.Height / e.ViewPosition.Height
+                        : 1;
+                    (double originX, double originY) = GetAbsolutePosition(origin);
+                    Point targetPoint = new(
+                        originX + (origin.Width / 2) + (e.TotalDistance.X * scaleX),
+                        originY + (origin.Height / 2) + (e.TotalDistance.Y * scaleY));
+                    await GlidePrecisionKeyAsync(origin, targetPoint);
+                }
                 return;
             }
+
+            Point[] touches = ConvertScreenTouchesToLayout(
+                e.Touches,
+                e.Sender as View,
+                e.ViewPosition);
 
             if (!_draggingKeyIndex.HasValue || !EnablesColorDrag() || touches.Length == 0)
                 return;
@@ -853,60 +885,26 @@ After:
             _draggingKeyColor = Colors.Transparent;
         }
 
-        private async Task GlidePrecisionKeysAsync(Point[]? touches)
-        {
-            if (touches == null || touches.Length == 0 || _glidingPrecisionKeys.Count == 0)
-                return;
-
-            bool changed = false;
-            var availableTouches = touches.ToList();
-            foreach (MR.Gestures.Button origin in _glidingPrecisionKeys.Keys.ToArray())
-            {
-                MR.Gestures.Button current = _glidingPrecisionKeys[origin];
-                if (availableTouches.Count == 0)
-                    break;
-
-                Point touch = availableTouches
-                    .OrderBy(point => DistanceSquared(point, current))
-                    .First();
-                availableTouches.Remove(touch);
-
-                int targetIndex = GetKeyIndexAt(touch);
-                if (targetIndex < 0)
-                    continue;
-
-                MR.Gestures.Button target = btnKeys[targetIndex];
-                if (target == current || target.BackgroundColor != COLOR_FREE)
-                    continue;
-
-                target.BackgroundColor = current.BackgroundColor;
-                current.BackgroundColor = COLOR_FREE;
-                _glidingPrecisionKeys[origin] = target;
-                changed = true;
-            }
-
-            if (!changed)
-                return;
-
-            RecalculateKeyboardStateFromColors();
-            OnPropertyChanged(nameof(Addend1));
-            OnPropertyChanged(nameof(Addend2));
-            OnPropertyChanged(nameof(Sum));
-            EnsureAllKeyTextIsBlack();
-            await OnKeyStateChangedAsync(isDown: true);
-        }
-
         private async Task OnPrecisionKeyPanUpdatedAsync(
             MR.Gestures.Button origin,
             PanUpdatedEventArgs args)
         {
             if (!_glidingPrecisionKeys.ContainsKey(origin))
                 return;
+
             if (args.StatusType is GestureStatus.Completed or GestureStatus.Canceled)
             {
                 await CompletePrecisionGlideAsync(origin);
                 return;
             }
+
+            // A PanGestureRecognizer does not identify which pointer produced an
+            // update during a multi-touch gesture. Let the per-key MR.Gestures pan
+            // own two-hand glides; otherwise a right-hand movement can be applied
+            // to the left recognizer's origin.
+            if (_glidingPrecisionKeys.Count > 1)
+                return;
+
             if (args.StatusType != GestureStatus.Running)
                 return;
 
@@ -923,7 +921,7 @@ After:
                 return;
 
             int targetIndex = GetKeyIndexAt(targetPoint);
-            if (targetIndex < 0)
+            if (targetIndex < 0 || !IsSamePrecisionHand(current, targetIndex))
                 return;
 
             MR.Gestures.Button target = btnKeys[targetIndex];
@@ -958,14 +956,6 @@ After:
             await OnKeyStateChangedAsync(isDown: false);
         }
 
-        private static double DistanceSquared(Point touch, View view)
-        {
-            (double x, double y) = GetAbsolutePosition(view);
-            double dx = touch.X - (x + (view.Width / 2));
-            double dy = touch.Y - (y + (view.Height / 2));
-            return (dx * dx) + (dy * dy);
-        }
-
         private static Point[] ConvertScreenTouchesToLayout(Point[]? touches, View? eventView, Rect viewScreenPosition)
         {
             if (touches == null || touches.Length == 0)
@@ -974,10 +964,16 @@ After:
                 return touches;
 
             (double layoutX, double layoutY) = GetAbsolutePosition(eventView);
-            double screenOffsetX = viewScreenPosition.X - layoutX;
-            double screenOffsetY = viewScreenPosition.Y - layoutY;
+            double scaleX = viewScreenPosition.Width > 0 && eventView.Width > 0
+                ? eventView.Width / viewScreenPosition.Width
+                : 1;
+            double scaleY = viewScreenPosition.Height > 0 && eventView.Height > 0
+                ? eventView.Height / viewScreenPosition.Height
+                : 1;
             return touches
-                .Select(touch => new Point(touch.X - screenOffsetX, touch.Y - screenOffsetY))
+                .Select(touch => new Point(
+                    layoutX + ((touch.X - viewScreenPosition.X) * scaleX),
+                    layoutY + ((touch.Y - viewScreenPosition.Y) * scaleY)))
                 .ToArray();
         }
 
@@ -990,6 +986,25 @@ After:
             }
 
             return -1;
+        }
+
+        private bool IsSamePrecisionHand(MR.Gestures.Button source, int targetIndex)
+        {
+            int sourceIndex = Array.IndexOf(btnKeys, source);
+            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= btnKeys.Length)
+                return false;
+
+            return GetPrecisionHandBucket(sourceIndex) == GetPrecisionHandBucket(targetIndex);
+        }
+
+        private int GetPrecisionHandBucket(int keyIndex)
+        {
+            int columns = Math.Max(1, _pianoConfig.KeysInRow);
+            if (_pianoConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+                return keyIndex % columns;
+
+            int half = btnKeys.Length / 2;
+            return keyIndex < half ? 0 : 1;
         }
 
         private static (double x, double y) GetAbsolutePosition(View view)
@@ -1036,6 +1051,7 @@ After:
         {
             MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
             if (_pianoConfig.IsPrecisionPinchExercise &&
+                !_pianoConfig.PrecisionShiftBothHands &&
                 e.Cancelled &&
                 _glidingPrecisionKeys.ContainsKey(releasedKey))
             {

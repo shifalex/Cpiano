@@ -1843,6 +1843,24 @@ namespace GestureSample.Maui.Models
                                      Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper;
                 if (Config.KeyboardConfig.PrecisionShiftBothHands)
                 {
+                    if (Config.KeyboardConfig.IsPrecisionSynchronousProcessExercise)
+                    {
+                        // Both hands begin with the same grip. Keep at least one empty
+                        // row between the fingers so one-step squeeze commands are legal.
+                        int maximumInterval = Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval);
+                        int interval = maximumInterval >= 2
+                            ? random.Next(2, maximumInterval + 1)
+                            : maximumInterval;
+                        int lowerRow = random.Next(0, Config.KeyboardConfig.Rows - interval);
+                        int upperRow = lowerRow + interval;
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            pinch[(lowerRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                            pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
                     if (Config.KeyboardConfig.IsPrecisionGrammarExercise)
                     {
                         GeneratePrecisionGrammarStartingPinches(random, pinch, maxInterval);
@@ -2247,7 +2265,11 @@ namespace GestureSample.Maui.Models
         private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random)
         {
             int rows = Math.Max(7, Config.KeyboardConfig.Rows);
-            int combination = random.Next(9);
+            // Do not generate the two "gap" families (2 and 7). In those
+            // combinations one hand starts above the other hand's endpoint with
+            // two or more unused rows between them, which is not a valid Stage 5.1 prompt.
+            int[] allowedCombinations = { 0, 1, 3, 4, 5, 6, 8 };
+            int combination = allowedCombinations[random.Next(allowedCombinations.Length)];
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) first;
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) second;
 
@@ -2299,6 +2321,14 @@ namespace GestureSample.Maui.Models
                     break;
             }
 
+            // Keep this invariant independent of the numbered cases so newly added
+            // combinations cannot reintroduce a gap of two empty rows or greater.
+            if (HasDisallowedTwoHandCombinationGap(first) ||
+                HasDisallowedTwoHandCombinationGap(second))
+            {
+                return GenerateTwoHandCombinationPair(random);
+            }
+
             // Randomize which physical hand carries each interval, without changing
             // the mathematical relationship between the two displayed combinations.
             if (random.Next(2) == 0)
@@ -2309,6 +2339,17 @@ namespace GestureSample.Maui.Models
 
             return (BuildTwoHandCombinationBits(first.Left, first.Right, rows),
                     BuildTwoHandCombinationBits(second.Left, second.Right, rows));
+        }
+
+        private static bool HasDisallowedTwoHandCombinationGap(
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) combination)
+        {
+            int emptyRows = combination.Left.Upper < combination.Right.Lower
+                ? combination.Right.Lower - combination.Left.Upper - 1
+                : combination.Right.Upper < combination.Left.Lower
+                    ? combination.Left.Lower - combination.Right.Upper - 1
+                    : 0;
+            return emptyRows >= 2;
         }
 
         private static bool[] BuildTwoHandCombinationBits(
@@ -2781,6 +2822,11 @@ namespace GestureSample.Maui.Models
         {
             string actionText = CurrentOperation.ToDString();
             if (CurrentOperation == Operation.Copy &&
+                Config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
+            {
+                actionText = string.Empty;
+            }
+            else if (CurrentOperation == Operation.Copy &&
                 Config.KeyboardConfig?.CopyPrecisionPinchToOtherHand == true)
             {
                 actionText = "COPY TO OTHER HAND";
@@ -3481,6 +3527,13 @@ namespace GestureSample.Maui.Models
                 return;
             }
 
+            if (keyboard.IsPrecisionSynchronousProcessExercise)
+            {
+                ConfigureSynchronousProcessMission(random, minimum, maximum);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
             if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
             {
                 List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
@@ -3506,6 +3559,30 @@ namespace GestureSample.Maui.Models
                     out _precisionShiftRightDelta, out _precisionShiftRightIsShift, out _precisionShiftRightBaseAtTop);
 
             FinalizePrecisionShiftConfiguration(minimum);
+        }
+
+        private void ConfigureSynchronousProcessMission(Random random, int minimum, int maximum)
+        {
+            List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
+                GetPrecisionSideTransformCandidates(true, minimum, maximum);
+            List<(int Delta, bool IsShift, bool BaseAtTop)> rightCandidates =
+                GetPrecisionSideTransformCandidates(false, minimum, maximum);
+            List<((int Delta, bool IsShift, bool BaseAtTop) Left,
+                  (int Delta, bool IsShift, bool BaseAtTop) Right)> pairs =
+                (from left in leftCandidates
+                 from right in rightCandidates
+                 where left != right
+                 select (left, right)).ToList();
+
+            if (pairs.Count == 0)
+                throw new InvalidOperationException(
+                    "Could not create two different legal one-step hand commands.");
+
+            var mission = pairs[random.Next(pairs.Count)];
+            (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) =
+                mission.Left;
+            (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) =
+                mission.Right;
         }
 
         private void ConfigurePrecisionSignLearningIntro(int exerciseIndex)
