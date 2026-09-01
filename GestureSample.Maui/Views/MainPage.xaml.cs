@@ -3025,9 +3025,6 @@ namespace GestureSample.Views
             config.KeyboardConfig.SecondsPressingToAnswer = 1;
             config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
             config.KeyboardConfig.IsTwoHandCombinationMemorize = true;
-            // Stage 5.1 is configured from its page-level gear. The legacy rotated
-            // height slider can render over the bottom-left key on iPad.
-            config.KeyboardConfig.AllowKeyWidthAdjustment = false;
             config.KeyboardConfig.TwoHandCombinationOptions = combinations == TwoHandCombinationOptions.None
                 ? TwoHandCombinationOptions.Default
                 : combinations;
