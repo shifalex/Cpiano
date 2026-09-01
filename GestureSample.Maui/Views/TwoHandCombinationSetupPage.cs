@@ -35,7 +35,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         body.Add(Toolbar());
         AddGroup(body, "Transformations", current,
             (TwoHandCombinationOptions.Commutativity, "⇄", "Commutativity", "Synchronous exchange"),
-            (TwoHandCombinationOptions.Associativity, "⌁", "Associativity", "Move the shared boundary"),
+            (TwoHandCombinationOptions.Associativity, "⌁", "Move the shared boundary", "Keep the whole; shift where the parts meet"),
             (TwoHandCombinationOptions.ResizeUpper, "↥", "Resize upper", "Change the upper hand"),
             (TwoHandCombinationOptions.ResizeLowerAttached, "↕", "Resize attached", "Keep the other hand connected"),
             (TwoHandCombinationOptions.IncreaseLowerByOne | TwoHandCombinationOptions.DecreaseLowerByOne,
@@ -45,11 +45,11 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             (TwoHandCombinationOptions.FlipAdditionSubtraction, "±", "Large ± small", "Mirror across the boundary"),
             (TwoHandCombinationOptions.SubtrahendOneStepBigger | TwoHandCombinationOptions.SubtrahendOneStepSmaller,
                 "−±1", "Change subtraction by one", "5−2 ↔ 5−3; 8−6 ↔ 8−7"),
-            (TwoHandCombinationOptions.Difference, "−", "Difference", "Move the smaller interval"));
+            (TwoHandCombinationOptions.Difference, "−", "Attach small part to other edge", "Move the same part across the whole"));
         AddGroup(body, "Parts and halves", current,
             (TwoHandCombinationOptions.Split, "◐", "Complementary parts", "Keep the whole; change the part"),
             (TwoHandCombinationOptions.SplitJump, "⌇", "Split a jump", "One jump becomes two"),
-            (TwoHandCombinationOptions.Half, "½", "Half", "Full/full → full/half"),
+            (TwoHandCombinationOptions.Half, "½", "Half", "Full + lower half → full + upper half"),
             (TwoHandCombinationOptions.MoreThanHalf | TwoHandCombinationOptions.LessThanHalf,
                 "≈", "Around half", "Whole + half → one above or below half"),
             (TwoHandCombinationOptions.HalfOfHalf, "¼", "Half of half", "Continue from half to quarter"));
