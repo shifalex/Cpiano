@@ -2396,8 +2396,11 @@ namespace GestureSample.Maui.Models
                     break;
                 case 16: // A standalone half task.
                     int halfWholeSize = RandomEvenCombinationSize(random, rows);
-                    first = ((0, halfWholeSize - 1), (0, halfWholeSize - 1));
-                    second = ((0, (halfWholeSize / 2) - 1),
+                    // Keep the whole fixed while the other hand transfers the exact
+                    // half from the lower part to the upper part of that same whole.
+                    first = ((0, halfWholeSize - 1),
+                             (0, (halfWholeSize / 2) - 1));
+                    second = ((0, halfWholeSize - 1),
                               (halfWholeSize / 2, halfWholeSize - 1));
                     break;
                 case 17: // Increase only the subtrahend: 5-2 -> 5-3, 8-6 -> 8-7.
@@ -3179,11 +3182,11 @@ namespace GestureSample.Maui.Models
         public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
         {
             TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
-            TwoHandCombinationOptions.Associativity => "ASSOCIATIVITY",
+            TwoHandCombinationOptions.Associativity => "MOVE THE SHARED BOUNDARY",
             TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
             TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
             TwoHandCombinationOptions.FlipAdditionSubtraction => "LARGE ± SMALL",
-            TwoHandCombinationOptions.Difference => "DIFFERENCE",
+            TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
             TwoHandCombinationOptions.Half => "HALF",
