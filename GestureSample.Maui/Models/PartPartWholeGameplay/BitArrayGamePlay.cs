@@ -55,6 +55,7 @@ namespace GestureSample.Maui.Models
         private bool[]? _sequenceMemorizeSecondPinch;
         private bool _sequenceMemorizeGenerateSecond;
         private bool _sequenceMemorizeCurrentIsFirst;
+        private TwoHandCombinationOptions _twoHandCombinationKind;
         public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
         private int _currentStagedArrowStepIndex;
         private int _completedStagedArrowCycles;
@@ -2268,16 +2269,50 @@ namespace GestureSample.Maui.Models
             // Do not generate the two "gap" families (2 and 7). In those
             // combinations one hand starts above the other hand's endpoint with
             // two or more unused rows between them, which is not a valid Stage 5.1 prompt.
-            int[] allowedCombinations = { 0, 1, 3, 4, 5, 6, 8 };
-            int combination = allowedCombinations[random.Next(allowedCombinations.Length)];
+            (int Case, TwoHandCombinationOptions Option)[] allCombinations =
+            {
+                (0, TwoHandCombinationOptions.Commutativity),
+                (1, TwoHandCombinationOptions.Associativity),
+                (3, TwoHandCombinationOptions.ResizeUpper),
+                (4, TwoHandCombinationOptions.ResizeLowerAttached),
+                (5, TwoHandCombinationOptions.FlipAdditionSubtraction),
+                (6, TwoHandCombinationOptions.Difference),
+                (8, TwoHandCombinationOptions.Split),
+                (9, TwoHandCombinationOptions.SplitJump),
+                (10, TwoHandCombinationOptions.MoreThanHalf),
+                (11, TwoHandCombinationOptions.HalfOfHalf),
+                (12, TwoHandCombinationOptions.LittleSmaller),
+                (13, TwoHandCombinationOptions.MuchSmaller),
+                (14, TwoHandCombinationOptions.LittleBigger),
+                (15, TwoHandCombinationOptions.MuchBigger)
+                ,(16, TwoHandCombinationOptions.Half),
+                (17, TwoHandCombinationOptions.SubtrahendOneStepBigger),
+                (18, TwoHandCombinationOptions.IncreaseLowerByOne),
+                (19, TwoHandCombinationOptions.IncreaseUpperByOne),
+                (20, TwoHandCombinationOptions.DecreaseLowerByOne),
+                (21, TwoHandCombinationOptions.DecreaseUpperByOne),
+                (22, TwoHandCombinationOptions.SubtrahendOneStepSmaller),
+                (23, TwoHandCombinationOptions.LessThanHalf)
+            };
+            TwoHandCombinationOptions enabled = Config.KeyboardConfig.TwoHandCombinationOptions;
+            var allowedCombinations = allCombinations.Where(item => enabled.HasFlag(item.Option)).ToArray();
+            if (allowedCombinations.Length == 0)
+                allowedCombinations = allCombinations;
+            var selectedCombination = allowedCombinations[random.Next(allowedCombinations.Length)];
+            int combination = selectedCombination.Case;
+            _twoHandCombinationKind = selectedCombination.Option;
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) first;
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) second;
 
             switch (combination)
             {
                 case 0: // Commutativity: exchange the order of two touching intervals.
-                    first = ((0, 2), (3, 4));
-                    second = ((2, 4), (0, 1));
+                    int firstSize = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, Math.Min(5, rows - 1)) : 3;
+                    int secondSize = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, Math.Min(5, rows - firstSize + 1)) : 2;
+                    first = ((0, firstSize - 1), (firstSize, firstSize + secondSize - 1));
+                    second = ((secondSize, firstSize + secondSize - 1), (0, secondSize - 1));
                     break;
                 case 1: // Associativity: move the shared boundary.
                     first = ((0, 2), (3, 5));
@@ -2298,14 +2333,25 @@ namespace GestureSample.Maui.Models
                     second = ((0, 3), (4, 5));
                     break;
                 case 5: // Addition/subtraction: flip the upper interval across boundary.
-                    first = ((0, 2), (3, 5));
-                    second = ((0, 2), (0, 2));
-                    if (random.Next(2) == 0)
+                    // Keep the operands visibly different: LARGE +/- SMALL. The small
+                    // interval is mirrored across the shared boundary into the top of
+                    // the large interval, rather than collapsing both to equal grips.
+                    (int baseSize, int flippedSize) = ChooseLargeSmallFlipSizes(random, rows);
+                    first = ((0, baseSize - 1), (baseSize, baseSize + flippedSize - 1));
+                    second = ((0, baseSize - 1), (baseSize - flippedSize, baseSize - 1));
+                    // The upward subtraction -> addition flip is useful vocabulary,
+                    // but it is deliberately rare because the downward mirror is the
+                    // clearer primary presentation.
+                    if (random.Next(100) < 15)
                         (first, second) = (second, first);
                     break;
                 case 6: // Subtraction/difference: move smaller from top to bottom contact.
-                    first = ((0, 4), (3, 4));
-                    second = ((0, 4), (0, 1));
+                    (int differenceWhole, int differencePart) =
+                        ChooseDifferenceSizes(random, rows);
+                    first = ((0, differenceWhole - 1),
+                             (differenceWhole - differencePart, differenceWhole - 1));
+                    second = ((0, differenceWhole - 1),
+                              (0, differencePart - 1));
                     if (random.Next(2) == 0)
                         (first, second) = (second, first);
                     break;
@@ -2313,11 +2359,101 @@ namespace GestureSample.Maui.Models
                     first = ((0, 2), (5, 6));
                     second = ((0, 3), (5, 6));
                     break;
-                default: // Split: full interval stays; other hand changes part grips.
+                case 8: // Split: full interval stays; other hand changes part grips.
                     first = ((0, rows - 1), (0, 2));
                     second = ((0, rows - 1), (3, rows - 1));
                     if (random.Next(2) == 0)
                         (first, second) = (second, first);
+                    break;
+                case 9: // Decompose one complete jump into two touching jumps.
+                    int jumpSize = RandomCombinationSize(random, rows, 5, 8);
+                    int split = random.Next(2, jumpSize - 1);
+                    first = ((0, jumpSize - 1), (0, jumpSize - 1));
+                    second = ((0, split - 1), (split, jumpSize - 1));
+                    break;
+                case 10: // Whole + half -> whole + one more than half.
+                    int wholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
+                    first = ((0, wholeSize - 1), (0, (wholeSize / 2) - 1));
+                    second = ((0, wholeSize - 1), (0, wholeSize / 2));
+                    break;
+                case 11: // Whole + half -> quarter + half.
+                    int divisibleSize = RandomMultipleOfFourCount(random, rows);
+                    first = ((0, divisibleSize - 1), (0, (divisibleSize / 2) - 1));
+                    second = ((0, (divisibleSize / 4) - 1),
+                              (0, (divisibleSize / 2) - 1));
+                    break;
+                case 12:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: false, much: false);
+                    break;
+                case 13:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: false, much: true);
+                    break;
+                case 14:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: true, much: false);
+                    break;
+                case 15:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: true, much: true);
+                    break;
+                case 16: // A standalone half task.
+                    int halfWholeSize = RandomEvenCombinationSize(random, rows);
+                    first = ((0, halfWholeSize - 1), (0, halfWholeSize - 1));
+                    second = ((0, (halfWholeSize / 2) - 1),
+                              (halfWholeSize / 2, halfWholeSize - 1));
+                    break;
+                case 17: // Increase only the subtrahend: 5-2 -> 5-3, 8-6 -> 8-7.
+                    int minuend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(5, rows + 1)
+                        : Math.Min(5, rows);
+                    int subtrahend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, minuend - 1)
+                        : 2;
+                    first = ((0, minuend - 1), (minuend - subtrahend, minuend - 1));
+                    second = ((0, minuend - 1), (minuend - subtrahend - 1, minuend - 1));
+                    break;
+                case 18: // Grow the lower addend; translate the unchanged upper addend.
+                    (int lowerSize, int upperSize) = ChooseTouchingAddendSizes(random, rows);
+                    first = ((0, lowerSize - 1), (lowerSize, lowerSize + upperSize - 1));
+                    second = ((0, lowerSize), (lowerSize + 1, lowerSize + upperSize));
+                    break;
+                case 19: // Grow only the upper addend, away from the shared boundary.
+                    (int fixedLowerSize, int growingUpperSize) = ChooseTouchingAddendSizes(random, rows);
+                    first = ((0, fixedLowerSize - 1),
+                             (fixedLowerSize, fixedLowerSize + growingUpperSize - 1));
+                    second = ((0, fixedLowerSize - 1),
+                              (fixedLowerSize, fixedLowerSize + growingUpperSize));
+                    break;
+                case 20: // Shrink lower; translate the unchanged upper part downward.
+                    (int shrinkingLowerSize, int unchangedUpperSize) =
+                        ChooseTouchingAddendSizes(random, rows, minimumLower: 3);
+                    first = ((0, shrinkingLowerSize - 1),
+                             (shrinkingLowerSize, shrinkingLowerSize + unchangedUpperSize - 1));
+                    second = ((0, shrinkingLowerSize - 2),
+                              (shrinkingLowerSize - 1, shrinkingLowerSize + unchangedUpperSize - 2));
+                    break;
+                case 21: // Shrink only the upper addend by one at its top edge.
+                    (int unchangedLowerSize, int shrinkingUpperSize) =
+                        ChooseTouchingAddendSizes(random, rows, minimumUpper: 3);
+                    first = ((0, unchangedLowerSize - 1),
+                             (unchangedLowerSize, unchangedLowerSize + shrinkingUpperSize - 1));
+                    second = ((0, unchangedLowerSize - 1),
+                              (unchangedLowerSize, unchangedLowerSize + shrinkingUpperSize - 2));
+                    break;
+                case 22: // Reduce only the subtrahend: 5-3 -> 5-2, 8-7 -> 8-6.
+                    int fixedMinuend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(5, rows + 1)
+                        : Math.Min(5, rows);
+                    int shrinkingSubtrahend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(3, fixedMinuend)
+                        : 3;
+                    first = ((0, fixedMinuend - 1),
+                             (fixedMinuend - shrinkingSubtrahend, fixedMinuend - 1));
+                    second = ((0, fixedMinuend - 1),
+                              (fixedMinuend - shrinkingSubtrahend + 1, fixedMinuend - 1));
+                    break;
+                default: // Whole + half -> whole + one less than half.
+                    int lessWholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
+                    first = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 1));
+                    second = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 2));
                     break;
             }
 
@@ -2337,8 +2473,192 @@ namespace GestureSample.Maui.Models
                 second = (second.Right, second.Left);
             }
 
-            return (BuildTwoHandCombinationBits(first.Left, first.Right, rows),
-                    BuildTwoHandCombinationBits(second.Left, second.Right, rows));
+            // Stage 5.1 normally begins at the physical bottom so its intervals have
+            // a stable origin. A future dedicated exercise may explicitly opt out.
+            if (Config.KeyboardConfig.RandomizeTwoHandCombinationSizes &&
+                !Config.KeyboardConfig.AnchorTwoHandCombinationsToBottom)
+            {
+                int usedRows = new[] { first.Left.Upper, first.Right.Upper, second.Left.Upper, second.Right.Upper }.Max() + 1;
+                int offset = rows > usedRows ? random.Next(0, rows - usedRows + 1) : 0;
+                if (offset > 0)
+                {
+                    first = (ShiftInterval(first.Left, offset), ShiftInterval(first.Right, offset));
+                    second = (ShiftInterval(second.Left, offset), ShiftInterval(second.Right, offset));
+                }
+            }
+
+            bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
+            bool[] secondBits = BuildTwoHandCombinationBits(second.Left, second.Right, rows);
+            return (firstBits, secondBits);
+        }
+
+        private static (int Lower, int Upper) ShiftInterval((int Lower, int Upper) interval, int amount) =>
+            (interval.Lower + amount, interval.Upper + amount);
+
+        private int RandomCombinationSize(Random random, int rows, int minimum, int preferredMaximum)
+        {
+            int maximum = Math.Max(minimum, Math.Min(rows, preferredMaximum));
+            return Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                ? random.Next(minimum, maximum + 1)
+                : minimum;
+        }
+
+        private (int Large, int Small) ChooseLargeSmallFlipSizes(Random random, int rows)
+        {
+            if (!Config.KeyboardConfig.RandomizeTwoHandCombinationSizes)
+                return (4, 2);
+
+            List<(int Large, int Small)> candidates = new();
+            for (int large = 3; large <= rows - 2; large++)
+            for (int small = 2; small < large && large + small <= rows; small++)
+                candidates.Add((large, small));
+
+            List<(int Large, int Small)> notMinimum = candidates.Where(pair => pair.Small > 2).ToList();
+            List<(int Large, int Small)> pool = notMinimum.Count > 0 && random.Next(100) < 70
+                ? notMinimum
+                : candidates;
+            return pool.Count > 0 ? pool[random.Next(pool.Count)] : (4, 2);
+        }
+
+        private (int Whole, int Part) ChooseDifferenceSizes(Random random, int rows)
+        {
+            if (!Config.KeyboardConfig.RandomizeTwoHandCombinationSizes)
+                return (Math.Min(5, rows), 3);
+
+            int whole = random.Next(5, rows + 1);
+            int minimumLargePart = Math.Max(3, (int)Math.Ceiling(whole / 2d));
+            // Most prompts use a substantial part, so Difference is not experienced
+            // merely as repeated subtraction of the smallest available grip.
+            int part = random.Next(100) < 75
+                ? random.Next(minimumLargePart, whole)
+                : random.Next(2, whole);
+            return (whole, part);
+        }
+
+        private (int Lower, int Upper) ChooseTouchingAddendSizes(
+            Random random, int rows, int minimumLower = 2, int minimumUpper = 2)
+        {
+            List<(int Lower, int Upper)> candidates = new();
+            for (int lower = minimumLower; lower <= rows - minimumUpper; lower++)
+            for (int upper = minimumUpper; lower + upper + 1 <= rows; upper++)
+                candidates.Add((lower, upper));
+            if (candidates.Count == 0)
+                return (2, 2);
+            return Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                ? candidates[random.Next(candidates.Count)]
+                : candidates[0];
+        }
+
+        private int RandomEvenCombinationSize(Random random, int rows, int minimum = 4)
+        {
+            int[] sizes = Enumerable.Range(minimum, Math.Max(1, rows - minimum + 1))
+                .Where(size => size <= rows && size % 2 == 0).ToArray();
+            return sizes.Length == 0 ? Math.Min(rows, minimum) :
+                sizes[Config.KeyboardConfig.RandomizeTwoHandCombinationSizes ? random.Next(sizes.Length) : 0];
+        }
+
+        private int RandomMultipleOfFourCount(Random random, int rows)
+        {
+            int[] sizes = Enumerable.Range(8, Math.Max(1, rows - 7)).Where(size => size <= rows && size % 4 == 0).ToArray();
+            return sizes.Length == 0 ? 8 :
+                sizes[Config.KeyboardConfig.RandomizeTwoHandCombinationSizes ? random.Next(sizes.Length) : 0];
+        }
+
+        private (((int Lower, int Upper) Left, (int Lower, int Upper) Right) First,
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) Second)
+            BuildRelativeSizePair(Random random, int rows, bool grow, bool much)
+        {
+            int difference = much
+                ? random.Next(2, Math.Max(3, Math.Min(5, rows - 1)))
+                : 1;
+            int smaller = random.Next(2, Math.Max(3, rows - difference + 1));
+            int larger = Math.Min(rows, smaller + difference);
+            int equalSize = grow ? smaller : larger;
+            int transformedSize = grow ? larger : smaller;
+
+            // Every comparative prompt now starts from two equal full jumps. On the
+            // second frame only the right jump changes, making the direction and the
+            // amount of the transformation unambiguous.
+            var equal = (Left: (Lower: 0, Upper: equalSize - 1),
+                         Right: (Lower: 0, Upper: equalSize - 1));
+            var transformed = (Left: (Lower: 0, Upper: equalSize - 1),
+                               Right: (Lower: 0, Upper: transformedSize - 1));
+            return (equal, transformed);
+        }
+
+        public bool ShouldAnimateTwoHandCombinationTransition() =>
+            Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+            Config.KeyboardConfig.AnimateTwoHandCombinations &&
+            _twoHandCombinationKind is TwoHandCombinationOptions.Commutativity or
+                TwoHandCombinationOptions.FlipAdditionSubtraction;
+
+        public bool IsTwoHandCombinationFlip() =>
+            _twoHandCombinationKind == TwoHandCombinationOptions.FlipAdditionSubtraction;
+
+        public int[] GetTwoHandCombinationAnimationTargets()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            int[] targets = Enumerable.Range(0, first.Length).ToArray();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                for (int i = 0; i < Math.Min(from.Length, to.Length); i++)
+                    targets[from[i]] = to[i];
+            }
+            return targets;
+        }
+
+        public bool[] GetTwoHandCombinationFlipMovingBits()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            int[] targets = GetTwoHandCombinationAnimationTargets();
+            bool[] moving = new bool[first.Length];
+            for (int index = 0; index < first.Length && index < targets.Length; index++)
+                moving[index] = first[index] && targets[index] != index;
+            return moving;
+        }
+
+        public bool[] GetTwoHandCombinationFlipFixedBits()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            int[] targets = GetTwoHandCombinationAnimationTargets();
+            bool[] fixedBits = new bool[first.Length];
+            for (int index = 0; index < first.Length && index < targets.Length; index++)
+                fixedBits[index] = first[index] && targets[index] == index;
+            return fixedBits;
+        }
+
+        public int GetTwoHandCombinationFlipAxisSourceIndex()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                if (!from.SequenceEqual(to) && from.Length > 0)
+                    return from.Average() < to.Average() ? from.Max() : from.Min();
+            }
+            return -1;
+        }
+
+        public bool IsTwoHandCombinationFlipAxisAboveSource()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                if (!from.SequenceEqual(to) && from.Length > 0 && to.Length > 0)
+                    return from.Average() < to.Average();
+            }
+            return false;
         }
 
         private static bool HasDisallowedTwoHandCombinationGap(
@@ -2821,7 +3141,11 @@ namespace GestureSample.Maui.Models
         protected override ExerciseGenerationResult CreateGeneratedExerciseResult()
         {
             string actionText = CurrentOperation.ToDString();
-            if (CurrentOperation == Operation.Copy &&
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true)
+            {
+                actionText = GetTwoHandCombinationActionText();
+            }
+            else if (CurrentOperation == Operation.Copy &&
                 Config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
             {
                 actionText = string.Empty;
@@ -2851,6 +3175,33 @@ namespace GestureSample.Maui.Models
                 ActionText = actionText
             };
         }
+
+        public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
+        {
+            TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
+            TwoHandCombinationOptions.Associativity => "ASSOCIATIVITY",
+            TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
+            TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
+            TwoHandCombinationOptions.FlipAdditionSubtraction => "LARGE ± SMALL",
+            TwoHandCombinationOptions.Difference => "DIFFERENCE",
+            TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
+            TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
+            TwoHandCombinationOptions.Half => "HALF",
+            TwoHandCombinationOptions.MoreThanHalf => "A LITTLE MORE THAN HALF",
+            TwoHandCombinationOptions.LessThanHalf => "A LITTLE LESS THAN HALF",
+            TwoHandCombinationOptions.HalfOfHalf => "HALF OF HALF",
+            TwoHandCombinationOptions.LittleSmaller => "A LITTLE SMALLER",
+            TwoHandCombinationOptions.MuchSmaller => "MUCH SMALLER",
+            TwoHandCombinationOptions.LittleBigger => "A LITTLE BIGGER",
+            TwoHandCombinationOptions.MuchBigger => "MUCH BIGGER",
+            TwoHandCombinationOptions.SubtrahendOneStepBigger => "SUBTRACT ONE MORE",
+            TwoHandCombinationOptions.IncreaseLowerByOne => "INCREASE LOWER BY ONE",
+            TwoHandCombinationOptions.IncreaseUpperByOne => "INCREASE UPPER BY ONE",
+            TwoHandCombinationOptions.DecreaseLowerByOne => "DECREASE LOWER BY ONE",
+            TwoHandCombinationOptions.DecreaseUpperByOne => "DECREASE UPPER BY ONE",
+            TwoHandCombinationOptions.SubtrahendOneStepSmaller => "SUBTRACT ONE LESS",
+            _ => string.Empty
+        };
 
         private string BuildPrecisionShiftActionText()
         {
