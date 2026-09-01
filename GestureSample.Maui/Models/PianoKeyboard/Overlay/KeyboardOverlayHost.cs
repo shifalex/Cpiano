@@ -1389,7 +1389,12 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
 
         }
 
-        public async Task AnimateToTargetsAsync(bool[] bits, int[] targets, uint ms = 2200)
+        public async Task AnimateToTargetsAsync(
+            bool[] bits,
+            int[] targets,
+            uint ms = 2200,
+            Color? color = null,
+            uint settleMs = 900)
         {
             TrySyncOverlay();
             bits ??= Array.Empty<bool>();
@@ -1401,12 +1406,13 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             _patternDrawable.AnimTargets = targets;
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
-            _patternDrawable.AnimColor = Colors.Yellow;
+            _patternDrawable.AnimColor = color ?? Colors.Yellow;
             Keyboard.InvalidateOverlay();
 
             await RunProgressAnimation("PrecisionShiftTutorial", ms,
                 progress => _patternDrawable.AnimProgress = progress);
-            await Task.Delay(900);
+            if (settleMs > 0)
+                await Task.Delay((int)settleMs);
             ClearAnim();
         }
 
@@ -1513,7 +1519,11 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             bool[] bits,
             int[] targets,
             int sourceIndexAdjacentToAxis,
-            uint ms = 2200)
+            uint ms = 2200,
+            bool axisAboveSource = false,
+            Color? color = null,
+            uint settleMs = 900,
+            bool showLeadIn = true)
         {
             TrySyncOverlay();
             bits ??= Array.Empty<bool>();
@@ -1523,13 +1533,15 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                 return;
 
             int columns = Math.Max(1, Keyboard.Config?.KeysInRow ?? 1);
-            int lowerNeighborIndex = sourceIndexAdjacentToAxis - columns;
-            if (lowerNeighborIndex < 0 || lowerNeighborIndex >= _keyRects.Length)
+            int neighborIndex = sourceIndexAdjacentToAxis + (axisAboveSource ? columns : -columns);
+            if (neighborIndex < 0 || neighborIndex >= _keyRects.Length)
                 return;
 
             RectF sourceRect = _keyRects[sourceIndexAdjacentToAxis];
-            RectF lowerRect = _keyRects[lowerNeighborIndex];
-            _patternDrawable.FlipAxisY = (sourceRect.Bottom + lowerRect.Top) / 2f;
+            RectF neighborRect = _keyRects[neighborIndex];
+            _patternDrawable.FlipAxisY = axisAboveSource
+                ? (sourceRect.Top + neighborRect.Bottom) / 2f
+                : (sourceRect.Bottom + neighborRect.Top) / 2f;
             _patternDrawable.FlipAxisLeft = sourceRect.Left - 4;
             _patternDrawable.FlipAxisRight = sourceRect.Right + 4;
             _patternDrawable.ShowFlipAxis = true;
@@ -1538,13 +1550,15 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             _patternDrawable.AnimTargets = targets;
             _patternDrawable.AnimProgress = 0f;
             _patternDrawable.CursorIndex = null;
-            _patternDrawable.AnimColor = Colors.Yellow;
+            _patternDrawable.AnimColor = color ?? Colors.Yellow;
             Keyboard.InvalidateOverlay();
 
-            await Task.Delay(ScaleDuration(ms, 0.18));
+            if (showLeadIn)
+                await Task.Delay(ScaleDuration(ms, 0.18));
             await RunProgressAnimation("PrecisionShiftFlipTutorial", ms,
                 progress => _patternDrawable.AnimProgress = progress);
-            await Task.Delay(900);
+            if (settleMs > 0)
+                await Task.Delay((int)settleMs);
             ClearAnim();
         }
 

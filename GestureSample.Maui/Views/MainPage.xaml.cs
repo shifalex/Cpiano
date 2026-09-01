@@ -3006,18 +3006,30 @@ namespace GestureSample.Views
             return config;
         }
 
-        private static GameConfig CreateTwoHandCombinationMemorizeConfig()
+        internal static GameConfig CreateTwoHandCombinationMemorizeConfig(
+            TwoHandCombinationOptions combinations = TwoHandCombinationOptions.Default,
+            bool animate = true,
+            bool randomizeSizes = true,
+            int rows = 8,
+            int memorizeSeconds = 2)
         {
             GameConfig config = CreatePrecisionCopyConfig(
                 "Two hands combination memorize",
                 bothHands: true,
                 copyOtherHand: false,
                 transformative: false);
-            config.KeyboardConfig.Rows = Math.Max(7, GetExpandedPrecisionRows());
-            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
+            config.KeyboardConfig.Rows = combinations.HasFlag(TwoHandCombinationOptions.HalfOfHalf)
+                ? Math.Clamp(Math.Max(8, rows), 8, 12)
+                : Math.Clamp(rows, 7, 12);
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 5);
             config.KeyboardConfig.SecondsPressingToAnswer = 1;
             config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
             config.KeyboardConfig.IsTwoHandCombinationMemorize = true;
+            config.KeyboardConfig.TwoHandCombinationOptions = combinations == TwoHandCombinationOptions.None
+                ? TwoHandCombinationOptions.Default
+                : combinations;
+            config.KeyboardConfig.AnimateTwoHandCombinations = animate;
+            config.KeyboardConfig.RandomizeTwoHandCombinationSizes = randomizeSizes;
             config.Plan = null;
             return config;
         }

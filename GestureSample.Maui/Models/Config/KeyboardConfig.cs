@@ -395,6 +395,46 @@
         All = ShiftWhole | MoveLower | MoveUpper
     }
 
+    [Flags]
+    public enum TwoHandCombinationOptions
+    {
+        None = 0,
+        Commutativity = 1 << 0,
+        Associativity = 1 << 1,
+        ResizeUpper = 1 << 2,
+        ResizeLowerAttached = 1 << 3,
+        FlipAdditionSubtraction = 1 << 4,
+        Difference = 1 << 5,
+        Split = 1 << 6,
+        SplitJump = 1 << 7,
+        NearHalf = 1 << 8,
+        HalfOfHalf = 1 << 9,
+        LittleSmaller = 1 << 10,
+        MuchSmaller = 1 << 11,
+        LittleBigger = 1 << 12,
+        MuchBigger = 1 << 13,
+        Half = 1 << 14,
+        SubtrahendOneStepBigger = 1 << 15,
+        IncreaseLowerByOne = 1 << 16,
+        IncreaseUpperByOne = 1 << 17,
+        DecreaseLowerByOne = 1 << 18,
+        DecreaseUpperByOne = 1 << 19,
+        SubtrahendOneStepSmaller = 1 << 20,
+        MoreThanHalf = 1 << 21,
+        LessThanHalf = 1 << 22,
+        Default = Associativity | FlipAdditionSubtraction | Difference | Split | Half |
+                  MoreThanHalf | LessThanHalf |
+                  SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
+                  IncreaseLowerByOne | DecreaseLowerByOne |
+                  IncreaseUpperByOne | DecreaseUpperByOne,
+        All = Commutativity | Associativity | ResizeUpper | ResizeLowerAttached |
+              FlipAdditionSubtraction | Difference | Split | SplitJump |
+              HalfOfHalf | LittleSmaller | MuchSmaller | LittleBigger | MuchBigger | Half |
+              SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
+              IncreaseLowerByOne | IncreaseUpperByOne | DecreaseLowerByOne | DecreaseUpperByOne |
+              MoreThanHalf | LessThanHalf
+    }
+
     public class KeyboardConfig
     {
         public void NormalizeWeightedLayout()
@@ -440,6 +480,10 @@
         public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
         public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
         public bool IsTwoHandCombinationMemorize { get; set; } = false;
+        public TwoHandCombinationOptions TwoHandCombinationOptions { get; set; } = TwoHandCombinationOptions.Default;
+        public bool AnimateTwoHandCombinations { get; set; } = true;
+        public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
+        public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
         public bool AllowImmediateCorrectPrecisionAnswer { get; set; } = false;
         public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;

@@ -2155,8 +2155,35 @@ namespace GestureSample.Views.Tests
                                     if (showFullSequence)
                                     {
                                         await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
-                                        _taskMainHost.SetStaticBits(
-                                            memorizeGamePlay.GetSequenceMemorizeSecondPreview());
+                                        if (memorizeGamePlay.ShouldAnimateTwoHandCombinationTransition())
+                                        {
+                                            bool[] firstPreview = memorizeGamePlay.GetSequenceMemorizeFirstPreview();
+                                            _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                                            if (memorizeGamePlay.IsTwoHandCombinationFlip())
+                                            {
+                                                _taskMainHost.SetStaticBits(
+                                                    memorizeGamePlay.GetTwoHandCombinationFlipFixedBits());
+                                                await _taskMainHost.AnimateFlipAcrossAxisAsync(
+                                                    memorizeGamePlay.GetTwoHandCombinationFlipMovingBits(),
+                                                    memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                                    memorizeGamePlay.GetTwoHandCombinationFlipAxisSourceIndex(),
+                                                    240u,
+                                                    memorizeGamePlay.IsTwoHandCombinationFlipAxisAboveSource(),
+                                                    Colors.DarkOrange,
+                                                    settleMs: 0,
+                                                    showLeadIn: false);
+                                            }
+                                            else
+                                            {
+                                                await _taskMainHost.AnimateToTargetsAsync(
+                                                    firstPreview,
+                                                    memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                                    240u,
+                                                    Colors.DarkOrange,
+                                                    settleMs: 0);
+                                            }
+                                        }
+                                        _taskMainHost.SetStaticBits(memorizeGamePlay.GetSequenceMemorizeSecondPreview());
                                         await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
                                     }
                                     else if (!_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
@@ -4213,7 +4240,9 @@ namespace GestureSample.Views.Tests
             {
                 _lblAction.IsVisible = true;
                 _logicalColorActionLayout.IsVisible = false;
-                _lblAction.Text = gp.CurrentOperation.ToDString();
+                _lblAction.Text = _config.KeyboardConfig?.IsTwoHandCombinationMemorize == true
+                    ? gp.GetTwoHandCombinationActionText()
+                    : gp.CurrentOperation.ToDString();
                 return;
             }
 
@@ -6897,6 +6926,37 @@ namespace GestureSample.Views.Tests
                     keyboardControlBar.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
                     grid.Add(keyboardControlBar);
                     Grid.SetRow(keyboardControlBar, 1);
+
+                    if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                    {
+                        // This is a page-level overlay, not part of the status row or
+                        // keyboard layout. It therefore consumes no measure space and
+                        // cannot change the keyboard's width or height.
+                        Button settingsButton = new()
+                        {
+                            Text = "⚙",
+                            FontSize = 21,
+                            WidthRequest = 44,
+                            HeightRequest = 44,
+                            Padding = 0,
+                            CornerRadius = 22,
+                            BackgroundColor = Color.FromArgb("#FFF2DF"),
+                            TextColor = Color.FromArgb("#A94F16"),
+                            BorderColor = Color.FromArgb("#F2C48D"),
+                            BorderWidth = 1,
+                            HorizontalOptions = LayoutOptions.End,
+                            VerticalOptions = LayoutOptions.Start,
+                            Margin = new Thickness(0, 12, 12, 0),
+                            ZIndex = 1001,
+                            AutomationId = "Stage51SettingsButton"
+                        };
+                        settingsButton.Clicked += async (_, _) =>
+                            await Navigation.PushAsync(new GestureSample.Views.TwoHandCombinationSetupPage(
+                                _config.KeyboardConfig, this));
+                        grid.Add(settingsButton);
+                        Grid.SetRow(settingsButton, 0);
+                        Grid.SetRowSpan(settingsButton, grid.RowDefinitions.Count);
+                    }
                 }
 
                 if (CanShowAnswerTimeTuner())
