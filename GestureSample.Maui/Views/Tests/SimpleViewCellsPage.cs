@@ -7030,7 +7030,11 @@ namespace GestureSample.Views.Tests
                     VerticalOptions = LayoutOptions.Start,
                     HeightRequest = 34,
                     Margin = new Thickness(8, 10, 8, 0),
-                    ZIndex = 999
+                    ZIndex = 999,
+                    // Only visible header controls consume taps; the wide empty
+                    // centre passes through to the keyboard.
+                    InputTransparent = true,
+                    CascadeInputTransparent = false
                 };
 
                 HorizontalStackLayout leftOverlayButtons = new()
@@ -7921,6 +7925,10 @@ namespace GestureSample.Views.Tests
             {
                 WidthRequest = sliderPanelWidth + controlGap + controlsWidth,
                 VerticalOptions = LayoutOptions.Center,
+                // Let the translated container's empty area pass through to the
+                // right-hand keys; its visible child controls remain interactive.
+                InputTransparent = true,
+                CascadeInputTransparent = false,
                 ColumnSpacing = 0,
                 ColumnDefinitions =
                 {
