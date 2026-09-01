@@ -56,6 +56,9 @@ namespace GestureSample.Maui.Models
         private bool _sequenceMemorizeGenerateSecond;
         private bool _sequenceMemorizeCurrentIsFirst;
         private TwoHandCombinationOptions _twoHandCombinationKind;
+        private bool[]? _pendingHalfDerivedFirst;
+        private bool[]? _pendingHalfDerivedSecond;
+        private TwoHandCombinationOptions _pendingHalfDerivedKind;
         public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
         private int _currentStagedArrowStepIndex;
         private int _completedStagedArrowCycles;
@@ -2266,6 +2269,15 @@ namespace GestureSample.Maui.Models
         private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random)
         {
             int rows = Math.Max(7, Config.KeyboardConfig.Rows);
+            if (_pendingHalfDerivedFirst != null && _pendingHalfDerivedSecond != null)
+            {
+                bool[] firstPending = _pendingHalfDerivedFirst;
+                bool[] secondPending = _pendingHalfDerivedSecond;
+                _pendingHalfDerivedFirst = null;
+                _pendingHalfDerivedSecond = null;
+                _twoHandCombinationKind = _pendingHalfDerivedKind;
+                return (firstPending, secondPending);
+            }
             // Do not generate the two "gap" families (2 and 7). In those
             // combinations one hand starts above the other hand's endpoint with
             // two or more unused rows between them, which is not a valid Stage 5.1 prompt.
@@ -2492,7 +2504,43 @@ namespace GestureSample.Maui.Models
 
             bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
             bool[] secondBits = BuildTwoHandCombinationBits(second.Left, second.Right, rows);
+            if (_twoHandCombinationKind is TwoHandCombinationOptions.MoreThanHalf or
+                TwoHandCombinationOptions.LessThanHalf or
+                TwoHandCombinationOptions.HalfOfHalf)
+            {
+                // A half-derived idea is never introduced cold. First perform HALF
+                // with the very same whole size and physical hand assignment. Queue
+                // the requested transformation as the immediately following task.
+                _pendingHalfDerivedFirst = firstBits.ToArray();
+                _pendingHalfDerivedSecond = secondBits.ToArray();
+                _pendingHalfDerivedKind = _twoHandCombinationKind;
+                _twoHandCombinationKind = TwoHandCombinationOptions.Half;
+                return (firstBits, BuildUpperHalfQuestion(firstBits));
+            }
             return (firstBits, secondBits);
+        }
+
+        private static bool[] BuildUpperHalfQuestion(bool[] fullAndLowerHalf)
+        {
+            const int columns = 2;
+            bool[] result = fullAndLowerHalf.ToArray();
+            int[][] active = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, result.Length)
+                    .Where(index => index % columns == column && result[index]).ToArray())
+                .ToArray();
+            int halfColumn = active[0].Max() - active[0].Min() < active[1].Max() - active[1].Min()
+                ? 0
+                : 1;
+            int fullColumn = 1 - halfColumn;
+            int fullLowerRow = active[fullColumn].Min() / columns;
+            int fullUpperRow = active[fullColumn].Max() / columns;
+            int fullRows = fullUpperRow - fullLowerRow + 1;
+
+            for (int index = halfColumn; index < result.Length; index += columns)
+                result[index] = false;
+            result[((fullLowerRow + (fullRows / 2)) * columns) + halfColumn] = true;
+            result[(fullUpperRow * columns) + halfColumn] = true;
+            return result;
         }
 
         private static (int Lower, int Upper) ShiftInterval((int Lower, int Upper) interval, int amount) =>
