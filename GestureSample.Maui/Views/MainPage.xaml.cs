@@ -3012,7 +3012,7 @@ namespace GestureSample.Views
             bool randomizeSizes = true,
             int rows = 8,
             int memorizeSeconds = 2,
-            bool readInstructionAloud = false,
+            bool readInstructionAloud = true,
             bool askOnlyTarget = false,
             TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive)
         {

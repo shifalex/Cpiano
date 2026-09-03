@@ -52,7 +52,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
                 "±1↓", "Change lower by one", "5+2 ↔ 6+2"),
             (TwoHandCombinationOptions.IncreaseUpperByOne | TwoHandCombinationOptions.DecreaseUpperByOne,
                 "±1↑", "Change upper by one", "5+2 ↔ 5+3"),
-            (TwoHandCombinationOptions.FlipAdditionSubtraction, "±", "Large ± small", "Mirror across the boundary"),
+            (TwoHandCombinationOptions.FlipAdditionSubtraction, "±", "Large +/− small", "Large + to − small, or large − to + small"),
             (TwoHandCombinationOptions.SubtrahendOneStepBigger | TwoHandCombinationOptions.SubtrahendOneStepSmaller,
                 "−±1", "Change subtraction by one", "5−2 ↔ 5−3; 8−6 ↔ 8−7"),
             (TwoHandCombinationOptions.Difference, "−", "Attach small part to other edge", "Move the same part across the whole"));
@@ -76,7 +76,15 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             HeightRequest = 56, CornerRadius = 18, BackgroundColor = Accent, TextColor = Colors.White,
             FontSize = 17, FontAttributes = FontAttributes.Bold };
         save.Clicked += async (_, _) => await SaveAsync(warning);
-        body.Add(warning); body.Add(save);
+        body.Add(warning);
+        if (exercisePage is SimpleViewCellsPage)
+        {
+            Button applyLive = new() { Text = "Apply without restarting", HeightRequest = 52, CornerRadius = 18,
+                BackgroundColor = Soft, TextColor = Accent, FontAttributes = FontAttributes.Bold };
+            applyLive.Clicked += async (_, _) => await ApplyLiveAsync(warning);
+            body.Add(applyLive);
+        }
+        body.Add(save);
         Content = new ScrollView { Content = body };
         UpdateSummary();
     }
@@ -166,6 +174,29 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             Navigation.InsertPageBefore(replacement, this); Navigation.RemovePage(_exercisePage); await Navigation.PopAsync();
         }
         else await Navigation.PushAsync(replacement);
+    }
+
+    private async Task ApplyLiveAsync(Label warning)
+    {
+        if (_exercisePage is not SimpleViewCellsPage exercise)
+            return;
+
+        TwoHandCombinationOptions selected = _choices.Where(x => x.Value.IsChecked)
+            .Aggregate(TwoHandCombinationOptions.None, (value, x) => value | x.Key);
+        if (selected == TwoHandCombinationOptions.None) { warning.IsVisible = true; return; }
+        int rows = (int)Math.Round(_rows.Value);
+        if (!exercise.CanApplyTwoHandCombinationRowsWithoutRestart(rows))
+        {
+            await DisplayAlert("Restart required",
+                "Changing the number-line height requires ‘Apply and restart Stage 5.1’. Other settings can be applied without restarting.",
+                "OK");
+            return;
+        }
+
+        exercise.ApplyTwoHandCombinationSettings(selected, _animate.IsChecked, _vary.IsChecked,
+            (int)Math.Round(_seconds.Value), _readAloud.IsChecked, _askOnlyTarget.IsChecked,
+            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex));
+        await Navigation.PopAsync();
     }
 
     private void SetAll(bool value) { foreach (CheckBox c in _choices.Values) c.IsChecked = value; UpdateSummary(); }
