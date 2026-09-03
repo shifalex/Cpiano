@@ -2530,9 +2530,15 @@ namespace GestureSample.Maui.Models
                 // with the very same whole size and physical hand assignment. Queue
                 // the requested transformation as the immediately following task.
                 bool[] otherHalf = BuildUpperHalfQuestion(firstBits);
-                _pendingHalfDerivedFirst = otherHalf.ToArray();
-                _pendingHalfDerivedSecond = BuildHalfDerivedTargetFromOtherHalf(
-                    otherHalf, _twoHandCombinationKind);
+                bool useLowerHalf = _twoHandCombinationKind is
+                    TwoHandCombinationOptions.MoreThanHalf or
+                    TwoHandCombinationOptions.LessThanHalf;
+                _pendingHalfDerivedFirst = useLowerHalf
+                    ? firstBits.ToArray()
+                    : otherHalf.ToArray();
+                _pendingHalfDerivedSecond = useLowerHalf
+                    ? secondBits.ToArray()
+                    : BuildHalfDerivedTargetFromOtherHalf(otherHalf, _twoHandCombinationKind);
                 _pendingHalfDerivedKind = _twoHandCombinationKind;
                 _twoHandCombinationKind = TwoHandCombinationOptions.Half;
                 return (firstBits, otherHalf);
@@ -3299,8 +3305,8 @@ namespace GestureSample.Maui.Models
             TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
             TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
             TwoHandCombinationOptions.FlipAdditionSubtraction => _twoHandCombinationFlipToAddition
-                ? "LARGE − TO + SMALL"
-                : "LARGE + TO − SMALL",
+                ? "Large-small, to Large+small"
+                : "Large+small, to Large-small",
             TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",

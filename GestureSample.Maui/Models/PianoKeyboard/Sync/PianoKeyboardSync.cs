@@ -216,7 +216,7 @@ namespace GestureSample.Maui.Models
             if (!IsReadySequenceFinalCandidate())
                 return double.PositiveInfinity;
 
-            return 0.5;
+            return 0.15;
         }
 
         protected override async Task OnKeyStateChangedAsync(bool isDown)
