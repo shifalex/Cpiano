@@ -484,6 +484,8 @@
         public bool AnimateTwoHandCombinations { get; set; } = true;
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
+        public bool ReadTwoHandCombinationInstructionAloud { get; set; } = false;
+        public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
         public bool AllowImmediateCorrectPrecisionAnswer { get; set; } = false;
         public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;

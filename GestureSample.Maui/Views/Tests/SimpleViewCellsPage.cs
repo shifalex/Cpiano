@@ -2097,6 +2097,12 @@ namespace GestureSample.Views.Tests
                 if (_config.UIQuestionType == UIQuestionType.LogicalKeyboards)
                 {
                     UpdateLogicalActionVisual((BitArrayGamePlay)_gamePlay);
+                    if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                        _config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud)
+                    {
+                        _ = SpeakTwoHandCombinationInstructionAsync(
+                            ((BitArrayGamePlay)_gamePlay).GetTwoHandCombinationActionText());
+                    }
                     if (_config.UsesCombinedLogicalKeyboard)
                     {
 
@@ -2155,43 +2161,53 @@ namespace GestureSample.Views.Tests
                                     if (showFullSequence)
                                     {
                                         await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
-                                        if (memorizeGamePlay.ShouldAnimateTwoHandCombinationTransition())
+                                        if (_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
                                         {
-                                            bool[] firstPreview = memorizeGamePlay.GetSequenceMemorizeFirstPreview();
-                                            _taskMainHost.SetStaticBits(Array.Empty<bool>());
-                                            if (memorizeGamePlay.IsTwoHandCombinationFlip())
-                                            {
-                                                _taskMainHost.SetStaticBits(
-                                                    memorizeGamePlay.GetTwoHandCombinationFlipFixedBits());
-                                                await _taskMainHost.AnimateFlipAcrossAxisAsync(
-                                                    memorizeGamePlay.GetTwoHandCombinationFlipMovingBits(),
-                                                    memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
-                                                    memorizeGamePlay.GetTwoHandCombinationFlipAxisSourceIndex(),
-                                                    240u,
-                                                    memorizeGamePlay.IsTwoHandCombinationFlipAxisAboveSource(),
-                                                    Colors.DarkOrange,
-                                                    settleMs: 0,
-                                                    showLeadIn: false);
-                                            }
-                                            else
-                                            {
-                                                await _taskMainHost.AnimateToTargetsAsync(
-                                                    firstPreview,
-                                                    memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
-                                                    240u,
-                                                    Colors.DarkOrange,
-                                                    settleMs: 0);
-                                            }
+                                            // The initial state is the prompt in this mode. Keep it
+                                            // visible and ask the learner to produce the target.
+                                            memorizeGamePlay.AdvanceSequenceMemorizeToLastResponse();
                                         }
-                                        _taskMainHost.SetStaticBits(memorizeGamePlay.GetSequenceMemorizeSecondPreview());
-                                        await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
+                                        else
+                                        {
+                                            if (memorizeGamePlay.ShouldAnimateTwoHandCombinationTransition())
+                                            {
+                                                bool[] firstPreview = memorizeGamePlay.GetSequenceMemorizeFirstPreview();
+                                                _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                                                if (memorizeGamePlay.IsTwoHandCombinationFlip())
+                                                {
+                                                    _taskMainHost.SetStaticBits(
+                                                        memorizeGamePlay.GetTwoHandCombinationFlipFixedBits());
+                                                    await _taskMainHost.AnimateFlipAcrossAxisAsync(
+                                                        memorizeGamePlay.GetTwoHandCombinationFlipMovingBits(),
+                                                        memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                                        memorizeGamePlay.GetTwoHandCombinationFlipAxisSourceIndex(),
+                                                        240u,
+                                                        memorizeGamePlay.IsTwoHandCombinationFlipAxisAboveSource(),
+                                                        Colors.DarkOrange,
+                                                        settleMs: 0,
+                                                        showLeadIn: false);
+                                                }
+                                                else
+                                                {
+                                                    await _taskMainHost.AnimateToTargetsAsync(
+                                                        firstPreview,
+                                                        memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                                        240u,
+                                                        Colors.DarkOrange,
+                                                        settleMs: 0);
+                                                }
+                                            }
+                                            _taskMainHost.SetStaticBits(memorizeGamePlay.GetSequenceMemorizeSecondPreview());
+                                            await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
+                                        }
                                     }
                                     else if (!_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
                                     {
                                         await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
                                     }
 
-                                    _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                                    if (!_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
+                                        _taskMainHost.SetStaticBits(Array.Empty<bool>());
                                     // Sequence presentation is not a tutorial overlay.
                                     // Explicitly clear every possible blocker before
                                     // enabling multi-touch input on Android tablets.
@@ -4384,6 +4400,22 @@ namespace GestureSample.Views.Tests
             _syncToolbarStatusController.Detach();
             base.OnDisappearing();
         }
+
+        private static async Task SpeakTwoHandCombinationInstructionAsync(string instruction)
+        {
+            if (string.IsNullOrWhiteSpace(instruction))
+                return;
+
+            try
+            {
+                await TextToSpeech.Default.SpeakAsync(instruction);
+            }
+            catch (Exception ex)
+            {
+                // Missing or disabled speech services must not interrupt the exercise.
+                Debug.WriteLine($"[Stage 5.1 speech] Could not read instruction: {ex}");
+            }
+        }
         private void InitializeGamePlay()
         {
             _gamePlay = CreateGamePlay();
@@ -5039,7 +5071,10 @@ namespace GestureSample.Views.Tests
             }
             finally
             {
-                host.SetStaticBits(Array.Empty<bool>());
+                host.SetStaticBits(
+                    _config.KeyboardConfig.AskOnlyTwoHandCombinationTarget
+                        ? gamePlay.GetSequenceMemorizeFirstPreview()
+                        : Array.Empty<bool>());
                 if (useAndroidInputBlock)
                 {
                     if (_pianoKeyboard is PianoKeyboardSync syncKeyboard)

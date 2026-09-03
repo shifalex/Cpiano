@@ -3011,7 +3011,9 @@ namespace GestureSample.Views
             bool animate = true,
             bool randomizeSizes = true,
             int rows = 8,
-            int memorizeSeconds = 2)
+            int memorizeSeconds = 2,
+            bool readInstructionAloud = false,
+            bool askOnlyTarget = false)
         {
             GameConfig config = CreatePrecisionCopyConfig(
                 "Two hands combination memorize",
@@ -3030,6 +3032,8 @@ namespace GestureSample.Views
                 : combinations;
             config.KeyboardConfig.AnimateTwoHandCombinations = animate;
             config.KeyboardConfig.RandomizeTwoHandCombinationSizes = randomizeSizes;
+            config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
+            config.KeyboardConfig.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
             config.Plan = null;
             return config;
         }
