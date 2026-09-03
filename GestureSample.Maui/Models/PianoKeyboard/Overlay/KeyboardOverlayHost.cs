@@ -281,7 +281,7 @@ namespace GestureSample.Maui.Models
                     return;
 
                 int columns = Math.Max(1, KeyboardColumns);
-                canvas.StrokeColor = Colors.Red;
+                canvas.StrokeColor = Color.FromArgb("#D65345");
                 canvas.StrokeSize = 5;
                 canvas.StrokeLineCap = LineCap.Round;
 
@@ -439,7 +439,7 @@ namespace GestureSample.Maui.Models
                 if (!ShowFlipAxis)
                     return;
 
-                canvas.StrokeColor = Colors.Red;
+                canvas.StrokeColor = Color.FromArgb("#D65345");
                 canvas.StrokeSize = 3;
                 canvas.StrokeLineCap = LineCap.Round;
                 canvas.DrawLine(FlipAxisLeft, FlipAxisY, FlipAxisRight, FlipAxisY);
