@@ -577,6 +577,7 @@ namespace GestureSample.Views.Tests
         private Label _arrowEquationRightLabel;
         private Entry _arrowEquationAnswerEntry;
         private Label _lblAction;
+        private Label? _stage51TaskCounter;
         private GraphicsView _verticalLeftShiftInstruction;
         private GraphicsView _verticalRightShiftInstruction;
         private PrecisionShiftInstructionDrawable _verticalLeftShiftDrawable;
@@ -637,6 +638,7 @@ namespace GestureSample.Views.Tests
         private PPWObject _previousPPW = null;
         private string _previousActionText = string.Empty;
         private ExerciseGenerationResult? _lastGeneratedExercise;
+        private Action? _pendingTwoHandCombinationSettings;
         private bool _hasLoadedInitialExercise = false;
         private bool _isPageVisible;
         private int _consecutiveWrongAnswers = 0;
@@ -709,7 +711,17 @@ namespace GestureSample.Views.Tests
                 text += "\n";
             }
             _lblStatement.Text = text;
+            RefreshStage51TaskCounter();
 
+        }
+
+        private void RefreshStage51TaskCounter()
+        {
+            if (_stage51TaskCounter == null)
+                return;
+
+            int total = Math.Max(0, _config.NumberOfTasksToWin);
+            _stage51TaskCounter.Text = $"{Math.Min(_gamePlay._tasksMade, total)} / {total}";
         }
 
         private bool ShouldShowKeyboardSubmitButton()
@@ -4352,6 +4364,31 @@ namespace GestureSample.Views.Tests
             InitializeUI();
         }
 
+        public bool CanApplyTwoHandCombinationRowsWithoutRestart(int rows) =>
+            _config.KeyboardConfig?.Rows == rows;
+
+        public void ApplyTwoHandCombinationSettings(
+            TwoHandCombinationOptions combinations,
+            bool animate,
+            bool randomizeSizes,
+            int memorizeSeconds,
+            bool readInstructionAloud,
+            bool askOnlyTarget,
+            TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode)
+        {
+            _pendingTwoHandCombinationSettings = () =>
+            {
+                KeyboardConfig keyboard = _config.KeyboardConfig;
+                keyboard.TwoHandCombinationOptions = combinations;
+                keyboard.AnimateTwoHandCombinations = animate;
+                keyboard.RandomizeTwoHandCombinationSizes = randomizeSizes;
+                keyboard.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 5);
+                keyboard.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
+                keyboard.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
+                keyboard.TwoHandMagnitudeVocabularyMode = magnitudeVocabularyMode;
+            };
+        }
+
         private void InitializeStatusLightIcons()
         {
             _statusLight1.Content = _statusLight1Icon;
@@ -4962,6 +4999,9 @@ namespace GestureSample.Views.Tests
 
         private async Task GenerateNextExerciseAsync()
         {
+            _pendingTwoHandCombinationSettings?.Invoke();
+            _pendingTwoHandCombinationSettings = null;
+
             if (_correctExpressionLabel != null)
                 _correctExpressionLabel.IsVisible = false;
 
@@ -7005,6 +7045,35 @@ namespace GestureSample.Views.Tests
                         grid.Add(settingsButton);
                         Grid.SetRow(settingsButton, 0);
                         Grid.SetRowSpan(settingsButton, grid.RowDefinitions.Count);
+
+                        _stage51TaskCounter = new Label
+                        {
+                            FontSize = 14,
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = Color.FromArgb("#A94F16"),
+                            HorizontalTextAlignment = TextAlignment.Center,
+                            VerticalTextAlignment = TextAlignment.Center
+                        };
+                        Border taskCounter = new()
+                        {
+                            Content = _stage51TaskCounter,
+                            WidthRequest = 72,
+                            HeightRequest = 44,
+                            Padding = 0,
+                            Stroke = Color.FromArgb("#F2C48D"),
+                            StrokeThickness = 1,
+                            StrokeShape = new RoundRectangle { CornerRadius = 22 },
+                            BackgroundColor = Color.FromArgb("#FFF2DF"),
+                            HorizontalOptions = LayoutOptions.Start,
+                            VerticalOptions = LayoutOptions.Start,
+                            Margin = new Thickness(12, 12, 0, 0),
+                            InputTransparent = true,
+                            ZIndex = 1001
+                        };
+                        RefreshStage51TaskCounter();
+                        grid.Add(taskCounter);
+                        Grid.SetRow(taskCounter, 0);
+                        Grid.SetRowSpan(taskCounter, grid.RowDefinitions.Count);
                     }
                 }
 

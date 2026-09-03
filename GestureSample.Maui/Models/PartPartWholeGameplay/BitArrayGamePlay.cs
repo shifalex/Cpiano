@@ -58,6 +58,7 @@ namespace GestureSample.Maui.Models
         private TwoHandCombinationOptions _twoHandCombinationKind;
         private bool _twoHandCombinationBoundaryMovesUp;
         private int _twoHandCombinationMagnitude = 1;
+        private bool _twoHandCombinationFlipToAddition;
         private bool[]? _pendingHalfDerivedFirst;
         private bool[]? _pendingHalfDerivedSecond;
         private TwoHandCombinationOptions _pendingHalfDerivedKind;
@@ -2364,11 +2365,15 @@ namespace GestureSample.Maui.Models
                     (int baseSize, int flippedSize) = ChooseLargeSmallFlipSizes(random, rows);
                     first = ((0, baseSize - 1), (baseSize, baseSize + flippedSize - 1));
                     second = ((0, baseSize - 1), (baseSize - flippedSize, baseSize - 1));
+                    _twoHandCombinationFlipToAddition = false;
                     // The upward subtraction -> addition flip is useful vocabulary,
                     // but it is deliberately rare because the downward mirror is the
                     // clearer primary presentation.
                     if (random.Next(100) < 15)
+                    {
                         (first, second) = (second, first);
+                        _twoHandCombinationFlipToAddition = true;
+                    }
                     break;
                 case 6: // Subtraction/difference: move smaller from top to bottom contact.
                     (int differenceWhole, int differencePart) =
@@ -2524,11 +2529,13 @@ namespace GestureSample.Maui.Models
                 // A half-derived idea is never introduced cold. First perform HALF
                 // with the very same whole size and physical hand assignment. Queue
                 // the requested transformation as the immediately following task.
-                _pendingHalfDerivedFirst = firstBits.ToArray();
-                _pendingHalfDerivedSecond = secondBits.ToArray();
+                bool[] otherHalf = BuildUpperHalfQuestion(firstBits);
+                _pendingHalfDerivedFirst = otherHalf.ToArray();
+                _pendingHalfDerivedSecond = BuildHalfDerivedTargetFromOtherHalf(
+                    otherHalf, _twoHandCombinationKind);
                 _pendingHalfDerivedKind = _twoHandCombinationKind;
                 _twoHandCombinationKind = TwoHandCombinationOptions.Half;
-                return (firstBits, BuildUpperHalfQuestion(firstBits));
+                return (firstBits, otherHalf);
             }
             return (firstBits, secondBits);
         }
@@ -2553,6 +2560,50 @@ namespace GestureSample.Maui.Models
                 result[index] = false;
             result[((fullLowerRow + (fullRows / 2)) * columns) + halfColumn] = true;
             result[(fullUpperRow * columns) + halfColumn] = true;
+            return result;
+        }
+
+        private static bool[] BuildHalfDerivedTargetFromOtherHalf(
+            bool[] fullAndUpperHalf,
+            TwoHandCombinationOptions kind)
+        {
+            const int columns = 2;
+            bool[] result = fullAndUpperHalf.ToArray();
+            int[][] activeRows = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, result.Length)
+                    .Where(index => index % columns == column && result[index])
+                    .Select(index => index / columns).ToArray())
+                .ToArray();
+            int halfColumn = activeRows[0].Max() - activeRows[0].Min() <
+                             activeRows[1].Max() - activeRows[1].Min() ? 0 : 1;
+            int fullColumn = 1 - halfColumn;
+            int fullLower = activeRows[fullColumn].Min();
+            int fullUpper = activeRows[fullColumn].Max();
+            int halfLower = activeRows[halfColumn].Min();
+
+            int changedColumn = kind == TwoHandCombinationOptions.HalfOfHalf
+                ? fullColumn
+                : halfColumn;
+            for (int index = changedColumn; index < result.Length; index += columns)
+                result[index] = false;
+
+            if (kind == TwoHandCombinationOptions.MoreThanHalf)
+            {
+                result[(Math.Max(fullLower, halfLower - 1) * columns) + halfColumn] = true;
+                result[(fullUpper * columns) + halfColumn] = true;
+            }
+            else if (kind == TwoHandCombinationOptions.LessThanHalf)
+            {
+                result[(Math.Min(fullUpper, halfLower + 1) * columns) + halfColumn] = true;
+                result[(fullUpper * columns) + halfColumn] = true;
+            }
+            else
+            {
+                int quarterRows = Math.Max(1, (fullUpper - fullLower + 1) / 4);
+                result[((fullUpper - quarterRows + 1) * columns) + fullColumn] = true;
+                result[(fullUpper * columns) + fullColumn] = true;
+            }
+
             return result;
         }
 
@@ -3247,7 +3298,9 @@ namespace GestureSample.Maui.Models
             TwoHandCombinationOptions.Associativity => BuildSharedBoundaryActionText(),
             TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
             TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
-            TwoHandCombinationOptions.FlipAdditionSubtraction => "LARGE ± SMALL",
+            TwoHandCombinationOptions.FlipAdditionSubtraction => _twoHandCombinationFlipToAddition
+                ? "LARGE − TO + SMALL"
+                : "LARGE + TO − SMALL",
             TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",

@@ -491,7 +491,7 @@
         public bool AnimateTwoHandCombinations { get; set; } = true;
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
-        public bool ReadTwoHandCombinationInstructionAloud { get; set; } = false;
+        public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;
         public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
         public TwoHandMagnitudeVocabularyMode TwoHandMagnitudeVocabularyMode { get; set; } =
             TwoHandMagnitudeVocabularyMode.Intuitive;
