@@ -12,6 +12,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     private readonly Dictionary<TwoHandCombinationOptions, CheckBox> _choices = new();
     private readonly CheckBox _animate = new();
     private readonly CheckBox _vary = new();
+    private readonly CheckBox _readAloud = new();
+    private readonly CheckBox _askOnlyTarget = new();
     private readonly Slider _rows = new() { Minimum = 7, Maximum = 12 };
     private readonly Slider _seconds = new() { Minimum = 1, Maximum = 5 };
     private readonly Label _summary = new();
@@ -27,6 +29,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         BackgroundColor = Color.FromArgb("#FFF9F4");
         _animate.IsChecked = current.AnimateTwoHandCombinations;
         _vary.IsChecked = current.RandomizeTwoHandCombinationSizes;
+        _readAloud.IsChecked = current.ReadTwoHandCombinationInstructionAloud;
+        _askOnlyTarget.IsChecked = current.AskOnlyTwoHandCombinationTarget;
         _rows.Value = Math.Clamp(current.Rows, 7, 12);
         _seconds.Value = Math.Clamp(current.PrecisionPinchMemorizeDelaySeconds, 1, 5);
 
@@ -35,7 +39,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         body.Add(Toolbar());
         AddGroup(body, "Transformations", current,
             (TwoHandCombinationOptions.Commutativity, "⇄", "Commutativity", "Synchronous exchange"),
-            (TwoHandCombinationOptions.Associativity, "⌁", "Move the shared boundary", "Keep the whole; shift where the parts meet"),
+            (TwoHandCombinationOptions.Associativity, "⌁", "Move shared boundary up/down", "Keep the whole; shift where the parts meet"),
             (TwoHandCombinationOptions.ResizeUpper, "↥", "Resize upper", "Change the upper hand"),
             (TwoHandCombinationOptions.ResizeLowerAttached, "↕", "Resize attached", "Keep the other hand connected"),
             (TwoHandCombinationOptions.IncreaseLowerByOne | TwoHandCombinationOptions.DecreaseLowerByOne,
@@ -49,7 +53,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         AddGroup(body, "Parts and halves", current,
             (TwoHandCombinationOptions.Split, "◐", "Complementary parts", "Keep the whole; change the part"),
             (TwoHandCombinationOptions.SplitJump, "⌇", "Split a jump", "One jump becomes two"),
-            (TwoHandCombinationOptions.Half, "½", "Half", "Full + lower half → full + upper half"),
+            (TwoHandCombinationOptions.Half, "½", "One half, other half", "Full + one half → full + the other half"),
             (TwoHandCombinationOptions.MoreThanHalf | TwoHandCombinationOptions.LessThanHalf,
                 "≈", "Around half", "Whole + half → one above or below half"),
             (TwoHandCombinationOptions.HalfOfHalf, "¼", "Half of half", "Continue from half to quarter"));
@@ -128,6 +132,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         v.Add(new Label { Text = "Practice feel", FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = Ink });
         v.Add(ToggleRow("Quick movement animations", "Normal question color, no tutorial pause", _animate));
         v.Add(ToggleRow("Vary interval sizes", "Keep the bottom anchor while changing proportions", _vary));
+        v.Add(ToggleRow("Read instruction aloud", "Speak the transformation shown above the keyboard", _readAloud));
+        v.Add(ToggleRow("Ask only for the target", "Keep the initial state visible while answering", _askOnlyTarget));
         v.Add(SliderRow("Number-line height", _rows, x => $"{x:0} rows"));
         v.Add(SliderRow("Memorize each position", _seconds, x => $"{x:0} sec"));
         return new Border { Margin = new Thickness(0, 9, 0, 0), Padding = 17, BackgroundColor = Colors.White,
@@ -140,7 +146,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             .Aggregate(TwoHandCombinationOptions.None, (value, x) => value | x.Key);
         if (selected == TwoHandCombinationOptions.None) { warning.IsVisible = true; return; }
         GameConfig config = MainPage.CreateTwoHandCombinationMemorizeConfig(selected, _animate.IsChecked,
-            _vary.IsChecked, (int)Math.Round(_rows.Value), (int)Math.Round(_seconds.Value));
+            _vary.IsChecked, (int)Math.Round(_rows.Value), (int)Math.Round(_seconds.Value),
+            _readAloud.IsChecked, _askOnlyTarget.IsChecked);
         SimpleViewCellsPage replacement = new(config);
         if (_exercisePage != null && Navigation.NavigationStack.Contains(_exercisePage))
         {

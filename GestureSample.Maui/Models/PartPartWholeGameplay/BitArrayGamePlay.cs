@@ -56,6 +56,7 @@ namespace GestureSample.Maui.Models
         private bool _sequenceMemorizeGenerateSecond;
         private bool _sequenceMemorizeCurrentIsFirst;
         private TwoHandCombinationOptions _twoHandCombinationKind;
+        private bool _twoHandCombinationBoundaryMovesUp;
         private bool[]? _pendingHalfDerivedFirst;
         private bool[]? _pendingHalfDerivedSecond;
         private TwoHandCombinationOptions _pendingHalfDerivedKind;
@@ -2328,7 +2329,8 @@ namespace GestureSample.Maui.Models
                     break;
                 case 1: // Associativity: move the shared boundary.
                     first = ((0, 2), (3, 5));
-                    second = random.Next(2) == 0
+                    _twoHandCombinationBoundaryMovesUp = random.Next(2) == 0;
+                    second = _twoHandCombinationBoundaryMovesUp
                         ? ((0, 3), (4, 5))
                         : ((0, 1), (2, 5));
                     break;
@@ -2641,7 +2643,8 @@ namespace GestureSample.Maui.Models
             Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
             Config.KeyboardConfig.AnimateTwoHandCombinations &&
             _twoHandCombinationKind is TwoHandCombinationOptions.Commutativity or
-                TwoHandCombinationOptions.FlipAdditionSubtraction;
+                TwoHandCombinationOptions.FlipAdditionSubtraction or
+                TwoHandCombinationOptions.Difference;
 
         public bool IsTwoHandCombinationFlip() =>
             _twoHandCombinationKind == TwoHandCombinationOptions.FlipAdditionSubtraction;
@@ -3230,14 +3233,16 @@ namespace GestureSample.Maui.Models
         public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
         {
             TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
-            TwoHandCombinationOptions.Associativity => "MOVE THE SHARED BOUNDARY",
+            TwoHandCombinationOptions.Associativity => _twoHandCombinationBoundaryMovesUp
+                ? "MOVE SHARED BOUNDARY UP"
+                : "MOVE SHARED BOUNDARY DOWN",
             TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
             TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
             TwoHandCombinationOptions.FlipAdditionSubtraction => "LARGE ± SMALL",
             TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
-            TwoHandCombinationOptions.Half => "HALF",
+            TwoHandCombinationOptions.Half => "ONE HALF, OTHER HALF",
             TwoHandCombinationOptions.MoreThanHalf => "A LITTLE MORE THAN HALF",
             TwoHandCombinationOptions.LessThanHalf => "A LITTLE LESS THAN HALF",
             TwoHandCombinationOptions.HalfOfHalf => "HALF OF HALF",

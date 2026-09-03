@@ -208,7 +208,15 @@ namespace GestureSample.Maui.Models
             if (!_pianoConfig.IsPrecisionPinchSequenceMemorize)
                 return 0;
 
-            return IsReadySequenceFinalCandidate() ? 0.5 : double.PositiveInfinity;
+            // In target-only Stage 5.1 every non-empty grip is an attempt. Let the
+            // timer communicate that immediately, even before the target is correct.
+            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+                return 0;
+
+            if (!IsReadySequenceFinalCandidate())
+                return double.PositiveInfinity;
+
+            return 0.5;
         }
 
         protected override async Task OnKeyStateChangedAsync(bool isDown)
@@ -281,6 +289,9 @@ namespace GestureSample.Maui.Models
 
         protected override async Task<bool> OnBeforeKeyUpAsync()
         {
+            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+                return false;
+
             if (!IsReadySequenceFinalCandidate())
             {
                 return false;
@@ -299,6 +310,9 @@ namespace GestureSample.Maui.Models
 
         private bool TryShowIncorrectSequenceLastWithoutSubmission()
         {
+            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+                return false;
+
             if (!IsReadySequenceFinalCandidate() ||
                 _gamePlay.IsCloseEnough(this, allowedDifferences: 0))
             {
@@ -389,7 +403,9 @@ namespace GestureSample.Maui.Models
 
         private bool CanSubmitCurrentSequenceState()
         {
-            return !_pianoConfig.IsPrecisionPinchSequenceMemorize || IsReadySequenceFinalCandidate();
+            return !_pianoConfig.IsPrecisionPinchSequenceMemorize ||
+                   _pianoConfig.AskOnlyTwoHandCombinationTarget ||
+                   IsReadySequenceFinalCandidate();
         }
 
         private bool IsReadySequenceFinalCandidate()
@@ -432,6 +448,8 @@ namespace GestureSample.Maui.Models
                 return;
 
             _isChecking = false;
+            if (_pianoConfig.AskOnlyTwoHandCombinationTarget && IsWaitingForSequenceLast())
+                _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
             InputTransparent = false;
             if (timer != null && !timer.IsRunning)
                 timer.Start();
