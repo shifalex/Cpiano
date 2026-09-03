@@ -5250,23 +5250,37 @@ namespace GestureSample.Views.Tests
 
         private async Task PersistKeyboardQuestionDisplayMetadataAsync()
         {
+            bool isTwoHandCombination =
+                _config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                _gamePlay is BitArrayGamePlay;
             if (_keyboardQuestionRepository == null ||
                 !_isKeyboard ||
                 _config.KeyboardConfig == null ||
                 _config.KeyboardConfig.KeyboardOnlyForHelp ||
-                _gamePlay is BitArrayGamePlay ||
+                (_gamePlay is BitArrayGamePlay && !isTwoHandCombination) ||
                 _pianoKeyboard == null)
             {
                 return;
             }
 
-            bool[]? initialKeyboardState = TryGetInitialKeyboardStateForData();
+            // BitArrayGamePlay creates the base KeyboardQuestion asynchronously.
+            // Wait for that row before enriching it with the Stage 5.1 display data.
+            if (isTwoHandCombination && _lastGeneratedExercise?.PersistenceTask != null)
+                await _lastGeneratedExercise.PersistenceTask;
+
+            BitArrayGamePlay? combinationGamePlay = isTwoHandCombination
+                ? (BitArrayGamePlay)_gamePlay
+                : null;
+            bool[]? initialKeyboardState = combinationGamePlay?.GetSequenceMemorizeFirstPreview()
+                ?? TryGetInitialKeyboardStateForData();
             bool[]? questionKeyboard = _config.FromNumToNum ? initialKeyboardState?.ToArray() : null;
+            string? promptText = combinationGamePlay?.GetTwoHandCombinationActionText()
+                ?? BuildCurrentKeyboardQuestionPromptText();
 
             await _keyboardQuestionRepository.UpdatePendingDisplayMetadataAsync(
                 _gamePlay.GameId.ToString(),
                 _gamePlay._questionNumber,
-                BuildCurrentKeyboardQuestionPromptText(),
+                promptText,
                 _config.KeyboardConfig.ShowNumbersOnKeys,
                 _config.KeyboardConfig.WeightsArray?.ToArray(),
                 initialKeyboardState,

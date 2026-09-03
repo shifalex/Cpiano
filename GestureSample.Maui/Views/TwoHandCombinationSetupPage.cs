@@ -14,6 +14,11 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     private readonly CheckBox _vary = new();
     private readonly CheckBox _readAloud = new();
     private readonly CheckBox _askOnlyTarget = new();
+    private readonly Picker _magnitudeVocabulary = new()
+    {
+        Title = "Magnitude wording",
+        ItemsSource = new[] { "Intuitive", "By a little / by a lot", "By exact number" }
+    };
     private readonly Slider _rows = new() { Minimum = 7, Maximum = 12 };
     private readonly Slider _seconds = new() { Minimum = 1, Maximum = 5 };
     private readonly Label _summary = new();
@@ -31,6 +36,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         _vary.IsChecked = current.RandomizeTwoHandCombinationSizes;
         _readAloud.IsChecked = current.ReadTwoHandCombinationInstructionAloud;
         _askOnlyTarget.IsChecked = current.AskOnlyTwoHandCombinationTarget;
+        _magnitudeVocabulary.SelectedIndex = (int)current.TwoHandMagnitudeVocabularyMode;
         _rows.Value = Math.Clamp(current.Rows, 7, 12);
         _seconds.Value = Math.Clamp(current.PrecisionPinchMemorizeDelaySeconds, 1, 5);
 
@@ -134,6 +140,11 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         v.Add(ToggleRow("Vary interval sizes", "Keep the bottom anchor while changing proportions", _vary));
         v.Add(ToggleRow("Read instruction aloud", "Speak the transformation shown above the keyboard", _readAloud));
         v.Add(ToggleRow("Ask only for the target", "Keep the initial state visible while answering", _askOnlyTarget));
+        v.Add(new VerticalStackLayout { Spacing = 3, Children =
+        {
+            new Label { Text = "Magnitude vocabulary", FontAttributes = FontAttributes.Bold, TextColor = Ink },
+            _magnitudeVocabulary
+        }});
         v.Add(SliderRow("Number-line height", _rows, x => $"{x:0} rows"));
         v.Add(SliderRow("Memorize each position", _seconds, x => $"{x:0} sec"));
         return new Border { Margin = new Thickness(0, 9, 0, 0), Padding = 17, BackgroundColor = Colors.White,
@@ -147,7 +158,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         if (selected == TwoHandCombinationOptions.None) { warning.IsVisible = true; return; }
         GameConfig config = MainPage.CreateTwoHandCombinationMemorizeConfig(selected, _animate.IsChecked,
             _vary.IsChecked, (int)Math.Round(_rows.Value), (int)Math.Round(_seconds.Value),
-            _readAloud.IsChecked, _askOnlyTarget.IsChecked);
+            _readAloud.IsChecked, _askOnlyTarget.IsChecked,
+            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex));
         SimpleViewCellsPage replacement = new(config);
         if (_exercisePage != null && Navigation.NavigationStack.Contains(_exercisePage))
         {

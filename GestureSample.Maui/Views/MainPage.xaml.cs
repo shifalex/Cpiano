@@ -3013,7 +3013,8 @@ namespace GestureSample.Views
             int rows = 8,
             int memorizeSeconds = 2,
             bool readInstructionAloud = false,
-            bool askOnlyTarget = false)
+            bool askOnlyTarget = false,
+            TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive)
         {
             GameConfig config = CreatePrecisionCopyConfig(
                 "Two hands combination memorize",
@@ -3034,6 +3035,7 @@ namespace GestureSample.Views
             config.KeyboardConfig.RandomizeTwoHandCombinationSizes = randomizeSizes;
             config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
             config.KeyboardConfig.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
+            config.KeyboardConfig.TwoHandMagnitudeVocabularyMode = magnitudeVocabularyMode;
             config.Plan = null;
             return config;
         }

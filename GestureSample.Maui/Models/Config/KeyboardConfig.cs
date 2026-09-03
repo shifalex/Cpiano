@@ -435,6 +435,13 @@
               MoreThanHalf | LessThanHalf
     }
 
+    public enum TwoHandMagnitudeVocabularyMode
+    {
+        Intuitive = 0,
+        Qualitative = 1,
+        Numeric = 2
+    }
+
     public class KeyboardConfig
     {
         public void NormalizeWeightedLayout()
@@ -486,6 +493,8 @@
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
         public bool ReadTwoHandCombinationInstructionAloud { get; set; } = false;
         public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
+        public TwoHandMagnitudeVocabularyMode TwoHandMagnitudeVocabularyMode { get; set; } =
+            TwoHandMagnitudeVocabularyMode.Intuitive;
         public bool AllowImmediateCorrectPrecisionAnswer { get; set; } = false;
         public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
