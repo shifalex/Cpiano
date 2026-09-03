@@ -52,7 +52,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
                 "±1↓", "Change lower by one", "5+2 ↔ 6+2"),
             (TwoHandCombinationOptions.IncreaseUpperByOne | TwoHandCombinationOptions.DecreaseUpperByOne,
                 "±1↑", "Change upper by one", "5+2 ↔ 5+3"),
-            (TwoHandCombinationOptions.FlipAdditionSubtraction, "±", "Large +/− small", "Large + to − small, or large − to + small"),
+            (TwoHandCombinationOptions.FlipAdditionSubtraction, "±", "Large +/− small", "Large-small, to Large+small — or the reverse"),
             (TwoHandCombinationOptions.SubtrahendOneStepBigger | TwoHandCombinationOptions.SubtrahendOneStepSmaller,
                 "−±1", "Change subtraction by one", "5−2 ↔ 5−3; 8−6 ↔ 8−7"),
             (TwoHandCombinationOptions.Difference, "−", "Attach small part to other edge", "Move the same part across the whole"));

@@ -144,7 +144,7 @@ namespace GestureSample.Views.Tests
                     _btnAnswerTimePanel.IsEnabled = true;
                     _btnAnswerTimePanel.InputTransparent = false;
                     _btnAnswerTimePanel.Opacity = 1;
-                    _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
+                    RefreshAnswerTimePanelIcon();
                 }
 
                 if (_btnKeyboardSubmit != null && _btnKeyboardSubmit.IsVisible)
@@ -182,7 +182,7 @@ namespace GestureSample.Views.Tests
                 _btnAnswerTimePanel.IsEnabled = true;
                 _btnAnswerTimePanel.InputTransparent = false;
                 _btnAnswerTimePanel.Opacity = 1;
-                _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
+                RefreshAnswerTimePanelIcon();
             }
 
             if (_btnKeyboardSubmit != null)
@@ -676,6 +676,7 @@ namespace GestureSample.Views.Tests
         private readonly GameRepository _gameRepository;
         private bool _isApplyingAutoTune;
         private bool _hasManualAnswerTimeOverride;
+        private bool _hasStartedTwoHandNarration;
 
         //VerticalStackLayout _vsl;
         protected IDispatcherTimer timer;
@@ -714,6 +715,10 @@ namespace GestureSample.Views.Tests
             RefreshStage51TaskCounter();
 
         }
+
+        private bool UsesGrippingKeyboardDesign() =>
+            _config.KeyboardConfig?.IsPrecisionPinchExercise == true &&
+            _config.KeyboardConfig.IsVerticalPrecisionPinchExercise;
 
         private void RefreshStage51TaskCounter()
         {
@@ -931,6 +936,23 @@ namespace GestureSample.Views.Tests
                 InputTransparent = true
             };
 
+            if (UsesGrippingKeyboardDesign())
+            {
+                _customProgressFill.HeightRequest = 12;
+                _customProgressFill.StrokeShape = new RoundRectangle { CornerRadius = 6 };
+                _customProgressHost.Add(new Border
+                {
+                    HeightRequest = 12,
+                    Padding = 0,
+                    Stroke = Color.FromArgb("#D8C8B8"),
+                    StrokeThickness = 1,
+                    BackgroundColor = Color.FromArgb("#EEE4DA"),
+                    StrokeShape = new RoundRectangle { CornerRadius = 6 },
+                    HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Center,
+                    InputTransparent = true
+                });
+            }
             _customProgressHost.Add(_customProgressFill);
             _customProgressHost.SizeChanged += (_, _) => RefreshCustomProgressVisual();
         }
@@ -1052,6 +1074,7 @@ namespace GestureSample.Views.Tests
                                    !isFeedbackState &&
                                    !showTutorialStepCounter;
             bool showProgress = _pianoPressProgress != null &&
+                                _pianoPressProgress.Progress > 0 &&
                                 (!UsesCalmAttemptIndicator() || currentPressIsCorrect) &&
                                 !usesInlineCheck &&
                                 !isFeedbackState &&
@@ -1444,7 +1467,9 @@ namespace GestureSample.Views.Tests
             EnsureCalmAttemptIndicator();
 
             bool compactVerticalPrecision = _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true;
+            bool stage51 = UsesGrippingKeyboardDesign();
             double progressRowHeight = compactVerticalPrecision ? 50 : 55;
+            double progressVisualHeight = stage51 ? 12 : progressRowHeight;
             double statusWidth = compactVerticalPrecision ? 160 : 220;
             if (compactVerticalPrecision && _centerFeedbackBadge != null && _centerFeedbackBadgeLabel != null)
             {
@@ -1465,13 +1490,13 @@ namespace GestureSample.Views.Tests
             if (_customProgressHost != null)
             {
                 _customProgressHost.WidthRequest = statusWidth;
-                _customProgressHost.HeightRequest = progressRowHeight;
+                _customProgressHost.HeightRequest = progressVisualHeight;
                 statusActionHost.Add(_customProgressHost);
             }
             if (_pianoPressProgress != null)
                 _pianoPressProgress.WidthRequest = statusWidth;
             if (_customProgressFill != null)
-                _customProgressFill.HeightRequest = progressRowHeight;
+                _customProgressFill.HeightRequest = progressVisualHeight;
             if (_calmAttemptIndicator != null)
                 statusActionHost.Add(_calmAttemptIndicator);
             if (_centerFeedbackBadge != null)
@@ -1506,14 +1531,17 @@ namespace GestureSample.Views.Tests
                 _keyboardControlBar.IsVisible = shouldShowHostedKeyboard;
 
             double progressRowHeight = _config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true ? 50 : 55;
+            double progressVisualHeight = UsesGrippingKeyboardDesign()
+                ? 12
+                : progressRowHeight;
             if (_pianoPressProgress != null)
                 _pianoPressProgress.HeightRequest = progressRowHeight;
 
             if (_customProgressHost != null)
-                _customProgressHost.HeightRequest = progressRowHeight;
+                _customProgressHost.HeightRequest = progressVisualHeight;
 
             if (_customProgressFill != null)
-                _customProgressFill.HeightRequest = progressRowHeight;
+                _customProgressFill.HeightRequest = progressVisualHeight;
 
             RefreshStatusActionSlot();
             RefreshAnswerTimeTuner();
@@ -2113,7 +2141,8 @@ namespace GestureSample.Views.Tests
                         _config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud)
                     {
                         _ = SpeakTwoHandCombinationInstructionAsync(
-                            ((BitArrayGamePlay)_gamePlay).GetTwoHandCombinationActionText());
+                            ((BitArrayGamePlay)_gamePlay).GetTwoHandCombinationActionText(),
+                            delayFirstMission: true);
                     }
                     if (_config.UsesCombinedLogicalKeyboard)
                     {
@@ -2193,7 +2222,7 @@ namespace GestureSample.Views.Tests
                                                         memorizeGamePlay.GetTwoHandCombinationFlipMovingBits(),
                                                         memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
                                                         memorizeGamePlay.GetTwoHandCombinationFlipAxisSourceIndex(),
-                                                        240u,
+                                                        750u,
                                                         memorizeGamePlay.IsTwoHandCombinationFlipAxisAboveSource(),
                                                         Colors.DarkOrange,
                                                         settleMs: 0,
@@ -2204,7 +2233,7 @@ namespace GestureSample.Views.Tests
                                                     await _taskMainHost.AnimateToTargetsAsync(
                                                         firstPreview,
                                                         memorizeGamePlay.GetTwoHandCombinationAnimationTargets(),
-                                                        240u,
+                                                        750u,
                                                         Colors.DarkOrange,
                                                         settleMs: 0);
                                                 }
@@ -4438,14 +4467,26 @@ namespace GestureSample.Views.Tests
             base.OnDisappearing();
         }
 
-        private static async Task SpeakTwoHandCombinationInstructionAsync(string instruction)
+        private async Task SpeakTwoHandCombinationInstructionAsync(string instruction, bool delayFirstMission = false)
         {
             if (string.IsNullOrWhiteSpace(instruction))
                 return;
 
             try
             {
-                await TextToSpeech.Default.SpeakAsync(instruction);
+                if (delayFirstMission && !_hasStartedTwoHandNarration)
+                {
+                    _hasStartedTwoHandNarration = true;
+                    await Task.Delay(1000);
+                }
+
+                string spokenInstruction = instruction switch
+                {
+                    "Large+small, to Large-small" => "Large plus small to large minus small",
+                    "Large-small, to Large+small" => "Large minus small to large plus small",
+                    _ => instruction
+                };
+                await TextToSpeech.Default.SpeakAsync(spokenInstruction);
             }
             catch (Exception ex)
             {
@@ -6093,6 +6134,9 @@ namespace GestureSample.Views.Tests
                 return "⏱";
 
             int seconds = GetEffectiveAnswerTimeMagnitude(syncKeyboard);
+            if (UsesGrippingKeyboardDesign())
+                return $"⏱ {seconds}";
+
             return UsesWholeAnswerTimer(syncKeyboard)
                 ? $"Σ{seconds}"
                 : $"↺{seconds}";
@@ -6129,6 +6173,14 @@ namespace GestureSample.Views.Tests
             _btnAnswerTimePanel.Text = icon;
             _btnAnswerTimePanel.FontSize = icon.Length > 1 ? 11 : 14;
             _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
+            if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true)
+            {
+                Color activeColor = GetAnswerTimeActiveColor((PianoKeyboardSync)_pianoKeyboard);
+                _btnAnswerTimePanel.BackgroundColor = activeColor.WithAlpha(0.18f);
+                _btnAnswerTimePanel.TextColor = activeColor;
+                _btnAnswerTimePanel.BorderColor = activeColor.WithAlpha(0.72f);
+                _btnAnswerTimePanel.BorderWidth = 1;
+            }
             _btnAnswerTimePanel.Opacity = 1;
         }
 
@@ -6195,10 +6247,18 @@ namespace GestureSample.Views.Tests
             _answerTimeEnabledSwitch.IsToggled = isEnabled;
             _answerTimeValueLabel.Text = $"{seconds}s";
             _answerTimeModeLabel.Text = isWholeTimer
-                ? "Counts across whole answer"
-                : "Resets after each key press";
-            _answerTimeModeButton.Text = isWholeTimer ? "Whole Answer" : "After Last Key";
+                ? (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true
+                    ? "Starts after the first press"
+                    : "Counts across whole answer")
+                : (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true
+                    ? "Starts after the final press"
+                    : "Resets after each key press");
+            _answerTimeModeButton.Text = isWholeTimer
+                ? (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true ? "After First Press" : "Whole Answer")
+                : (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true ? "After Final Press" : "After Last Key");
             Color modeAccentColor = GetAnswerTimeActiveColor(syncKeyboard);
+            if (UsesGrippingKeyboardDesign())
+                _pianoPressProgress.ProgressColor = modeAccentColor;
             _answerTimeModeButton.BackgroundColor = modeAccentColor;
             _answerTimeModeButton.TextColor = Colors.White;
             _answerTimeEnabledSwitch.IsEnabled = true;
@@ -6579,6 +6639,33 @@ namespace GestureSample.Views.Tests
                 }
             };
 
+            if (UsesGrippingKeyboardDesign())
+            {
+                _answerTimeEnabledSwitch.OnColor = Color.FromArgb("#78834A");
+                _answerTimeMinusButton.BackgroundColor = Color.FromArgb("#F2E9DF");
+                _answerTimePlusButton.BackgroundColor = Color.FromArgb("#F2E9DF");
+                _answerTimeMinusButton.TextColor = Color.FromArgb("#49362E");
+                _answerTimePlusButton.TextColor = Color.FromArgb("#49362E");
+                _answerTimeValueLabel.TextColor = Color.FromArgb("#49362E");
+                _answerTimeModeLabel.TextColor = Color.FromArgb("#78685E");
+                centerValue.Stroke = Color.FromArgb("#D9C9BA");
+                centerValue.BackgroundColor = Color.FromArgb("#FCFAF7");
+                card.Stroke = Color.FromArgb("#D8C5B4");
+                card.BackgroundColor = Color.FromArgb("#F8F1EA");
+                card.Shadow = new Shadow
+                {
+                    Brush = Colors.Black.WithAlpha(0.12f),
+                    Offset = new Point(0, 5),
+                    Radius = 14
+                };
+                if (card.Content is VerticalStackLayout stack &&
+                    stack.Children.FirstOrDefault() is Grid titleRow &&
+                    titleRow.Children.OfType<Label>().FirstOrDefault() is Label title)
+                {
+                    title.TextColor = Color.FromArgb("#49362E");
+                }
+            }
+
             Grid.SetColumn(_answerTimeEnabledSwitch, 1);
             card.IsVisible = _isAnswerTimeTunerVisible;
             _answerTimeTunerCard = card;
@@ -6596,7 +6683,9 @@ namespace GestureSample.Views.Tests
             if (_isKeyboard && _config.KeyboardConfig.IsArrow) pianoHeight = 220;
             Grid grid = new()
             {
-                BackgroundColor = Colors.AntiqueWhite,
+                BackgroundColor = _config.KeyboardConfig?.IsTwoHandCombinationMemorize == true
+                    ? Colors.AntiqueWhite
+                    : Colors.AntiqueWhite,
                 RowDefinitions =
             {
                 new RowDefinition { Height = isVerticalPrecisionLayout ? GridLength.Auto : new GridLength(40, GridUnitType.Star) },
@@ -6613,7 +6702,9 @@ namespace GestureSample.Views.Tests
 
             BoxView pageBackground = new()
             {
-                Color = Colors.AntiqueWhite
+                Color = _config.KeyboardConfig?.IsTwoHandCombinationMemorize == true
+                    ? Colors.AntiqueWhite
+                    : Colors.AntiqueWhite
             };
             grid.Add(pageBackground);
             Grid.SetRowSpan(pageBackground, grid.RowDefinitions.Count);
@@ -7023,16 +7114,17 @@ namespace GestureSample.Views.Tests
                         // cannot change the keyboard's width or height.
                         Button settingsButton = new()
                         {
-                            Text = "⚙",
-                            FontSize = 21,
+                            Text = "⚙︎",
+                            FontSize = 22,
+                            CharacterSpacing = 0,
                             WidthRequest = 44,
                             HeightRequest = 44,
                             Padding = 0,
-                            CornerRadius = 22,
-                            BackgroundColor = Color.FromArgb("#FFF2DF"),
+                            CornerRadius = 0,
+                            BackgroundColor = Colors.Transparent,
                             TextColor = Color.FromArgb("#A94F16"),
-                            BorderColor = Color.FromArgb("#F2C48D"),
-                            BorderWidth = 1,
+                            BorderWidth = 0,
+                            Opacity = 0.62,
                             HorizontalOptions = LayoutOptions.End,
                             VerticalOptions = LayoutOptions.Start,
                             Margin = new Thickness(0, 12, 12, 0),
@@ -7060,10 +7152,10 @@ namespace GestureSample.Views.Tests
                             WidthRequest = 72,
                             HeightRequest = 44,
                             Padding = 0,
-                            Stroke = Color.FromArgb("#F2C48D"),
-                            StrokeThickness = 1,
+                            Stroke = Colors.Transparent,
+                            StrokeThickness = 0,
                             StrokeShape = new RoundRectangle { CornerRadius = 22 },
-                            BackgroundColor = Color.FromArgb("#FFF2DF"),
+                            BackgroundColor = Colors.Transparent,
                             HorizontalOptions = LayoutOptions.Start,
                             VerticalOptions = LayoutOptions.Start,
                             Margin = new Thickness(12, 12, 0, 0),
@@ -7121,15 +7213,68 @@ namespace GestureSample.Views.Tests
                     Margin = Thickness.Zero,
                     ZIndex = 999,
                 };
+                if (UsesGrippingKeyboardDesign())
+                {
+                    _btnHelp.BackgroundColor = Colors.Transparent;
+                    _btnHelp.TextColor = Color.FromArgb("#F3E8DE");
+                    _pianoPressProgress.ProgressColor = Color.FromArgb("#D46A24");
+                }
 
                 _btnHelp.Clicked += async (_, __) =>
                 {
                     if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
+                    if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                        _config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud &&
+                        _gamePlay is BitArrayGamePlay combinationGamePlay)
+                    {
+                        _ = SpeakTwoHandCombinationInstructionAsync(
+                            combinationGamePlay.GetTwoHandCombinationActionText());
+                    }
                     await MarkCurrentKeyboardQuestionTutorialUsedAsync();
                     if (_taskMainHost == null) return;
                     
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
+
+                    if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                        _config.KeyboardConfig.AnimateTwoHandCombinations &&
+                        _gamePlay is BitArrayGamePlay animatedGamePlay &&
+                        animatedGamePlay.ShouldAnimateTwoHandCombinationTransition())
+                    {
+                        _tutorialRunning = true;
+                        try
+                        {
+                            _taskMainHost.SetStaticBits(Array.Empty<bool>());
+                            if (animatedGamePlay.IsTwoHandCombinationFlip())
+                            {
+                                _taskMainHost.SetStaticBits(animatedGamePlay.GetTwoHandCombinationFlipFixedBits());
+                                await _taskMainHost.AnimateFlipAcrossAxisAsync(
+                                    animatedGamePlay.GetTwoHandCombinationFlipMovingBits(),
+                                    animatedGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                    animatedGamePlay.GetTwoHandCombinationFlipAxisSourceIndex(),
+                                    750u,
+                                    animatedGamePlay.IsTwoHandCombinationFlipAxisAboveSource(),
+                                    Colors.DarkOrange,
+                                    settleMs: 0,
+                                    showLeadIn: false);
+                            }
+                            else
+                            {
+                                await _taskMainHost.AnimateToTargetsAsync(
+                                    animatedGamePlay.GetSequenceMemorizeFirstPreview(),
+                                    animatedGamePlay.GetTwoHandCombinationAnimationTargets(),
+                                    750u,
+                                    Colors.DarkOrange,
+                                    settleMs: 0);
+                            }
+                            _taskMainHost.SetStaticBits(animatedGamePlay.GetSequenceMemorizeSecondPreview());
+                        }
+                        finally
+                        {
+                            _tutorialRunning = false;
+                        }
+                        return;
+                    }
 
                     if (HasDedicatedKeyboardTutorial())
                         await RunRecordedKeyboardTutorialAsync(_taskMainHost);
@@ -7184,11 +7329,11 @@ namespace GestureSample.Views.Tests
                     _btnAnswerTimePanel = new Button
                     {
                         Text = GetAnswerTimePanelIcon(),
-                        FontSize = 14,
+                        FontSize = 11,
                         WidthRequest = 40,
-                        HeightRequest = 34,
+                        HeightRequest = 24,
                         Padding = 0,
-                        CornerRadius = 17,
+                        CornerRadius = 12,
                         BackgroundColor = Colors.Black.WithAlpha(0.25f),
                         TextColor = Colors.White,
                         HorizontalOptions = LayoutOptions.Start,
@@ -7213,9 +7358,9 @@ namespace GestureSample.Views.Tests
                         WidthRequest = 34,
                         HeightRequest = 34,
                         Padding = 0,
-                        CornerRadius = 17,
+                        CornerRadius = 14,
                         BackgroundColor = Colors.Black.WithAlpha(0.25f),
-                        TextColor = _config.KeyboardConfig.ShowPrecisionPinchGuideLine ? Colors.Red : Colors.Gray,
+                        TextColor = Colors.Red,
                         HorizontalOptions = LayoutOptions.Start,
                         VerticalOptions = LayoutOptions.Center,
                         Margin = Thickness.Zero
@@ -7224,9 +7369,7 @@ namespace GestureSample.Views.Tests
                     {
                         _config.KeyboardConfig.ShowPrecisionPinchGuideLine =
                             !_config.KeyboardConfig.ShowPrecisionPinchGuideLine;
-                        btnGuideLine.TextColor = _config.KeyboardConfig.ShowPrecisionPinchGuideLine
-                            ? Colors.Red
-                            : Colors.Gray;
+                        btnGuideLine.TextColor = Colors.Red;
                         _taskMainHost?.SetPrecisionPinchGuideVisible(
                             _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
                     };
@@ -7386,6 +7529,29 @@ namespace GestureSample.Views.Tests
 
                 if (rightOverlayButtons.Children.Count > 0)
                     overlayButtons.Add(rightOverlayButtons, 2, 0);
+
+                if (UsesGrippingKeyboardDesign())
+                {
+                    leftOverlayButtons.Spacing = 6;
+                    rightOverlayButtons.Spacing = 6;
+                    foreach (Button button in leftOverlayButtons.Children.OfType<Button>()
+                                 .Concat(rightOverlayButtons.Children.OfType<Button>()))
+                    {
+                        button.BackgroundColor = Colors.Transparent;
+                        button.TextColor = button.Text is "┃" or "━"
+                            ? Colors.Red
+                            : Color.FromArgb("#F3E8DE");
+                        button.BorderWidth = 0;
+                    }
+                    if (_precisionHandGapButton is Border handGapButton)
+                    {
+                        handGapButton.BackgroundColor = Colors.Transparent;
+                        handGapButton.StrokeThickness = 0;
+                    }
+                    // Restore the selected timer mode's semantic color after the
+                    // other header controls receive their neutral treatment.
+                    RefreshAnswerTimePanelIcon();
+                }
 
                 if (isVerticalPrecisionLayout)
                 {
@@ -7782,6 +7948,12 @@ namespace GestureSample.Views.Tests
             bool separateHandZones = DeviceInfo.Current.Idiom == DeviceIdiom.Tablet &&
                                      _config.KeyboardConfig.SeparatePrecisionPinchColumnsOnTablet;
             bool combinationMemorizeStage = _config.KeyboardConfig.IsTwoHandCombinationMemorize;
+            bool grippingKeyboardDesign = UsesGrippingKeyboardDesign();
+            if (grippingKeyboardDesign)
+            {
+                foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                    keyButton.CornerRadius = 8;
+            }
             Guid? activeUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Id;
             string handGapPreferenceKey =
                 $"precision-pinch-hand-gap-{(combinationMemorizeStage ? "combination-" : string.Empty)}" +
@@ -7883,13 +8055,15 @@ namespace GestureSample.Views.Tests
                 else if (!isVisible && isAttached)
                     _rootGrid.GestureRecognizers.Remove(outsideSliderTap);
             }
-            Color sliderIconColor = sliderInKeyboardHeader ? Colors.White : Colors.Black;
+            Color sliderIconColor = sliderInKeyboardHeader
+                ? Colors.White
+                : Colors.Black;
             Microsoft.Maui.Controls.Shapes.Path sliderIcon = new()
             {
                 Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(
                     "M 7,1 L 7,17 M 3,5 L 7,1 L 11,5 M 3,13 L 7,17 L 11,13"),
                 Stroke = sliderIconColor,
-                StrokeThickness = 1.7,
+                StrokeThickness = sliderInKeyboardHeader ? 1.35 : 1.7,
                 StrokeLineCap = PenLineCap.Round,
                 StrokeLineJoin = PenLineJoin.Round,
                 WidthRequest = 14,
@@ -7913,7 +8087,7 @@ namespace GestureSample.Views.Tests
                 HorizontalOptions = LayoutOptions.Center,
                 VerticalOptions = LayoutOptions.Start,
                 BackgroundColor = sliderInKeyboardHeader
-                    ? Colors.Black.WithAlpha(0.25f)
+                    ? Colors.Transparent
                     : Colors.White.WithAlpha(0.94f),
                 Content = sliderIcon
             };
@@ -8010,8 +8184,14 @@ namespace GestureSample.Views.Tests
             foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
                 keyButton.Down += (_, _) => SetHandGapSliderVisibility(false);
 
-            _lblAction.FontSize = _config.KeyboardConfig.PrecisionShiftBothHands ? 14 : 18;
+            _lblAction.FontSize = grippingKeyboardDesign
+                ? 18
+                : _config.KeyboardConfig.PrecisionShiftBothHands ? 14 : 18;
             _lblAction.FontFamily = "Consolas";
+            _lblAction.TextColor = grippingKeyboardDesign
+                ? Colors.Black
+                : Colors.Black;
+            _lblAction.CharacterSpacing = 0;
             _lblAction.HorizontalTextAlignment = TextAlignment.Center;
             _lblAction.VerticalTextAlignment = TextAlignment.Center;
             _lblAction.HeightRequest = 26;
@@ -8061,7 +8241,9 @@ namespace GestureSample.Views.Tests
             sliderButton.ZIndex = 5;
             Grid stage = new()
             {
-                BackgroundColor = Colors.AntiqueWhite,
+                BackgroundColor = grippingKeyboardDesign
+                    ? Colors.AntiqueWhite
+                    : Colors.AntiqueWhite,
                 HorizontalOptions = LayoutOptions.Fill,
                 VerticalOptions = LayoutOptions.Fill,
                 Padding = 0
@@ -8086,7 +8268,60 @@ namespace GestureSample.Views.Tests
                 VerticalOptions = LayoutOptions.Start,
                 Padding = 0
             };
-            keyboardCluster.Children.Add(_taskMainHost);
+            if (grippingKeyboardDesign)
+            {
+                Border roundedKeyboard = new()
+                {
+                    Content = _taskMainHost,
+                    Padding = 0,
+                    Stroke = Colors.Transparent,
+                    StrokeThickness = 0,
+                    StrokeShape = new RoundRectangle
+                    {
+                        CornerRadius = new CornerRadius(24, 24, 0, 0)
+                    },
+                    BackgroundColor = Colors.Black,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                BoxView bottomMark = new()
+                {
+                    WidthRequest = 30,
+                    HeightRequest = 2,
+                    CornerRadius = 1,
+                    BackgroundColor = Color.FromArgb("#17120F"),
+                    Opacity = 0.9,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    InputTransparent = true,
+                };
+                Border keyboardBase = new()
+                {
+                    Content = bottomMark,
+                    HeightRequest = 16,
+                    Padding = new Thickness(0, 5, 0, 7),
+                    StrokeThickness = 0,
+                    StrokeShape = new RoundRectangle
+                    {
+                        CornerRadius = new CornerRadius(0, 0, 8, 8)
+                    },
+                    BackgroundColor = Colors.Black,
+                    HorizontalOptions = LayoutOptions.Fill,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                VerticalStackLayout keyboardShell = new()
+                {
+                    Spacing = 0,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center,
+                    Children = { roundedKeyboard, keyboardBase }
+                };
+                keyboardCluster.Children.Add(keyboardShell);
+            }
+            else
+            {
+                keyboardCluster.Children.Add(_taskMainHost);
+            }
             keyboardCluster.Children.Add(handGapSliderPanel);
             if (showSideInstructions)
             {
@@ -8199,7 +8434,8 @@ namespace GestureSample.Views.Tests
                     (requestedHeight - keyboardHeaderHeight - 5) / _config.KeyboardConfig.Rows);
                 double exactHeight = _pianoKeyboard.SetExactKeyHeight(keyHeight);
                 _taskMainHost.HeightRequest = Math.Min(exactHeight, maximum);
-                keyboardCluster.HeightRequest = _taskMainHost.HeightRequest;
+                keyboardCluster.HeightRequest = _taskMainHost.HeightRequest +
+                                                (grippingKeyboardDesign ? 16 : 0);
                 _taskMainHost.SyncOverlay();
             }
 
