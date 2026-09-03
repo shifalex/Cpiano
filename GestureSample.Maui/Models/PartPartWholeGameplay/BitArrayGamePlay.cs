@@ -57,6 +57,7 @@ namespace GestureSample.Maui.Models
         private bool _sequenceMemorizeCurrentIsFirst;
         private TwoHandCombinationOptions _twoHandCombinationKind;
         private bool _twoHandCombinationBoundaryMovesUp;
+        private int _twoHandCombinationMagnitude = 1;
         private bool[]? _pendingHalfDerivedFirst;
         private bool[]? _pendingHalfDerivedSecond;
         private TwoHandCombinationOptions _pendingHalfDerivedKind;
@@ -2328,11 +2329,21 @@ namespace GestureSample.Maui.Models
                     second = ((secondSize, firstSize + secondSize - 1), (0, secondSize - 1));
                     break;
                 case 1: // Associativity: move the shared boundary.
-                    first = ((0, 2), (3, 5));
+                    int associativityWholeSize = rows;
+                    int initialBoundary = associativityWholeSize / 2;
+                    int maximumBoundaryMove = Math.Max(
+                        1, Math.Min(initialBoundary - 2, associativityWholeSize - initialBoundary - 2));
+                    _twoHandCombinationMagnitude =
+                        Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode == TwoHandMagnitudeVocabularyMode.Intuitive
+                            ? 1
+                            : random.Next(1, maximumBoundaryMove + 1);
+                    first = ((0, initialBoundary - 1), (initialBoundary, associativityWholeSize - 1));
                     _twoHandCombinationBoundaryMovesUp = random.Next(2) == 0;
                     second = _twoHandCombinationBoundaryMovesUp
-                        ? ((0, 3), (4, 5))
-                        : ((0, 1), (2, 5));
+                        ? ((0, initialBoundary + _twoHandCombinationMagnitude - 1),
+                           (initialBoundary + _twoHandCombinationMagnitude, associativityWholeSize - 1))
+                        : ((0, initialBoundary - _twoHandCombinationMagnitude - 1),
+                           (initialBoundary - _twoHandCombinationMagnitude, associativityWholeSize - 1));
                     break;
                 case 2: // Put one separated hand directly above the other.
                     first = ((0, 1), (4, 5));
@@ -3233,9 +3244,7 @@ namespace GestureSample.Maui.Models
         public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
         {
             TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
-            TwoHandCombinationOptions.Associativity => _twoHandCombinationBoundaryMovesUp
-                ? "MOVE SHARED BOUNDARY UP"
-                : "MOVE SHARED BOUNDARY DOWN",
+            TwoHandCombinationOptions.Associativity => BuildSharedBoundaryActionText(),
             TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
             TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
             TwoHandCombinationOptions.FlipAdditionSubtraction => "LARGE ± SMALL",
@@ -3258,6 +3267,19 @@ namespace GestureSample.Maui.Models
             TwoHandCombinationOptions.SubtrahendOneStepSmaller => "SUBTRACT ONE LESS",
             _ => string.Empty
         };
+
+        private string BuildSharedBoundaryActionText()
+        {
+            string direction = _twoHandCombinationBoundaryMovesUp ? "UP" : "DOWN";
+            return Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode switch
+            {
+                TwoHandMagnitudeVocabularyMode.Qualitative =>
+                    $"MOVE SHARED BOUNDARY {direction} BY {(_twoHandCombinationMagnitude == 1 ? "A LITTLE" : "A LOT")}",
+                TwoHandMagnitudeVocabularyMode.Numeric =>
+                    $"MOVE SHARED BOUNDARY {direction} BY {_twoHandCombinationMagnitude}",
+                _ => $"MOVE SHARED BOUNDARY {direction}"
+            };
+        }
 
         private string BuildPrecisionShiftActionText()
         {
@@ -4676,6 +4698,9 @@ namespace GestureSample.Maui.Models
         {
             if (candidate == null) return false;
 
+            if (AcceptsQualitativeSharedBoundaryAnswer(candidate))
+                return true;
+
             // Prefer comparing to the precomputed canonical correct answer
             if (BitArrayCorrectAnswer != null)
             {
@@ -4712,6 +4737,52 @@ namespace GestureSample.Maui.Models
                     return false;
             }
             return true;
+        }
+
+        private bool AcceptsQualitativeSharedBoundaryAnswer(bool[] candidate)
+        {
+            if (_twoHandCombinationKind != TwoHandCombinationOptions.Associativity ||
+                Config.KeyboardConfig?.TwoHandMagnitudeVocabularyMode != TwoHandMagnitudeVocabularyMode.Qualitative ||
+                _twoHandCombinationMagnitude <= 1 ||
+                _sequenceMemorizeFirstPinch == null ||
+                candidate.Length != _sequenceMemorizeFirstPinch.Length)
+            {
+                return false;
+            }
+
+            const int columns = 2;
+            int[][] initial = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, _sequenceMemorizeFirstPinch.Length)
+                    .Where(index => index % columns == column && _sequenceMemorizeFirstPinch[index])
+                    .Select(index => index / columns).ToArray())
+                .ToArray();
+            int[][] answer = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, candidate.Length)
+                    .Where(index => index % columns == column && candidate[index])
+                    .Select(index => index / columns).ToArray())
+                .ToArray();
+
+            if (initial.Any(interval => interval.Length != 2) ||
+                answer.Any(interval => interval.Length != 2))
+            {
+                return false;
+            }
+
+            int lowerColumn = initial[0][0] == 0 ? 0 : 1;
+            int upperColumn = 1 - lowerColumn;
+            int lastRow = (_sequenceMemorizeFirstPinch.Length / columns) - 1;
+            if (answer[lowerColumn][0] != 0 || answer[upperColumn][1] != lastRow)
+                return false;
+
+            int initialBoundary = initial[upperColumn][0];
+            int answerBoundary = answer[upperColumn][0];
+            if (answer[lowerColumn][1] + 1 != answerBoundary)
+                return false;
+
+            int signedMovement = answerBoundary - initialBoundary;
+            return _twoHandCombinationBoundaryMovesUp
+                ? signedMovement > 1
+                : signedMovement < -1;
         }
 
         // Overload so callers can pass the PianoKeyboard directly
