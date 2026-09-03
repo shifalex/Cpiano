@@ -1074,10 +1074,10 @@ namespace GestureSample.Views.Tests
                                    !isFeedbackState &&
                                    !showTutorialStepCounter;
             bool showProgress = _pianoPressProgress != null &&
-                                _pianoPressProgress.Progress > 0 &&
                                 (!UsesCalmAttemptIndicator() || currentPressIsCorrect) &&
                                 !usesInlineCheck &&
                                 !isFeedbackState &&
+                                !showSequenceFirstFeedback &&
                                 !showTutorialStepCounter &&
                                 (!_isArrowLabelRetryHelpVisible || IsActiveArrowKeyboardQuestion);
 
@@ -6134,17 +6134,12 @@ namespace GestureSample.Views.Tests
                 return "⏱";
 
             int seconds = GetEffectiveAnswerTimeMagnitude(syncKeyboard);
-            if (UsesGrippingKeyboardDesign())
-                return $"⏱ {seconds}";
-
-            return UsesWholeAnswerTimer(syncKeyboard)
-                ? $"Σ{seconds}"
-                : $"↺{seconds}";
+            return $"⏱ {seconds}";
         }
 
-        private static Color GetWholeAnswerFireColor() => Color.FromArgb("#FF7A00");
+        private static Color GetWholeAnswerFireColor() => Color.FromArgb("#C65A24");
 
-        private static Color GetAfterLastKeyAccentColor() => Color.FromArgb("#5A42D0");
+        private static Color GetAfterLastKeyAccentColor() => Color.FromArgb("#2D7373");
 
         private Color GetAnswerTimeActiveColor(PianoKeyboardSync syncKeyboard)
         {
@@ -6173,14 +6168,11 @@ namespace GestureSample.Views.Tests
             _btnAnswerTimePanel.Text = icon;
             _btnAnswerTimePanel.FontSize = icon.Length > 1 ? 11 : 14;
             _btnAnswerTimePanel.BackgroundColor = GetAnswerTimePanelBackgroundColor();
-            if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true)
-            {
-                Color activeColor = GetAnswerTimeActiveColor((PianoKeyboardSync)_pianoKeyboard);
-                _btnAnswerTimePanel.BackgroundColor = activeColor.WithAlpha(0.18f);
-                _btnAnswerTimePanel.TextColor = activeColor;
-                _btnAnswerTimePanel.BorderColor = activeColor.WithAlpha(0.72f);
-                _btnAnswerTimePanel.BorderWidth = 1;
-            }
+            Color activeColor = GetAnswerTimeActiveColor((PianoKeyboardSync)_pianoKeyboard);
+            _btnAnswerTimePanel.BackgroundColor = activeColor.WithAlpha(0.18f);
+            _btnAnswerTimePanel.TextColor = activeColor;
+            _btnAnswerTimePanel.BorderColor = activeColor.WithAlpha(0.72f);
+            _btnAnswerTimePanel.BorderWidth = 1;
             _btnAnswerTimePanel.Opacity = 1;
         }
 
@@ -6257,8 +6249,7 @@ namespace GestureSample.Views.Tests
                 ? (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true ? "After First Press" : "Whole Answer")
                 : (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true ? "After Final Press" : "After Last Key");
             Color modeAccentColor = GetAnswerTimeActiveColor(syncKeyboard);
-            if (UsesGrippingKeyboardDesign())
-                _pianoPressProgress.ProgressColor = modeAccentColor;
+            _pianoPressProgress.ProgressColor = modeAccentColor;
             _answerTimeModeButton.BackgroundColor = modeAccentColor;
             _answerTimeModeButton.TextColor = Colors.White;
             _answerTimeEnabledSwitch.IsEnabled = true;
@@ -7360,7 +7351,7 @@ namespace GestureSample.Views.Tests
                         Padding = 0,
                         CornerRadius = 14,
                         BackgroundColor = Colors.Black.WithAlpha(0.25f),
-                        TextColor = Colors.Red,
+                        TextColor = Color.FromArgb("#D65345"),
                         HorizontalOptions = LayoutOptions.Start,
                         VerticalOptions = LayoutOptions.Center,
                         Margin = Thickness.Zero
@@ -7369,7 +7360,7 @@ namespace GestureSample.Views.Tests
                     {
                         _config.KeyboardConfig.ShowPrecisionPinchGuideLine =
                             !_config.KeyboardConfig.ShowPrecisionPinchGuideLine;
-                        btnGuideLine.TextColor = Colors.Red;
+                        btnGuideLine.TextColor = Color.FromArgb("#D65345");
                         _taskMainHost?.SetPrecisionPinchGuideVisible(
                             _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
                     };
@@ -7539,7 +7530,7 @@ namespace GestureSample.Views.Tests
                     {
                         button.BackgroundColor = Colors.Transparent;
                         button.TextColor = button.Text is "┃" or "━"
-                            ? Colors.Red
+                            ? Color.FromArgb("#D65345")
                             : Color.FromArgb("#F3E8DE");
                         button.BorderWidth = 0;
                     }
@@ -8278,7 +8269,7 @@ namespace GestureSample.Views.Tests
                     StrokeThickness = 0,
                     StrokeShape = new RoundRectangle
                     {
-                        CornerRadius = new CornerRadius(24, 24, 0, 0)
+                        CornerRadius = new CornerRadius(12, 12, 0, 0)
                     },
                     BackgroundColor = Colors.Black,
                     HorizontalOptions = LayoutOptions.Center,

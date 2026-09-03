@@ -39,7 +39,9 @@ namespace GestureSample.Maui.Models
         protected virtual int heading_height { get; set; } = 5;
 
 
-        protected readonly Color COLOR_PRESSED = Colors.Yellow;
+        protected Color COLOR_PRESSED => Config?.IsPrecisionPinchExercise == true
+            ? Color.FromArgb("#D99A2B")
+            : Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
 
         protected readonly Color SECOND_COLOR = Colors.LightGreen;
