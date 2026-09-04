@@ -923,6 +923,13 @@ namespace GestureSample.Views
         public bool[] CombinedFinalKeyboard { get; set; }
         public string TimerRegimeText { get; set; } = "Unknown";
         public bool HasPpwState => PpwState != null;
+        public bool IsGripCombinationStage =>
+            Question != null &&
+            Question.Op == Operation.Copy &&
+            Question.KeyboardKeysInRow == 2 &&
+            Question.KeyboardRows > 1;
+        public bool ShowQuestionCode => !IsGripCombinationStage;
+        public bool ShowPpwState => HasPpwState && !IsGripCombinationStage;
         public string PpwOpText => Question?.IsSpecialArrowPrompt == true ? Operation.Sum.ToDString() : (PpwState?.Op == Operation.Copy ? string.Empty : PpwState?.OpDString ?? string.Empty);
         public bool HasReplay => SubItems != null && SubItems.Count > 0;
         public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
