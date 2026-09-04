@@ -106,6 +106,10 @@ namespace GestureSample.Views
 
         public async void ShowData(Guid? gameId = null)
         {
+            LoadingOverlay.IsVisible = true;
+            await Task.Yield();
+            try
+            {
                 gameId ??= _currentSelectedGameId;
                 Guid activeUserId = (_dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser).Id;
                 GameIdentifiers = await (_forTeacher
@@ -148,8 +152,13 @@ namespace GestureSample.Views
                 LoadGames();
             }
 
-            if (gameId != null)
-                await LoadStatesToGrid((Guid)gameId);
+                if (gameId != null)
+                    await LoadStatesToGrid((Guid)gameId);
+            }
+            finally
+            {
+                LoadingOverlay.IsVisible = false;
+            }
         }
 
         private Task LoadDates()
@@ -206,17 +215,24 @@ namespace GestureSample.Views
 
             if (selectedIdentifier != null)
             {
-                questionList = await (_forTeacher
+                Task<List<KeyboardQuestion>> questionsTask = _forTeacher
                     ? Maui.Data.SupaBase.SupabaseService.GetKeyboardQuestionByQueryAsync(selectedIdentifier)
-                    : _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier));
-                questionAnswers = await (_forTeacher
+                    : _keyboardQuestionRepository.GetKeyboardQuestionByQueryAsync(selectedIdentifier);
+                Task<List<QuestionAnswer>> answersTask = _forTeacher
                     ? Maui.Data.SupaBase.SupabaseService.GetAnswersByQueryAsync((Guid)selectedIdentifier)
-                    : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier));
-                gamePresses = await (_forTeacher
+                    : _questionAnswerRepository.GetAnswersByQueryAsync((Guid)selectedIdentifier);
+                Task<List<KeyEvent>> pressesTask = _forTeacher
                     ? Maui.Data.SupaBase.SupabaseService.GetKeyEventsByQueryAsync((Guid)selectedIdentifier)
-                    : _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier));
-                if (!_forTeacher)
-                    timerEvents = await _timerChangeEventRepository.GetByGameAsync((Guid)selectedIdentifier);
+                    : _keyEventRepository.GetKeyEventsByQueryAsync((Guid)selectedIdentifier);
+                Task<List<TimerChangeEvent>> timerEventsTask = _forTeacher
+                    ? Task.FromResult(new List<TimerChangeEvent>())
+                    : _timerChangeEventRepository.GetByGameAsync((Guid)selectedIdentifier);
+
+                await Task.WhenAll(questionsTask, answersTask, pressesTask, timerEventsTask);
+                questionList = await questionsTask;
+                questionAnswers = await answersTask;
+                gamePresses = await pressesTask;
+                timerEvents = await timerEventsTask;
             }
             /*foreach (var state in gamePresses)
             {

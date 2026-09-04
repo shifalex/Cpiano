@@ -285,23 +285,31 @@ namespace GestureSample.Maui.Models
                 canvas.StrokeSize = 5;
                 canvas.StrokeLineCap = LineCap.Round;
 
+                List<(int Index, int Column, RectF Rect)> selectedKeys = new();
+                for (int index = 0; index < Math.Min(bits.Length, KeyRects.Length); index++)
+                {
+                    if (bits[index])
+                        selectedKeys.Add((index, index % columns, GuideRect(index, useAnimation)));
+                }
+                if (selectedKeys.Count < 2)
+                    return;
+
                 for (int column = 0; column < columns; column++)
                 {
-                    List<int> selected = new();
-                    for (int index = column; index < Math.Min(bits.Length, KeyRects.Length); index += columns)
-                    {
-                        if (bits[index])
-                            selected.Add(index);
-                    }
-
-                    if (selected.Count < 2)
+                    List<(int Index, int Column, RectF Rect)> selected = selectedKeys
+                        .Where(item => item.Column == column)
+                        .ToList();
+                    if (selected.Count == 0)
                         continue;
 
-                    RectF first = GuideRect(selected.First(), useAnimation);
-                    RectF last = GuideRect(selected.Last(), useAnimation);
-                    canvas.DrawLine(
-                        first.X + first.Width / 2f, first.Y + first.Height / 2f,
-                        last.X + last.Width / 2f, last.Y + last.Height / 2f);
+                    RectF reference = selected[0].Rect;
+                    float guideX = column < columns / 2f
+                        ? reference.Right - 12f
+                        : reference.Left + 12f;
+                    float guideTop = selected.Min(item => item.Rect.Top);
+                    float guideBottom = selected.Max(item => item.Rect.Bottom);
+                    canvas.DrawLine(guideX, guideTop, guideX, guideBottom);
+
                 }
             }
 
@@ -661,6 +669,9 @@ namespace GestureSample.Maui.Models
         public void SetTutorialMode(bool isOn)
         {
             IsTutorialMode = isOn;
+            // Toggle both properties. iOS can retain the previous native hit-test
+            // state for a hidden view until its next layout pass.
+            _inputShield.InputTransparent = !isOn;
             _inputShield.IsVisible = isOn;
 
             // Keep it above anything the page adds later (buttons, etc.)
