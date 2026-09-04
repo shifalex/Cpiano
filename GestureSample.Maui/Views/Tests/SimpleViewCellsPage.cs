@@ -131,10 +131,16 @@ namespace GestureSample.Views.Tests
             if (_pianoKeyboard == null)
                 return;
 
+            _pianoKeyboard.SetExternalInputBlocked(!enabled);
             _pianoKeyboard.IsEnabled = true;
-            _pianoKeyboard.InputTransparent = !enabled;
+            bool preserveGripKeyboardVisuals =
+                !enabled && _config.KeyboardConfig?.IsTwoHandCombinationMemorize == true;
+            _pianoKeyboard.InputTransparent = !enabled && !preserveGripKeyboardVisuals;
             if (_pianoKeyboard.BtnInit != null)
-                _pianoKeyboard.BtnInit.IsEnabled = enabled;
+            {
+                _pianoKeyboard.BtnInit.IsEnabled = preserveGripKeyboardVisuals || enabled;
+                _pianoKeyboard.BtnInit.InputTransparent = !enabled;
+            }
 
             // Keep keyboard-driven submit actions aligned with keyboard availability.
             if (_isKeyboard && !_config.KeyboardConfig.KeyboardOnlyForHelp)
@@ -2005,6 +2011,7 @@ namespace GestureSample.Views.Tests
                     // touches while the 5M/5.1 question is being presented.
                     _taskMainHost.SetTutorialMode(true);
                     _pianoKeyboard.InputTransparent = false;
+                    _pianoKeyboard.SetExternalInputBlocked(true);
                 }
                 else
                 {
@@ -8413,7 +8420,14 @@ namespace GestureSample.Views.Tests
                 stage.Children.Add(designPanel);
             }
 
-            string preferenceKey = $"precision-pinch-keyboard-height-{activeUserId?.ToString() ?? "anonymous"}";
+            // Do not let height adjustments made in unrelated grip exercises alter
+            // the initial geometry of the combination/transformation keyboard.
+            string heightPreferenceScope = combinationMemorizeStage
+                ? "combination"
+                : "practice";
+            string preferenceKey =
+                $"precision-pinch-keyboard-height-{heightPreferenceScope}-" +
+                $"{activeUserId?.ToString() ?? "anonymous"}";
             double savedHeight = Preferences.Default.Get(preferenceKey, -1d);
             bool initialized = false;
 

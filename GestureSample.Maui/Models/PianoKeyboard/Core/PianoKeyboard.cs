@@ -40,6 +40,18 @@ namespace GestureSample.Maui.Models
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
         private readonly Dictionary<MR.Gestures.Button, MR.Gestures.Button> _glidingPrecisionKeys = new();
+        private bool _externalInputBlocked;
+
+        public void SetExternalInputBlocked(bool blocked)
+        {
+            _externalInputBlocked = blocked;
+            if (blocked)
+            {
+                _glidingPrecisionKeys.Clear();
+                _draggingKeyIndex = null;
+                _draggingKeyColor = Colors.Transparent;
+            }
+        }
         protected virtual Color TraceSecondColor => SECOND_COLOR.WithAlpha(0.82f);
         protected virtual Color TraceThirdColor => THIRD_COLOR.WithAlpha(0.7f);
         private Microsoft.Maui.Controls.Entry? _headerResultEntry;
@@ -833,6 +845,9 @@ After:
 
         private async void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
         {
+            if (_externalInputBlocked)
+                return;
+
             if (_pianoConfig.IsPrecisionPinchExercise)
             {
                 // Do not use BaseGestureEventArgs.Touches here: it is the global set
@@ -889,6 +904,9 @@ After:
             MR.Gestures.Button origin,
             PanUpdatedEventArgs args)
         {
+            if (_externalInputBlocked)
+                return;
+
             if (!_glidingPrecisionKeys.ContainsKey(origin))
                 return;
 
@@ -1055,6 +1073,9 @@ After:
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
+            if (_externalInputBlocked)
+                return;
+
             KeyPressStarted?.Invoke();
             if (_pianoConfig.IsPrecisionPinchExercise && e.Sender is MR.Gestures.Button pressedKey)
                 _glidingPrecisionKeys[pressedKey] = pressedKey;
@@ -1074,6 +1095,9 @@ After:
         }
         private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
+            if (_externalInputBlocked)
+                return;
+
             MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
             if (_pianoConfig.IsPrecisionPinchExercise &&
                 !_pianoConfig.PrecisionShiftBothHands &&

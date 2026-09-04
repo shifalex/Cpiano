@@ -165,11 +165,12 @@
                             <Label Text="{Binding Question.QuestionCodeText}"
                                    FontSize="12"
                                    TextColor="DimGray"
-                                   LineBreakMode="WordWrap" />
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding ShowQuestionCode}" />
 
                             <Grid ColumnDefinitions="Auto,40,12,40,16,40"
                                   ColumnSpacing="4"
-                                  IsVisible="{Binding HasPpwState}">
+                                  IsVisible="{Binding ShowPpwState}">
                                 <Label Grid.Column="0"
                                        Text="PPW"
                                        FontAttributes="Bold"
