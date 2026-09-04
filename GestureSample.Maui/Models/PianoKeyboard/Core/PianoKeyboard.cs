@@ -985,7 +985,32 @@ After:
                     return i;
             }
 
-            return -1;
+            // A precision glide often crosses the small visual gutter between two
+            // adjacent keys. The pan recognizer may deliver its final sample in that
+            // gutter, especially for the short first-to-second-key movement. Snap
+            // such samples to the nearest key within a small touch tolerance.
+            const double glideGutterTolerance = 12;
+            int nearestIndex = -1;
+            double nearestDistanceSquared = double.MaxValue;
+            for (int i = 0; i < btnKeys.Length; i++)
+            {
+                (double x, double y) = GetAbsolutePosition(btnKeys[i]);
+                Rect rect = new(x, y, btnKeys[i].Width, btnKeys[i].Height);
+                double nearestX = Math.Clamp(touch.X, rect.Left, rect.Right);
+                double nearestY = Math.Clamp(touch.Y, rect.Top, rect.Bottom);
+                double dx = touch.X - nearestX;
+                double dy = touch.Y - nearestY;
+                double distanceSquared = (dx * dx) + (dy * dy);
+                if (distanceSquared < nearestDistanceSquared)
+                {
+                    nearestDistanceSquared = distanceSquared;
+                    nearestIndex = i;
+                }
+            }
+
+            return nearestDistanceSquared <= glideGutterTolerance * glideGutterTolerance
+                ? nearestIndex
+                : -1;
         }
 
         private bool IsSamePrecisionHand(MR.Gestures.Button source, int targetIndex)

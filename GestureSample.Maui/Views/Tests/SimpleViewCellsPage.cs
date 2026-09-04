@@ -1996,7 +1996,20 @@ namespace GestureSample.Views.Tests
             if (preparedAnswerKeyboardEarly)
             {
                 PrepareAnswerKeyboardForCurrentExercise();
-                SetKeyboardInteractionEnabled(false);
+                if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                    _taskMainHost != null)
+                {
+                    // On iPad, making the complete MR.Gestures keyboard input-transparent
+                    // can remove its native button subtree from composition. Keep the
+                    // keyboard visually live and let the host's transparent shield block
+                    // touches while the 5M/5.1 question is being presented.
+                    _taskMainHost.SetTutorialMode(true);
+                    _pianoKeyboard.InputTransparent = false;
+                }
+                else
+                {
+                    SetKeyboardInteractionEnabled(false);
+                }
             }
 
             UpdateStatement();
@@ -2195,7 +2208,6 @@ namespace GestureSample.Views.Tests
                                 int memorizeDelay = _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds;
                                 if (memorizeDelay > 0)
                                 {
-                                    _pianoKeyboard.InputTransparent = true;
                                     _taskMainHost.SetTutorialMode(true);
                                     BitArrayGamePlay memorizeGamePlay = (BitArrayGamePlay)_gamePlay;
                                     try

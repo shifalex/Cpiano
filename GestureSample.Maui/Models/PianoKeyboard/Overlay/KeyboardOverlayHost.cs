@@ -637,10 +637,10 @@ namespace GestureSample.Maui.Models
 
             _inputShield = new BoxView
             {
-                // A zero-alpha black surface can be composited as opaque black by
-                // some Android GPU/Material combinations. A nearly transparent white
-                // surface remains hit-testable without visually darkening the keys.
-                BackgroundColor = Colors.White.WithAlpha(0.001f),
+                // This view exists only for hit testing. Even a very small non-zero
+                // alpha can be promoted to a visible compositing layer on iPad and
+                // wash out (or seemingly hide) the keyboard during presentation.
+                BackgroundColor = Colors.Transparent,
                 IsVisible = false,
                 InputTransparent = false, // IMPORTANT: must intercept touches
                 ZIndex = 99999
@@ -669,10 +669,13 @@ namespace GestureSample.Maui.Models
         public void SetTutorialMode(bool isOn)
         {
             IsTutorialMode = isOn;
-            // Toggle both properties. iOS can retain the previous native hit-test
-            // state for a hidden view until its next layout pass.
-            _inputShield.InputTransparent = !isOn;
-            _inputShield.IsVisible = isOn;
+
+            // Do not render a covering view. Transparent BoxViews above native
+            // buttons are not visually reliable across WinUI/UIKit renderers
+            // (WinUI can composite this one as solid black). Input during question
+            // presentation is rejected by the gameplay readiness gate instead.
+            _inputShield.InputTransparent = true;
+            _inputShield.IsVisible = false;
 
             // Keep it above anything the page adds later (buttons, etc.)
             _inputShield.ZIndex = 999999;
