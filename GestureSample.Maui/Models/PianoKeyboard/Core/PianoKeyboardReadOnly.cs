@@ -39,9 +39,7 @@ namespace GestureSample.Maui.Models
         protected virtual int heading_height { get; set; } = 5;
 
 
-        protected Color COLOR_PRESSED => Config?.IsPrecisionPinchExercise == true
-            ? Color.FromArgb("#D99A2B")
-            : Colors.Yellow;
+        protected readonly Color COLOR_PRESSED = Colors.Yellow;
         protected readonly Color COLOR_FREE = Colors.White;
 
         protected readonly Color SECOND_COLOR = Colors.LightGreen;
@@ -991,6 +989,9 @@ namespace GestureSample.Maui.Models
 #if IOS
             if (button.Handler?.PlatformView is UIButton nativeButton)
             {
+                // Grip exercises depend on simultaneous touches in separate keys.
+                nativeButton.MultipleTouchEnabled = true;
+                nativeButton.ExclusiveTouch = false;
                 nativeButton.Highlighted = false;
                 nativeButton.Selected = false;
                 nativeButton.SetTitleColor(UIColor.Black, UIControlState.Normal);

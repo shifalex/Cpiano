@@ -487,6 +487,7 @@
         public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
         public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
         public bool IsTwoHandCombinationMemorize { get; set; } = false;
+        public bool IsTwoHandCopyMemorize { get; set; } = false;
         public TwoHandCombinationOptions TwoHandCombinationOptions { get; set; } = TwoHandCombinationOptions.Default;
         public bool AnimateTwoHandCombinations { get; set; } = true;
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
@@ -513,6 +514,7 @@
         public int PrecisionMoveLowerPercent { get; set; } = -1;
         public bool PrecisionShiftSynchronizeHands { get; set; } = false;
         public bool PrecisionShiftStaggerHandsInitially { get; set; } = false;
+        public bool PreferBothHandsOnBottom { get; set; } = false;
         public bool IsPrecisionGrammarExercise { get; set; } = false;
         public int PrecisionShiftNewPinchPercent { get; set; } = 0;
         public int PrecisionShiftMinDistance { get; set; } = 1;

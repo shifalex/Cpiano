@@ -55,6 +55,7 @@ namespace GestureSample.Maui.Models
         private bool[]? _sequenceMemorizeSecondPinch;
         private bool _sequenceMemorizeGenerateSecond;
         private bool _sequenceMemorizeCurrentIsFirst;
+        private int? _lastTwoHandCopyTransformedColumn;
         private TwoHandCombinationOptions _twoHandCombinationKind;
         private bool _twoHandCombinationBoundaryMovesUp;
         private int _twoHandCombinationMagnitude = 1;
@@ -1850,6 +1851,12 @@ namespace GestureSample.Maui.Models
                                      Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper;
                 if (Config.KeyboardConfig.PrecisionShiftBothHands)
                 {
+                    if (Config.KeyboardConfig.IsTwoHandCopyMemorize)
+                    {
+                        GenerateTwoHandCopyMemorizePinch(random, pinch, maxInterval);
+                        return pinch;
+                    }
+
                     if (Config.KeyboardConfig.IsPrecisionSynchronousProcessExercise)
                     {
                         // Both hands begin with the same grip. Keep at least one empty
@@ -1912,6 +1919,23 @@ namespace GestureSample.Maui.Models
                         Config.KeyboardConfig.Rows >= 5 &&
                         Config.KeyboardConfig.KeysInRow >= 2)
                     {
+                        // In Commands, bottom-anchored grips are the main reference
+                        // position. Vary the upper fingers while both lower fingers
+                        // touch the keyboard's bottom edge.
+                        if (Config.KeyboardConfig.PreferBothHandsOnBottom && random.Next(100) < 70)
+                        {
+                            int highestUpper = Math.Min(
+                                Config.KeyboardConfig.Rows - 1,
+                                Math.Max(1, maxInterval));
+                            int leftUpper = random.Next(1, highestUpper + 1);
+                            int rightUpper = random.Next(1, highestUpper + 1);
+                            pinch[0] = true;
+                            pinch[leftUpper * Config.KeyboardConfig.KeysInRow] = true;
+                            pinch[1] = true;
+                            pinch[(rightUpper * Config.KeyboardConfig.KeysInRow) + 1] = true;
+                            return pinch;
+                        }
+
                         // Stage 9 starts with the left pinch high and the right pinch low.
                         pinch[Config.KeyboardConfig.KeysInRow] = true;
                         pinch[(2 * Config.KeyboardConfig.KeysInRow)] = true;
@@ -1994,6 +2018,71 @@ namespace GestureSample.Maui.Models
             pinch[first] = true;
             pinch[second] = true;
             return pinch;
+        }
+
+        private void GenerateTwoHandCopyMemorizePinch(Random random, bool[] pinch, int maxInterval)
+        {
+            const int stackedPercent = 70;
+            const int sharedLowerPercent = 15;
+            int rows = Math.Max(3, Config.KeyboardConfig.Rows);
+            int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
+            int maximumSpan = Math.Clamp(maxInterval, 2, rows - 2);
+            int span = random.Next(2, maximumSpan + 1);
+            int variant = random.Next(100);
+
+            int leftLower;
+            int leftUpper;
+            int rightLower;
+            int rightUpper;
+
+            if (variant < stackedPercent)
+            {
+                // Two separate stacked grips: the lower key of the upper grip is
+                // exactly one row above the upper key of the lower grip. The lower
+                // grip touches the bottom key; hand direction is balanced.
+                List<(int LowUpper, int HighLower, int HighUpper)> candidates = new();
+                for (int lowUpper = 1; lowUpper < rows - 2; lowUpper++)
+                {
+                    int highLower = lowUpper + 1;
+                    for (int highUpper = highLower + 1; highUpper < rows; highUpper++)
+                    {
+                        if (lowUpper <= maximumSpan && highUpper - highLower <= maximumSpan)
+                            candidates.Add((lowUpper, highLower, highUpper));
+                    }
+                }
+
+                var stacked = candidates[random.Next(candidates.Count)];
+                // First hand is the lower grip; second hand begins exactly one
+                // row above the first hand's upper finger.
+                leftLower = 0;
+                leftUpper = stacked.LowUpper;
+                rightLower = stacked.HighLower;
+                rightUpper = stacked.HighUpper;
+            }
+            else if (variant < stackedPercent + sharedLowerPercent)
+            {
+                // Both lower fingers share the same height. The upper fingers
+                // differ, while the shared lower row remains bottom anchored.
+                leftLower = rightLower = 0;
+                int shorterSpan = Math.Max(1, span - 1);
+                bool leftIsTaller = random.Next(2) == 0;
+                leftUpper = leftIsTaller ? span : shorterSpan;
+                rightUpper = leftIsTaller ? shorterSpan : span;
+            }
+            else
+            {
+                // Both upper fingers share the same height. One lower finger is
+                // bottom anchored and the other starts one row higher.
+                bool raiseLeftBase = random.Next(2) == 0;
+                leftLower = raiseLeftBase ? 1 : 0;
+                rightLower = raiseLeftBase ? 0 : 1;
+                leftUpper = rightUpper = span;
+            }
+
+            pinch[leftLower * columns] = true;
+            pinch[leftUpper * columns] = true;
+            pinch[(rightLower * columns) + 1] = true;
+            pinch[(rightUpper * columns) + 1] = true;
         }
 
         private void GeneratePrecisionGrammarStartingPinches(Random random, bool[] pinch, int maxInterval)
@@ -2216,8 +2305,120 @@ namespace GestureSample.Maui.Models
                 }
             }
 
+            if (Config.KeyboardConfig?.IsTwoHandCopyMemorize == true &&
+                _prevBitArrayAnswer != null &&
+                r.Next(100) < 75 &&
+                TryTransformOneHandForCopyMemorize(r, _prevBitArrayAnswer, out bool[] transformed))
+            {
+                BitArrayQuestion = transformed;
+                BitArrayQuestion2 = Array.Empty<bool>();
+                BuildCorrectAnswer();
+                return;
+            }
+
             // Otherwise: NewQuestion (plan) OR legacy mode
             GenerateNewQuestion(r);
+        }
+
+        private bool TryTransformOneHandForCopyMemorize(
+            Random random,
+            bool[] source,
+            out bool[] transformed)
+        {
+            transformed = source.ToArray();
+            int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
+            int rows = Math.Max(2, Config.KeyboardConfig.Rows);
+            int preferredColumn = _lastTwoHandCopyTransformedColumn.HasValue
+                ? 1 - _lastTwoHandCopyTransformedColumn.Value
+                : random.Next(2);
+            List<(int Column, int Lower, int Upper, int Family)> allCandidates = new();
+
+            foreach (int column in new[] { preferredColumn, 1 - preferredColumn })
+            {
+                int[] activeRows = Enumerable.Range(0, rows)
+                    .Where(row => (row * columns) + column < source.Length &&
+                                  source[(row * columns) + column])
+                    .ToArray();
+                if (activeRows.Length != 2)
+                    continue;
+
+                int lower = activeRows.Min();
+                int upper = activeRows.Max();
+                foreach (int delta in new[] { -1, 1 })
+                {
+                    AddCandidate(lower + delta, upper + delta); // move the whole hand
+                    AddCandidate(lower, upper + delta);         // transform the upper finger
+                    AddCandidate(lower + delta, upper);         // transform the lower finger
+                }
+
+                void AddCandidate(int candidateLower, int candidateUpper)
+                {
+                    if (candidateLower < 0 || candidateUpper >= rows ||
+                        candidateLower >= candidateUpper ||
+                        candidateUpper - candidateLower > Config.KeyboardConfig.PrecisionPinchMaxInterval)
+                        return;
+
+                    bool otherHandTouchesBottom = Enumerable.Range(0, Math.Min(2, columns))
+                        .Any(otherColumn => otherColumn != column && source[otherColumn]);
+                    if (candidateLower != 0 && !otherHandTouchesBottom)
+                        return;
+
+                    int otherColumn = column == 0 ? 1 : 0;
+                    int[] otherRows = Enumerable.Range(0, rows)
+                        .Where(row => (row * columns) + otherColumn < source.Length &&
+                                      source[(row * columns) + otherColumn])
+                        .ToArray();
+                    if (otherRows.Length != 2)
+                        return;
+
+                    int otherLower = otherRows.Min();
+                    int otherUpper = otherRows.Max();
+                    int leftLower = column == 0 ? candidateLower : otherLower;
+                    int leftUpper = column == 0 ? candidateUpper : otherUpper;
+                    int rightLower = column == 1 ? candidateLower : otherLower;
+                    int rightUpper = column == 1 ? candidateUpper : otherUpper;
+                    bool sharesLowerHeight = leftLower == rightLower;
+                    bool sharesUpperHeight = leftUpper == rightUpper;
+                    // Main 5M shape has a fixed reading direction: the second
+                    // hand's lower finger is one row above the first hand's upper.
+                    bool stackedWithOneRowGap = leftUpper + 1 == rightLower;
+                    if (!sharesLowerHeight && !sharesUpperHeight && !stackedWithOneRowGap)
+                        return;
+
+                    int family = stackedWithOneRowGap ? 0 : sharesLowerHeight ? 1 : 2;
+                    var candidate = (column, candidateLower, candidateUpper, family);
+                    if (!allCandidates.Contains(candidate))
+                        allCandidates.Add(candidate);
+                }
+            }
+
+            if (allCandidates.Count == 0)
+                return false;
+
+            int familyRoll = random.Next(100);
+            int desiredFamily = familyRoll < 70 ? 0 : familyRoll < 85 ? 1 : 2;
+            var familyCandidates = allCandidates
+                .Where(candidate => candidate.Family == desiredFamily)
+                .ToList();
+            var candidatePool = familyCandidates.Count > 0 ? familyCandidates : allCandidates;
+            var preferredCandidates = candidatePool
+                .Where(candidate => candidate.Column == preferredColumn)
+                .ToList();
+            if (preferredCandidates.Count > 0)
+                candidatePool = preferredCandidates;
+
+            var chosen = candidatePool[random.Next(candidatePool.Count)];
+            transformed = source.ToArray();
+            for (int row = 0; row < rows; row++)
+            {
+                int index = (row * columns) + chosen.Column;
+                if (index < transformed.Length)
+                    transformed[index] = false;
+            }
+            transformed[(chosen.Lower * columns) + chosen.Column] = true;
+            transformed[(chosen.Upper * columns) + chosen.Column] = true;
+            _lastTwoHandCopyTransformedColumn = chosen.Column;
+            return true;
         }
 
         private void ResolveSequenceMemorizeQuestion(Random random)
@@ -4033,7 +4234,15 @@ namespace GestureSample.Maui.Models
                     .ToList();
                 if (sharedCandidates.Count > 0)
                 {
-                    var shared = sharedCandidates[random.Next(sharedCandidates.Count)];
+                    var preferredBottomCandidates = keyboard.PreferBothHandsOnBottom
+                        ? sharedCandidates
+                            .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                            .ToList()
+                        : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+                    var pool = preferredBottomCandidates.Count > 0 && random.Next(100) < 70
+                        ? preferredBottomCandidates
+                        : sharedCandidates;
+                    var shared = pool[random.Next(pool.Count)];
                     _precisionShiftLeftDelta = _precisionShiftRightDelta = shared.Delta;
                     _precisionShiftLeftIsShift = _precisionShiftRightIsShift = shared.IsShift;
                     _precisionShiftLeftBaseAtTop = _precisionShiftRightBaseAtTop = shared.BaseAtTop;

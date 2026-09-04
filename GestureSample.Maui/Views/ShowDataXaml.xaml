@@ -152,6 +152,15 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+        <Grid x:Name="LoadingOverlay"
+              Grid.RowSpan="3"
+              BackgroundColor="#CCFFFFFF"
+              ZIndex="20">
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                <ActivityIndicator IsRunning="True" Color="#6F4B82" />
+                <Label Text="Loading data…" FontFamily="Georgia" TextColor="#342048" />
+            </VerticalStackLayout>
+        </Grid>
     </Grid>
     
 </ContentPage>

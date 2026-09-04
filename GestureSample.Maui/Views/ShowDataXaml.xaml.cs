@@ -37,7 +37,6 @@ namespace GestureSample.Views
         private Maui.Data.SQLite.User _currentUser;
         private bool _isTeacher = false;
         private readonly bool _showSelectors;
-        private readonly ToolbarItem _backToolbarItem;
         private readonly ToolbarItem _gamesToolbarItem;
         private readonly ToolbarItem _sortToolbarItem;
         private Guid? _currentSelectedGameId;
@@ -83,14 +82,43 @@ namespace GestureSample.Views
             _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
             _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             _currentUser = _dataUser ?? ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
-            _backToolbarItem = new ToolbarItem
+            ImageButton backButton = new()
             {
-                Text = "Back",
-                Priority = 0,
-                Order = ToolbarItemOrder.Primary,
+                Source = new FontImageSource
+                {
+                    Glyph = "←",
+                    FontFamily = "Arial",
+                    Size = 24,
+                    Color = Color.FromArgb("#342048")
+                },
+                BackgroundColor = Colors.Transparent,
+                WidthRequest = 44,
+                HeightRequest = 44,
+                MinimumWidthRequest = 44,
+                MinimumHeightRequest = 44,
+                Padding = 8,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center,
                 Command = new Command(async () => await NavigateBackAsync())
             };
-            ToolbarItems.Add(_backToolbarItem);
+            SemanticProperties.SetDescription(backButton, "Back");
+            NavigationPage.SetTitleView(this, new HorizontalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Start,
+                MinimumWidthRequest = 150,
+                Spacing = 4,
+                Children =
+                {
+                    backButton,
+                    new Label
+                    {
+                        Text = "Data",
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Color.FromArgb("#342048"),
+                        VerticalTextAlignment = TextAlignment.Center
+                    }
+                }
+            });
             _gamesToolbarItem = new ToolbarItem
             {
                 Text = "Games",
@@ -198,6 +226,10 @@ namespace GestureSample.Views
 
         public async void ShowData(Guid? gameId=null)
         {
+            LoadingOverlay.IsVisible = true;
+            await Task.Yield();
+            try
+            {
             Console.WriteLine(_currentUser.Name);
             gameId ??= _currentSelectedGameId;
             try
@@ -257,6 +289,11 @@ namespace GestureSample.Views
                 await LoadStatesToGrid(gameId);
 
             Console.WriteLine(_currentUser.Name);
+            }
+            finally
+            {
+                LoadingOverlay.IsVisible = false;
+            }
         }
 
         private void LoadDates()

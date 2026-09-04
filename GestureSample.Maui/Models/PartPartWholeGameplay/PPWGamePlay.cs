@@ -238,6 +238,12 @@ namespace GestureSample.Maui.Models
 
     private bool IsCorrectInput()
         {
+            // Distorted repeat questions deliberately show an equivalent triad
+            // whose visible operands may sit just outside the generation bounds.
+            // NAN still means that the learner left a required value unresolved.
+            if (Config.UseDistortedVariantInRepeatSequence)
+                return addend1 != NAN && addend2 != NAN && Sum != NAN;
+
             int minAddend2 = Config.EffectiveMinAddend2;
             int maxAddend2 = Config.EffectiveMaxAddend2;
             if (addend1 > Config.MaxAddend || addend1 < Config.MinAddend || addend2 > maxAddend2 || addend2 < minAddend2 || Sum > Config.MaxSum || Sum < Config.MinSum)
@@ -486,7 +492,19 @@ namespace GestureSample.Maui.Models
 
         public virtual async Task<ExerciseCheckResult> EvaluateAsync()
         {
-            if (!IsCorrectInput())
+            bool isCorrectEquation = CurrentOperation switch
+            {
+                Operation.Multiplication => addend1 * addend2 == Sum,
+                Operation.Sum => addend1 + addend2 == Sum,
+                Operation.Minus => Sum - addend1 == addend2,
+                _ => true
+            };
+
+            // A mathematically correct completed equation is valid even when a
+            // stage's generation bounds are narrower than a displayed variant.
+            // Bounds distinguish malformed wrong answers; they must not turn a
+            // correct answer into WRONG INPUT.
+            if (!isCorrectEquation && !IsCorrectInput())
             {
                 _status = Statement.WrongInput;
                 addend1 = oldA1;
@@ -496,13 +514,7 @@ namespace GestureSample.Maui.Models
             }
 
             IncrementGuessNumber();
-            _status = CurrentOperation switch
-            {
-                Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
-                Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
-                Operation.Minus => (Sum - addend1 == addend2) ? Statement.True : Statement.False,
-                _ => Statement.True
-            };
+            _status = isCorrectEquation ? Statement.True : Statement.False;
 
             if (Config.IsHistory && _status == Statement.True &&
                 (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||

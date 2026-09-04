@@ -31,6 +31,7 @@ namespace GestureSample.Views
         private readonly Grid _pickerCardsHost;
         private readonly Border _datePickerCard;
         private readonly Border _gamePickerCard;
+        private readonly Grid _loadingOverlay;
         private List<Game> _games = new();
         private bool _suppressSelectionNavigation;
         private Page? _activeDetailPage;
@@ -82,10 +83,42 @@ namespace GestureSample.Views
                 IsClippedToBounds = true
             };
 
-            ToolbarItems.Add(new ToolbarItem
+            ImageButton backButton = new()
             {
-                Text = "Back",
+                Source = new FontImageSource
+                {
+                    Glyph = "←",
+                    FontFamily = "Arial",
+                    Size = 24,
+                    Color = Color.FromArgb("#342048")
+                },
+                BackgroundColor = Colors.Transparent,
+                WidthRequest = 44,
+                HeightRequest = 44,
+                MinimumWidthRequest = 44,
+                MinimumHeightRequest = 44,
+                Padding = 8,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center,
                 Command = new Command(async () => await NavigateBackAsync())
+            };
+            SemanticProperties.SetDescription(backButton, "Back");
+            NavigationPage.SetTitleView(this, new HorizontalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Start,
+                MinimumWidthRequest = 150,
+                Spacing = 4,
+                Children =
+                {
+                    backButton,
+                    new Label
+                    {
+                        Text = "Games",
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Color.FromArgb("#342048"),
+                        VerticalTextAlignment = TextAlignment.Center
+                    }
+                }
             });
             _sortButton = new Button
             {
@@ -177,6 +210,9 @@ namespace GestureSample.Views
             Grid.SetRow(filterCard, 0);
             rootGrid.Add(_detailHost);
             Grid.SetRow(_detailHost, 1);
+            _loadingOverlay = CreateLoadingOverlay();
+            rootGrid.Add(_loadingOverlay);
+            Grid.SetRowSpan(_loadingOverlay, 2);
             Content = rootGrid;
             SizeChanged += OnSizeChanged;
         }
@@ -261,18 +297,49 @@ namespace GestureSample.Views
 
         private async Task LoadGamesAsync()
         {
-            Guid currentUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
-            _games = await _gameRepository.GetAllByUserAsync(currentUserId);
-
-            if (_games == null || _games.Count == 0)
+            _loadingOverlay.IsVisible = true;
+            await Task.Yield();
+            try
             {
-                await NavigateBackAsync();
-                return;
-            }
+                Guid currentUserId = ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
+                _games = await _gameRepository.GetAllByUserAsync(currentUserId);
 
-            SortGamesForPickers();
-            RebuildDates();
-            SelectInitialGame();
+                if (_games == null || _games.Count == 0)
+                {
+                    await NavigateBackAsync();
+                    return;
+                }
+
+                SortGamesForPickers();
+                RebuildDates();
+                SelectInitialGame();
+            }
+            finally
+            {
+                _loadingOverlay.IsVisible = false;
+            }
+        }
+
+        private static Grid CreateLoadingOverlay()
+        {
+            Grid overlay = new()
+            {
+                BackgroundColor = Colors.White.WithAlpha(0.78f),
+                ZIndex = 20,
+                IsVisible = true
+            };
+            overlay.Add(new VerticalStackLayout
+            {
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center,
+                Spacing = 10,
+                Children =
+                {
+                    new ActivityIndicator { IsRunning = true, Color = Color.FromArgb("#6F4B82") },
+                    new Label { Text = "Loading data…", TextColor = Color.FromArgb("#342048"), FontFamily = FilterFontFamily }
+                }
+            });
+            return overlay;
         }
 
         private void SortGamesForPickers()

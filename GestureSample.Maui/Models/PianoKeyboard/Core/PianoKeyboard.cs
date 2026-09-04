@@ -1196,9 +1196,13 @@ After:
             }
 
             (double? relativeX, double? relativeY) = GetRelativeTouch(e, sender);
+            Task? saveStateTask = null;
             if (prevColor != sender.BackgroundColor)
             {
-                await SaveStateAsync(isDown ? 1 : 0, keyNumber, row, relativeX, relativeY);
+                // Start persistence now, but do not make touch feedback, the hold
+                // timer, or sequence recognition wait for SQLite / remote I/O.
+                saveStateTask = SaveStateAsync(
+                    isDown ? 1 : 0, keyNumber, row, relativeX, relativeY);
             }
 
             MainThread.BeginInvokeOnMainThread(() =>
@@ -1209,6 +1213,8 @@ After:
 
             ScheduleNormalizeAllPianoKeyVisuals();
             await OnKeyStateChangedAsync(isDown);
+            if (saveStateTask != null)
+                await saveStateTask;
         }
 
         protected virtual Task OnKeyStateChangedAsync(bool isDown) => Task.CompletedTask;
