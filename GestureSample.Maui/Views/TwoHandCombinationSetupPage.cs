@@ -58,6 +58,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             (TwoHandCombinationOptions.Difference, "−", "Attach small part to other edge", "Move the same part across the whole"));
         AddGroup(body, "Parts and halves", current,
             (TwoHandCombinationOptions.Split, "◐", "Complementary parts", "Keep the whole; change the part"),
+            (TwoHandCombinationOptions.ThroughTenParts, "10", "Part outside, part inside", "A linked pair with complementary parts"),
             (TwoHandCombinationOptions.SplitJump, "⌇", "Split a jump", "One jump becomes two"),
             (TwoHandCombinationOptions.Half, "½", "One half, other half", "Full + one half → full + the other half"),
             (TwoHandCombinationOptions.MoreThanHalf | TwoHandCombinationOptions.LessThanHalf,

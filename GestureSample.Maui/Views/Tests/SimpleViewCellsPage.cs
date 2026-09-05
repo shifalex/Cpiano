@@ -259,7 +259,9 @@ namespace GestureSample.Views.Tests
 
         private async void ShowSequenceFirstProgressFeedback(double progress)
         {
-            if (!_isPageVisible || !_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
+            if (!_isPageVisible ||
+                (!_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize &&
+                 !_config.KeyboardConfig.IsGripTransformationPracticeExercise))
                 return;
 
             int version = ++_sequenceFeedbackChangeVersion;
@@ -7117,9 +7119,9 @@ namespace GestureSample.Views.Tests
                         Grid.SetRow(precisionKeyboardStage, 2);
 
                         if (isVerticalPrecisionLayout &&
+                            !_config.KeyboardConfig.IsPrecisionGrammarExercise &&
                             (!_config.KeyboardConfig.IsPrecisionShiftExercise ||
-                             _config.KeyboardConfig.PrecisionShiftSynchronizeHands ||
-                             _config.KeyboardConfig.IsPrecisionGrammarExercise))
+                             _config.KeyboardConfig.PrecisionShiftSynchronizeHands))
                         {
                             _lblAction.IsVisible = true;
                             _lblAction.HorizontalOptions = LayoutOptions.Center;

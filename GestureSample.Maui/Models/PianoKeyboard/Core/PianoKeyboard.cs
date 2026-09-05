@@ -40,6 +40,10 @@ namespace GestureSample.Maui.Models
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
         private readonly Dictionary<MR.Gestures.Button, MR.Gestures.Button> _glidingPrecisionKeys = new();
+        private bool UsesNativePrecisionPanFallback =>
+            _pianoConfig.IsPrecisionPinchExercise &&
+            !_pianoConfig.PrecisionShiftBothHands &&
+            DeviceInfo.Platform != DevicePlatform.iOS;
         private bool _externalInputBlocked;
 
         public void SetExternalInputBlocked(bool blocked)
@@ -217,8 +221,9 @@ After:
                 // the complete touch set through MR.Gestures; attaching both paths
                 // makes the native callback take over mid-glide as fingers lift and
                 // sends keys jumping between unrelated positions.
-                if (_pianoConfig.IsPrecisionPinchExercise &&
-                    !_pianoConfig.PrecisionShiftBothHands)
+                // On iOS the additional MAUI recognizer can cancel the key's
+                // MR.Gestures touch stream. Use only the per-key MR path there.
+                if (UsesNativePrecisionPanFallback)
                 {
                     MR.Gestures.Button glideOrigin = btnKeys[i];
                     PanGestureRecognizer glideRecognizer = new();
@@ -229,8 +234,14 @@ After:
 
             }
             AddDummies();
-            Panning += OnKeyboardPanning;
-            Panned += OnKeyboardPanned;
+            // Precision glides are owned by individual keys. Subscribing on the
+            // parent installs another recognizer even though its callback does
+            // nothing for precision input, and it can steal multi-finger touches.
+            if (!_pianoConfig.IsPrecisionPinchExercise)
+            {
+                Panning += OnKeyboardPanning;
+                Panned += OnKeyboardPanned;
+            }
 
 
             // Add an image to your Resources/Images folder, e.g., "reset.png" (ensure Build Action: MauiImage)
@@ -1099,8 +1110,7 @@ After:
                 return;
 
             MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
-            if (_pianoConfig.IsPrecisionPinchExercise &&
-                !_pianoConfig.PrecisionShiftBothHands &&
+            if (UsesNativePrecisionPanFallback &&
                 e.Cancelled &&
                 _glidingPrecisionKeys.ContainsKey(releasedKey))
             {

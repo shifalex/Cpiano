@@ -56,8 +56,13 @@ namespace GestureSample.Maui.Models
 
         protected virtual bool HasActiveTimedAnswer()
         {
-            return AnyPressed();
+            return AnyPressed() && !IsGripPracticeStartingCopy();
         }
+
+        private bool IsGripPracticeStartingCopy() =>
+            _pianoConfig.IsGripTransformationPracticeExercise &&
+            _gamePlay is BitArrayGamePlay gripGame &&
+            ToBitArray().SequenceEqual(gripGame.BitArrayQuestion);
 
         protected void ResetProgressVisual()
         {
@@ -235,6 +240,17 @@ namespace GestureSample.Maui.Models
 
             if (isDown && TryAcceptSequenceFirstWithoutSubmission())
                 return;
+
+            if (_pianoConfig.IsGripTransformationPracticeExercise)
+            {
+                if (IsGripPracticeStartingCopy())
+                {
+                    ShowSequenceCue(ToBitArray(), isCorrect: true);
+                    ResetProgressVisual();
+                    return;
+                }
+                ClearSequenceCue();
+            }
 
             if (UpdateSequenceFirstProgress() && isDown)
                 return;
