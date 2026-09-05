@@ -2664,22 +2664,26 @@ namespace GestureSample.Maui.Models
                     break;
                 case 24: // Implicit through-ten parts, always linked to complementary parts.
                     const int fiveTop = 4;
-                    int insideBoundary = random.Next(2, fiveTop);
-                    int outsideTop = random.Next(6, Math.Min(7, rows - 1) + 1);
+                    // The same part moves across the whole's upper edge; its size
+                    // must fit both inside the whole and above it on this keyboard.
+                    int partLength = random.Next(2, Math.Min(3, rows - 5) + 1);
+                    int insideBoundary = 5 - partLength;
+                    int outsideTop = fiveTop + partLength;
                     var wholeAndLower = (Left: (Lower: 0, Upper: fiveTop),
                                          Right: (Lower: 0, Upper: insideBoundary - 1));
                     var wholeAndUpper = (Left: (Lower: 0, Upper: fiveTop),
                                          Right: (Lower: insideBoundary, Upper: fiveTop));
-                    var outsideAndUpper = (Left: (Lower: 5, Upper: outsideTop),
-                                           Right: (Lower: insideBoundary, Upper: fiveTop));
+                    var wholeAndOutside = (Left: (Lower: 0, Upper: fiveTop),
+                                           Right: (Lower: 5, Upper: outsideTop));
 
                     if (random.Next(2) == 0)
                     {
-                        // Addition: complementary parts, then move the whole outside.
+                        // Addition: complementary parts, then move the upper part
+                        // outside while the other hand keeps holding the whole.
                         first = wholeAndLower;
                         second = wholeAndUpper;
                         _twoHandCombinationKind = TwoHandCombinationOptions.Split;
-                        linkedTarget = outsideAndUpper;
+                        linkedTarget = wholeAndOutside;
                         linkedKind = TwoHandCombinationOptions.ThroughTenParts;
                         linkedOutsideFirst = false;
                     }
@@ -2687,7 +2691,7 @@ namespace GestureSample.Maui.Models
                     {
                         // Subtraction: return the outside part inside, then complete
                         // the reverse complementary-parts transformation.
-                        first = outsideAndUpper;
+                        first = wholeAndOutside;
                         second = wholeAndUpper;
                         _twoHandCombinationOutsideFirst = true;
                         linkedTarget = wholeAndLower;
@@ -2937,6 +2941,9 @@ namespace GestureSample.Maui.Models
 
         public bool IsTwoHandCombinationFlip() =>
             _twoHandCombinationKind == TwoHandCombinationOptions.FlipAdditionSubtraction;
+
+        public bool ShouldUseTwoHandCombinationFlipAnimation() =>
+            IsTwoHandCombinationFlip() && Config.KeyboardConfig.UseFlipAnimationForAdditionSubtraction;
 
         public int[] GetTwoHandCombinationAnimationTargets()
         {
@@ -3531,8 +3538,8 @@ namespace GestureSample.Maui.Models
             TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
             TwoHandCombinationOptions.ThroughTenParts => _twoHandCombinationOutsideFirst
-                ? "PART INSIDE, PART OUTSIDE"
-                : "PART OUTSIDE, PART INSIDE",
+                ? "PART OUTSIDE, PART INSIDE"
+                : "PART INSIDE, PART OUTSIDE",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
             TwoHandCombinationOptions.Half => "ONE HALF, OTHER HALF",
             TwoHandCombinationOptions.MoreThanHalf => "A LITTLE MORE THAN HALF",
