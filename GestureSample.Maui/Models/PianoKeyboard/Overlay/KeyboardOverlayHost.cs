@@ -79,6 +79,9 @@ namespace GestureSample.Maui.Models
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
+            public bool[] HoldHintBits { get; set; } = Array.Empty<bool>();
+            public float HoldHintProgress { get; set; }
+            public float HoldHintAlpha { get; set; }
 
            
             // Optional cursor: draw one rect at a fractional index (e.g., 3.2)
@@ -115,6 +118,43 @@ namespace GestureSample.Maui.Models
                 DrawPrecisionLearningSign(canvas);
 
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
+                DrawHoldHint(canvas);
+            }
+
+            private void DrawHoldHint(ICanvas canvas)
+            {
+                if (HoldHintAlpha <= 0)
+                    return;
+
+                canvas.SaveState();
+                for (int i = 0; i < Math.Min(HoldHintBits.Length, KeyRects.Length); i++)
+                {
+                    if (!HoldHintBits[i]) continue;
+                    RectF key = KeyRects[i];
+                    float radius = Math.Min(22f, Math.Min(key.Width, key.Height) * 0.32f);
+                    PointF center = key.Center;
+                    // A stationary fingertip and a filling ring demonstrate waiting
+                    // on this exact key without changing its answer state or color.
+                    canvas.FillColor = Colors.White.WithAlpha(0.9f * HoldHintAlpha);
+                    canvas.FillCircle(center.X, center.Y, radius + 3);
+                    canvas.FillColor = Colors.DodgerBlue.WithAlpha(0.65f * HoldHintAlpha);
+                    canvas.FillCircle(center.X, center.Y, radius * 0.35f);
+                    canvas.StrokeSize = 3;
+                    canvas.StrokeColor = Colors.DodgerBlue.WithAlpha(0.2f * HoldHintAlpha);
+                    canvas.DrawCircle(center.X, center.Y, radius);
+                    canvas.StrokeColor = Colors.DodgerBlue.WithAlpha(HoldHintAlpha);
+                    var ring = new PathF();
+                    ring.MoveTo(center.X, center.Y - radius);
+                    int segments = Math.Max(1, (int)(60 * HoldHintProgress));
+                    for (int step = 1; step <= segments; step++)
+                    {
+                        double angle = -Math.PI / 2 + 2 * Math.PI * HoldHintProgress * step / segments;
+                        ring.LineTo(center.X + radius * (float)Math.Cos(angle),
+                            center.Y + radius * (float)Math.Sin(angle));
+                    }
+                    canvas.DrawPath(ring);
+                }
+                canvas.RestoreState();
             }
 
             void DrawPrecisionLearningSign(ICanvas canvas)
@@ -276,6 +316,10 @@ namespace GestureSample.Maui.Models
 
                 bool useAnimation = AnimBits?.Any(bit => bit) == true &&
                                     AnimTargets != null && AnimTargets.Length > 0;
+                // Faded reference keys remain visible without their guide line.
+                if (!useAnimation && StaticAlpha < DefaultStaticOverlayAlpha)
+                    return;
+
                 bool[] bits = useAnimation ? AnimBits : StaticBits;
                 if (bits == null || bits.Length == 0)
                     return;
@@ -648,6 +692,13 @@ namespace GestureSample.Maui.Models
             Children.Add(_inputShield);
 
             Keyboard.InstallOverlay(_patternDrawable);
+            if (keyboard is PianoKeyboardSync syncKeyboard)
+            {
+                syncKeyboard.HoldHintRequested += ShowHoldHint;
+                syncKeyboard.HoldHintCancelled += CancelHoldHint;
+                syncKeyboard.KeyPressStarted += CancelHoldHint;
+            }
+            Unloaded += (_, _) => CancelHoldHint();
 
             this.Loaded += (_, _) => DelayedSyncOverlay("Host.Loaded");
             Keyboard.KeysRebuilt += (_, _) => DelayedSyncOverlay("Keyboard.KeysRebuilt");
@@ -668,6 +719,7 @@ namespace GestureSample.Maui.Models
 
         public void SetTutorialMode(bool isOn)
         {
+            if (isOn) CancelHoldHint();
             IsTutorialMode = isOn;
 
             // Do not render a covering view. Transparent BoxViews above native
@@ -691,6 +743,39 @@ namespace GestureSample.Maui.Models
         {
             _patternDrawable.StaticAlpha = Math.Clamp(alpha, 0f, 1f);
             Keyboard.InvalidateOverlay();
+        }
+
+        private void CancelHoldHint()
+        {
+            this.AbortAnimation("HoldHint");
+            _patternDrawable.HoldHintBits = Array.Empty<bool>();
+            _patternDrawable.HoldHintAlpha = 0;
+            Keyboard.InvalidateOverlay();
+        }
+
+        private void ShowHoldHint(bool[] bits, int holdSeconds)
+        {
+            CancelHoldHint();
+            if (IsTutorialMode || !IsVisible || !TrySyncOverlay())
+                return;
+
+            _patternDrawable.HoldHintBits = (bool[])bits.Clone();
+            // Leave the completed ring visible briefly, then fade it away.
+            double holdMs = Math.Max(1, holdSeconds) * 1000d;
+            double totalMs = holdMs + 600;
+            new Animation(value =>
+            {
+                double elapsed = value * totalMs;
+                _patternDrawable.HoldHintProgress = (float)Math.Min(1, elapsed / holdMs);
+                _patternDrawable.HoldHintAlpha = (float)Math.Clamp((totalMs - elapsed) / 300, 0, 1);
+                Keyboard.InvalidateOverlay();
+            }).Commit(this, "HoldHint", 16, (uint)totalMs, Easing.Linear,
+                (_, _) =>
+                {
+                    _patternDrawable.HoldHintBits = Array.Empty<bool>();
+                    _patternDrawable.HoldHintAlpha = 0;
+                    Keyboard.InvalidateOverlay();
+                });
         }
 
         public Task FadeStaticOverlayAlphaAsync(float targetAlpha, uint ms, string animName = "StaticOverlayAlpha")

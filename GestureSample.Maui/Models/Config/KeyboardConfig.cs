@@ -498,6 +498,8 @@
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
         public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;
+        // Legacy property name retained for saved settings. Controls first-state-only
+        // presentation; combination exercises always accept the final state directly.
         public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
         public TwoHandMagnitudeVocabularyMode TwoHandMagnitudeVocabularyMode { get; set; } =
             TwoHandMagnitudeVocabularyMode.Intuitive;

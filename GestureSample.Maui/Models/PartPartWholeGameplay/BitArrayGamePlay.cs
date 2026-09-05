@@ -1370,6 +1370,7 @@ namespace GestureSample.Maui.Models
                     return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
 
                 _prevBitArrayAnswer = submittedKeyboard.ToArray();
+                RebaseLinkedCombinationOnAcceptedAnswer(submittedKeyboard);
             }
             else if (_isArrowLabelRetryAlternateActive &&
                      _primaryArrowLabelExerciseMode != ArrowLabelExerciseMode.None &&
@@ -1775,6 +1776,8 @@ namespace GestureSample.Maui.Models
 
         public bool CheckOnly(bool[] bitArrayAnswer)
         {
+           if (CheckFreeSizeGripAnswer(bitArrayAnswer) is bool freeSizeResult)
+               return freeSizeResult;
            return CurrentOperation switch
             {
 
@@ -4959,8 +4962,8 @@ namespace GestureSample.Maui.Models
         {
             if (candidate == null) return false;
 
-            if (AcceptsQualitativeSharedBoundaryAnswer(candidate))
-                return true;
+            if (CheckFreeSizeGripAnswer(candidate) is bool freeSizeResult)
+                return freeSizeResult;
 
             // Prefer comparing to the precomputed canonical correct answer
             if (BitArrayCorrectAnswer != null)
@@ -5000,50 +5003,59 @@ namespace GestureSample.Maui.Models
             return true;
         }
 
-        private bool AcceptsQualitativeSharedBoundaryAnswer(bool[] candidate)
+        private bool? CheckFreeSizeGripAnswer(bool[] candidate)
         {
-            if (_twoHandCombinationKind != TwoHandCombinationOptions.Associativity ||
-                Config.KeyboardConfig?.TwoHandMagnitudeVocabularyMode != TwoHandMagnitudeVocabularyMode.Qualitative ||
-                _twoHandCombinationMagnitude <= 1 ||
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize != true ||
+                IsSequenceMemorizeFirstResponse() ||
                 _sequenceMemorizeFirstPinch == null ||
-                candidate.Length != _sequenceMemorizeFirstPinch.Length)
+                _sequenceMemorizeSecondPinch == null)
+                return null;
+
+            FreeSizeGripRule? rule = _twoHandCombinationKind switch
             {
-                return false;
-            }
+                TwoHandCombinationOptions.Associativity =>
+                    Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode switch
+                    {
+                        TwoHandMagnitudeVocabularyMode.Intuitive => FreeSizeGripRule.Boundary,
+                        TwoHandMagnitudeVocabularyMode.Qualitative => _twoHandCombinationMagnitude == 1
+                            ? FreeSizeGripRule.BoundaryLittle : FreeSizeGripRule.BoundaryMuch,
+                        _ => null
+                    },
+                TwoHandCombinationOptions.ThroughTenParts => _twoHandCombinationOutsideFirst
+                    ? FreeSizeGripRule.InsidePart : FreeSizeGripRule.OutsidePart,
+                TwoHandCombinationOptions.SplitJump => FreeSizeGripRule.SplitJump,
+                TwoHandCombinationOptions.ResizeUpper => FreeSizeGripRule.ResizeUpper,
+                TwoHandCombinationOptions.ResizeLowerAttached => FreeSizeGripRule.ResizeLowerAttached,
+                TwoHandCombinationOptions.MuchSmaller => FreeSizeGripRule.MuchSmaller,
+                TwoHandCombinationOptions.MuchBigger => FreeSizeGripRule.MuchBigger,
+                _ => null
+            };
+            return rule.HasValue
+                ? FreeSizeGripAnswer.Accepts(_sequenceMemorizeFirstPinch,
+                    _sequenceMemorizeSecondPinch, candidate, rule.Value,
+                    _twoHandCombinationBoundaryMovesUp)
+                : null;
+        }
 
-            const int columns = 2;
-            int[][] initial = Enumerable.Range(0, columns)
-                .Select(column => Enumerable.Range(0, _sequenceMemorizeFirstPinch.Length)
-                    .Where(index => index % columns == column && _sequenceMemorizeFirstPinch[index])
-                    .Select(index => index / columns).ToArray())
-                .ToArray();
-            int[][] answer = Enumerable.Range(0, columns)
-                .Select(column => Enumerable.Range(0, candidate.Length)
-                    .Where(index => index % columns == column && candidate[index])
-                    .Select(index => index / columns).ToArray())
-                .ToArray();
+        private void RebaseLinkedCombinationOnAcceptedAnswer(bool[] accepted)
+        {
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize != true ||
+                IsSequenceMemorizeFirstResponse() || _pendingHalfDerivedFirst == null ||
+                _sequenceMemorizeSecondPinch == null ||
+                accepted.SequenceEqual(_sequenceMemorizeSecondPinch))
+                return;
 
-            if (initial.Any(interval => interval.Length != 2) ||
-                answer.Any(interval => interval.Length != 2))
+            bool[]? nextTarget = _pendingHalfDerivedKind switch
             {
-                return false;
+                TwoHandCombinationOptions.Split => FreeSizeGripAnswer.BuildPartsFollowUp(accepted, moveOutside: false),
+                TwoHandCombinationOptions.ThroughTenParts => FreeSizeGripAnswer.BuildPartsFollowUp(accepted, moveOutside: true),
+                _ => null
+            };
+            if (nextTarget != null)
+            {
+                _pendingHalfDerivedFirst = accepted.ToArray();
+                _pendingHalfDerivedSecond = nextTarget;
             }
-
-            int lowerColumn = initial[0][0] == 0 ? 0 : 1;
-            int upperColumn = 1 - lowerColumn;
-            int lastRow = (_sequenceMemorizeFirstPinch.Length / columns) - 1;
-            if (answer[lowerColumn][0] != 0 || answer[upperColumn][1] != lastRow)
-                return false;
-
-            int initialBoundary = initial[upperColumn][0];
-            int answerBoundary = answer[upperColumn][0];
-            if (answer[lowerColumn][1] + 1 != answerBoundary)
-                return false;
-
-            int signedMovement = answerBoundary - initialBoundary;
-            return _twoHandCombinationBoundaryMovesUp
-                ? signedMovement > 1
-                : signedMovement < -1;
         }
 
         // Overload so callers can pass the PianoKeyboard directly

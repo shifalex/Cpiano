@@ -29,7 +29,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         _exercisePage = exercisePage;
         current ??= new KeyboardConfig { TwoHandCombinationOptions = TwoHandCombinationOptions.Default,
             AnimateTwoHandCombinations = true, RandomizeTwoHandCombinationSizes = true,
-            Rows = 8, PrecisionPinchMemorizeDelaySeconds = 2 };
+            Rows = 8, PrecisionPinchMemorizeDelaySeconds = 2, AskOnlyTwoHandCombinationTarget = false };
         Title = "Stage 5.1 settings";
         BackgroundColor = Color.FromArgb("#FFF9F4");
         _animate.IsChecked = current.AnimateTwoHandCombinations;
@@ -148,7 +148,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         v.Add(ToggleRow("Quick movement animations", "Normal question color, no tutorial pause", _animate));
         v.Add(ToggleRow("Vary interval sizes", "Keep the bottom anchor while changing proportions", _vary));
         v.Add(ToggleRow("Read instruction aloud", "Speak the transformation shown above the keyboard", _readAloud));
-        v.Add(ToggleRow("Ask only for the target", "Keep the initial state visible while answering", _askOnlyTarget));
+        v.Add(ToggleRow("Show first state only", "Show the first state, then fade it without showing the second", _askOnlyTarget));
         v.Add(new VerticalStackLayout { Spacing = 3, Children =
         {
             new Label { Text = "Magnitude vocabulary", FontAttributes = FontAttributes.Bold, TextColor = Ink },
