@@ -493,6 +493,8 @@
         public bool IsTwoHandCopyMemorize { get; set; } = false;
         public TwoHandCombinationOptions TwoHandCombinationOptions { get; set; } = TwoHandCombinationOptions.Default;
         public bool AnimateTwoHandCombinations { get; set; } = true;
+        // Temporary presentation choice for +− / −+: set true to restore the flip.
+        public bool UseFlipAnimationForAdditionSubtraction { get; set; } = false;
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
         public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;

@@ -2240,7 +2240,7 @@ namespace GestureSample.Views.Tests
                                                 {
                                                     bool[] firstPreview = memorizeGamePlay.GetSequenceMemorizeFirstPreview();
                                                     _taskMainHost.SetStaticBits(Array.Empty<bool>());
-                                                    if (memorizeGamePlay.IsTwoHandCombinationFlip())
+                                                    if (memorizeGamePlay.ShouldUseTwoHandCombinationFlipAnimation())
                                                     {
                                                         _taskMainHost.SetStaticBits(
                                                             memorizeGamePlay.GetTwoHandCombinationFlipFixedBits());
@@ -7295,7 +7295,7 @@ namespace GestureSample.Views.Tests
                         try
                         {
                             _taskMainHost.SetStaticBits(Array.Empty<bool>());
-                            if (animatedGamePlay.IsTwoHandCombinationFlip())
+                            if (animatedGamePlay.ShouldUseTwoHandCombinationFlipAnimation())
                             {
                                 _taskMainHost.SetStaticBits(animatedGamePlay.GetTwoHandCombinationFlipFixedBits());
                                 await _taskMainHost.AnimateFlipAcrossAxisAsync(
