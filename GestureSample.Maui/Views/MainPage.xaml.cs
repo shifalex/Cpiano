@@ -37,26 +37,23 @@ namespace GestureSample.Views
             new PageConfig("Custom stages", "Logical Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Logical)),
             new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
 
-            new PageConfig("Gripping", "Match a grip", () =>
-                new SimpleViewCellsPage(CreatePrecisionCopyConfig("One-hand COPY", false, false, false)), menuSection: "Coordination", menuIcon: "⇉"),
+            new PageConfig("Gripping", "Copy a grip", () =>
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Copy a grip", false, false, false, showGuideLine: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.HandOverKeyboard),
             new PageConfig("Gripping", "Remember a grip", () =>
-                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false)), menuSection: "Coordination", menuIcon: "↶"),
-            new PageConfig("Gripping", "Grip patterns", () =>
-                new SimpleViewCellsPage(CreateTwoHandCopyMemorizeConfig()), menuSection: "Coordination", menuIcon: "⇈"),
-            new PageConfig("Gripping", "Remember Transformations", () =>
-                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig()), menuSection: "Coordination", menuIcon: "⇄"),
+                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.OneHand),
+            new PageConfig("Gripping", "Remember two grips", () =>
+                new SimpleViewCellsPage(CreateTwoHandCopyMemorizeConfig()), menuSection: "Coordination", menuIcon: GrippingMenuIcon.TwoHands),
+            new PageConfig("Gripping", "Remember grip changes", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig()), menuSection: "Coordination", menuIcon: GrippingMenuIcon.ChangingHands),
 
-            new PageConfig("Gripping", "Learn signs", () =>
-                new SimpleViewCellsPage(CreatePrecisionSignLearningConfig()), menuSection: "Symbolic", menuIcon: "+−"),
-            new PageConfig("Gripping", "Grip Commands", () =>
-                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Transformation language", true, 3,
-                    PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
-                    synchronizeHands: true, staggerHandsInitially: true,
-                    rows: 6, maxPinchInterval: 5, preferBothHandsOnBottom: true)), menuSection: "Symbolic", menuIcon: "↑↓"),
-            new PageConfig("Gripping", "Grip Rules", () =>
-                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Transformation grammar", true, 3,
-                    PrecisionPinchMoveOptions.All, rows: 9, maxPinchInterval: 5,
-                    continueFromPrevious: false, grammarExercise: true)), menuSection: "Symbolic", menuIcon: "⇅"),
+            new PageConfig("Gripping", "Learn the arrows", () =>
+                new SimpleViewCellsPage(CreatePrecisionSignLearningConfig()), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.ShiftDown),
+            new PageConfig("Gripping", "Arrows from bottom", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Arrows from bottom", true, 3,
+                    PrecisionPinchMoveOptions.All, rows: 7, maxPinchInterval: 5,
+                    continueFromPrevious: false, grammarExercise: true)), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.UpperUpAndDown),
+            new PageConfig("Gripping", "Arrow combinations", () =>
+                new SimpleViewCellsPage(CreateGripTransformationPracticeConfig()), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.UpperUpAndShiftUp),
 
             new PageConfig("Gripping", "Synchronous process test", () =>
                 new SimpleViewCellsPage(CreateSynchronousProcessTestConfig()), menuSection: "Development"),
@@ -2832,7 +2829,7 @@ namespace GestureSample.Views
                     SyncType = SyncType.Sync,
                     SecondsPressingToAnswer = 1,
                     IsHelpNeeded = true,
-                    Rows = 5,
+                    Rows = 7,
                     KeysInRow = 2,
                     AllowKeyWidthAdjustment = true,
                     IsPrecisionPinchExercise = true,
@@ -2856,7 +2853,7 @@ namespace GestureSample.Views
             PrecisionPinchMoveOptions moveOptions,
             bool synchronizeHands = false,
             bool staggerHandsInitially = false,
-            int rows = 5,
+            int rows = 7,
             int maxPinchInterval = int.MaxValue,
             int newPinchPercent = 25,
             bool continueFromPrevious = true,
@@ -2928,7 +2925,7 @@ namespace GestureSample.Views
         private static GameConfig CreatePrecisionMemorizeConfig(bool sequence, int sequenceMaxDistance = 1)
         {
             GameConfig config = CreatePrecisionCopyConfig(
-                sequence ? "Sequence memorize" : "Memorize pinch",
+                sequence ? "Sequence memorize" : "Remember a grip",
                 bothHands: false,
                 copyOtherHand: false,
                 transformative: false);
@@ -2955,7 +2952,7 @@ namespace GestureSample.Views
         private static GameConfig CreatePrecisionSignLearningConfig()
         {
             GameConfig config = CreatePrecisionShiftConfig(
-                "Animated sign learning",
+                "Learn the arrows",
                 bothHands: false,
                 maxDistance: 3,
                 moveOptions: PrecisionPinchMoveOptions.All,
@@ -2967,10 +2964,25 @@ namespace GestureSample.Views
             return config;
         }
 
+        private static GameConfig CreateGripTransformationPracticeConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Arrow combinations",
+                bothHands: true,
+                maxDistance: 1,
+                moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
+                rows: 8,
+                maxPinchInterval: 3,
+                continueFromPrevious: false,
+                preferBothHandsOnBottom: true);
+            config.KeyboardConfig.IsGripTransformationPracticeExercise = true;
+            return config;
+        }
+
         private static GameConfig CreateTwoHandCopyMemorizeConfig()
         {
             GameConfig config = CreatePrecisionCopyConfig(
-                "MEMORIZE COPY 2 HANDS",
+                "Remember two grips",
                 bothHands: true,
                 copyOtherHand: false,
                 transformative: false,
@@ -3013,7 +3025,7 @@ namespace GestureSample.Views
             TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive)
         {
             GameConfig config = CreatePrecisionCopyConfig(
-                "Two hands combination memorize",
+                "Remember grip changes",
                 bothHands: true,
                 copyOtherHand: false,
                 transformative: false);
@@ -3141,6 +3153,7 @@ namespace GestureSample.Views
                 },
                 RowDefinitions =
                 {
+                    new RowDefinition(GridLength.Auto),
                     new RowDefinition(GridLength.Auto)
                 }
             };
@@ -3150,6 +3163,12 @@ namespace GestureSample.Views
             void ApplyResponsiveColumns(double width)
             {
                 bool useTwoColumns = width >= 720;
+                tracks.ColumnDefinitions[0].Width = useTwoColumns
+                    ? new GridLength(1.45, GridUnitType.Star)
+                    : GridLength.Star;
+                tracks.ColumnDefinitions[1].Width = useTwoColumns
+                    ? GridLength.Star
+                    : new GridLength(0);
                 Grid.SetColumn(coordination, 0);
                 Grid.SetRow(coordination, 0);
                 Grid.SetColumn(symbolic, useTwoColumns ? 1 : 0);
@@ -3207,14 +3226,14 @@ namespace GestureSample.Views
                     StrokeThickness = 0,
                     BackgroundColor = accent,
                     StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 13 },
-                    Content = new Label
+                    Content = new GraphicsView
                     {
-                        Text = item.MenuIcon,
-                        FontFamily = "OpenSansSemibold",
-                        FontSize = 21,
-                        TextColor = Colors.White,
-                        HorizontalTextAlignment = TextAlignment.Center,
-                        VerticalTextAlignment = TextAlignment.Center
+                        Drawable = new GrippingMenuIconDrawable(item.MenuIcon),
+                        WidthRequest = 36,
+                        HeightRequest = 36,
+                        HorizontalOptions = LayoutOptions.Center,
+                        VerticalOptions = LayoutOptions.Center,
+                        InputTransparent = true
                     }
                 };
                 Label titleLabel = new()
@@ -3422,7 +3441,7 @@ namespace GestureSample.Views
             }
             public Func<Page> PageConstructor { get; }
             public string MenuSection { get; }
-            public string MenuIcon { get; }
+            public GrippingMenuIcon MenuIcon { get; }
             public bool IsUserSettings => Title.StartsWith("USER SETTINGS", StringComparison.Ordinal);
 
             public bool IsLargeScreenOnly { get; }
@@ -3453,7 +3472,7 @@ namespace GestureSample.Views
             };
 
             public PageConfig(string parent, string title, Func<Page> pageConstructor,
-                bool largeScreenOnly = false, string menuSection = null, string menuIcon = "●")
+                bool largeScreenOnly = false, string menuSection = null, GrippingMenuIcon menuIcon = GrippingMenuIcon.OneHand)
             {
                 Parent = parent;
                 Title = title;

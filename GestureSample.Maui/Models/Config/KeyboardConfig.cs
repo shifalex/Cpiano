@@ -422,8 +422,10 @@
         SubtrahendOneStepSmaller = 1 << 20,
         MoreThanHalf = 1 << 21,
         LessThanHalf = 1 << 22,
+        ThroughTenParts = 1 << 23,
         Default = Associativity | FlipAdditionSubtraction | Difference | Split | Half |
                   MoreThanHalf | LessThanHalf |
+                  ThroughTenParts |
                   SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
                   IncreaseLowerByOne | DecreaseLowerByOne |
                   IncreaseUpperByOne | DecreaseUpperByOne,
@@ -433,6 +435,7 @@
               SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
               IncreaseLowerByOne | IncreaseUpperByOne | DecreaseLowerByOne | DecreaseUpperByOne |
               MoreThanHalf | LessThanHalf
+              | ThroughTenParts
     }
 
     public enum TwoHandMagnitudeVocabularyMode
@@ -508,6 +511,7 @@
         public bool IsPrecisionShiftExercise { get; set; } = false;
         public bool IsPrecisionSignLearningExercise { get; set; } = false;
         public bool IsPrecisionSynchronousProcessExercise { get; set; } = false;
+        public bool IsGripTransformationPracticeExercise { get; set; } = false;
         public bool PrecisionShiftBothHands { get; set; } = false;
         public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
         public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;

@@ -1,4 +1,4 @@
-﻿using GestureSample.Maui.Data;
+using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
 using Microsoft.Maui.Graphics;
@@ -63,6 +63,8 @@ namespace GestureSample.Maui.Models
         private bool[]? _pendingHalfDerivedFirst;
         private bool[]? _pendingHalfDerivedSecond;
         private TwoHandCombinationOptions _pendingHalfDerivedKind;
+        private bool _twoHandCombinationOutsideFirst;
+        private bool _pendingHalfDerivedOutsideFirst;
         public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
         private int _currentStagedArrowStepIndex;
         private int _completedStagedArrowCycles;
@@ -1875,6 +1877,23 @@ namespace GestureSample.Maui.Models
                         return pinch;
                     }
 
+                    if (Config.KeyboardConfig.IsGripTransformationPracticeExercise)
+                    {
+                        // Both hands always begin on the keyboard's bottom edge.
+                        // Keep the grips compact enough that stacking one above the
+                        // other remains a legal and frequent next transformation.
+                        int highestUpper = Math.Min(
+                            Config.KeyboardConfig.Rows - 1,
+                            Math.Min(3, Math.Max(1, maxInterval)));
+                        int leftUpper = random.Next(1, highestUpper + 1);
+                        int rightUpper = random.Next(1, highestUpper + 1);
+                        pinch[0] = true;
+                        pinch[leftUpper * Config.KeyboardConfig.KeysInRow] = true;
+                        pinch[1] = true;
+                        pinch[(rightUpper * Config.KeyboardConfig.KeysInRow) + 1] = true;
+                        return pinch;
+                    }
+
                     if (Config.KeyboardConfig.IsPrecisionGrammarExercise)
                     {
                         GeneratePrecisionGrammarStartingPinches(random, pinch, maxInterval);
@@ -2089,62 +2108,16 @@ namespace GestureSample.Maui.Models
         {
             int rows = Math.Max(2, Config.KeyboardConfig.Rows);
             int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
-
-            // Equal starts are deliberately uncommon. They belong to the dedicated
-            // "start equal" condition and always grow upward from the bottom row.
-            if (random.Next(100) < 20)
+            // Compact, independently sized grips always start at the bottom.
+            // This also leaves room for the occasional move above the other hand.
+            int maximumUpperRow = Math.Min(rows - 1, Math.Min(3, Math.Max(1, maxInterval)));
+            for (int column = 0; column < Math.Min(2, columns); column++)
             {
-                int maximumUpperRow = Math.Min(rows - 1, maxInterval);
-                int upperRow = maximumUpperRow >= 2
-                    ? random.Next(2, maximumUpperRow + 1)
-                    : maximumUpperRow;
-                for (int column = 0; column < Math.Min(2, columns); column++)
-                {
-                    pinch[column] = true;
-                    pinch[(upperRow * columns) + column] = true;
-                }
-                return;
+                int upperRow = random.Next(1, maximumUpperRow + 1);
+                pinch[column] = true;
+                pinch[(upperRow * columns) + column] = true;
             }
-
-            List<(int LowBottom, int LowTop, int HighBottom, int HighTop)> stacked = new();
-            for (int lowBottom = 0; lowBottom < rows; lowBottom++)
-            for (int lowTop = lowBottom + 2; lowTop < rows; lowTop++)
-            {
-                int highBottom = lowTop + 1;
-                if (highBottom >= rows)
-                    continue;
-                for (int highTop = highBottom + 2; highTop < rows; highTop++)
-                {
-                    if (lowTop - lowBottom <= maxInterval && highTop - highBottom <= maxInterval)
-                        stacked.Add((lowBottom, lowTop, highBottom, highTop));
-                }
-            }
-
-            if (stacked.Count == 0)
-            {
-                // Very short keyboards cannot contain two separated two-key grips.
-                // Keep the fallback deterministic and bottom-anchored.
-                int upperRow = Math.Min(rows - 1, Math.Max(1, maxInterval));
-                for (int column = 0; column < Math.Min(2, columns); column++)
-                {
-                    pinch[column] = true;
-                    pinch[(upperRow * columns) + column] = true;
-                }
-                return;
-            }
-
-            var choice = stacked[random.Next(stacked.Count)];
-            bool leftHandIsHigher = random.Next(2) == 0;
-            int leftBottom = leftHandIsHigher ? choice.HighBottom : choice.LowBottom;
-            int leftTop = leftHandIsHigher ? choice.HighTop : choice.LowTop;
-            int rightBottom = leftHandIsHigher ? choice.LowBottom : choice.HighBottom;
-            int rightTop = leftHandIsHigher ? choice.LowTop : choice.HighTop;
-            pinch[leftBottom * columns] = true;
-            pinch[leftTop * columns] = true;
-            pinch[(rightBottom * columns) + 1] = true;
-            pinch[(rightTop * columns) + 1] = true;
         }
-
         private bool IsTerminalUpperOnlyPinch(int firstRow, int secondRow)
         {
             KeyboardConfig keyboard = Config.KeyboardConfig;
@@ -2480,6 +2453,7 @@ namespace GestureSample.Maui.Models
                 _pendingHalfDerivedFirst = null;
                 _pendingHalfDerivedSecond = null;
                 _twoHandCombinationKind = _pendingHalfDerivedKind;
+                _twoHandCombinationOutsideFirst = _pendingHalfDerivedOutsideFirst;
                 return (firstPending, secondPending);
             }
             // Do not generate the two "gap" families (2 and 7). In those
@@ -2509,6 +2483,7 @@ namespace GestureSample.Maui.Models
                 (21, TwoHandCombinationOptions.DecreaseUpperByOne),
                 (22, TwoHandCombinationOptions.SubtrahendOneStepSmaller),
                 (23, TwoHandCombinationOptions.LessThanHalf)
+                ,(24, TwoHandCombinationOptions.ThroughTenParts)
             };
             TwoHandCombinationOptions enabled = Config.KeyboardConfig.TwoHandCombinationOptions;
             var allowedCombinations = allCombinations.Where(item => enabled.HasFlag(item.Option)).ToArray();
@@ -2519,6 +2494,9 @@ namespace GestureSample.Maui.Models
             _twoHandCombinationKind = selectedCombination.Option;
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) first;
             ((int Lower, int Upper) Left, (int Lower, int Upper) Right) second;
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right)? linkedTarget = null;
+            TwoHandCombinationOptions linkedKind = TwoHandCombinationOptions.None;
+            bool linkedOutsideFirst = false;
 
             switch (combination)
             {
@@ -2684,6 +2662,38 @@ namespace GestureSample.Maui.Models
                     second = ((0, fixedMinuend - 1),
                               (fixedMinuend - shrinkingSubtrahend + 1, fixedMinuend - 1));
                     break;
+                case 24: // Implicit through-ten parts, always linked to complementary parts.
+                    const int fiveTop = 4;
+                    int insideBoundary = random.Next(2, fiveTop);
+                    int outsideTop = random.Next(6, Math.Min(7, rows - 1) + 1);
+                    var wholeAndLower = (Left: (Lower: 0, Upper: fiveTop),
+                                         Right: (Lower: 0, Upper: insideBoundary - 1));
+                    var wholeAndUpper = (Left: (Lower: 0, Upper: fiveTop),
+                                         Right: (Lower: insideBoundary, Upper: fiveTop));
+                    var outsideAndUpper = (Left: (Lower: 5, Upper: outsideTop),
+                                           Right: (Lower: insideBoundary, Upper: fiveTop));
+
+                    if (random.Next(2) == 0)
+                    {
+                        // Addition: complementary parts, then move the whole outside.
+                        first = wholeAndLower;
+                        second = wholeAndUpper;
+                        _twoHandCombinationKind = TwoHandCombinationOptions.Split;
+                        linkedTarget = outsideAndUpper;
+                        linkedKind = TwoHandCombinationOptions.ThroughTenParts;
+                        linkedOutsideFirst = false;
+                    }
+                    else
+                    {
+                        // Subtraction: return the outside part inside, then complete
+                        // the reverse complementary-parts transformation.
+                        first = outsideAndUpper;
+                        second = wholeAndUpper;
+                        _twoHandCombinationOutsideFirst = true;
+                        linkedTarget = wholeAndLower;
+                        linkedKind = TwoHandCombinationOptions.Split;
+                    }
+                    break;
                 default: // Whole + half -> whole + one less than half.
                     int lessWholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
                     first = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 1));
@@ -2705,6 +2715,8 @@ namespace GestureSample.Maui.Models
             {
                 first = (first.Right, first.Left);
                 second = (second.Right, second.Left);
+                if (linkedTarget is { } target)
+                    linkedTarget = (target.Right, target.Left);
             }
 
             // Stage 5.1 normally begins at the physical bottom so its intervals have
@@ -2723,6 +2735,14 @@ namespace GestureSample.Maui.Models
 
             bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
             bool[] secondBits = BuildTwoHandCombinationBits(second.Left, second.Right, rows);
+            if (linkedTarget is { } nextTarget)
+            {
+                _pendingHalfDerivedFirst = secondBits.ToArray();
+                _pendingHalfDerivedSecond = BuildTwoHandCombinationBits(
+                    nextTarget.Left, nextTarget.Right, rows);
+                _pendingHalfDerivedKind = linkedKind;
+                _pendingHalfDerivedOutsideFirst = linkedOutsideFirst;
+            }
             if (_twoHandCombinationKind is TwoHandCombinationOptions.MoreThanHalf or
                 TwoHandCombinationOptions.LessThanHalf or
                 TwoHandCombinationOptions.HalfOfHalf)
@@ -3510,6 +3530,9 @@ namespace GestureSample.Maui.Models
                 : "Large+small, to Large-small",
             TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
             TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
+            TwoHandCombinationOptions.ThroughTenParts => _twoHandCombinationOutsideFirst
+                ? "PART INSIDE, PART OUTSIDE"
+                : "PART OUTSIDE, PART INSIDE",
             TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
             TwoHandCombinationOptions.Half => "ONE HALF, OTHER HALF",
             TwoHandCombinationOptions.MoreThanHalf => "A LITTLE MORE THAN HALF",
@@ -4223,6 +4246,13 @@ namespace GestureSample.Maui.Models
                 return;
             }
 
+            if (keyboard.IsGripTransformationPracticeExercise)
+            {
+                ConfigureGripTransformationPracticeMission(random, minimum, maximum);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
             if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
             {
                 List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
@@ -4280,6 +4310,72 @@ namespace GestureSample.Maui.Models
                 mission.Left;
             (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) =
                 mission.Right;
+        }
+
+        private void ConfigureGripTransformationPracticeMission(
+            Random random,
+            int minimum,
+            int maximum)
+        {
+            var missions = new List<((int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+
+            List<(int Delta, bool IsShift, bool BaseAtTop)> leftUpperMoves =
+                GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                    .ToList();
+            List<(int Delta, bool IsShift, bool BaseAtTop)> rightUpperMoves =
+                GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                    .ToList();
+
+            // One hand changes its upper endpoint.
+            foreach (var move in leftUpperMoves)
+                missions.Add((move, null));
+            foreach (var move in rightUpperMoves)
+                missions.Add((null, move));
+
+            // Both upper endpoints change together. Independent selection naturally
+            // includes both same-direction and opposite-direction combinations.
+            foreach (var left in leftUpperMoves)
+            foreach (var right in rightUpperMoves)
+                missions.Add((left, right));
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int[] leftRows = GetPrecisionSideActiveIndices(true)
+                .Select(index => index / columns).OrderBy(row => row).ToArray();
+            int[] rightRows = GetPrecisionSideActiveIndices(false)
+                .Select(index => index / columns).OrderBy(row => row).ToArray();
+
+            if (leftRows.Length == 2 && rightRows.Length == 2)
+            {
+                void AddShiftMission(bool moveLeft, int delta, int weight)
+                {
+                    if (delta == 0 ||
+                        !CanApplyPrecisionSideTransform(moveLeft, delta, isShift: true, baseAtTop: false))
+                        return;
+                    var shift = (Delta: delta, IsShift: true, BaseAtTop: false);
+                    for (int i = 0; i < weight; i++)
+                        missions.Add(moveLeft ? (shift, null) : (null, shift));
+                }
+
+                // Main shift vocabulary: place one grip immediately above the other.
+                AddShiftMission(moveLeft: true, rightRows.Max() + 1 - leftRows.Min(), weight: 4);
+                AddShiftMission(moveLeft: false, leftRows.Max() + 1 - rightRows.Min(), weight: 4);
+
+                // Smaller family: align the two upper endpoints.
+                AddShiftMission(moveLeft: true, rightRows.Max() - leftRows.Max(), weight: 1);
+                AddShiftMission(moveLeft: false, leftRows.Max() - rightRows.Max(), weight: 1);
+            }
+
+            if (missions.Count == 0)
+                throw new InvalidOperationException("Could not create a legal grip transformation mission.");
+
+            var mission = missions[random.Next(missions.Count)];
+            if (mission.Left is { } leftMission)
+                (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) = leftMission;
+            if (mission.Right is { } rightMission)
+                (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) = rightMission;
         }
 
         private void ConfigurePrecisionSignLearningIntro(int exerciseIndex)
@@ -4343,155 +4439,59 @@ namespace GestureSample.Maui.Models
             bool leftIsActive,
             bool rightIsActive)
         {
-            PrecisionPinchMoveOptions configured = Config.KeyboardConfig.PrecisionPinchMoveOptions;
-            bool handsStartTogether = PrecisionGrammarHandsStartTogether();
-            List<(string Label, (int Delta, bool IsShift, bool BaseAtTop)? Left,
-                (int Delta, bool IsShift, bool BaseAtTop)? Right)> missions = new();
+            var missions = new List<(string Label,
+                (int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+            var leftResizes = leftIsActive
+                ? GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
+                : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+            var rightResizes = rightIsActive
+                ? GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
+                : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+            AddRandomEqualHandMission(missions, random, "RESIZE — KEEP LOWER KEYS DOWN",
+                leftResizes, rightResizes);
 
-            if (handsStartTogether && configured.HasFlag(PrecisionPinchMoveOptions.ShiftWhole))
-            {
-                List<(int Delta, bool IsShift, bool BaseAtTop)> leftShiftCandidates = leftIsActive
-                    ? GetPrecisionSideTransformCandidates(true, minimum, maximum)
-                        .Where(candidate => candidate.IsShift && Math.Abs(candidate.Delta) == 1).ToList()
-                    : new();
-                List<(int Delta, bool IsShift, bool BaseAtTop)> rightShiftCandidates = rightIsActive
-                    ? GetPrecisionSideTransformCandidates(false, minimum, maximum)
-                        .Where(candidate => candidate.IsShift && Math.Abs(candidate.Delta) == 1).ToList()
-                    : new();
-                AddRandomEqualHandMission(
-                    missions, random, "START EQUAL — SHIFT BY ONE",
-                    leftShiftCandidates, rightShiftCandidates);
-
-                List<(int Delta, bool IsShift, bool BaseAtTop)> leftHigherCandidates = leftIsActive
-                    ? GetPrecisionSideTransformCandidates(true, minimum, maximum)
-                        .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
-                    : new();
-                List<(int Delta, bool IsShift, bool BaseAtTop)> rightHigherCandidates = rightIsActive
-                    ? GetPrecisionSideTransformCandidates(false, minimum, maximum)
-                        .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
-                    : new();
-
-                // Moving the higher endpoint is the main equal-start vocabulary.
-                // Four entries versus one shift entry produce an 80/20 family weight.
-                for (int weight = 0; weight < 4; weight++)
-                {
-                    AddRandomEqualHandMission(
-                        missions, random, "START EQUAL — MOVE HIGHER",
-                        leftHigherCandidates, rightHigherCandidates);
-                }
-            }
-            else if (!handsStartTogether)
+            var stackingMissions = new List<(string Label,
+                (int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+            if (Config.KeyboardConfig.PrecisionPinchMoveOptions.HasFlag(PrecisionPinchMoveOptions.ShiftWhole))
             {
                 int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
-                int[] leftRows = GetPrecisionSideActiveIndices(leftSide: true)
-                    .Select(index => index / columns).OrderBy(row => row).ToArray();
-                int[] rightRows = GetPrecisionSideActiveIndices(leftSide: false)
-                    .Select(index => index / columns).OrderBy(row => row).ToArray();
-                bool lowerIsLeft = leftRows.Length == 2 && rightRows.Length == 2 &&
-                                   leftRows.Max() < rightRows.Min();
-                bool lowerSide = lowerIsLeft;
-                bool upperSide = !lowerIsLeft;
-
-                List<(int Delta, bool IsShift, bool BaseAtTop)> upperResizeCandidates =
-                    GetPrecisionSideTransformCandidates(upperSide, minimum, maximum)
-                        .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
-                        .ToList();
-                if (upperResizeCandidates.Count > 0)
+                foreach (bool moveLeft in new[] { true, false })
                 {
-                    var resize = upperResizeCandidates[random.Next(upperResizeCandidates.Count)];
-                    missions.Add(("ENLARGE / REDUCE UPPER HAND",
-                        upperSide ? resize : null,
-                        upperSide ? null : resize));
-                }
-
-                // The lower hand changes at its upper endpoint. Shift the complete
-                // upper hand by the same delta so b and b+1 remain adjacent.
-                List<(int Delta, bool IsShift, bool BaseAtTop)> lowerResizeCandidates =
-                    GetPrecisionSideTransformCandidates(lowerSide, minimum, maximum)
-                        .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
-                        .ToList();
-                List<(int Delta, bool IsShift, bool BaseAtTop)> upperShiftCandidates =
-                    GetPrecisionSideTransformCandidates(upperSide, minimum, maximum)
-                        .Where(candidate => candidate.IsShift)
-                        .ToList();
-                List<((int Delta, bool IsShift, bool BaseAtTop) Resize,
-                    (int Delta, bool IsShift, bool BaseAtTop) Shift)> attachedCandidates = new();
-                foreach (var resize in lowerResizeCandidates)
-                {
-                    var matchingShift = upperShiftCandidates
-                        .FirstOrDefault(shift => shift.Delta == resize.Delta);
-                    if (matchingShift == default)
+                    if (moveLeft ? !leftIsActive : !rightIsActive)
                         continue;
-                    attachedCandidates.Add((resize, matchingShift));
+                    int[] moving = GetPrecisionSideActiveIndices(moveLeft);
+                    int[] other = GetPrecisionSideActiveIndices(!moveLeft);
+                    if (moving.Length != 2 || other.Length != 2)
+                        continue;
+                    int delta = other.Max() / columns + 1 - moving.Min() / columns;
+                    if (delta <= 0 || !CanApplyPrecisionSideTransform(moveLeft, delta,
+                            isShift: true, baseAtTop: false))
+                        continue;
+                    var shift = (Delta: delta, IsShift: true, BaseAtTop: false);
+                    stackingMissions.Add((moveLeft
+                            ? "MOVE LEFT HAND ABOVE RIGHT" : "MOVE RIGHT HAND ABOVE LEFT",
+                        moveLeft ? shift : null, moveLeft ? null : shift));
                 }
-                if (attachedCandidates.Count > 0)
-                {
-                    var attached = attachedCandidates[random.Next(attachedCandidates.Count)];
-                    missions.Add(("ENLARGE / REDUCE LOWER HAND — KEEP UPPER ATTACHED",
-                        lowerIsLeft ? attached.Resize : attached.Shift,
-                        lowerIsLeft ? attached.Shift : attached.Resize));
-                }
-
-                List<(int Delta, bool IsShift, bool BaseAtTop)> upperLowerEdgeCandidates =
-                    GetPrecisionSideTransformCandidates(upperSide, minimum, maximum)
-                        .Where(candidate => !candidate.IsShift && candidate.BaseAtTop)
-                        .ToList();
-                List<((int Delta, bool IsShift, bool BaseAtTop) LowerBoundary,
-                    (int Delta, bool IsShift, bool BaseAtTop) UpperBoundary)> associativityCandidates = new();
-                foreach (var lowerBoundary in lowerResizeCandidates)
-                {
-                    var upperBoundary = upperLowerEdgeCandidates
-                        .FirstOrDefault(candidate => candidate.Delta == lowerBoundary.Delta);
-                    if (upperBoundary != default)
-                        associativityCandidates.Add((lowerBoundary, upperBoundary));
-                }
-                if (associativityCandidates.Count > 0)
-                {
-                    var associativity = associativityCandidates[random.Next(associativityCandidates.Count)];
-                    missions.Add(("ASSOCIATIVITY — MOVE THE SHARED BOUNDARY",
-                        lowerIsLeft ? associativity.LowerBoundary : associativity.UpperBoundary,
-                        lowerIsLeft ? associativity.UpperBoundary : associativity.LowerBoundary));
-                }
-
-                int lowerLength = (lowerIsLeft ? leftRows : rightRows)[1] -
-                                  (lowerIsLeft ? leftRows : rightRows)[0] + 1;
-                int upperLength = (lowerIsLeft ? rightRows : leftRows)[1] -
-                                  (lowerIsLeft ? rightRows : leftRows)[0] + 1;
-
-                // a..b | b+1..b+c  ->  a..b | b-c+1..b
-                // The complete upper interval moves down by its own length. As an
-                // interval transformation this is a mirror across the b | b+1 line.
-                int shiftAsMinusDelta = -upperLength;
-                if (CanApplyPrecisionSideTransform(upperSide, shiftAsMinusDelta,
-                        isShift: true, baseAtTop: false))
-                {
-                    var shiftAsMinus =
-                        (Delta: shiftAsMinusDelta, IsShift: true, BaseAtTop: false);
-                    (string Label,
-                        (int Delta, bool IsShift, bool BaseAtTop)? Left,
-                        (int Delta, bool IsShift, bool BaseAtTop)? Right) shiftAsMinusMission =
-                        ("SHIFT AS MINUS — MIRROR UPPER ACROSS b | b+1",
-                            upperSide ? shiftAsMinus : null,
-                            upperSide ? null : shiftAsMinus);
-                    missions.Add(shiftAsMinusMission);
-                    missions.Add(shiftAsMinusMission);
-                }
-
             }
 
-            if (missions.Count == 0)
+            // Choose the family explicitly so the rare move stays at 10%,
+            // regardless of how many legal resize commands a grip has.
+            var pool = stackingMissions.Count > 0 && (missions.Count == 0 || random.Next(100) < 10)
+                ? stackingMissions : missions;
+            if (pool.Count == 0)
                 return false;
-
-            var mission = missions[random.Next(missions.Count)];
+            var mission = pool[random.Next(pool.Count)];
             _precisionGrammarCondition = mission.Label;
-            _isPrecisionShiftAsMinus = mission.Label.StartsWith("SHIFT AS MINUS", StringComparison.Ordinal);
             if (mission.Left is { } left)
                 (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) = left;
             if (mission.Right is { } right)
                 (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) = right;
             return _precisionShiftLeftDelta != 0 || _precisionShiftRightDelta != 0;
         }
-
         private static void AddRandomEqualHandMission(
             List<(string Label, (int Delta, bool IsShift, bool BaseAtTop)? Left,
                 (int Delta, bool IsShift, bool BaseAtTop)? Right)> missions,
@@ -4519,20 +4519,6 @@ namespace GestureSample.Maui.Models
                 : null;
             string scopeLabel = scope == 0 ? "LEFT HAND" : scope == 1 ? "RIGHT HAND" : "BOTH HANDS";
             missions.Add(($"{label} — {scopeLabel}", left, right));
-        }
-
-        private bool PrecisionGrammarHandsStartTogether()
-        {
-            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
-            int[] leftRows = GetPrecisionSideActiveIndices(leftSide: true)
-                .Select(index => index / columns)
-                .OrderBy(row => row)
-                .ToArray();
-            int[] rightRows = GetPrecisionSideActiveIndices(leftSide: false)
-                .Select(index => index / columns)
-                .OrderBy(row => row)
-                .ToArray();
-            return leftRows.Length == 2 && leftRows.SequenceEqual(rightRows);
         }
 
         private void FinalizePrecisionShiftConfiguration(int minimum)
