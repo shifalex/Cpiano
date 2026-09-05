@@ -1,12 +1,39 @@
-﻿using GestureSample.Maui.Data;
+using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
-using MongoDB.Driver.Core.Operations;
+using Microsoft.Maui.Graphics;
 
 namespace GestureSample.Maui.Models
 {
+    internal sealed class GroupByColorStep
+    {
+        public GroupByColorStep(bool[] bits, Color color, Direction direction, bool[]? targetBits = null)
+        {
+            Bits = bits;
+            Color = color;
+            Direction = direction;
+            TargetBits = targetBits ?? bits;
+        }
+
+        public bool[] Bits { get; }
+        public Color Color { get; }
+        public Direction Direction { get; }
+        public bool[] TargetBits { get; }
+    }
+
     internal class BitArrayGamePlay : PPWGamePlay
     {
+        private static readonly Color[] GroupByColorPalette =
+        {
+            Colors.Yellow,
+            Colors.LightGreen,
+            Colors.Blue
+        };
+        private const int ArrowGroupPressMaxGapMs = 220;
+        private const int ArrowSequenceMinGapMs = 220;
+        private const int ArrowSplitMinGapMs = 260;
+        private const int ArrowAttemptResetGapMs = 2000;
+
         private int _nextArrowAboveNumber = 1;
         private Direction _prevDir = Direction.Right;
         public Direction dir = Direction.Right;
@@ -15,6 +42,56 @@ namespace GestureSample.Maui.Models
 
         public Direction moveBydir = Direction.Right;
         public int moveByLength =0;
+        private int _precisionShiftDelta = 0;
+        private int _precisionShiftLeftDelta;
+        private int _precisionShiftRightDelta;
+        private bool _precisionShiftLeftBaseAtTop;
+        private bool _precisionShiftRightBaseAtTop;
+        private bool _precisionShiftLeftIsShift;
+        private bool _precisionShiftRightIsShift;
+        private string _precisionGrammarCondition = string.Empty;
+        private bool _isPrecisionShiftAsMinus;
+        private bool[]? _sequenceMemorizeFirstPinch;
+        private bool[]? _sequenceMemorizeSecondPinch;
+        private bool _sequenceMemorizeGenerateSecond;
+        private bool _sequenceMemorizeCurrentIsFirst;
+        private int? _lastTwoHandCopyTransformedColumn;
+        private TwoHandCombinationOptions _twoHandCombinationKind;
+        private bool _twoHandCombinationBoundaryMovesUp;
+        private int _twoHandCombinationMagnitude = 1;
+        private bool _twoHandCombinationFlipToAddition;
+        private bool[]? _pendingHalfDerivedFirst;
+        private bool[]? _pendingHalfDerivedSecond;
+        private TwoHandCombinationOptions _pendingHalfDerivedKind;
+        private bool _twoHandCombinationOutsideFirst;
+        private bool _pendingHalfDerivedOutsideFirst;
+        public bool IsPrimaryColorAssignedToLeft { get; private set; } = true;
+        private int _currentStagedArrowStepIndex;
+        private int _completedStagedArrowCycles;
+        private bool _isCurrentStagedArrowMasked;
+        private bool _isCurrentStagedArrowRevealed;
+        public bool ForceShowMaskedThirdArrow { get; set; }
+        private int _arrowLabelStartValue;
+        private int _arrowLabelEndValue;
+        private int _arrowLabelDistance;
+        private int? _arrowLabelMiddleValue;
+        private bool _usesRtlComplexPrompt;
+        private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private ArrowLabelExerciseMode _primaryArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private ArrowLabelExerciseMode _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+        private MissingValueTargetFlags _activeArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private MissingValueTargetFlags _primaryArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private MissingValueTargetFlags _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+        private bool _isArrowLabelRetryAlternateActive;
+        private bool _pendingArrowLabelKeyboardQuestion;
+        private bool _usesActiveOnKeyboardArrow;
+        private ArrowType _activeArrowType = ArrowType.Straight;
+        private ArrowMovementMode _activeArrowMovementMode = ArrowMovementMode.Legacy;
+        private string _lastArrowMovementDebugText = string.Empty;
+        private bool[]? _stagedArrowFirstBits;
+        private bool[]? _stagedArrowSecondBits;
+        private readonly List<bool[]> _groupByColorQuestionGroups = new();
+        private readonly List<Direction> _groupByColorTargetDirections = new();
 
         public List<int> triads = new();
 
@@ -22,16 +99,806 @@ namespace GestureSample.Maui.Models
         private void GenerateArrowExercise()
         {
             var r = new Random();
+            SelectActiveArrowMovementMode(r);
             var (fromIndex, lengthIndexes) = PrepareArrowFields(r);
             SetBitArrayForArrow(fromIndex, lengthIndexes);
+            CaptureStagedArrowOverlayState();
+            SetArrowMovementDebug("generated");
             Console.WriteLine("above number:{0}", aboveNumber);
+        }
+
+        private bool SupportsComposedArrowVariants()
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            return keyboardConfig != null &&
+                   (keyboardConfig.AllowedArrowPromptKinds != ArrowPromptKindFlags.None ||
+                    keyboardConfig.AllowedArrowRouteKinds != ArrowRouteKindFlags.None ||
+                    keyboardConfig.SpecialArrowMissingTargets != MissingValueTargetFlags.None);
+        }
+
+        private ArrowLabelExerciseMode GetCurrentArrowLabelExerciseMode()
+        {
+            if (SupportsComposedArrowVariants())
+                return _activeArrowLabelExerciseMode;
+
+            return Config?.KeyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+        }
+
+        private ArrowType GetCurrentArrowType()
+        {
+            if (GetCurrentArrowMovementMode() is ArrowMovementMode.JumpToEnd or ArrowMovementMode.OneByOne or ArrowMovementMode.JumpThroughMiddle)
+                return ArrowType.Rounded;
+
+            if (SupportsComposedArrowVariants())
+                return _activeArrowType;
+
+            return Config?.KeyboardConfig?.ArrowType ?? ArrowType.Straight;
+        }
+
+        private ArrowMovementMode GetCurrentArrowMovementMode()
+        {
+            return _activeArrowMovementMode != ArrowMovementMode.Legacy
+                ? _activeArrowMovementMode
+                : Config?.KeyboardConfig?.ArrowMovementMode ?? ArrowMovementMode.Legacy;
+        }
+
+        private void SelectActiveArrowMovementMode(Random r)
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            _activeArrowMovementMode = ArrowMovementMode.Legacy;
+            if (keyboardConfig == null)
+                return;
+
+            List<ArrowMovementMode> movementModes = GetAllowedArrowMovementModes(keyboardConfig.AllowedArrowMovementModes);
+            if (movementModes.Count == 0)
+            {
+                _activeArrowMovementMode = keyboardConfig.ArrowMovementMode;
+                return;
+            }
+
+            int index = r.Next(movementModes.Count);
+            _activeArrowMovementMode = movementModes[index];
+        }
+
+        private static List<ArrowMovementMode> GetAllowedArrowMovementModes(ArrowMovementModeFlags flags)
+        {
+            List<ArrowMovementMode> modes = new();
+            if (flags.HasFlag(ArrowMovementModeFlags.AllTogether))
+                modes.Add(ArrowMovementMode.AllTogether);
+            if (flags.HasFlag(ArrowMovementModeFlags.Arpeggio))
+                modes.Add(ArrowMovementMode.Arpeggio);
+            if (flags.HasFlag(ArrowMovementModeFlags.Splited))
+                modes.Add(ArrowMovementMode.Splited);
+            if (flags.HasFlag(ArrowMovementModeFlags.MiddleSplited))
+                modes.Add(ArrowMovementMode.MiddleSplited);
+            if (flags.HasFlag(ArrowMovementModeFlags.JumpToEnd))
+                modes.Add(ArrowMovementMode.JumpToEnd);
+            if (flags.HasFlag(ArrowMovementModeFlags.OneByOne))
+                modes.Add(ArrowMovementMode.OneByOne);
+            if (flags.HasFlag(ArrowMovementModeFlags.JumpThroughMiddle))
+                modes.Add(ArrowMovementMode.JumpThroughMiddle);
+
+            return modes;
+        }
+
+        private static ArrowType GetArrowTypeForPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode == ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? ArrowType.Rounded
+                : ArrowType.Straight;
+        }
+
+        private static ArrowLabelExerciseMode GetPromptModeForMissingTarget(MissingValueTargetFlags target, ArrowRouteKindFlags routeKinds)
+        {
+            if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) && target.HasFlag(MissingValueTargetFlags.Sum))
+                return ArrowLabelExerciseMode.OrdinalStartAndLength;
+
+            if (target.HasFlag(MissingValueTargetFlags.Addend1))
+                return ArrowLabelExerciseMode.EndAndLengthWithMissingStart;
+
+            if (target.HasFlag(MissingValueTargetFlags.Addend2))
+                return ArrowLabelExerciseMode.StartAndEndWithMissingLength;
+
+            return ArrowLabelExerciseMode.StartAndLength;
+        }
+
+        private static MissingValueTargetFlags GetMissingTargetForPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode switch
+            {
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength => MissingValueTargetFlags.Addend2,
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart => MissingValueTargetFlags.Addend1,
+                ArrowLabelExerciseMode.None => MissingValueTargetFlags.None,
+                _ => MissingValueTargetFlags.Sum
+            };
+        }
+
+        private static bool IsComplexArrowLabelPromptMode(ArrowLabelExerciseMode mode)
+        {
+            return mode is ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance;
+        }
+
+        private bool UsesRtlComplexThroughTenPrompt()
+        {
+            return _usesRtlComplexPrompt ||
+                   Config?.GameName?.Contains("rtl complex", StringComparison.OrdinalIgnoreCase) == true;
+        }
+
+        private MissingValueTargetFlags GetCurrentArrowLabelMissingTarget()
+        {
+            if (SupportsComposedArrowVariants())
+                return _activeArrowLabelMissingTarget == MissingValueTargetFlags.None
+                    ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                    : _activeArrowLabelMissingTarget;
+
+            MissingValueTargetFlags configuredTarget = Config?.ArrowLabelMissingValueTarget ?? MissingValueTargetFlags.None;
+            return configuredTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(GetCurrentArrowLabelExerciseMode())
+                : configuredTarget;
+        }
+
+        private void SetActiveArrowLabelMissingTarget(MissingValueTargetFlags target)
+        {
+            _activeArrowLabelMissingTarget = target;
+            if (Config != null)
+                Config.ArrowLabelMissingValueTarget = target;
+        }
+
+        private ArrowLabelExerciseMode GetArrowLabelRetryAlternateMode()
+        {
+            return Config?.KeyboardConfig?.ArrowLabelRetryAlternateMode ?? ArrowLabelExerciseMode.None;
+        }
+
+        private bool UsesArrowLabelRetry()
+        {
+            return Config?.KeyboardConfig?.EnableArrowLabelRetry == true ||
+                   Config?.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.None;
+        }
+
+        private List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> GetArrowLabelRetryAlternatePrompts()
+        {
+            List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> prompts = new();
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            if (keyboardConfig == null || !UsesArrowLabelRetry())
+                return prompts;
+
+            ArrowRouteKindFlags routeKinds = keyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.None
+                ? ArrowRouteKindFlags.Cardinal
+                : keyboardConfig.AllowedArrowRouteKinds;
+
+            MissingValueTargetFlags retryTargets = keyboardConfig.SpecialArrowRetryAlternateTargets;
+            if (retryTargets != MissingValueTargetFlags.None)
+            {
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Sum))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Sum, routeKinds), MissingValueTargetFlags.Sum));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Addend2))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Addend2, routeKinds), MissingValueTargetFlags.Addend2));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.TotalDistance))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.TotalDistance, routeKinds), MissingValueTargetFlags.TotalDistance));
+                if (retryTargets.HasFlag(MissingValueTargetFlags.Addend1))
+                    prompts.Add((GetPromptModeForMissingTarget(MissingValueTargetFlags.Addend1, routeKinds), MissingValueTargetFlags.Addend1));
+            }
+
+            ArrowLabelExerciseMode singleAlternateMode = GetArrowLabelRetryAlternateMode();
+            if (singleAlternateMode != ArrowLabelExerciseMode.None)
+                prompts.Add((singleAlternateMode, GetMissingTargetForPromptMode(singleAlternateMode)));
+
+            return prompts
+                .Where(prompt => prompt.Mode != ArrowLabelExerciseMode.None &&
+                                 (prompt.Mode != _primaryArrowLabelExerciseMode ||
+                                  prompt.Target != _primaryArrowLabelMissingTarget))
+                .Distinct()
+                .ToList();
+        }
+
+        private void CapturePrimaryArrowLabelPromptMode()
+        {
+            _primaryArrowLabelExerciseMode = GetCurrentArrowLabelExerciseMode();
+            _primaryArrowLabelMissingTarget = GetCurrentArrowLabelMissingTarget();
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _isArrowLabelRetryAlternateActive = false;
+        }
+
+        private void QueueArrowLabelPrompt(ArrowLabelExerciseMode mode, MissingValueTargetFlags target)
+        {
+            _pendingArrowLabelExerciseMode = mode;
+            _pendingArrowLabelMissingTarget = target;
+        }
+
+        public bool ApplyPendingArrowLabelPromptMode()
+        {
+            if (_pendingArrowLabelExerciseMode == ArrowLabelExerciseMode.None &&
+                !_pendingArrowLabelKeyboardQuestion)
+            {
+                return false;
+            }
+
+            if (_pendingArrowLabelKeyboardQuestion)
+            {
+                _pendingArrowLabelKeyboardQuestion = false;
+                _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+                _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+                _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.None);
+                _usesActiveOnKeyboardArrow = true;
+                _activeArrowType = ArrowType.Straight;
+                _isArrowLabelRetryAlternateActive = true;
+                return true;
+            }
+
+            _activeArrowLabelExerciseMode = _pendingArrowLabelExerciseMode;
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            SetActiveArrowLabelMissingTarget(_pendingArrowLabelMissingTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : _pendingArrowLabelMissingTarget);
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _usesActiveOnKeyboardArrow = false;
+            _activeArrowType = GetArrowTypeForPromptMode(_activeArrowLabelExerciseMode);
+            _isArrowLabelRetryAlternateActive =
+                _activeArrowLabelExerciseMode != _primaryArrowLabelExerciseMode ||
+                GetCurrentArrowLabelMissingTarget() != _primaryArrowLabelMissingTarget;
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+            return true;
+        }
+
+        private bool TryQueueArrowLabelRetryAlternatePrompt()
+        {
+            if (!UsesArrowLabelRetry() ||
+                Config?.KeyboardConfig?.ArrowLabelRetryMode != ArrowLabelRetryMode.None)
+                return false;
+
+            if (_isArrowLabelRetryAlternateActive)
+            {
+                return false;
+            }
+
+            List<(ArrowLabelExerciseMode Mode, MissingValueTargetFlags Target)> alternatePrompts = GetArrowLabelRetryAlternatePrompts();
+            if (alternatePrompts.Count == 0)
+                return false;
+
+            (ArrowLabelExerciseMode alternateMode, MissingValueTargetFlags alternateTarget) =
+                alternatePrompts[Random.Shared.Next(alternatePrompts.Count)];
+            QueueArrowLabelPrompt(alternateMode, alternateTarget);
+            return true;
+        }
+
+        private bool TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess()
+        {
+            if (!UsesArrowLabelRetry() ||
+                !_isArrowLabelRetryAlternateActive ||
+                _primaryArrowLabelExerciseMode == ArrowLabelExerciseMode.None)
+            {
+                return false;
+            }
+
+            QueueArrowLabelPrompt(_primaryArrowLabelExerciseMode, _primaryArrowLabelMissingTarget);
+            return true;
+        }
+
+        public bool QueueArrowLabelRetryKeyboardQuestion()
+        {
+            if (!UsesArrowLabelRetry() ||
+                _isArrowLabelRetryAlternateActive ||
+                _primaryArrowLabelExerciseMode == ArrowLabelExerciseMode.None)
+            {
+                return false;
+            }
+
+            _pendingArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
+            _pendingArrowLabelMissingTarget = MissingValueTargetFlags.None;
+            _pendingArrowLabelKeyboardQuestion = true;
+            return true;
+        }
+
+        public bool IsActiveOnKeyboardArrowQuestion => UsesOnKeyboardArrowExercise();
+
+        public void HideCurrentArrowLabelMissingValue()
+        {
+            if (UsesArrowLabelExercise())
+                ApplyArrowLabelPpwState(revealMissingValue: false);
+        }
+
+        private bool UsesOnKeyboardArrowExercise()
+        {
+            if (SupportsComposedArrowVariants())
+                return _usesActiveOnKeyboardArrow;
+
+            return Config?.KeyboardConfig?.IsArrow == true;
+        }
+
+        private bool UsesArrowLabelExercise()
+        {
+            return GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.StartAndLength or
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength or
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
+                ArrowLabelExerciseMode.OrdinalStartAndLength or
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen or
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen or
+                ArrowLabelExerciseMode.ComplexLongDistance;
+        }
+
+        private void ResolveCurrentArrowVariant(Random r)
+        {
+            KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
+            _activeArrowLabelExerciseMode = keyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+            SetActiveArrowLabelMissingTarget(Config?.ArrowLabelMissingValueTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : Config?.ArrowLabelMissingValueTarget ?? MissingValueTargetFlags.None);
+            _usesActiveOnKeyboardArrow = keyboardConfig?.IsArrow == true;
+            _activeArrowType = keyboardConfig?.ArrowType ?? ArrowType.Straight;
+
+            if (keyboardConfig == null || !SupportsComposedArrowVariants())
+                return;
+
+            ArrowPromptKindFlags promptKinds = keyboardConfig.AllowedArrowPromptKinds == ArrowPromptKindFlags.None
+                ? ArrowPromptKindFlags.OnKeyboard
+                : keyboardConfig.AllowedArrowPromptKinds;
+            ArrowRouteKindFlags routeKinds = keyboardConfig.AllowedArrowRouteKinds == ArrowRouteKindFlags.None
+                ? ArrowRouteKindFlags.Cardinal
+                : keyboardConfig.AllowedArrowRouteKinds;
+            MissingValueTargetFlags missingTargets = keyboardConfig.SpecialArrowMissingTargets == MissingValueTargetFlags.None
+                ? MissingValueTargetFlags.Sum
+                : keyboardConfig.SpecialArrowMissingTargets;
+
+            List<(bool UseOnKeyboard, ArrowLabelExerciseMode LabelMode, MissingValueTargetFlags MissingTarget, ArrowType ArrowType)> variants = new();
+
+            if (promptKinds.HasFlag(ArrowPromptKindFlags.OnKeyboard))
+            {
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
+                    variants.Add((true, ArrowLabelExerciseMode.None, MissingValueTargetFlags.None, ArrowType.Straight));
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal))
+                    variants.Add((true, ArrowLabelExerciseMode.None, MissingValueTargetFlags.None, ArrowType.Rounded));
+            }
+
+            if (promptKinds.HasFlag(ArrowPromptKindFlags.SpecialPrompt))
+            {
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Cardinal))
+                {
+                    bool useConfiguredComplexPrompt =
+                        IsComplexArrowLabelPromptMode(keyboardConfig.ArrowLabelExerciseMode);
+                    ArrowLabelExerciseMode distancePromptMode = useConfiguredComplexPrompt
+                        ? keyboardConfig.ArrowLabelExerciseMode
+                        : ArrowLabelExerciseMode.StartAndLength;
+                    ArrowLabelExerciseMode endPromptMode = useConfiguredComplexPrompt
+                        ? keyboardConfig.ArrowLabelExerciseMode
+                        : ArrowLabelExerciseMode.StartAndLength;
+
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Sum))
+                        variants.Add((false, endPromptMode, MissingValueTargetFlags.Sum, ArrowType.Straight));
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Addend2))
+                    {
+                        variants.Add((false, useConfiguredComplexPrompt
+                            ? keyboardConfig.ArrowLabelExerciseMode
+                            : ArrowLabelExerciseMode.StartAndEndWithMissingLength, MissingValueTargetFlags.Addend2, ArrowType.Straight));
+                        if (!useConfiguredComplexPrompt)
+                            variants.Add((false, ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend2, ArrowType.Straight));
+                    }
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.TotalDistance))
+                        variants.Add((false, distancePromptMode, MissingValueTargetFlags.TotalDistance, ArrowType.Straight));
+                    if (missingTargets.HasFlag(MissingValueTargetFlags.Addend1))
+                        variants.Add((false, useConfiguredComplexPrompt
+                            ? keyboardConfig.ArrowLabelExerciseMode
+                            : ArrowLabelExerciseMode.EndAndLengthWithMissingStart, MissingValueTargetFlags.Addend1, ArrowType.Straight));
+                }
+
+                if (routeKinds.HasFlag(ArrowRouteKindFlags.Ordinal) &&
+                    missingTargets.HasFlag(MissingValueTargetFlags.Sum))
+                {
+                    variants.Add((false, ArrowLabelExerciseMode.OrdinalStartAndLength, MissingValueTargetFlags.Sum, ArrowType.Rounded));
+                }
+            }
+
+            if (variants.Count == 0)
+            {
+                _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength;
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.Sum);
+                _usesActiveOnKeyboardArrow = false;
+                _activeArrowType = ArrowType.Straight;
+                return;
+            }
+
+            (bool useOnKeyboard, ArrowLabelExerciseMode labelMode, MissingValueTargetFlags missingTarget, ArrowType arrowType) = variants[r.Next(variants.Count)];
+            _usesActiveOnKeyboardArrow = useOnKeyboard;
+            _activeArrowLabelExerciseMode = useOnKeyboard ? ArrowLabelExerciseMode.None : labelMode;
+            SetActiveArrowLabelMissingTarget(useOnKeyboard ? MissingValueTargetFlags.None : missingTarget);
+            _activeArrowType = arrowType;
+        }
+
+        private int GetKeyboardValueAtIndex(int index)
+        {
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            return withoutZero ? index + 1 : index;
+        }
+
+        private int GetKeyboardIndexForValue(int value)
+        {
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            return withoutZero ? value - 1 : value;
+        }
+
+        private int GetMaxArrowLabelDistance(int maxPossibleDistance)
+        {
+            int configuredMaxDistance = Config?.KeyboardConfig?.MaxArrowLabelDistance ?? 0;
+            if (configuredMaxDistance <= 0)
+                return maxPossibleDistance;
+
+            return Math.Max(1, Math.Min(maxPossibleDistance, configuredMaxDistance));
+        }
+
+        private void GenerateArrowLabelExercise(Random r)
+        {
+            int keyCount = Math.Max(
+                BitArrayQuestion?.Length ?? 0,
+                Math.Max(1, (Config?.KeyboardConfig?.Rows ?? 1) * (Config?.KeyboardConfig?.KeysInRow ?? 1)));
+            int minValue = GetKeyboardValueAtIndex(0);
+            int maxValue = GetKeyboardValueAtIndex(keyCount - 1);
+            int maxArrowLabelDistance = GetMaxArrowLabelDistance(maxValue - minValue);
+            _arrowLabelMiddleValue = null;
+            _usesRtlComplexPrompt = false;
+
+            switch (GetCurrentArrowLabelExerciseMode())
+            {
+                case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
+                {
+                    List<(int Start, int End, int Middle)> candidates = new();
+                    _usesRtlComplexPrompt = Config?.GameName?.Contains("rtl complex", StringComparison.OrdinalIgnoreCase) == true;
+                    if (_usesRtlComplexPrompt)
+                    {
+                        const int middle = 10;
+                        for (int start = Math.Max(minValue, 1); start < middle; start++)
+                        {
+                            for (int end = middle + 1; end <= Math.Min(maxValue, 19); end++)
+                            {
+                                int distance = end - start;
+                                if (distance >= 10 || distance > maxArrowLabelDistance)
+                                    continue;
+
+                                candidates.Add((start, end, middle));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int start = minValue; start < maxValue; start++)
+                        {
+                            int middle = ((start + 10) / 10) * 10;
+                            int endMin = middle + 1;
+                            int endMax = Math.Min(middle + 9, maxValue);
+
+                            if (middle <= start || endMin > endMax)
+                                continue;
+                            if (middle != 10)
+                                continue;
+
+                            for (int end = endMin; end <= endMax; end++)
+                            {
+                                int distance = end - start;
+                                if (start >= 10 || distance >= 10 || distance > maxArrowLabelDistance)
+                                    continue;
+
+                                candidates.Add((start, end, middle));
+                            }
+                        }
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end, int middle) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = middle;
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
+                case ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen:
+                {
+                    List<(int Start, int End, int Middle)> candidates = new();
+                    bool learnerChosenMiddle = Config?.KeyboardConfig?.AllowLearnerChosenComplexMiddle == true;
+                    _usesRtlComplexPrompt = !learnerChosenMiddle &&
+                                            Config?.KeyboardConfig?.AllowRtlComplexPrompts == true &&
+                                            Random.Shared.Next(2) == 0;
+                    for (int middle = 20; middle < maxValue; middle += 10)
+                    {
+                        int startMin = Math.Max(minValue, middle - (learnerChosenMiddle ? 89 : 9));
+                        int startMax = middle - 1;
+                        int endMin = middle + 1;
+                        int endMax = Math.Min(maxValue, middle + (learnerChosenMiddle ? 89 : 9));
+
+                        if (startMin > startMax || endMin > endMax)
+                            continue;
+
+                        for (int start = startMin; start <= startMax; start++)
+                        {
+                            for (int end = endMin; end <= endMax; end++)
+                            {
+                                int distance = end - start;
+                                if ((!learnerChosenMiddle && distance > 9) ||
+                                    distance > maxArrowLabelDistance ||
+                                    (learnerChosenMiddle && (start < 10 || end < 10 || distance < 10)))
+                                {
+                                    continue;
+                                }
+
+                                candidates.Add((start, end, middle));
+                            }
+                        }
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end, int middle) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = middle;
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
+                case ArrowLabelExerciseMode.ComplexLongDistance:
+                {
+                    List<(int Start, int End)> candidates = new();
+                    for (int start = minValue; start <= maxValue - 2; start++)
+                    {
+                        int endMax = Math.Min(maxValue, start + maxArrowLabelDistance);
+                        for (int end = start + 2; end <= endMax; end++)
+                            candidates.Add((start, end));
+                    }
+
+                    if (candidates.Count > 0)
+                    {
+                        (int start, int end) = candidates[r.Next(candidates.Count)];
+                        _arrowLabelStartValue = start;
+                        _arrowLabelEndValue = end;
+                        _arrowLabelMiddleValue = Math.Min(maxValue, Math.Max(start + 1, start + ((end - start + 1) / 2)));
+                        _arrowLabelDistance = end - start;
+                        break;
+                    }
+
+                    goto default;
+                }
+
+                default:
+                    _arrowLabelStartValue = r.Next(minValue, maxValue);
+                    int maxDistanceFromStart = GetMaxArrowLabelDistance(maxValue - _arrowLabelStartValue);
+                    _arrowLabelDistance = r.Next(1, maxDistanceFromStart + 1);
+                    _arrowLabelEndValue = _arrowLabelStartValue + _arrowLabelDistance;
+                    break;
+            }
+
+            if (UsesRtlComplexThroughTenPrompt() &&
+                IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode()) &&
+                GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Sum)
+            {
+                SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.TotalDistance);
+            }
+
+            CapturePrimaryArrowLabelPromptMode();
+            ApplyArrowLabelPpwState(revealMissingValue: false);
+
+            int answerStartValue = _arrowLabelStartValue + 1;
+            int answerFromIndex = GetKeyboardIndexForValue(answerStartValue);
+            BitArrayQuestion = GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_arrowLabelEndValue), 1)
+                : GenerateSequenceArrayQuestion(answerFromIndex, _arrowLabelDistance);
+            BitArrayQuestion2 = new bool[keyCount];
+        }
+
+        public bool HasArrowLabelPrompt => UsesArrowLabelExercise();
+
+        public int ArrowLabelAddend1Value => _arrowLabelStartValue;
+
+        public int? ArrowLabelAddend2Value =>
+            IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode())
+                ? _arrowLabelMiddleValue
+                : GetCurrentArrowLabelExerciseMode() is
+                ArrowLabelExerciseMode.StartAndLength or
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength or
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart or
+                ArrowLabelExerciseMode.OrdinalStartAndLength
+                ? _arrowLabelDistance
+                : null;
+
+        public int ArrowLabelSumValue => _arrowLabelEndValue;
+        public int ArrowLabelDistanceValue => _arrowLabelDistance;
+        public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
+        public MissingValueTargetFlags CurrentArrowLabelMissingTarget => GetCurrentArrowLabelMissingTarget();
+        public bool UsesRtlComplexPrompt => UsesRtlComplexThroughTenPrompt();
+
+        protected override int GetPersistedQuestionAnswerAddend1()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Addend1 &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelStartValue;
+            }
+
+            return base.GetPersistedQuestionAnswerAddend1();
+        }
+
+        protected override int GetPersistedQuestionAnswerAddend2()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelMissingTarget() is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelDistance;
+            }
+
+            return base.GetPersistedQuestionAnswerAddend2();
+        }
+
+        protected override int GetPersistedQuestionAnswerSum()
+        {
+            if (UsesArrowLabelExercise())
+            {
+                return GetCurrentArrowLabelMissingTarget() == MissingValueTargetFlags.Sum &&
+                       _status != Statement.True
+                    ? NAN
+                    : _arrowLabelEndValue;
+            }
+
+            return base.GetPersistedQuestionAnswerSum();
+        }
+
+        protected override Operation GetPersistedQuestionAnswerOperation()
+        {
+            if (UsesArrowLabelExercise())
+                return Operation.Sum;
+
+            return base.GetPersistedQuestionAnswerOperation();
+        }
+
+        private bool UsesStagedArrowFlow()
+        {
+            return Config?.QuestionOrder == QuestionOrder.FromLeft ||
+                   Config?.QuestionOrder == QuestionOrder.ToLeft;
+        }
+
+        private bool UsesMaskedThirdStagedArrow()
+        {
+            return Config?.KeyboardConfig?.MaskThirdArrowAfterCycleCount > 0 &&
+                   (Config.QuestionOrder == QuestionOrder.FromLeft || Config.QuestionOrder == QuestionOrder.ToLeft);
+        }
+
+        private void AdvanceStagedArrowCycleState(bool isNewCycle)
+        {
+            if (!UsesStagedArrowFlow())
+            {
+                _currentStagedArrowStepIndex = 0;
+                _completedStagedArrowCycles = 0;
+                _isCurrentStagedArrowMasked = false;
+                _isCurrentStagedArrowRevealed = false;
+                _stagedArrowFirstBits = null;
+                _stagedArrowSecondBits = null;
+                return;
+            }
+
+            if (isNewCycle)
+            {
+                if (_currentStagedArrowStepIndex > 0)
+                    _completedStagedArrowCycles++;
+
+                _currentStagedArrowStepIndex = 1;
+            }
+            else
+            {
+                _currentStagedArrowStepIndex++;
+            }
+
+            if (_currentStagedArrowStepIndex <= 1)
+            {
+                _stagedArrowFirstBits = null;
+                _stagedArrowSecondBits = null;
+            }
+
+            _isCurrentStagedArrowMasked =
+                UsesMaskedThirdStagedArrow() &&
+                _currentStagedArrowStepIndex == 3 &&
+                _completedStagedArrowCycles >= Config.KeyboardConfig.MaskThirdArrowAfterCycleCount;
+            _isCurrentStagedArrowRevealed = false;
+        }
+
+        public string? GetCurrentArrowLabelText()
+        {
+            if (_isCurrentStagedArrowMasked &&
+                !_isCurrentStagedArrowRevealed &&
+                !ForceShowMaskedThirdArrow)
+                return "?";
+
+            return length > -1 ? length.ToString() : null;
+        }
+
+        public bool SupportsThirdArrowVisibilityControl()
+        {
+            return UsesStagedArrowFlow();
+        }
+
+        public bool IsThirdArrowCurrentlyHidden()
+        {
+            return _isCurrentStagedArrowMasked &&
+                   !_isCurrentStagedArrowRevealed &&
+                   !ForceShowMaskedThirdArrow;
+        }
+
+        private void CaptureStagedArrowOverlayState()
+        {
+            if (!UsesStagedArrowFlow() || BitArrayQuestion == null)
+                return;
+
+            if (_currentStagedArrowStepIndex == 1)
+            {
+                _stagedArrowFirstBits = BitArrayQuestion.ToArray();
+                _stagedArrowSecondBits = null;
+            }
+            else if (_currentStagedArrowStepIndex == 2)
+            {
+                _stagedArrowSecondBits = BitArrayQuestion.ToArray();
+            }
+        }
+
+        public Color?[]? GetStagedArrowTraceOverlayColors()
+        {
+            if (!UsesStagedArrowFlow() ||
+                Config?.KeyboardConfig?.UsePermutationTraceColors != true ||
+                BitArrayQuestion == null)
+            {
+                return null;
+            }
+
+            Color?[] overlayColors = new Color?[BitArrayQuestion.Length];
+
+            if (_currentStagedArrowStepIndex >= 2 && _stagedArrowFirstBits != null)
+                PaintOverlayBits(overlayColors, _stagedArrowFirstBits, Colors.LightGreen);
+
+            return overlayColors;
+        }
+
+        public Color?[]? GetStagedArrowSecondaryTraceOverlayColors()
+        {
+            if (!UsesStagedArrowFlow() ||
+                Config?.KeyboardConfig?.UsePermutationTraceColors != true ||
+                BitArrayQuestion == null)
+            {
+                return null;
+            }
+
+            Color?[] overlayColors = new Color?[BitArrayQuestion.Length];
+
+            if (_currentStagedArrowStepIndex >= 3 && _stagedArrowSecondBits != null)
+                PaintOverlayBits(overlayColors, _stagedArrowSecondBits, Colors.DeepSkyBlue);
+
+            return overlayColors;
+        }
+
+        private static void PaintOverlayBits(Color?[] overlayColors, bool[] bits, Color color)
+        {
+            int limit = Math.Min(overlayColors.Length, bits.Length);
+            for (int i = 0; i < limit; i++)
+            {
+                if (bits[i])
+                    overlayColors[i] = color;
+            }
         }
 
         private (int fromIndex, int lengthIndexes) PrepareArrowFields(Random r)
         {
             int fromIndex = 0, lengthIndexes = 1;
             int keys = BitArrayQuestion.Length;
-            bool isOrdinal = Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded;
+            bool isOrdinal = GetCurrentArrowType() == ArrowType.Rounded;
 
             // initial direction and fallback factors
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -49,6 +916,9 @@ namespace GestureSample.Maui.Models
             else
             {
                 int[] factors = Factors;
+                addend1 = factors[0];
+                addend2 = factors[1];
+                Sum = factors[2];
                 aboveNumber = factors[0] % keys;
                 do length = factors[1] % Math.Min(Config.MaxAddend2+1, keys); while (length+aboveNumber > Config.MaxSum);
                 if (length == 0)
@@ -64,12 +934,27 @@ namespace GestureSample.Maui.Models
             if (new QuestionOrder[] { QuestionOrder.CyclicalRight, QuestionOrder.CyclicalLeft, QuestionOrder.CyclicalMixed }
                 .Contains(Config.QuestionOrder))
             {
+                int maxKey = Math.Min(Config.MaxSum, keys);
                 aboveNumber = _nextArrowAboveNumber;
                 if (Config.QuestionOrder == QuestionOrder.CyclicalRight) dir = Direction.Right;
                 else if (Config.QuestionOrder == QuestionOrder.CyclicalLeft) dir = Direction.Left;
                 else if (Config.QuestionOrder == QuestionOrder.CyclicalMixed && Config.OnlyToTen)
                 { if(aboveNumber == keys) dir = Direction.Left; else if (aboveNumber == 1) dir = Direction.Right;
                  length = r.Next(1, dir == Direction.Right ? (keys - aboveNumber + 1) : (aboveNumber+1));
+                }
+
+                if (Config.OnlyToTen)
+                {
+                    if (dir == Direction.Right && aboveNumber >= maxKey)
+                        aboveNumber = 1;
+                    else if (dir == Direction.Left && aboveNumber <= 1)
+                        aboveNumber = maxKey;
+
+                    int maxLength = dir == Direction.Right
+                        ? Math.Max(1, maxKey - aboveNumber)
+                        : Math.Max(1, aboveNumber - 1);
+
+                    length = r.Next(1, maxLength + 1);
                 }
 
                 if (dir == Direction.Left && _prevDir == Direction.Right)
@@ -79,26 +964,41 @@ namespace GestureSample.Maui.Models
                 if (aboveNumber == 0) { aboveNumber = keys; }
 
                 _prevDir = dir;
-                _nextArrowAboveNumber = ((dir == Direction.Right ? (aboveNumber + length) : (aboveNumber - length)) + keys) % keys;
-                if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = keys; }
+                if (Config.OnlyToTen)
+                {
+                    _nextArrowAboveNumber = dir == Direction.Right ? aboveNumber + length : aboveNumber - length;
+                    if (_nextArrowAboveNumber <= 1)
+                        _nextArrowAboveNumber = maxKey;
+                    else if (_nextArrowAboveNumber >= maxKey)
+                        _nextArrowAboveNumber = 1;
+                }
+                else
+                {
+                    _nextArrowAboveNumber = ((dir == Direction.Right ? (aboveNumber + length) : (aboveNumber - length)) + keys) % keys;
+                    if (_nextArrowAboveNumber == 0) { _nextArrowAboveNumber = keys; }
+                }
             }
 
             // FromLeft / ToLeft handling (triads sequence)
             if (Config.QuestionOrder == QuestionOrder.FromLeft || Config.QuestionOrder == QuestionOrder.ToLeft)
             {
                 bool isFirst = false;
-                if (triads.Count == 0)
+                bool isNewCycle = triads.Count == 0;
+                if (isNewCycle)
                 {
-                    addend1 = r.Next(1, keys);
-                    addend2 = r.Next(1, keys);
-                    if (addend2 > addend1 && Config.QuestionOrder == QuestionOrder.FromLeft)
-                    {
-                        int t = addend1; addend1 = addend2; addend2 = t;
-                    }
-                    int sum = (addend1 + addend2) % keys; if (sum == 0) sum = keys;
-                    triads.Add(0); triads.Add(addend1); triads.Add(addend2); triads.Add(sum);
+                    (int firstSegmentLength, int secondSegmentLength) = ResolveStagedArrowSegments(keys);
+                    int sum = addend1 + addend2;
+                    addend1 = firstSegmentLength;
+                    addend2 = secondSegmentLength;
+                    Sum = sum;
+                    triads.Add(0);
+                    triads.Add(firstSegmentLength);
+                    triads.Add(secondSegmentLength);
+                    triads.Add(sum);
                     isFirst = true;
                 }
+
+                AdvanceStagedArrowCycleState(isNewCycle);
 
                 if (Config.QuestionOrder == QuestionOrder.FromLeft)
                 {
@@ -136,13 +1036,189 @@ namespace GestureSample.Maui.Models
                 lengthIndexes = length;
             }
 
+            ApplyOnKeyboardArrowDistanceConstraints(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureSplitedArrowIsShort(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureMiddleSplitedArrowIsShort(r, keys, ref fromIndex, ref lengthIndexes);
+            EnsureJumpThroughMiddleHasMiddle(r, keys, ref fromIndex, ref lengthIndexes);
             return (fromIndex, lengthIndexes);
+        }
+
+        private void EnsureSplitedArrowIsShort(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.Splited)
+                return;
+
+            int maxDistance = GetMaxArrowLabelDistance(keys - 1);
+            if (lengthIndexes > 1 &&
+                lengthIndexes <= maxDistance &&
+                !ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys))
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, mustCrossTen: false);
+            candidates = candidates
+                .Where(candidate => candidate.Length > 1 &&
+                                    !ArrowWrapsKeyboardBoundary(candidate.Above, candidate.Length, candidate.Direction, keys))
+                .ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private void EnsureMiddleSplitedArrowIsShort(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.MiddleSplited)
+                return;
+
+            int maxDistance = GetMaxArrowLabelDistance(keys - 1);
+            if (lengthIndexes > 1 && lengthIndexes <= maxDistance)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, mustCrossTen: false);
+            candidates = candidates.Where(candidate => candidate.Length > 1).ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private void EnsureJumpThroughMiddleHasMiddle(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.JumpThroughMiddle)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, 2, mustCrossTen: false);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, 2, mustCrossTen: false);
+            candidates = candidates.Where(candidate => candidate.Length == 2).ToList();
+
+            if (candidates.Count == 0)
+                return;
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private void ApplyOnKeyboardArrowDistanceConstraints(Random r, int keys, ref int fromIndex, ref int lengthIndexes)
+        {
+            int configuredMaxDistance = Config?.KeyboardConfig?.MaxArrowLabelDistance ?? 0;
+            bool needsDistanceCap = configuredMaxDistance > 0;
+            bool needsThroughTen = Config?.OnlyThrougTen == true;
+            bool needsToTen = Config?.OnlyToTen == true &&
+                              Config?.KeyboardConfig?.EnableSecondArrowLeftTrace == true;
+            if (!needsDistanceCap && !needsThroughTen && !needsToTen)
+                return;
+
+            int maxDistance = needsDistanceCap
+                ? Math.Max(1, Math.Min(keys - 1, configuredMaxDistance))
+                : keys - 1;
+
+            bool wrapsKeyboardBoundary = ArrowWrapsKeyboardBoundary(aboveNumber, lengthIndexes, dir, keys);
+            bool currentIsValid =
+                lengthIndexes <= maxDistance &&
+                (!needsThroughTen || wrapsKeyboardBoundary) &&
+                (!needsToTen || !wrapsKeyboardBoundary);
+            if (currentIsValid)
+                return;
+
+            List<(int Above, int Length, Direction Direction)> candidates = new();
+            AddArrowDistanceCandidates(candidates, Direction.Right, keys, maxDistance, needsThroughTen, needsToTen);
+            AddArrowDistanceCandidates(candidates, Direction.Left, keys, maxDistance, needsThroughTen, needsToTen);
+
+            if (candidates.Count == 0)
+            {
+                if (needsThroughTen)
+                    AddArrowDistanceCandidates(candidates, Direction.Right, keys, keys - 1, mustCrossTen: true);
+                if (needsThroughTen)
+                    AddArrowDistanceCandidates(candidates, Direction.Left, keys, keys - 1, mustCrossTen: true);
+            }
+
+            if (candidates.Count == 0)
+            {
+                length = Math.Min(length, maxDistance);
+                lengthIndexes = Math.Min(lengthIndexes, maxDistance);
+                return;
+            }
+
+            (aboveNumber, length, dir) = candidates[r.Next(candidates.Count)];
+            lengthIndexes = length;
+            fromIndex = dir == Direction.Left
+                ? (aboveNumber - length + keys) % keys
+                : aboveNumber - 1;
+        }
+
+        private static void AddArrowDistanceCandidates(
+            List<(int Above, int Length, Direction Direction)> candidates,
+            Direction candidateDirection,
+            int keys,
+            int maxDistance,
+            bool mustCrossTen,
+            bool mustStayWithinTen = false)
+        {
+            for (int start = 1; start <= keys; start++)
+            {
+                for (int candidateLength = 1; candidateLength <= maxDistance; candidateLength++)
+                {
+                    bool wrapsKeyboardBoundary = ArrowWrapsKeyboardBoundary(start, candidateLength, candidateDirection, keys);
+                    if (mustCrossTen && !wrapsKeyboardBoundary)
+                        continue;
+
+                    if (mustStayWithinTen && wrapsKeyboardBoundary)
+                        continue;
+
+                    candidates.Add((start, candidateLength, candidateDirection));
+                }
+            }
+        }
+
+        private static bool ArrowWrapsKeyboardBoundary(int start, int candidateLength, Direction candidateDirection, int keys)
+        {
+            return candidateDirection == Direction.Right
+                ? start + candidateLength > keys
+                : start - candidateLength < 1;
+        }
+
+        private (int firstSegmentLength, int secondSegmentLength) ResolveStagedArrowSegments(int keys)
+        {
+            int firstSegmentLength = addend1;
+            int secondSegmentLength = addend2;
+            int maxFirstSegmentLength = Math.Max(1, keys - 2);
+            int totalLength = Math.Max(2, addend1 + addend2);
+
+            if (firstSegmentLength > maxFirstSegmentLength && secondSegmentLength <= maxFirstSegmentLength)
+            {
+                (firstSegmentLength, secondSegmentLength) = (secondSegmentLength, firstSegmentLength);
+            }
+            else if (firstSegmentLength > maxFirstSegmentLength && secondSegmentLength > maxFirstSegmentLength)
+            {
+                firstSegmentLength = Math.Min(maxFirstSegmentLength, totalLength - 1);
+                secondSegmentLength = Math.Max(1, totalLength - firstSegmentLength);
+            }
+
+            return (firstSegmentLength, secondSegmentLength);
         }
 
         private void SetBitArrayForArrow(int fromIndex, int lengthIndexes)
         {
             int keys = BitArrayQuestion.Length;
-            if (Config?.KeyboardConfig?.ArrowType == ArrowType.Rounded)
+            if (GetCurrentArrowType() == ArrowType.Rounded)
             {
                 int start = ((dir == Direction.Left ? (aboveNumber - lengthIndexes + keys) : (aboveNumber + lengthIndexes)) - 1) % keys;
                 BitArrayQuestion = GenerateSequenceArrayQuestion(start, 1);
@@ -155,6 +1231,7 @@ namespace GestureSample.Maui.Models
 
         public bool[] BitArrayQuestion { get; set; }
         public bool[] BitArrayQuestion2 { get; set; }
+        public bool[]? BitArrayQuestion3 { get; set; }
         private bool[] BitArrayCorrectAnswer { get; set; }
 
         private bool[]? _prevBitArrayQuestion;
@@ -182,39 +1259,557 @@ namespace GestureSample.Maui.Models
 
 
         private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly KeyEventRepository _keyEventRepository;
 
-        public BitArrayGamePlay(SimpleViewCellsPage view, GameConfig config) : base(view, config)
+        public BitArrayGamePlay(GameConfig config) : base(config)
         {
             ArrayQuestionType = config.UIQuestionType;
-            BitArrayQuestion = new bool[config.KeyboardConfig.KeysInRow];
-            BitArrayQuestion2 = new bool[config.KeyboardConfig.KeysInRow];
+            int keyCount = Math.Max(1, config.KeyboardConfig.Rows * config.KeyboardConfig.KeysInRow);
+            BitArrayQuestion = new bool[keyCount];
+            BitArrayQuestion2 = new bool[keyCount];
+            _activeArrowLabelExerciseMode = config.KeyboardConfig?.ArrowLabelExerciseMode ?? ArrowLabelExerciseMode.None;
+            _activeArrowLabelMissingTarget = config.ArrowLabelMissingValueTarget == MissingValueTargetFlags.None
+                ? GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode)
+                : config.ArrowLabelMissingValueTarget;
             _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
             _chainSeed = Config?.Plan?.Seed ?? Environment.TickCount;
 
         }
 
-        public override async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        public override async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
         {
-            bool result = CheckOnly(pianoKeyboard.ToBitArray());
+            if (!UsesArrowLabelExercise())
+                return await base.EvaluateAsync(a1, a2, s);
+
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
+            bool isCorrect = GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue,
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue,
+                ArrowLabelExerciseMode.ComplexLongDistance =>
+                    a1 == _arrowLabelStartValue &&
+                    (missingTarget is not (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ||
+                     a2 == _arrowLabelDistance) &&
+                    s == _arrowLabelEndValue,
+                _ =>
+                    a1 == _arrowLabelStartValue &&
+                    a2 == _arrowLabelDistance &&
+                    s == _arrowLabelEndValue
+            };
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            IncrementGuessNumber();
+
+            if (isCorrect)
+            {
+                ApplyArrowLabelPpwState(revealMissingValue: true);
+
+                if (TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+
+                _prevBitArrayAnswer = BitArrayCorrectAnswer?.ToArray() ?? BitArrayQuestion.ToArray();
+                GameCompletionResult? completion = await RegisterSuccessfulAttemptAsync();
+                return CreateCheckResult(isCorrect: true, completion: completion);
+            }
+
+            GameCompletionResult? failedCompletion = await RegisterFailedAttemptAsync();
+            bool shouldRefreshCurrentQuestion = failedCompletion == null && TryQueueArrowLabelRetryAlternatePrompt();
+            return CreateCheckResult(isCorrect: false, completion: failedCompletion, refreshCurrentQuestion: shouldRefreshCurrentQuestion);
+        }
+
+        public override async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
+        {
+            if (CurrentOperation == Operation.GroupByColor)
+            {
+                return await EvaluateGroupByColorAsync(pianoKeyboard);
+            }
+
+            bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
+            ArrowMovementMode movementMode = GetCurrentArrowMovementMode();
+            bool result = CheckOnly(submittedKeyboard);
+            DateTime submittedTime = DateTime.Now;
+            if (result)
+                result = await CheckArrowMovementTimingAsync();
+
             _status = result ? Statement.True : Statement.False;
-            if(result)
-                _prevBitArrayAnswer = pianoKeyboard.ToBitArray().ToArray();
+            IncrementGuessNumber();
+            var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
+                GameId.ToString(),
+                _questionNumber,
+                submittedKeyboard,
+                submittedTime,
+                result ? 1 : 0,
+                pianoKeyboard.GetCurrentColors());
 
+            if (savedAttempt != null)
+                await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
 
-            await _view.UpdateView();
-            await Task.Delay(Config.SecondsTillNextExercise * 1000);
-            return result;
+            if (result)
+            {
+                if (_isArrowLabelRetryAlternateActive &&
+                    _primaryArrowLabelExerciseMode != ArrowLabelExerciseMode.None &&
+                    UsesOnKeyboardArrowExercise())
+                {
+                    QueueArrowLabelPrompt(_primaryArrowLabelExerciseMode, _primaryArrowLabelMissingTarget);
+                    ApplyPendingArrowLabelPromptMode();
+                    ApplyArrowLabelPpwState(revealMissingValue: true);
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+                }
+
+                if (UsesArrowLabelExercise())
+                    ApplyArrowLabelPpwState(revealMissingValue: true);
+
+                if (TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: true, refreshCurrentQuestion: true);
+
+                _prevBitArrayAnswer = submittedKeyboard.ToArray();
+                RebaseLinkedCombinationOnAcceptedAnswer(submittedKeyboard);
+            }
+            else if (_isArrowLabelRetryAlternateActive &&
+                     _primaryArrowLabelExerciseMode != ArrowLabelExerciseMode.None &&
+                     UsesOnKeyboardArrowExercise())
+            {
+                GameCompletionResult? failedCompletion = await RegisterFailedAttemptAsync();
+                if (failedCompletion == null && TryQueuePrimaryArrowLabelPromptAfterAlternateSuccess())
+                    return CreateCheckResult(isCorrect: false, refreshCurrentQuestion: true);
+
+                return CreateCheckResult(isCorrect: false, completion: failedCompletion);
+            }
+
+            GameCompletionResult? completion = result
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(result, completion: completion);
+        }
+
+        private async Task<bool> CheckArrowMovementTimingAsync()
+        {
+            ArrowMovementMode movementMode = GetCurrentArrowMovementMode();
+            if (!UsesOnKeyboardArrowExercise() || movementMode == ArrowMovementMode.Legacy)
+                return true;
+
+            if (_keyEventRepository == null)
+            {
+                SetArrowMovementDebug("timing skipped: no repository");
+                return true;
+            }
+
+            List<Data.SQLite.KeyEvent> pendingEvents = await _keyEventRepository.GetPendingEventsAsync(GameId.ToString(), _questionNumber);
+            List<Data.SQLite.KeyEvent> rawDownEvents = pendingEvents
+                .Where(item => item.EventType == 1 && item.KeyNumber > 0)
+                .OrderBy(item => item.EventTime)
+                .ThenBy(item => item.id)
+                .ToList();
+
+            List<int> expectedKeys = GetExpectedArrowMovementKeyNumbers(movementMode);
+
+            if (expectedKeys.Count == 0 || rawDownEvents.Count == 0)
+            {
+                SetArrowMovementDebug("timing failed: missing expected or actual key-downs", expectedKeys, rawDownEvents);
+                return false;
+            }
+
+            List<Data.SQLite.KeyEvent> attemptEvents = GetLatestArrowAttemptByIdleGap(rawDownEvents);
+            List<Data.SQLite.KeyEvent> downEvents = GetLatestArrowAttemptDownEvents(attemptEvents, expectedKeys.Count, movementMode);
+            string attemptWindowDebug = rawDownEvents.Count == downEvents.Count
+                ? string.Empty
+                : $" raw={FormatKeys(rawDownEvents.Select(item => item.KeyNumber))}";
+
+            string reason;
+            bool isCorrect;
+            switch (movementMode)
+            {
+                case ArrowMovementMode.AllTogether:
+                    isCorrect = MatchesAllTogetherTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.Arpeggio:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.Splited:
+                    isCorrect = MatchesSplitTiming(downEvents, expectedKeys, GetVisibleArrowSplitFirstCount(expectedKeys.Count), out reason);
+                    break;
+                case ArrowMovementMode.MiddleSplited:
+                    isCorrect = MatchesSplitTiming(downEvents, expectedKeys, (int)Math.Ceiling(expectedKeys.Count / 2.0), out reason);
+                    break;
+                case ArrowMovementMode.JumpToEnd:
+                    isCorrect = MatchesJumpToEndCurrentAttemptTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.JumpThroughMiddle:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                case ArrowMovementMode.OneByOne:
+                    isCorrect = MatchesSequentialTiming(downEvents, expectedKeys, out reason);
+                    break;
+                default:
+                    isCorrect = true;
+                    reason = "timing skipped";
+                    break;
+            }
+
+            SetArrowMovementDebug(isCorrect ? $"timing ok: {reason}{attemptWindowDebug}" : $"timing failed: {reason}{attemptWindowDebug}", expectedKeys, downEvents);
+            return isCorrect;
+        }
+
+        private static List<Data.SQLite.KeyEvent> GetLatestArrowAttemptDownEvents(
+            IReadOnlyList<Data.SQLite.KeyEvent> downEvents,
+            int expectedKeyCount,
+            ArrowMovementMode movementMode)
+        {
+            if (movementMode == ArrowMovementMode.JumpToEnd)
+                return downEvents.ToList();
+
+            int attemptKeyCount = expectedKeyCount;
+            if (attemptKeyCount <= 0 || downEvents.Count <= attemptKeyCount)
+                return downEvents.ToList();
+
+            return downEvents.Skip(downEvents.Count - attemptKeyCount).ToList();
+        }
+
+        private static List<Data.SQLite.KeyEvent> GetLatestArrowAttemptByIdleGap(IReadOnlyList<Data.SQLite.KeyEvent> downEvents)
+        {
+            if (downEvents.Count <= 1)
+                return downEvents.ToList();
+
+            int startIndex = 0;
+            for (int i = 1; i < downEvents.Count; i++)
+            {
+                int gapMs = ToMilliseconds(downEvents[i].EventTime - downEvents[i - 1].EventTime);
+                if (gapMs >= ArrowAttemptResetGapMs)
+                    startIndex = i;
+            }
+
+            return downEvents.Skip(startIndex).ToList();
+        }
+
+        private List<int> GetExpectedArrowMovementKeyNumbers(ArrowMovementMode movementMode)
+        {
+            List<int> routeKeys = GetArrowTutorialStepIndices()
+                .Select(index => index + 1)
+                .Where(keyNumber => keyNumber > 0)
+                .ToList();
+
+            if (movementMode == ArrowMovementMode.JumpToEnd && routeKeys.Count > 0)
+                return new List<int> { routeKeys[^1] };
+
+            if (movementMode != ArrowMovementMode.JumpThroughMiddle || routeKeys.Count <= 1)
+                return routeKeys;
+
+            int middleIndex = Math.Max(0, (routeKeys.Count - 1) / 2);
+            int endKey = routeKeys[^1];
+            int middleKey = routeKeys[middleIndex];
+            return middleKey == endKey
+                ? new List<int> { endKey }
+                : new List<int> { middleKey, endKey };
+        }
+
+        private static bool MatchesAllTogetherTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.OrderBy(key => key)))
+            {
+                reason = "keys differ";
+                return false;
+            }
+
+            int maxGapMs = GetMaxGapMs(downEvents);
+            reason = $"max gap {maxGapMs}ms <= {ArrowGroupPressMaxGapMs}ms";
+            return maxGapMs <= ArrowGroupPressMaxGapMs;
+        }
+
+        private static bool MatchesSequentialTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).SequenceEqual(expectedKeys))
+            {
+                reason = "order differs";
+                return false;
+            }
+
+            int minGapMs = GetMinGapMs(downEvents);
+            reason = downEvents.Count <= 1
+                ? "single key"
+                : $"min gap {minGapMs}ms >= {ArrowSequenceMinGapMs}ms";
+            return downEvents.Count <= 1 || minGapMs >= ArrowSequenceMinGapMs;
+        }
+
+        private static bool MatchesSplitTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, int firstCount, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count || expectedKeys.Count <= 1)
+            {
+                reason = $"count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            firstCount = Math.Max(1, Math.Min(expectedKeys.Count - 1, firstCount));
+            List<Data.SQLite.KeyEvent> firstEvents = downEvents.Take(firstCount).ToList();
+            List<Data.SQLite.KeyEvent> secondEvents = downEvents.Skip(firstCount).ToList();
+
+            if (secondEvents.Count == 0)
+            {
+                reason = "missing second group";
+                return false;
+            }
+
+            if (!firstEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.Take(firstCount).OrderBy(key => key)))
+            {
+                reason = "first group keys differ";
+                return false;
+            }
+
+            if (!secondEvents.Select(item => item.KeyNumber).OrderBy(key => key)
+                    .SequenceEqual(expectedKeys.Skip(firstCount).OrderBy(key => key)))
+            {
+                reason = "second group keys differ";
+                return false;
+            }
+
+            int splitGapMs = ToMilliseconds(secondEvents[0].EventTime - firstEvents[^1].EventTime);
+            if (splitGapMs < ArrowSplitMinGapMs)
+            {
+                reason = $"split gap {splitGapMs}ms < {ArrowSplitMinGapMs}ms";
+                return false;
+            }
+
+            int firstMaxGapMs = GetMaxGapMs(firstEvents);
+            int secondMaxGapMs = GetMaxGapMs(secondEvents);
+            reason = $"split gap {splitGapMs}ms, group gaps {firstMaxGapMs}/{secondMaxGapMs}ms";
+            return firstMaxGapMs <= ArrowGroupPressMaxGapMs &&
+                   secondMaxGapMs <= ArrowGroupPressMaxGapMs;
+        }
+
+        private static bool MatchesJumpToEndCurrentAttemptTiming(IReadOnlyList<Data.SQLite.KeyEvent> downEvents, IReadOnlyList<int> expectedKeys, out string reason)
+        {
+            if (downEvents.Count != expectedKeys.Count)
+            {
+                reason = $"current attempt count actual {downEvents.Count}, expected {expectedKeys.Count}";
+                return false;
+            }
+
+            if (!downEvents.Select(item => item.KeyNumber).SequenceEqual(expectedKeys))
+            {
+                reason = "end key differs";
+                return false;
+            }
+
+            reason = $"single end key {expectedKeys[^1]}";
+            return true;
+        }
+
+        private void SetArrowMovementDebug(string reason)
+        {
+            List<int> expectedKeys = GetExpectedArrowMovementKeyNumbers(GetCurrentArrowMovementMode());
+
+            SetArrowMovementDebug(reason, expectedKeys, null);
+        }
+
+        private void SetArrowMovementDebug(
+            string reason,
+            IReadOnlyList<int> expectedKeys,
+            IReadOnlyList<Data.SQLite.KeyEvent>? downEvents)
+        {
+            string actualText = downEvents == null
+                ? "-"
+                : FormatKeys(downEvents.Select(item => item.KeyNumber));
+            _lastArrowMovementDebugText =
+                $"ArrowDebug mode={GetCurrentArrowMovementMode()} expected={FormatKeys(expectedKeys)} actual={actualText} {reason}";
+            Console.WriteLine(_lastArrowMovementDebugText);
+            DevLog.Write(_lastArrowMovementDebugText);
+        }
+
+        private static string FormatKeys(IEnumerable<int> keys)
+        {
+            return string.Join(",", keys);
+        }
+
+        private int GetVisibleArrowSplitFirstCount(int tutorialStepCount)
+        {
+            if (tutorialStepCount <= 1)
+                return tutorialStepCount;
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return Math.Max(1, tutorialStepCount / 2);
+
+            int firstCount = dir == Direction.Right
+                ? keyCount - aboveNumber + 1
+                : aboveNumber;
+
+            if (firstCount <= 0 || firstCount >= tutorialStepCount)
+                firstCount = (int)Math.Ceiling(tutorialStepCount / 2.0);
+
+            return Math.Max(1, Math.Min(tutorialStepCount - 1, firstCount));
+        }
+
+        private static int GetMaxGapMs(IReadOnlyList<Data.SQLite.KeyEvent> events)
+        {
+            if (events.Count <= 1)
+                return 0;
+
+            int maxGap = 0;
+            for (int i = 1; i < events.Count; i++)
+                maxGap = Math.Max(maxGap, ToMilliseconds(events[i].EventTime - events[i - 1].EventTime));
+
+            return maxGap;
+        }
+
+        private static int GetMinGapMs(IReadOnlyList<Data.SQLite.KeyEvent> events)
+        {
+            if (events.Count <= 1)
+                return int.MaxValue;
+
+            int minGap = int.MaxValue;
+            for (int i = 1; i < events.Count; i++)
+                minGap = Math.Min(minGap, ToMilliseconds(events[i].EventTime - events[i - 1].EventTime));
+
+            return minGap;
+        }
+
+        private static int ToMilliseconds(TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero)
+                duration = TimeSpan.Zero;
+
+            return (int)Math.Round(duration.TotalMilliseconds);
+        }
+
+        private void ApplyArrowLabelPpwState(bool revealMissingValue)
+        {
+            if (!UsesArrowLabelExercise() || Config?.KeyboardConfig == null)
+                return;
+
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
+            switch (GetCurrentArrowLabelExerciseMode())
+            {
+                case ArrowLabelExerciseMode.StartAndLength:
+                case ArrowLabelExerciseMode.OrdinalStartAndLength:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.StartAndEndWithMissingLength:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.EndAndLengthWithMissingStart:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue ? NAN : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
+                case ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue
+                        ? NAN
+                        : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+
+                case ArrowLabelExerciseMode.ComplexLongDistance:
+                    addend1 = missingTarget == MissingValueTargetFlags.Addend1 && !revealMissingValue ? NAN : _arrowLabelStartValue;
+                    addend2 = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) && !revealMissingValue
+                        ? NAN
+                        : _arrowLabelDistance;
+                    Sum = missingTarget == MissingValueTargetFlags.Sum && !revealMissingValue ? NAN : _arrowLabelEndValue;
+                    break;
+            }
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateGroupByColorAsync(PianoKeyboard pianoKeyboard)
+        {
+            bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
+            bool result = CheckGroupByColorAnswer(pianoKeyboard, submittedKeyboard);
+
+            _status = result ? Statement.True : Statement.False;
+            IncrementGuessNumber();
+
+            DateTime submittedTime = DateTime.Now;
+            var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
+                GameId.ToString(),
+                _questionNumber,
+                submittedKeyboard,
+                submittedTime,
+                result ? 1 : 0,
+                pianoKeyboard.GetCurrentColors());
+
+            if (savedAttempt != null)
+                await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
+
+            if (result)
+            {
+                _prevBitArrayAnswer = submittedKeyboard.ToArray();
+            }
+            else if (_isCurrentStagedArrowMasked && !_isCurrentStagedArrowRevealed)
+            {
+                _isCurrentStagedArrowRevealed = true;
+            }
+
+            GameCompletionResult? completion = result
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(result, completion: completion);
         }
 
         public bool CheckOnly(bool[] bitArrayAnswer)
         {
+           if (CheckFreeSizeGripAnswer(bitArrayAnswer) is bool freeSizeResult)
+               return freeSizeResult;
            return CurrentOperation switch
             {
 
                 Operation.Quantity => SumArray(BitArrayQuestion) == SumArray(bitArrayAnswer),
                 Operation.SUMM => SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) == SumArray(bitArrayAnswer),
+                Operation.GroupByColor => ArraysEqual(bitArrayAnswer, BitArrayCorrectAnswer),
                 _ =>ArraysEqual(bitArrayAnswer, BitArrayCorrectAnswer)
             };
+        }
+
+        private bool CheckGroupByColorAnswer(PianoKeyboard pianoKeyboard, bool[] submittedKeyboard)
+        {
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            if (targets.Count == 0)
+                return false;
+
+            bool[] expectedOccupied = new bool[BitArrayQuestion.Length];
+            for (int groupIndex = 0; groupIndex < targets.Count; groupIndex++)
+            {
+                bool[] normalizedTarget = NormalizeToKeyboardLength(targets[groupIndex], BitArrayQuestion.Length);
+                Color expectedColor = GroupByColorPalette[Math.Min(groupIndex, GroupByColorPalette.Length - 1)];
+                bool[] submittedColorBits = pianoKeyboard.GetBitsForColor(expectedColor);
+
+                if (!ArraysEqual(submittedColorBits, normalizedTarget))
+                    return false;
+
+                for (int keyIndex = 0; keyIndex < expectedOccupied.Length; keyIndex++)
+                    expectedOccupied[keyIndex] = expectedOccupied[keyIndex] || normalizedTarget[keyIndex];
+            }
+
+            return ArraysEqual(submittedKeyboard, expectedOccupied) &&
+                   pianoKeyboard.GetNonFreeColorCount() == SumArray(expectedOccupied);
         }
 
         private static bool ArraysEqual(bool[]? a, bool[]? b)
@@ -222,6 +1817,14 @@ namespace GestureSample.Maui.Models
             if (a is null || b is null) return false;
             if (a.Length != b.Length) return false;
             return a.SequenceEqual(b); // or use a.AsSpan().SequenceEqual(b) for slightly better perf
+        }
+
+        private static bool[] NormalizeToKeyboardLength(bool[] bits, int length)
+        {
+            bool[] normalized = new bool[length];
+            int limit = Math.Min(length, bits.Length);
+            Array.Copy(bits, normalized, limit);
+            return normalized;
         }
 
         public bool[] GenerateSequenceArrayQuestion(int from, int length)
@@ -240,6 +1843,308 @@ namespace GestureSample.Maui.Models
 
         }
 
+        private bool[] GenerateTwoKeyPinch(Random random, int start, int end)
+        {
+            bool[] pinch = new bool[BitArrayQuestion.Length];
+            if (Config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
+            {
+                int maxInterval = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchMaxInterval,
+                    1,
+                    Math.Max(1, Config.KeyboardConfig.Rows - 1));
+                bool moveUpperOnly = Config.KeyboardConfig.IsPrecisionShiftExercise &&
+                                     Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper;
+                if (Config.KeyboardConfig.PrecisionShiftBothHands)
+                {
+                    if (Config.KeyboardConfig.IsTwoHandCopyMemorize)
+                    {
+                        GenerateTwoHandCopyMemorizePinch(random, pinch, maxInterval);
+                        return pinch;
+                    }
+
+                    if (Config.KeyboardConfig.IsPrecisionSynchronousProcessExercise)
+                    {
+                        // Both hands begin with the same grip. Keep at least one empty
+                        // row between the fingers so one-step squeeze commands are legal.
+                        int maximumInterval = Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval);
+                        int interval = maximumInterval >= 2
+                            ? random.Next(2, maximumInterval + 1)
+                            : maximumInterval;
+                        int lowerRow = random.Next(0, Config.KeyboardConfig.Rows - interval);
+                        int upperRow = lowerRow + interval;
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            pinch[(lowerRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                            pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
+                    if (Config.KeyboardConfig.IsGripTransformationPracticeExercise)
+                    {
+                        // Both hands always begin on the keyboard's bottom edge.
+                        // Keep the grips compact enough that stacking one above the
+                        // other remains a legal and frequent next transformation.
+                        int highestUpper = Math.Min(
+                            Config.KeyboardConfig.Rows - 1,
+                            Math.Min(3, Math.Max(1, maxInterval)));
+                        int leftUpper = random.Next(1, highestUpper + 1);
+                        int rightUpper = random.Next(1, highestUpper + 1);
+                        pinch[0] = true;
+                        pinch[leftUpper * Config.KeyboardConfig.KeysInRow] = true;
+                        pinch[1] = true;
+                        pinch[(rightUpper * Config.KeyboardConfig.KeysInRow) + 1] = true;
+                        return pinch;
+                    }
+
+                    if (Config.KeyboardConfig.IsPrecisionGrammarExercise)
+                    {
+                        GeneratePrecisionGrammarStartingPinches(random, pinch, maxInterval);
+                        return pinch;
+                    }
+
+                    if (moveUpperOnly)
+                    {
+                        // The lower finger is the permanent base in this stage. Logical
+                        // row 0 is the visually bottom row; choose the moving finger above it.
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            int upperRow = random.Next(1, Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval) + 1);
+                            pinch[column] = true;
+                            pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
+                    if (!Config.KeyboardConfig.IsPrecisionShiftExercise)
+                    {
+                        // In two-hand vertical COPY, each hand has its own pinch.
+                        // The two row pairs may coincide naturally, but are not coupled.
+                        for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                        {
+                            int handFirstRow = random.Next(Config.KeyboardConfig.Rows);
+                            int handSecondRow;
+                            do
+                            {
+                                handSecondRow = random.Next(Config.KeyboardConfig.Rows);
+                            }
+                            while (handSecondRow == handFirstRow ||
+                                   Math.Abs(handSecondRow - handFirstRow) > maxInterval);
+
+                            pinch[(handFirstRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                            pinch[(handSecondRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        }
+                        return pinch;
+                    }
+
+                    if (Config.KeyboardConfig.PrecisionShiftStaggerHandsInitially &&
+                        Config.KeyboardConfig.Rows >= 5 &&
+                        Config.KeyboardConfig.KeysInRow >= 2)
+                    {
+                        // In Commands, bottom-anchored grips are the main reference
+                        // position. Vary the upper fingers while both lower fingers
+                        // touch the keyboard's bottom edge.
+                        if (Config.KeyboardConfig.PreferBothHandsOnBottom && random.Next(100) < 70)
+                        {
+                            int highestUpper = Math.Min(
+                                Config.KeyboardConfig.Rows - 1,
+                                Math.Max(1, maxInterval));
+                            int leftUpper = random.Next(1, highestUpper + 1);
+                            int rightUpper = random.Next(1, highestUpper + 1);
+                            pinch[0] = true;
+                            pinch[leftUpper * Config.KeyboardConfig.KeysInRow] = true;
+                            pinch[1] = true;
+                            pinch[(rightUpper * Config.KeyboardConfig.KeysInRow) + 1] = true;
+                            return pinch;
+                        }
+
+                        // Stage 9 starts with the left pinch high and the right pinch low.
+                        pinch[Config.KeyboardConfig.KeysInRow] = true;
+                        pinch[(2 * Config.KeyboardConfig.KeysInRow)] = true;
+                        pinch[1] = true;
+                        pinch[Config.KeyboardConfig.KeysInRow + 1] = true;
+                        return pinch;
+                    }
+
+                    int firstRow = random.Next(Config.KeyboardConfig.Rows);
+                    int secondRow;
+                    do
+                    {
+                        secondRow = random.Next(Config.KeyboardConfig.Rows);
+                    }
+                    while (secondRow == firstRow ||
+                           Math.Abs(secondRow - firstRow) > maxInterval ||
+                           (Math.Min(firstRow, secondRow) == 0 &&
+                            Math.Max(firstRow, secondRow) == Config.KeyboardConfig.Rows - 1) ||
+                           IsTerminalUpperOnlyPinch(firstRow, secondRow));
+
+                    for (int column = 0; column < Config.KeyboardConfig.KeysInRow; column++)
+                    {
+                        pinch[(firstRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        pinch[(secondRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                    }
+                    return pinch;
+                }
+
+                int firstColumn = Config.KeyboardConfig.PrecisionShiftBothHands ? 0 : random.Next(0, 2);
+                int lastColumn = Config.KeyboardConfig.PrecisionShiftBothHands ? 1 : firstColumn;
+                for (int column = firstColumn; column <= lastColumn; column++)
+                {
+                    if (moveUpperOnly)
+                    {
+                        int upperRow = random.Next(1, Math.Min(Config.KeyboardConfig.Rows - 1, maxInterval) + 1);
+                        pinch[column] = true;
+                        pinch[(upperRow * Config.KeyboardConfig.KeysInRow) + column] = true;
+                        continue;
+                    }
+
+                    int[] columnIndices = Enumerable.Range(0, Config.KeyboardConfig.Rows)
+                        .Select(row => (row * Config.KeyboardConfig.KeysInRow) + column)
+                        .Where(index => index >= 0 && index < pinch.Length)
+                        .ToArray();
+                    int firstPosition = random.Next(columnIndices.Length);
+                    int secondPosition;
+                    do
+                    {
+                        secondPosition = random.Next(columnIndices.Length);
+                    }
+                    while (secondPosition == firstPosition ||
+                           Math.Abs(secondPosition - firstPosition) > maxInterval ||
+                           (Config.KeyboardConfig.IsPrecisionShiftExercise &&
+                            Math.Min(firstPosition, secondPosition) == 0 &&
+                            Math.Max(firstPosition, secondPosition) == columnIndices.Length - 1) ||
+                           IsTerminalUpperOnlyPinch(firstPosition, secondPosition));
+
+                    pinch[columnIndices[firstPosition]] = true;
+                    pinch[columnIndices[secondPosition]] = true;
+                }
+                return pinch;
+            }
+
+            if (Config.KeyboardConfig?.PrecisionShiftBothHands == true)
+            {
+                int half = pinch.Length / 2;
+                AddTwoRandomKeys(random, pinch, 0, half);
+                AddTwoRandomKeys(random, pinch, half, pinch.Length);
+                return pinch;
+            }
+
+            int first = random.Next(start, end);
+            int second;
+            do
+            {
+                second = random.Next(start, end);
+            }
+            while (second == first);
+
+            pinch[first] = true;
+            pinch[second] = true;
+            return pinch;
+        }
+
+        private void GenerateTwoHandCopyMemorizePinch(Random random, bool[] pinch, int maxInterval)
+        {
+            const int stackedPercent = 70;
+            const int sharedLowerPercent = 15;
+            int rows = Math.Max(3, Config.KeyboardConfig.Rows);
+            int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
+            int maximumSpan = Math.Clamp(maxInterval, 2, rows - 2);
+            int span = random.Next(2, maximumSpan + 1);
+            int variant = random.Next(100);
+
+            int leftLower;
+            int leftUpper;
+            int rightLower;
+            int rightUpper;
+
+            if (variant < stackedPercent)
+            {
+                // Two separate stacked grips: the lower key of the upper grip is
+                // exactly one row above the upper key of the lower grip. The lower
+                // grip touches the bottom key; hand direction is balanced.
+                List<(int LowUpper, int HighLower, int HighUpper)> candidates = new();
+                for (int lowUpper = 1; lowUpper < rows - 2; lowUpper++)
+                {
+                    int highLower = lowUpper + 1;
+                    for (int highUpper = highLower + 1; highUpper < rows; highUpper++)
+                    {
+                        if (lowUpper <= maximumSpan && highUpper - highLower <= maximumSpan)
+                            candidates.Add((lowUpper, highLower, highUpper));
+                    }
+                }
+
+                var stacked = candidates[random.Next(candidates.Count)];
+                // First hand is the lower grip; second hand begins exactly one
+                // row above the first hand's upper finger.
+                leftLower = 0;
+                leftUpper = stacked.LowUpper;
+                rightLower = stacked.HighLower;
+                rightUpper = stacked.HighUpper;
+            }
+            else if (variant < stackedPercent + sharedLowerPercent)
+            {
+                // Both lower fingers share the same height. The upper fingers
+                // differ, while the shared lower row remains bottom anchored.
+                leftLower = rightLower = 0;
+                int shorterSpan = Math.Max(1, span - 1);
+                bool leftIsTaller = random.Next(2) == 0;
+                leftUpper = leftIsTaller ? span : shorterSpan;
+                rightUpper = leftIsTaller ? shorterSpan : span;
+            }
+            else
+            {
+                // Both upper fingers share the same height. One lower finger is
+                // bottom anchored and the other starts one row higher.
+                bool raiseLeftBase = random.Next(2) == 0;
+                leftLower = raiseLeftBase ? 1 : 0;
+                rightLower = raiseLeftBase ? 0 : 1;
+                leftUpper = rightUpper = span;
+            }
+
+            pinch[leftLower * columns] = true;
+            pinch[leftUpper * columns] = true;
+            pinch[(rightLower * columns) + 1] = true;
+            pinch[(rightUpper * columns) + 1] = true;
+        }
+
+        private void GeneratePrecisionGrammarStartingPinches(Random random, bool[] pinch, int maxInterval)
+        {
+            int rows = Math.Max(2, Config.KeyboardConfig.Rows);
+            int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
+            // Compact, independently sized grips always start at the bottom.
+            // This also leaves room for the occasional move above the other hand.
+            int maximumUpperRow = Math.Min(rows - 1, Math.Min(3, Math.Max(1, maxInterval)));
+            for (int column = 0; column < Math.Min(2, columns); column++)
+            {
+                int upperRow = random.Next(1, maximumUpperRow + 1);
+                pinch[column] = true;
+                pinch[(upperRow * columns) + column] = true;
+            }
+        }
+        private bool IsTerminalUpperOnlyPinch(int firstRow, int secondRow)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            return keyboard.IsPrecisionShiftExercise &&
+                   keyboard.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper &&
+                   Math.Min(firstRow, secondRow) == keyboard.Rows - 2 &&
+                   Math.Max(firstRow, secondRow) == keyboard.Rows - 1;
+        }
+
+        private static void AddTwoRandomKeys(Random random, bool[] bits, int start, int end)
+        {
+            int first = random.Next(start, end);
+            int second;
+            do
+            {
+                second = random.Next(start, end);
+            }
+            while (second == first ||
+                   (Math.Min(first, second) == start && Math.Max(first, second) == end - 1));
+
+            bits[first] = true;
+            bits[second] = true;
+        }
+
         private (int from, int length) ChooseFromAndLength(Random r, int minLength, int start =0, int end = -1)
         {
             if( end == -1) end = BitArrayQuestion.Length;
@@ -255,7 +2160,7 @@ namespace GestureSample.Maui.Models
             return (from, length);
         }
 
-        public override void GenerateExercise()
+        public override Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -271,21 +2176,58 @@ namespace GestureSample.Maui.Models
             //ApplyBitArrayStepExtrasIfNeeded(step);
 
             // 4) Persist + snapshot + UI
-            SaveQuestionToDb();
+            BeginExercise();
             SnapshotPrev();
-            _view.UpdateView(true);
-
-            if (CurrentOperation == Operation.MoveBy)
+            ExerciseGenerationResult generatedExercise = CreateGeneratedExerciseResult();
+            return Task.FromResult(new ExerciseGenerationResult
             {
-                string strDir = moveBydir == Direction.Right ? "RIGHT( -> )" : "LEFT( <- )";
-                _view.AddToLblAction(" " + strDir + " BY " + moveByLength.ToString());
-            }
+                ActionText = generatedExercise.ActionText,
+                PersistenceTask = PersistGeneratedExerciseAsync()
+            });
+        }
+
+        public override string? GetKeyboardQuestionPromptText()
+        {
+            if (!UsesArrowLabelExercise())
+                return base.GetKeyboardQuestionPromptText();
+
+            const string arrowLine = "|--->";
+            MissingValueTargetFlags missingTarget = GetCurrentArrowLabelMissingTarget();
+            string startText = missingTarget == MissingValueTargetFlags.Addend1 ? "?" : _arrowLabelStartValue.ToString();
+            string distanceText = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ? "?" : _arrowLabelDistance.ToString();
+            string endText = missingTarget == MissingValueTargetFlags.Sum ? "?" : _arrowLabelEndValue.ToString();
+
+            return GetCurrentArrowLabelExerciseMode() switch
+            {
+                ArrowLabelExerciseMode.StartAndLength =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}",
+                ArrowLabelExerciseMode.StartAndEndWithMissingLength =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.EndAndLengthWithMissingStart =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.OrdinalStartAndLength =>
+                    $"   {distanceText}\n(ordinal)\n{startText}",
+                ArrowLabelExerciseMode.ComplexBridgeToNextTen =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                ArrowLabelExerciseMode.ComplexLongDistance =>
+                    $"   {distanceText}\n{arrowLine}\n{startText}      {endText}",
+                _ => base.GetKeyboardQuestionPromptText()
+            };
+        }
+
+        protected override async Task PersistGeneratedExerciseAsync()
+        {
+            await EnsureGameInitializedAsync();
+            await SaveQuestionToDbAsync();
+            await SaveState(syncAfterSave: false);
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
         {
             // Preserve your rule: Arrow keyboard always uses Copy
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            if (Config.KeyboardConfig != null && (UsesOnKeyboardArrowExercise() || UsesArrowLabelExercise()))
             {
                 CurrentOperation = Operation.Copy;
                 return;
@@ -303,6 +2245,12 @@ namespace GestureSample.Maui.Models
 
         private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
         {
+            if (Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true)
+            {
+                ResolveSequenceMemorizeQuestion(r);
+                return;
+            }
+
             if (step != null)
             {
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevBitArrayQuestion != null)
@@ -317,18 +2265,1093 @@ namespace GestureSample.Maui.Models
                 {
                     BitArrayQuestion = _prevBitArrayAnswer.ToArray();
                     BitArrayQuestion2 = _prevBitArrayQuestion2?.ToArray();
+                    if (Config.KeyboardConfig?.IsTransformativePrecisionCopyExercise == true)
+                    {
+                        TransformPrecisionCopyQuestion(r);
+                    }
+                    else if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                    {
+                        RefreshPrecisionPinchesByChance(r);
+                        if (!Config.KeyboardConfig.PrecisionShiftBothHands)
+                            MaybeTransferOneHandPrecisionPinch(r);
+                        ConfigurePrecisionShift(r);
+                    }
                     BuildCorrectAnswer();
                     return;
                 }
+            }
+
+            if (Config.KeyboardConfig?.IsTwoHandCopyMemorize == true &&
+                _prevBitArrayAnswer != null &&
+                r.Next(100) < 75 &&
+                TryTransformOneHandForCopyMemorize(r, _prevBitArrayAnswer, out bool[] transformed))
+            {
+                BitArrayQuestion = transformed;
+                BitArrayQuestion2 = Array.Empty<bool>();
+                BuildCorrectAnswer();
+                return;
             }
 
             // Otherwise: NewQuestion (plan) OR legacy mode
             GenerateNewQuestion(r);
         }
 
+        private bool TryTransformOneHandForCopyMemorize(
+            Random random,
+            bool[] source,
+            out bool[] transformed)
+        {
+            transformed = source.ToArray();
+            int columns = Math.Max(2, Config.KeyboardConfig.KeysInRow);
+            int rows = Math.Max(2, Config.KeyboardConfig.Rows);
+            int preferredColumn = _lastTwoHandCopyTransformedColumn.HasValue
+                ? 1 - _lastTwoHandCopyTransformedColumn.Value
+                : random.Next(2);
+            List<(int Column, int Lower, int Upper, int Family)> allCandidates = new();
+
+            foreach (int column in new[] { preferredColumn, 1 - preferredColumn })
+            {
+                int[] activeRows = Enumerable.Range(0, rows)
+                    .Where(row => (row * columns) + column < source.Length &&
+                                  source[(row * columns) + column])
+                    .ToArray();
+                if (activeRows.Length != 2)
+                    continue;
+
+                int lower = activeRows.Min();
+                int upper = activeRows.Max();
+                foreach (int delta in new[] { -1, 1 })
+                {
+                    AddCandidate(lower + delta, upper + delta); // move the whole hand
+                    AddCandidate(lower, upper + delta);         // transform the upper finger
+                    AddCandidate(lower + delta, upper);         // transform the lower finger
+                }
+
+                void AddCandidate(int candidateLower, int candidateUpper)
+                {
+                    if (candidateLower < 0 || candidateUpper >= rows ||
+                        candidateLower >= candidateUpper ||
+                        candidateUpper - candidateLower > Config.KeyboardConfig.PrecisionPinchMaxInterval)
+                        return;
+
+                    bool otherHandTouchesBottom = Enumerable.Range(0, Math.Min(2, columns))
+                        .Any(otherColumn => otherColumn != column && source[otherColumn]);
+                    if (candidateLower != 0 && !otherHandTouchesBottom)
+                        return;
+
+                    int otherColumn = column == 0 ? 1 : 0;
+                    int[] otherRows = Enumerable.Range(0, rows)
+                        .Where(row => (row * columns) + otherColumn < source.Length &&
+                                      source[(row * columns) + otherColumn])
+                        .ToArray();
+                    if (otherRows.Length != 2)
+                        return;
+
+                    int otherLower = otherRows.Min();
+                    int otherUpper = otherRows.Max();
+                    int leftLower = column == 0 ? candidateLower : otherLower;
+                    int leftUpper = column == 0 ? candidateUpper : otherUpper;
+                    int rightLower = column == 1 ? candidateLower : otherLower;
+                    int rightUpper = column == 1 ? candidateUpper : otherUpper;
+                    bool sharesLowerHeight = leftLower == rightLower;
+                    bool sharesUpperHeight = leftUpper == rightUpper;
+                    // Main 5M shape has a fixed reading direction: the second
+                    // hand's lower finger is one row above the first hand's upper.
+                    bool stackedWithOneRowGap = leftUpper + 1 == rightLower;
+                    if (!sharesLowerHeight && !sharesUpperHeight && !stackedWithOneRowGap)
+                        return;
+
+                    int family = stackedWithOneRowGap ? 0 : sharesLowerHeight ? 1 : 2;
+                    var candidate = (column, candidateLower, candidateUpper, family);
+                    if (!allCandidates.Contains(candidate))
+                        allCandidates.Add(candidate);
+                }
+            }
+
+            if (allCandidates.Count == 0)
+                return false;
+
+            int familyRoll = random.Next(100);
+            int desiredFamily = familyRoll < 70 ? 0 : familyRoll < 85 ? 1 : 2;
+            var familyCandidates = allCandidates
+                .Where(candidate => candidate.Family == desiredFamily)
+                .ToList();
+            var candidatePool = familyCandidates.Count > 0 ? familyCandidates : allCandidates;
+            var preferredCandidates = candidatePool
+                .Where(candidate => candidate.Column == preferredColumn)
+                .ToList();
+            if (preferredCandidates.Count > 0)
+                candidatePool = preferredCandidates;
+
+            var chosen = candidatePool[random.Next(candidatePool.Count)];
+            transformed = source.ToArray();
+            for (int row = 0; row < rows; row++)
+            {
+                int index = (row * columns) + chosen.Column;
+                if (index < transformed.Length)
+                    transformed[index] = false;
+            }
+            transformed[(chosen.Lower * columns) + chosen.Column] = true;
+            transformed[(chosen.Upper * columns) + chosen.Column] = true;
+            _lastTwoHandCopyTransformedColumn = chosen.Column;
+            return true;
+        }
+
+        private void ResolveSequenceMemorizeQuestion(Random random)
+        {
+            CurrentOperation = Operation.Copy;
+
+            if (!_sequenceMemorizeGenerateSecond)
+            {
+                if (Config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                {
+                    (_sequenceMemorizeFirstPinch, _sequenceMemorizeSecondPinch) =
+                        GenerateTwoHandCombinationPair(random);
+                    BitArrayQuestion = _sequenceMemorizeFirstPinch.ToArray();
+                    BitArrayQuestion2 = Array.Empty<bool>();
+                    BuildCorrectAnswer();
+                    _sequenceMemorizeGenerateSecond = true;
+                    _sequenceMemorizeCurrentIsFirst = true;
+                    whichHand = null;
+                    return;
+                }
+
+                if (_sequenceMemorizeFirstPinch == null)
+                {
+                    GenerateNewQuestion(random);
+                }
+                else
+                {
+                    BitArrayQuestion = ChooseNextSequenceFirstPinch(
+                        random, _sequenceMemorizeFirstPinch);
+                    BitArrayQuestion2 = Array.Empty<bool>();
+                    BuildCorrectAnswer();
+                }
+
+                _sequenceMemorizeFirstPinch = BitArrayQuestion.ToArray();
+                int maximumDistance = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchSequenceSecondMaxDistance, 1, 3);
+                _sequenceMemorizeSecondPinch = ChooseSequenceSecondPinch(
+                    random, _sequenceMemorizeFirstPinch, maximumDistance);
+                _sequenceMemorizeGenerateSecond = true;
+                _sequenceMemorizeCurrentIsFirst = true;
+                return;
+            }
+
+            BitArrayQuestion = _sequenceMemorizeSecondPinch?.ToArray() ??
+                               _sequenceMemorizeFirstPinch!.ToArray();
+            BitArrayQuestion2 = Array.Empty<bool>();
+            BuildCorrectAnswer();
+            _sequenceMemorizeGenerateSecond = false;
+            _sequenceMemorizeCurrentIsFirst = false;
+        }
+
+        private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random)
+        {
+            int rows = Math.Max(7, Config.KeyboardConfig.Rows);
+            if (_pendingHalfDerivedFirst != null && _pendingHalfDerivedSecond != null)
+            {
+                bool[] firstPending = _pendingHalfDerivedFirst;
+                bool[] secondPending = _pendingHalfDerivedSecond;
+                _pendingHalfDerivedFirst = null;
+                _pendingHalfDerivedSecond = null;
+                _twoHandCombinationKind = _pendingHalfDerivedKind;
+                _twoHandCombinationOutsideFirst = _pendingHalfDerivedOutsideFirst;
+                return (firstPending, secondPending);
+            }
+            // Do not generate the two "gap" families (2 and 7). In those
+            // combinations one hand starts above the other hand's endpoint with
+            // two or more unused rows between them, which is not a valid Stage 5.1 prompt.
+            (int Case, TwoHandCombinationOptions Option)[] allCombinations =
+            {
+                (0, TwoHandCombinationOptions.Commutativity),
+                (1, TwoHandCombinationOptions.Associativity),
+                (3, TwoHandCombinationOptions.ResizeUpper),
+                (4, TwoHandCombinationOptions.ResizeLowerAttached),
+                (5, TwoHandCombinationOptions.FlipAdditionSubtraction),
+                (6, TwoHandCombinationOptions.Difference),
+                (8, TwoHandCombinationOptions.Split),
+                (9, TwoHandCombinationOptions.SplitJump),
+                (10, TwoHandCombinationOptions.MoreThanHalf),
+                (11, TwoHandCombinationOptions.HalfOfHalf),
+                (12, TwoHandCombinationOptions.LittleSmaller),
+                (13, TwoHandCombinationOptions.MuchSmaller),
+                (14, TwoHandCombinationOptions.LittleBigger),
+                (15, TwoHandCombinationOptions.MuchBigger)
+                ,(16, TwoHandCombinationOptions.Half),
+                (17, TwoHandCombinationOptions.SubtrahendOneStepBigger),
+                (18, TwoHandCombinationOptions.IncreaseLowerByOne),
+                (19, TwoHandCombinationOptions.IncreaseUpperByOne),
+                (20, TwoHandCombinationOptions.DecreaseLowerByOne),
+                (21, TwoHandCombinationOptions.DecreaseUpperByOne),
+                (22, TwoHandCombinationOptions.SubtrahendOneStepSmaller),
+                (23, TwoHandCombinationOptions.LessThanHalf)
+                ,(24, TwoHandCombinationOptions.ThroughTenParts)
+            };
+            TwoHandCombinationOptions enabled = Config.KeyboardConfig.TwoHandCombinationOptions;
+            var allowedCombinations = allCombinations.Where(item => enabled.HasFlag(item.Option)).ToArray();
+            if (allowedCombinations.Length == 0)
+                allowedCombinations = allCombinations;
+            var selectedCombination = allowedCombinations[random.Next(allowedCombinations.Length)];
+            int combination = selectedCombination.Case;
+            _twoHandCombinationKind = selectedCombination.Option;
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) first;
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) second;
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right)? linkedTarget = null;
+            TwoHandCombinationOptions linkedKind = TwoHandCombinationOptions.None;
+            bool linkedOutsideFirst = false;
+
+            switch (combination)
+            {
+                case 0: // Commutativity: exchange the order of two touching intervals.
+                    int firstSize = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, Math.Min(5, rows - 1)) : 3;
+                    int secondSize = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, Math.Min(5, rows - firstSize + 1)) : 2;
+                    first = ((0, firstSize - 1), (firstSize, firstSize + secondSize - 1));
+                    second = ((secondSize, firstSize + secondSize - 1), (0, secondSize - 1));
+                    break;
+                case 1: // Associativity: move the shared boundary.
+                    int associativityWholeSize = rows;
+                    int initialBoundary = associativityWholeSize / 2;
+                    int maximumBoundaryMove = Math.Max(
+                        1, Math.Min(initialBoundary - 2, associativityWholeSize - initialBoundary - 2));
+                    _twoHandCombinationMagnitude =
+                        Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode == TwoHandMagnitudeVocabularyMode.Intuitive
+                            ? 1
+                            : random.Next(1, maximumBoundaryMove + 1);
+                    first = ((0, initialBoundary - 1), (initialBoundary, associativityWholeSize - 1));
+                    _twoHandCombinationBoundaryMovesUp = random.Next(2) == 0;
+                    second = _twoHandCombinationBoundaryMovesUp
+                        ? ((0, initialBoundary + _twoHandCombinationMagnitude - 1),
+                           (initialBoundary + _twoHandCombinationMagnitude, associativityWholeSize - 1))
+                        : ((0, initialBoundary - _twoHandCombinationMagnitude - 1),
+                           (initialBoundary - _twoHandCombinationMagnitude, associativityWholeSize - 1));
+                    break;
+                case 2: // Put one separated hand directly above the other.
+                    first = ((0, 1), (4, 5));
+                    second = ((0, 1), (2, 3));
+                    break;
+                case 3: // Touching hands: move the upper endpoint of the upper hand.
+                    first = ((0, 1), (2, 4));
+                    second = ((0, 1), (2, Math.Min(rows - 1, 5)));
+                    break;
+                case 4: // Resize lower hand and shift upper hand to remain attached.
+                    first = ((0, 2), (3, 4));
+                    second = ((0, 3), (4, 5));
+                    break;
+                case 5: // Addition/subtraction: flip the upper interval across boundary.
+                    // Keep the operands visibly different: LARGE +/- SMALL. The small
+                    // interval is mirrored across the shared boundary into the top of
+                    // the large interval, rather than collapsing both to equal grips.
+                    (int baseSize, int flippedSize) = ChooseLargeSmallFlipSizes(random, rows);
+                    first = ((0, baseSize - 1), (baseSize, baseSize + flippedSize - 1));
+                    second = ((0, baseSize - 1), (baseSize - flippedSize, baseSize - 1));
+                    _twoHandCombinationFlipToAddition = false;
+                    // The upward subtraction -> addition flip is useful vocabulary,
+                    // but it is deliberately rare because the downward mirror is the
+                    // clearer primary presentation.
+                    if (random.Next(100) < 15)
+                    {
+                        (first, second) = (second, first);
+                        _twoHandCombinationFlipToAddition = true;
+                    }
+                    break;
+                case 6: // Subtraction/difference: move smaller from top to bottom contact.
+                    (int differenceWhole, int differencePart) =
+                        ChooseDifferenceSizes(random, rows);
+                    first = ((0, differenceWhole - 1),
+                             (differenceWhole - differencePart, differenceWhole - 1));
+                    second = ((0, differenceWhole - 1),
+                              (0, differencePart - 1));
+                    if (random.Next(2) == 0)
+                        (first, second) = (second, first);
+                    break;
+                case 7: // Move the lone combination farther by the lower hand's top.
+                    first = ((0, 2), (5, 6));
+                    second = ((0, 3), (5, 6));
+                    break;
+                case 8: // Split: full interval stays; other hand changes part grips.
+                    first = ((0, rows - 1), (0, 2));
+                    second = ((0, rows - 1), (3, rows - 1));
+                    if (random.Next(2) == 0)
+                        (first, second) = (second, first);
+                    break;
+                case 9: // Decompose one complete jump into two touching jumps.
+                    int jumpSize = RandomCombinationSize(random, rows, 5, 8);
+                    int split = random.Next(2, jumpSize - 1);
+                    first = ((0, jumpSize - 1), (0, jumpSize - 1));
+                    second = ((0, split - 1), (split, jumpSize - 1));
+                    break;
+                case 10: // Whole + half -> whole + one more than half.
+                    int wholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
+                    first = ((0, wholeSize - 1), (0, (wholeSize / 2) - 1));
+                    second = ((0, wholeSize - 1), (0, wholeSize / 2));
+                    break;
+                case 11: // Whole + half -> quarter + half.
+                    int divisibleSize = RandomMultipleOfFourCount(random, rows);
+                    first = ((0, divisibleSize - 1), (0, (divisibleSize / 2) - 1));
+                    second = ((0, (divisibleSize / 4) - 1),
+                              (0, (divisibleSize / 2) - 1));
+                    break;
+                case 12:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: false, much: false);
+                    break;
+                case 13:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: false, much: true);
+                    break;
+                case 14:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: true, much: false);
+                    break;
+                case 15:
+                    (first, second) = BuildRelativeSizePair(random, rows, grow: true, much: true);
+                    break;
+                case 16: // A standalone half task.
+                    int halfWholeSize = RandomEvenCombinationSize(random, rows);
+                    // Keep the whole fixed while the other hand transfers the exact
+                    // half from the lower part to the upper part of that same whole.
+                    first = ((0, halfWholeSize - 1),
+                             (0, (halfWholeSize / 2) - 1));
+                    second = ((0, halfWholeSize - 1),
+                              (halfWholeSize / 2, halfWholeSize - 1));
+                    break;
+                case 17: // Increase only the subtrahend: 5-2 -> 5-3, 8-6 -> 8-7.
+                    int minuend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(5, rows + 1)
+                        : Math.Min(5, rows);
+                    int subtrahend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, minuend - 1)
+                        : 2;
+                    first = ((0, minuend - 1), (minuend - subtrahend, minuend - 1));
+                    second = ((0, minuend - 1), (minuend - subtrahend - 1, minuend - 1));
+                    break;
+                case 18: // Grow the lower addend; translate the unchanged upper addend.
+                    (int lowerSize, int upperSize) = ChooseTouchingAddendSizes(random, rows);
+                    first = ((0, lowerSize - 1), (lowerSize, lowerSize + upperSize - 1));
+                    second = ((0, lowerSize), (lowerSize + 1, lowerSize + upperSize));
+                    break;
+                case 19: // Grow only the upper addend, away from the shared boundary.
+                    (int fixedLowerSize, int growingUpperSize) = ChooseTouchingAddendSizes(random, rows);
+                    first = ((0, fixedLowerSize - 1),
+                             (fixedLowerSize, fixedLowerSize + growingUpperSize - 1));
+                    second = ((0, fixedLowerSize - 1),
+                              (fixedLowerSize, fixedLowerSize + growingUpperSize));
+                    break;
+                case 20: // Shrink lower; translate the unchanged upper part downward.
+                    (int shrinkingLowerSize, int unchangedUpperSize) =
+                        ChooseTouchingAddendSizes(random, rows, minimumLower: 3);
+                    first = ((0, shrinkingLowerSize - 1),
+                             (shrinkingLowerSize, shrinkingLowerSize + unchangedUpperSize - 1));
+                    second = ((0, shrinkingLowerSize - 2),
+                              (shrinkingLowerSize - 1, shrinkingLowerSize + unchangedUpperSize - 2));
+                    break;
+                case 21: // Shrink only the upper addend by one at its top edge.
+                    (int unchangedLowerSize, int shrinkingUpperSize) =
+                        ChooseTouchingAddendSizes(random, rows, minimumUpper: 3);
+                    first = ((0, unchangedLowerSize - 1),
+                             (unchangedLowerSize, unchangedLowerSize + shrinkingUpperSize - 1));
+                    second = ((0, unchangedLowerSize - 1),
+                              (unchangedLowerSize, unchangedLowerSize + shrinkingUpperSize - 2));
+                    break;
+                case 22: // Reduce only the subtrahend: 5-3 -> 5-2, 8-7 -> 8-6.
+                    int fixedMinuend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(5, rows + 1)
+                        : Math.Min(5, rows);
+                    int shrinkingSubtrahend = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(3, fixedMinuend)
+                        : 3;
+                    first = ((0, fixedMinuend - 1),
+                             (fixedMinuend - shrinkingSubtrahend, fixedMinuend - 1));
+                    second = ((0, fixedMinuend - 1),
+                              (fixedMinuend - shrinkingSubtrahend + 1, fixedMinuend - 1));
+                    break;
+                case 24: // Implicit through-ten parts, always linked to complementary parts.
+                    const int fiveTop = 4;
+                    // The same part moves across the whole's upper edge; its size
+                    // must fit both inside the whole and above it on this keyboard.
+                    int partLength = random.Next(2, Math.Min(3, rows - 5) + 1);
+                    int insideBoundary = 5 - partLength;
+                    int outsideTop = fiveTop + partLength;
+                    var wholeAndLower = (Left: (Lower: 0, Upper: fiveTop),
+                                         Right: (Lower: 0, Upper: insideBoundary - 1));
+                    var wholeAndUpper = (Left: (Lower: 0, Upper: fiveTop),
+                                         Right: (Lower: insideBoundary, Upper: fiveTop));
+                    var wholeAndOutside = (Left: (Lower: 0, Upper: fiveTop),
+                                           Right: (Lower: 5, Upper: outsideTop));
+
+                    if (random.Next(2) == 0)
+                    {
+                        // Addition: complementary parts, then move the upper part
+                        // outside while the other hand keeps holding the whole.
+                        first = wholeAndLower;
+                        second = wholeAndUpper;
+                        _twoHandCombinationKind = TwoHandCombinationOptions.Split;
+                        linkedTarget = wholeAndOutside;
+                        linkedKind = TwoHandCombinationOptions.ThroughTenParts;
+                        linkedOutsideFirst = false;
+                    }
+                    else
+                    {
+                        // Subtraction: return the outside part inside, then complete
+                        // the reverse complementary-parts transformation.
+                        first = wholeAndOutside;
+                        second = wholeAndUpper;
+                        _twoHandCombinationOutsideFirst = true;
+                        linkedTarget = wholeAndLower;
+                        linkedKind = TwoHandCombinationOptions.Split;
+                    }
+                    break;
+                default: // Whole + half -> whole + one less than half.
+                    int lessWholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
+                    first = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 1));
+                    second = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 2));
+                    break;
+            }
+
+            // Keep this invariant independent of the numbered cases so newly added
+            // combinations cannot reintroduce a gap of two empty rows or greater.
+            if (HasDisallowedTwoHandCombinationGap(first) ||
+                HasDisallowedTwoHandCombinationGap(second))
+            {
+                return GenerateTwoHandCombinationPair(random);
+            }
+
+            // Randomize which physical hand carries each interval, without changing
+            // the mathematical relationship between the two displayed combinations.
+            if (random.Next(2) == 0)
+            {
+                first = (first.Right, first.Left);
+                second = (second.Right, second.Left);
+                if (linkedTarget is { } target)
+                    linkedTarget = (target.Right, target.Left);
+            }
+
+            // Stage 5.1 normally begins at the physical bottom so its intervals have
+            // a stable origin. A future dedicated exercise may explicitly opt out.
+            if (Config.KeyboardConfig.RandomizeTwoHandCombinationSizes &&
+                !Config.KeyboardConfig.AnchorTwoHandCombinationsToBottom)
+            {
+                int usedRows = new[] { first.Left.Upper, first.Right.Upper, second.Left.Upper, second.Right.Upper }.Max() + 1;
+                int offset = rows > usedRows ? random.Next(0, rows - usedRows + 1) : 0;
+                if (offset > 0)
+                {
+                    first = (ShiftInterval(first.Left, offset), ShiftInterval(first.Right, offset));
+                    second = (ShiftInterval(second.Left, offset), ShiftInterval(second.Right, offset));
+                }
+            }
+
+            bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
+            bool[] secondBits = BuildTwoHandCombinationBits(second.Left, second.Right, rows);
+            if (linkedTarget is { } nextTarget)
+            {
+                _pendingHalfDerivedFirst = secondBits.ToArray();
+                _pendingHalfDerivedSecond = BuildTwoHandCombinationBits(
+                    nextTarget.Left, nextTarget.Right, rows);
+                _pendingHalfDerivedKind = linkedKind;
+                _pendingHalfDerivedOutsideFirst = linkedOutsideFirst;
+            }
+            if (_twoHandCombinationKind is TwoHandCombinationOptions.MoreThanHalf or
+                TwoHandCombinationOptions.LessThanHalf or
+                TwoHandCombinationOptions.HalfOfHalf)
+            {
+                // A half-derived idea is never introduced cold. First perform HALF
+                // with the very same whole size and physical hand assignment. Queue
+                // the requested transformation as the immediately following task.
+                bool[] otherHalf = BuildUpperHalfQuestion(firstBits);
+                bool useLowerHalf = _twoHandCombinationKind is
+                    TwoHandCombinationOptions.MoreThanHalf or
+                    TwoHandCombinationOptions.LessThanHalf;
+                _pendingHalfDerivedFirst = useLowerHalf
+                    ? firstBits.ToArray()
+                    : otherHalf.ToArray();
+                _pendingHalfDerivedSecond = useLowerHalf
+                    ? secondBits.ToArray()
+                    : BuildHalfDerivedTargetFromOtherHalf(otherHalf, _twoHandCombinationKind);
+                _pendingHalfDerivedKind = _twoHandCombinationKind;
+                _twoHandCombinationKind = TwoHandCombinationOptions.Half;
+                return (firstBits, otherHalf);
+            }
+            return (firstBits, secondBits);
+        }
+
+        private static bool[] BuildUpperHalfQuestion(bool[] fullAndLowerHalf)
+        {
+            const int columns = 2;
+            bool[] result = fullAndLowerHalf.ToArray();
+            int[][] active = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, result.Length)
+                    .Where(index => index % columns == column && result[index]).ToArray())
+                .ToArray();
+            int halfColumn = active[0].Max() - active[0].Min() < active[1].Max() - active[1].Min()
+                ? 0
+                : 1;
+            int fullColumn = 1 - halfColumn;
+            int fullLowerRow = active[fullColumn].Min() / columns;
+            int fullUpperRow = active[fullColumn].Max() / columns;
+            int fullRows = fullUpperRow - fullLowerRow + 1;
+
+            for (int index = halfColumn; index < result.Length; index += columns)
+                result[index] = false;
+            result[((fullLowerRow + (fullRows / 2)) * columns) + halfColumn] = true;
+            result[(fullUpperRow * columns) + halfColumn] = true;
+            return result;
+        }
+
+        private static bool[] BuildHalfDerivedTargetFromOtherHalf(
+            bool[] fullAndUpperHalf,
+            TwoHandCombinationOptions kind)
+        {
+            const int columns = 2;
+            bool[] result = fullAndUpperHalf.ToArray();
+            int[][] activeRows = Enumerable.Range(0, columns)
+                .Select(column => Enumerable.Range(0, result.Length)
+                    .Where(index => index % columns == column && result[index])
+                    .Select(index => index / columns).ToArray())
+                .ToArray();
+            int halfColumn = activeRows[0].Max() - activeRows[0].Min() <
+                             activeRows[1].Max() - activeRows[1].Min() ? 0 : 1;
+            int fullColumn = 1 - halfColumn;
+            int fullLower = activeRows[fullColumn].Min();
+            int fullUpper = activeRows[fullColumn].Max();
+            int halfLower = activeRows[halfColumn].Min();
+
+            int changedColumn = kind == TwoHandCombinationOptions.HalfOfHalf
+                ? fullColumn
+                : halfColumn;
+            for (int index = changedColumn; index < result.Length; index += columns)
+                result[index] = false;
+
+            if (kind == TwoHandCombinationOptions.MoreThanHalf)
+            {
+                result[(Math.Max(fullLower, halfLower - 1) * columns) + halfColumn] = true;
+                result[(fullUpper * columns) + halfColumn] = true;
+            }
+            else if (kind == TwoHandCombinationOptions.LessThanHalf)
+            {
+                result[(Math.Min(fullUpper, halfLower + 1) * columns) + halfColumn] = true;
+                result[(fullUpper * columns) + halfColumn] = true;
+            }
+            else
+            {
+                int quarterRows = Math.Max(1, (fullUpper - fullLower + 1) / 4);
+                result[((fullUpper - quarterRows + 1) * columns) + fullColumn] = true;
+                result[(fullUpper * columns) + fullColumn] = true;
+            }
+
+            return result;
+        }
+
+        private static (int Lower, int Upper) ShiftInterval((int Lower, int Upper) interval, int amount) =>
+            (interval.Lower + amount, interval.Upper + amount);
+
+        private int RandomCombinationSize(Random random, int rows, int minimum, int preferredMaximum)
+        {
+            int maximum = Math.Max(minimum, Math.Min(rows, preferredMaximum));
+            return Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                ? random.Next(minimum, maximum + 1)
+                : minimum;
+        }
+
+        private (int Large, int Small) ChooseLargeSmallFlipSizes(Random random, int rows)
+        {
+            if (!Config.KeyboardConfig.RandomizeTwoHandCombinationSizes)
+                return (4, 2);
+
+            List<(int Large, int Small)> candidates = new();
+            for (int large = 3; large <= rows - 2; large++)
+            for (int small = 2; small < large && large + small <= rows; small++)
+                candidates.Add((large, small));
+
+            List<(int Large, int Small)> notMinimum = candidates.Where(pair => pair.Small > 2).ToList();
+            List<(int Large, int Small)> pool = notMinimum.Count > 0 && random.Next(100) < 70
+                ? notMinimum
+                : candidates;
+            return pool.Count > 0 ? pool[random.Next(pool.Count)] : (4, 2);
+        }
+
+        private (int Whole, int Part) ChooseDifferenceSizes(Random random, int rows)
+        {
+            if (!Config.KeyboardConfig.RandomizeTwoHandCombinationSizes)
+                return (Math.Min(5, rows), 3);
+
+            int whole = random.Next(5, rows + 1);
+            int minimumLargePart = Math.Max(3, (int)Math.Ceiling(whole / 2d));
+            // Most prompts use a substantial part, so Difference is not experienced
+            // merely as repeated subtraction of the smallest available grip.
+            int part = random.Next(100) < 75
+                ? random.Next(minimumLargePart, whole)
+                : random.Next(2, whole);
+            return (whole, part);
+        }
+
+        private (int Lower, int Upper) ChooseTouchingAddendSizes(
+            Random random, int rows, int minimumLower = 2, int minimumUpper = 2)
+        {
+            List<(int Lower, int Upper)> candidates = new();
+            for (int lower = minimumLower; lower <= rows - minimumUpper; lower++)
+            for (int upper = minimumUpper; lower + upper + 1 <= rows; upper++)
+                candidates.Add((lower, upper));
+            if (candidates.Count == 0)
+                return (2, 2);
+            return Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                ? candidates[random.Next(candidates.Count)]
+                : candidates[0];
+        }
+
+        private int RandomEvenCombinationSize(Random random, int rows, int minimum = 4)
+        {
+            int[] sizes = Enumerable.Range(minimum, Math.Max(1, rows - minimum + 1))
+                .Where(size => size <= rows && size % 2 == 0).ToArray();
+            return sizes.Length == 0 ? Math.Min(rows, minimum) :
+                sizes[Config.KeyboardConfig.RandomizeTwoHandCombinationSizes ? random.Next(sizes.Length) : 0];
+        }
+
+        private int RandomMultipleOfFourCount(Random random, int rows)
+        {
+            int[] sizes = Enumerable.Range(8, Math.Max(1, rows - 7)).Where(size => size <= rows && size % 4 == 0).ToArray();
+            return sizes.Length == 0 ? 8 :
+                sizes[Config.KeyboardConfig.RandomizeTwoHandCombinationSizes ? random.Next(sizes.Length) : 0];
+        }
+
+        private (((int Lower, int Upper) Left, (int Lower, int Upper) Right) First,
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) Second)
+            BuildRelativeSizePair(Random random, int rows, bool grow, bool much)
+        {
+            int difference = much
+                ? random.Next(2, Math.Max(3, Math.Min(5, rows - 1)))
+                : 1;
+            int smaller = random.Next(2, Math.Max(3, rows - difference + 1));
+            int larger = Math.Min(rows, smaller + difference);
+            int equalSize = grow ? smaller : larger;
+            int transformedSize = grow ? larger : smaller;
+
+            // Every comparative prompt now starts from two equal full jumps. On the
+            // second frame only the right jump changes, making the direction and the
+            // amount of the transformation unambiguous.
+            var equal = (Left: (Lower: 0, Upper: equalSize - 1),
+                         Right: (Lower: 0, Upper: equalSize - 1));
+            var transformed = (Left: (Lower: 0, Upper: equalSize - 1),
+                               Right: (Lower: 0, Upper: transformedSize - 1));
+            return (equal, transformed);
+        }
+
+        public bool ShouldAnimateTwoHandCombinationTransition() =>
+            Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+            Config.KeyboardConfig.AnimateTwoHandCombinations &&
+            _twoHandCombinationKind is TwoHandCombinationOptions.Commutativity or
+                TwoHandCombinationOptions.FlipAdditionSubtraction or
+                TwoHandCombinationOptions.Difference;
+
+        public bool IsTwoHandCombinationFlip() =>
+            _twoHandCombinationKind == TwoHandCombinationOptions.FlipAdditionSubtraction;
+
+        public bool ShouldUseTwoHandCombinationFlipAnimation() =>
+            IsTwoHandCombinationFlip() && Config.KeyboardConfig.UseFlipAnimationForAdditionSubtraction;
+
+        public int[] GetTwoHandCombinationAnimationTargets()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            int[] targets = Enumerable.Range(0, first.Length).ToArray();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                for (int i = 0; i < Math.Min(from.Length, to.Length); i++)
+                    targets[from[i]] = to[i];
+            }
+            return targets;
+        }
+
+        public bool[] GetTwoHandCombinationFlipMovingBits()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            int[] targets = GetTwoHandCombinationAnimationTargets();
+            bool[] moving = new bool[first.Length];
+            for (int index = 0; index < first.Length && index < targets.Length; index++)
+                moving[index] = first[index] && targets[index] != index;
+            return moving;
+        }
+
+        public bool[] GetTwoHandCombinationFlipFixedBits()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            int[] targets = GetTwoHandCombinationAnimationTargets();
+            bool[] fixedBits = new bool[first.Length];
+            for (int index = 0; index < first.Length && index < targets.Length; index++)
+                fixedBits[index] = first[index] && targets[index] == index;
+            return fixedBits;
+        }
+
+        public int GetTwoHandCombinationFlipAxisSourceIndex()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                if (!from.SequenceEqual(to) && from.Length > 0)
+                    return from.Average() < to.Average() ? from.Max() : from.Min();
+            }
+            return -1;
+        }
+
+        public bool IsTwoHandCombinationFlipAxisAboveSource()
+        {
+            bool[] first = _sequenceMemorizeFirstPinch ?? Array.Empty<bool>();
+            bool[] second = _sequenceMemorizeSecondPinch ?? Array.Empty<bool>();
+            const int columns = 2;
+            for (int column = 0; column < columns; column++)
+            {
+                int[] from = Enumerable.Range(0, first.Length).Where(i => i % columns == column && first[i]).ToArray();
+                int[] to = Enumerable.Range(0, second.Length).Where(i => i % columns == column && second[i]).ToArray();
+                if (!from.SequenceEqual(to) && from.Length > 0 && to.Length > 0)
+                    return from.Average() < to.Average();
+            }
+            return false;
+        }
+
+        private static bool HasDisallowedTwoHandCombinationGap(
+            ((int Lower, int Upper) Left, (int Lower, int Upper) Right) combination)
+        {
+            int emptyRows = combination.Left.Upper < combination.Right.Lower
+                ? combination.Right.Lower - combination.Left.Upper - 1
+                : combination.Right.Upper < combination.Left.Lower
+                    ? combination.Left.Lower - combination.Right.Upper - 1
+                    : 0;
+            return emptyRows >= 2;
+        }
+
+        private static bool[] BuildTwoHandCombinationBits(
+            (int Lower, int Upper) left,
+            (int Lower, int Upper) right,
+            int rows)
+        {
+            const int columns = 2;
+            bool[] bits = new bool[rows * columns];
+            bits[Math.Clamp(left.Lower, 0, rows - 1) * columns] = true;
+            bits[Math.Clamp(left.Upper, 0, rows - 1) * columns] = true;
+            bits[(Math.Clamp(right.Lower, 0, rows - 1) * columns) + 1] = true;
+            bits[(Math.Clamp(right.Upper, 0, rows - 1) * columns) + 1] = true;
+            return bits;
+        }
+
+        public bool IsSequenceMemorizeFirstResponse() =>
+            Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true &&
+            _sequenceMemorizeCurrentIsFirst;
+
+        public bool AdvanceSequenceMemorizeToLastResponse()
+        {
+            if (!IsSequenceMemorizeFirstResponse() || _sequenceMemorizeSecondPinch == null)
+                return false;
+
+            BitArrayQuestion = _sequenceMemorizeSecondPinch.ToArray();
+            BitArrayQuestion2 = Array.Empty<bool>();
+            BuildCorrectAnswer();
+            _sequenceMemorizeCurrentIsFirst = false;
+            _sequenceMemorizeGenerateSecond = false;
+            return true;
+        }
+
+        public bool[] GetSequenceMemorizeSecondPreview() =>
+            _sequenceMemorizeSecondPinch?.ToArray() ?? Array.Empty<bool>();
+
+        public bool[] GetSequenceMemorizeFirstPreview() =>
+            _sequenceMemorizeFirstPinch?.ToArray() ?? Array.Empty<bool>();
+
+        private bool[] ChooseNextSequenceFirstPinch(Random random, bool[] previousFirst)
+        {
+            List<bool[]> candidates = new() { previousFirst.ToArray() }; // COPY
+            candidates.Add(TransferPrecisionPinchToOtherHand(previousFirst));
+            candidates.AddRange(BuildSequenceTransforms(previousFirst, maximumDistance: 1));
+            bool[] selected = candidates
+                .GroupBy(bits => string.Concat(bits.Select(bit => bit ? '1' : '0')))
+                .Select(group => group.First())
+                .OrderBy(_ => random.Next())
+                .First();
+            UpdateSequenceMemorizeHand(selected);
+            return selected;
+        }
+
+        private bool[] ChooseSequenceSecondPinch(Random random, bool[] first, int maximumDistance)
+        {
+            List<bool[]> candidates = BuildSequenceTransforms(first, maximumDistance);
+            if (candidates.Count == 0)
+                return first.ToArray();
+
+            bool[] selected = candidates[random.Next(candidates.Count)];
+            UpdateSequenceMemorizeHand(selected);
+            return selected;
+        }
+
+        private List<bool[]> BuildSequenceTransforms(bool[] source, int maximumDistance)
+        {
+            List<bool[]> candidates = new();
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int[] active = source
+                .Select((isActive, index) => (isActive, index))
+                .Where(item => item.isActive)
+                .Select(item => item.index)
+                .OrderBy(index => index)
+                .ToArray();
+            if (active.Length != 2 || active[0] % columns != active[1] % columns)
+                return candidates;
+
+            int lower = active[0];
+            int upper = active[1];
+            for (int distance = 1; distance <= maximumDistance; distance++)
+            {
+                foreach (int delta in new[] { -distance, distance })
+                {
+                    int shiftedLower = GetPrecisionShiftTarget(lower, delta);
+                    int shiftedUpper = GetPrecisionShiftTarget(upper, delta);
+                    if (IsSequenceTargetValid(shiftedLower, lower, columns, source.Length) &&
+                        IsSequenceTargetValid(shiftedUpper, upper, columns, source.Length))
+                    {
+                        bool[] shifted = new bool[source.Length];
+                        shifted[shiftedLower] = true;
+                        shifted[shiftedUpper] = true;
+                        candidates.Add(shifted);
+                    }
+
+                    int movedUpper = GetPrecisionShiftTarget(upper, delta);
+                    if (movedUpper > lower &&
+                        IsSequenceTargetValid(movedUpper, upper, columns, source.Length))
+                    {
+                        bool[] resized = source.ToArray();
+                        resized[upper] = false;
+                        resized[movedUpper] = true;
+                        candidates.Add(resized);
+                    }
+                }
+            }
+
+            return candidates
+                .GroupBy(bits => string.Concat(bits.Select(bit => bit ? '1' : '0')))
+                .Select(group => group.First())
+                .ToList();
+        }
+
+        private static bool IsSequenceTargetValid(
+            int target, int source, int columns, int length) =>
+            target >= 0 && target < length && target % columns == source % columns;
+
+        private void UpdateSequenceMemorizeHand(bool[] pinch)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int first = Array.FindIndex(pinch, bit => bit);
+            if (first >= 0)
+                whichHand = first % columns < columns / 2 ? Direction.Left : Direction.Right;
+        }
+
+        private void TransformPrecisionCopyQuestion(Random random)
+        {
+            if (BitArrayQuestion == null)
+                return;
+
+            // Make hand alternation an explicit, even choice. Previously changing hands
+            // was only one candidate among several same-hand movements, which allowed
+            // long runs on one side (most noticeably the left hand).
+            if (random.Next(2) == 0)
+            {
+                BitArrayQuestion = TransferPrecisionPinchToOtherHand(BitArrayQuestion);
+                whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                    ? Direction.Left
+                    : Direction.Right;
+                return;
+            }
+
+            List<bool[]> candidates = new();
+
+            bool leftSide = GetPrecisionSideActiveIndices(leftSide: true).Length > 0;
+            int[] active = GetPrecisionSideActiveIndices(leftSide);
+            if (active.Length == 2)
+            {
+                foreach (int delta in new[] { -1, 1 })
+                {
+                    int[] shifted = active.Select(index => GetPrecisionShiftTarget(index, delta)).ToArray();
+                    if (shifted.All(target => IsPrecisionTargetOnSide(target, leftSide)) &&
+                        shifted.Distinct().Count() == active.Length)
+                    {
+                        bool[] result = new bool[BitArrayQuestion.Length];
+                        foreach (int target in shifted)
+                            result[target] = true;
+                        candidates.Add(result);
+                    }
+
+                    for (int movingPosition = 0; movingPosition < active.Length; movingPosition++)
+                    {
+                        int target = GetPrecisionShiftTarget(active[movingPosition], delta);
+                        int fixedIndex = active[1 - movingPosition];
+                        bool preservesOrder = movingPosition == 0
+                            ? target < fixedIndex
+                            : target > fixedIndex;
+                        if (!preservesOrder || !IsPrecisionTargetOnSide(target, leftSide))
+                            continue;
+
+                        bool[] result = BitArrayQuestion.ToArray();
+                        result[active[movingPosition]] = false;
+                        result[target] = true;
+                        candidates.Add(result);
+                    }
+                }
+            }
+
+            if (candidates.Count > 0)
+                BitArrayQuestion = candidates[random.Next(candidates.Count)];
+            whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                ? Direction.Left
+                : Direction.Right;
+        }
+
+        private bool[] TransferPrecisionPinchToOtherHand(bool[] source)
+        {
+            bool[] transferred = new bool[source.Length];
+            if (Config.KeyboardConfig.IsVerticalPrecisionPinchExercise)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                for (int index = 0; index < source.Length; index++)
+                {
+                    if (!source[index])
+                        continue;
+                    int row = index / columns;
+                    int oppositeColumn = columns - 1 - (index % columns);
+                    transferred[(row * columns) + oppositeColumn] = true;
+                }
+            }
+            else
+            {
+                for (int index = 0; index < source.Length; index++)
+                {
+                    if (source[index])
+                        transferred[source.Length - 1 - index] = true;
+                }
+            }
+            return transferred;
+        }
+
+        private void MaybeTransferOneHandPrecisionPinch(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (BitArrayQuestion == null || keyboard.PrecisionShiftBothHands || random.Next(2) == 0)
+                return;
+
+            BitArrayQuestion = TransferPrecisionPinchToOtherHand(BitArrayQuestion);
+            whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                ? Direction.Left
+                : Direction.Right;
+        }
+
+        private void RefreshPrecisionPinchesByChance(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (BitArrayQuestion == null)
+                return;
+
+            int newPinchPercent = Math.Clamp(keyboard.PrecisionShiftNewPinchPercent, 0, 100);
+            if (newPinchPercent <= 0)
+                return;
+
+            if (!keyboard.PrecisionShiftBothHands)
+            {
+                // The single active hand makes one independent 25/75 roll.
+                if (random.Next(100) >= newPinchPercent)
+                    return;
+
+                bool[] previousQuestion = BitArrayQuestion.ToArray();
+                bool[] freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                for (int attempt = 0;
+                     attempt < 12 && PrecisionPinchGeometryMatches(previousQuestion, freshPinch);
+                     attempt++)
+                {
+                    freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                }
+
+                BitArrayQuestion = freshPinch;
+                whichHand = GetPrecisionSideActiveIndices(leftSide: true).Length > 0
+                    ? Direction.Left
+                    : Direction.Right;
+                return;
+            }
+
+            // With two hands, the 25/75 roll and the generated pinch are independent
+            // for each hand. This naturally permits zero, one, or two fresh pinches.
+            foreach (bool leftSide in new[] { true, false })
+            {
+                if (random.Next(100) >= newPinchPercent)
+                    continue;
+
+                bool[] previousQuestion = BitArrayQuestion.ToArray();
+                bool[] freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                for (int attempt = 0;
+                     attempt < 12 && PrecisionSideMatches(previousQuestion, freshPinch, leftSide);
+                     attempt++)
+                {
+                    freshPinch = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                }
+
+                for (int index = 0; index < BitArrayQuestion.Length; index++)
+                {
+                    if (IsPrecisionIndexOnSide(index, leftSide))
+                        BitArrayQuestion[index] = freshPinch[index];
+                }
+            }
+
+            System.Diagnostics.Debug.Assert(GetPrecisionSideActiveIndices(leftSide: true).Length == 2);
+            System.Diagnostics.Debug.Assert(GetPrecisionSideActiveIndices(leftSide: false).Length == 2);
+        }
+
+        private bool PrecisionPinchGeometryMatches(bool[] first, bool[] second)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = Math.Max(1, first.Length / 2);
+            int[] GetGeometry(bool[] bits) => Enumerable.Range(0, bits.Length)
+                .Where(index => bits[index])
+                .Select(index => Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                    ? index / columns
+                    : index % half)
+                .OrderBy(position => position)
+                .ToArray();
+
+            return GetGeometry(first).SequenceEqual(GetGeometry(second));
+        }
+
+        private bool PrecisionSideMatches(bool[] first, bool[] second, bool leftSide)
+        {
+            int length = Math.Min(first.Length, second.Length);
+            for (int index = 0; index < length; index++)
+            {
+                if (IsPrecisionIndexOnSide(index, leftSide) && first[index] != second[index])
+                    return false;
+            }
+            return true;
+        }
+
+        private bool IsPrecisionIndexOnSide(int index, bool leftSide)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            int half = keyCount / 2;
+            return Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (index % columns == 0) == leftSide
+                : (index < half) == leftSide;
+        }
+
         private void GenerateNewQuestion(Random r)
         {
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            ResolveCurrentArrowVariant(r);
+
+            if (UsesArrowLabelExercise())
+            {
+                GenerateArrowLabelExercise(r);
+                BuildCorrectAnswer();
+                return;
+            }
+
+            if (UsesOnKeyboardArrowExercise())
             {
                 GenerateArrowExercise();
                 BuildCorrectAnswer();
@@ -341,21 +3364,38 @@ namespace GestureSample.Maui.Models
             {
                 GenerateNonArrowExercise(r);
                 BuildCorrectAnswer(); // IMPORTANT: must rebuild every iteration
-                quantity = BitArrayCorrectAnswer!=null?SumArray(BitArrayCorrectAnswer):SumArray(BitArrayQuestion);
-                DevLog.Write("Question is\t\t: "+ string.Join("", BitArrayQuestion.Cast<bool>().Select(b => b ? "1" : "0")));
-                DevLog.Write("Correct answer is\t: "+ string.Join("", BitArrayCorrectAnswer.Cast<bool>().Select(b => b ? "1" : "0")));
+                bool hasCanonicalCorrectAnswer = BitArrayCorrectAnswer != null;
+                quantity = hasCanonicalCorrectAnswer ? SumArray(BitArrayCorrectAnswer) : SumArray(BitArrayQuestion);
+                DevLog.Write("Question is\t\t: "+ FormatBits(BitArrayQuestion));
+                DevLog.Write("Correct answer is\t: "+ FormatBits(BitArrayCorrectAnswer));
                 DevLog.Write("Is it ok?\t\t\t: "+(!(
-                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) && CurrentOperation != Operation.Copy) ||
-                    (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2) == 0)))).ToString());
+                    (Config.KeyboardOnly &&
+                     hasCanonicalCorrectAnswer &&
+                     AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) &&
+                     CurrentOperation != Operation.Copy &&
+                     Config.KeyboardConfig?.IsPrecisionShiftExercise != true) ||
+                    !IsAllowedQuestion2Combination(BitArrayQuestion, BitArrayQuestion2))).ToString());
 
             }
             while ( quantity < Config.MinSum ||
                     quantity > Config.MaxSum ||
-                    (Config.isOnlyKeyboard && AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer)&& CurrentOperation!=Operation.Copy) ||
-                    (Config.DenyStrangeOrSameGroups && (!AreOverlapingSets(BitArrayQuestion, BitArrayQuestion2) || Equals(BitArrayQuestion, BitArrayQuestion2) || SumArray(BitArrayQuestion2)==0)) ||
+                    (Config.KeyboardOnly &&
+                     BitArrayCorrectAnswer != null &&
+                     AreOverlapingSets(BitArrayQuestion, BitArrayCorrectAnswer) &&
+                     CurrentOperation != Operation.Copy &&
+                     Config.KeyboardConfig?.IsPrecisionShiftExercise != true) ||
+                    !IsAllowedQuestion2Combination(BitArrayQuestion, BitArrayQuestion2) ||
                     (CurrentOperation == Operation.SUMM &&
                     SumArray(BitArrayQuestion) + SumArray(BitArrayQuestion2) > BitArrayQuestion.Length)
                     );
+        }
+
+        private static string FormatBits(bool[]? bits)
+        {
+            if (bits == null || bits.Length == 0)
+                return "-";
+
+            return string.Join("", bits.Select(bit => bit ? "1" : "0"));
         }
 
         private bool AreOverlapingSets(bool[] arr1, bool[] arr2)
@@ -371,6 +3411,69 @@ namespace GestureSample.Maui.Models
             return SumArray(arrAns)>0;
         }
 
+        private bool IsAllowedQuestion2Combination(bool[] arr1, bool[] arr2)
+        {
+            if (Config.AllowedGroupCombinations == GroupCombinationMode.None)
+                return true;
+
+            GroupCombinationMode relation = GetGroupCombination(arr1, arr2);
+            return Config.AllowedGroupCombinations.HasFlag(relation);
+        }
+
+        private GroupCombinationMode GetGroupCombination(bool[] arr1, bool[] arr2)
+        {
+            if (arr1 == null || arr2 == null || SumArray(arr2) == 0)
+                return GroupCombinationMode.Empty;
+
+            if (AreEqualSets(arr1, arr2))
+                return GroupCombinationMode.Same;
+
+            if (IsOneInsideAnother(arr1, arr2))
+                return GroupCombinationMode.OneInsideAnother;
+
+            if (AreOverlapingSets(arr1, arr2))
+                return GroupCombinationMode.Overlapping;
+
+            return GroupCombinationMode.Strange;
+        }
+
+        private bool AreEqualSets(bool[] arr1, bool[] arr2)
+        {
+            if (arr1 == null || arr2 == null || arr1.Length != arr2.Length)
+                return false;
+
+            for (int i = 0; i < arr1.Length; i++)
+            {
+                if (arr1[i] != arr2[i])
+                    return false;
+            }
+
+            return true;
+        }
+
+        private bool IsOneInsideAnother(bool[] arr1, bool[] arr2)
+        {
+            if (arr1 == null || arr2 == null || arr1.Length != arr2.Length)
+                return false;
+
+            return IsProperSubset(arr1, arr2) || IsProperSubset(arr2, arr1);
+        }
+
+        private static bool IsProperSubset(bool[] subsetCandidate, bool[] setCandidate)
+        {
+            bool hasStrictDifference = false;
+            for (int i = 0; i < subsetCandidate.Length; i++)
+            {
+                if (subsetCandidate[i] && !setCandidate[i])
+                    return false;
+
+                if (!subsetCandidate[i] && setCandidate[i])
+                    hasStrictDifference = true;
+            }
+
+            return hasStrictDifference;
+        }
+
         /*private void ApplyBitArrayStepExtrasIfNeeded(ExercisePlanStep? step)
         {
             if (step == null) return;
@@ -380,7 +3483,7 @@ namespace GestureSample.Maui.Models
             if (!step.UseSecondOperandFromPermutation) return;
 
             // If you have special cases (e.g. arrow keyboard), you can early-return here.
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow) return;
+            if (UsesOnKeyboardArrowExercise()) return;
 
             // Build operand2 from permutation policy (you likely already have / will add a helper).
             BitArrayQuestion2 = BuildPermutedOperand(BitArrayQuestion, step.PermutationPolicy);
@@ -388,7 +3491,576 @@ namespace GestureSample.Maui.Models
             BuildCorrectAnswer();
         }*/
 
-        private void SaveQuestionToDb()
+        protected override ExerciseGenerationResult CreateGeneratedExerciseResult()
+        {
+            string actionText = CurrentOperation.ToDString();
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true)
+            {
+                actionText = GetTwoHandCombinationActionText();
+            }
+            else if (CurrentOperation == Operation.Copy &&
+                Config.KeyboardConfig?.IsVerticalPrecisionPinchExercise == true)
+            {
+                actionText = string.Empty;
+            }
+            else if (CurrentOperation == Operation.Copy &&
+                Config.KeyboardConfig?.CopyPrecisionPinchToOtherHand == true)
+            {
+                actionText = "COPY TO OTHER HAND";
+            }
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                {
+                    actionText = BuildPrecisionShiftActionText();
+                    return new ExerciseGenerationResult { ActionText = actionText };
+                }
+                string strDir = moveBydir == Direction.Right ? "RIGHT" : "LEFT";
+                actionText += " " + strDir + " BY " + moveByLength;
+            }
+            else if (CurrentOperation == Operation.GroupByColor)
+            {
+                actionText = "Group By Color";
+            }
+
+            return new ExerciseGenerationResult
+            {
+                ActionText = actionText
+            };
+        }
+
+        public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
+        {
+            TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
+            TwoHandCombinationOptions.Associativity => BuildSharedBoundaryActionText(),
+            TwoHandCombinationOptions.ResizeUpper => "RESIZE UPPER",
+            TwoHandCombinationOptions.ResizeLowerAttached => "RESIZE — KEEP ATTACHED",
+            TwoHandCombinationOptions.FlipAdditionSubtraction => _twoHandCombinationFlipToAddition
+                ? "Large-small, to Large+small"
+                : "Large+small, to Large-small",
+            TwoHandCombinationOptions.Difference => "ATTACH SMALL PART TO THE OTHER EDGE",
+            TwoHandCombinationOptions.Split => "COMPLEMENTARY PARTS",
+            TwoHandCombinationOptions.ThroughTenParts => _twoHandCombinationOutsideFirst
+                ? "PART OUTSIDE, PART INSIDE"
+                : "PART INSIDE, PART OUTSIDE",
+            TwoHandCombinationOptions.SplitJump => "SPLIT THE JUMP",
+            TwoHandCombinationOptions.Half => "ONE HALF, OTHER HALF",
+            TwoHandCombinationOptions.MoreThanHalf => "A LITTLE MORE THAN HALF",
+            TwoHandCombinationOptions.LessThanHalf => "A LITTLE LESS THAN HALF",
+            TwoHandCombinationOptions.HalfOfHalf => "HALF OF HALF",
+            TwoHandCombinationOptions.LittleSmaller => "A LITTLE SMALLER",
+            TwoHandCombinationOptions.MuchSmaller => "MUCH SMALLER",
+            TwoHandCombinationOptions.LittleBigger => "A LITTLE BIGGER",
+            TwoHandCombinationOptions.MuchBigger => "MUCH BIGGER",
+            TwoHandCombinationOptions.SubtrahendOneStepBigger => "SUBTRACT ONE MORE",
+            TwoHandCombinationOptions.IncreaseLowerByOne => "INCREASE LOWER BY ONE",
+            TwoHandCombinationOptions.IncreaseUpperByOne => "INCREASE UPPER BY ONE",
+            TwoHandCombinationOptions.DecreaseLowerByOne => "DECREASE LOWER BY ONE",
+            TwoHandCombinationOptions.DecreaseUpperByOne => "DECREASE UPPER BY ONE",
+            TwoHandCombinationOptions.SubtrahendOneStepSmaller => "SUBTRACT ONE LESS",
+            _ => string.Empty
+        };
+
+        private string BuildSharedBoundaryActionText()
+        {
+            string direction = _twoHandCombinationBoundaryMovesUp ? "UP" : "DOWN";
+            return Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode switch
+            {
+                TwoHandMagnitudeVocabularyMode.Qualitative =>
+                    $"MOVE SHARED BOUNDARY {direction} BY {(_twoHandCombinationMagnitude == 1 ? "A LITTLE" : "A LOT")}",
+                TwoHandMagnitudeVocabularyMode.Numeric =>
+                    $"MOVE SHARED BOUNDARY {direction} BY {_twoHandCombinationMagnitude}",
+                _ => $"MOVE SHARED BOUNDARY {direction}"
+            };
+        }
+
+        private string BuildPrecisionShiftActionText()
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            if (keyboard.IsPrecisionGrammarExercise && !string.IsNullOrWhiteSpace(_precisionGrammarCondition))
+                return $"CONDITION: {_precisionGrammarCondition}";
+
+            if (keyboard.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                if (keyboard.PrecisionShiftBothHands)
+                {
+                    string left = BuildPrecisionSideActionText(leftSide: true);
+                    string right = BuildPrecisionSideActionText(leftSide: false);
+                    return $"LEFT: {left}     |     RIGHT: {right}";
+                }
+
+                return BuildPrecisionSideActionText(IsLeftPrecisionColumnActive());
+            }
+
+            int distance = Math.Max(1, Math.Abs(_precisionShiftDelta));
+            if (keyboard.PrecisionShiftBothHands)
+            {
+                string left = FormatHorizontalSideInstruction(_precisionShiftLeftDelta, isLeftSide: true);
+                string right = FormatHorizontalSideInstruction(_precisionShiftRightDelta, isLeftSide: false);
+                return $"{left} | {right}";
+            }
+
+            string direction = _precisionShiftDelta >= 0 ? "RIGHT" : "LEFT";
+            string line = _precisionShiftDelta >= 0 ? $"|------{distance}----->" : $"|------<-----{distance}";
+            return $"{line}  MOVE PINCH {direction} BY {distance}";
+        }
+
+        private string BuildPrecisionSideActionText(bool leftSide)
+        {
+            int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            if (delta == 0)
+                return "HOLD";
+
+            bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+            bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+            string operation = isShift
+                ? "SHIFT"
+                : baseAtTop
+                    ? "MOVE LOWER"
+                    : "MOVE UPPER";
+            string direction = delta > 0 ? "UP" : "DOWN";
+            return $"{operation} {direction} BY {Math.Abs(delta)}";
+        }
+
+        private static string BuildVerticalSideInstructions(int leftDelta, int rightDelta)
+        {
+            string[] left = FormatVerticalSideInstruction(leftDelta);
+            string[] right = FormatVerticalSideInstruction(rightDelta);
+            return string.Join("\n", Enumerable.Range(0, left.Length)
+                .Select(row => $"{left[row],-5}     {right[row],5}"));
+        }
+
+        private static string[] FormatVerticalSideInstruction(int delta)
+        {
+            if (delta > 0)
+                return new[] { "↑", "│", Math.Abs(delta).ToString(), "│", "──" };
+            if (delta < 0)
+                return new[] { "──", "│", Math.Abs(delta).ToString(), "│", "↓" };
+            return new[] { string.Empty, string.Empty, string.Empty, string.Empty, string.Empty };
+        }
+
+        public string GetVerticalShiftSideInstruction(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true ||
+                Config.KeyboardConfig.PrecisionShiftAxis != PrecisionShiftAxis.Vertical)
+                return string.Empty;
+
+            int delta = Config.KeyboardConfig.PrecisionShiftBothHands
+                ? (leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta)
+                : IsLeftPrecisionColumnActive() == leftSide ? _precisionShiftDelta : 0;
+            return string.Join("\n", FormatVerticalSideInstruction(delta));
+        }
+
+        public int GetPrecisionShiftSideDelta(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true)
+                return 0;
+
+            if (Config.KeyboardConfig.PrecisionShiftBothHands)
+                return leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+
+            return IsLeftPrecisionColumnActive() == leftSide ? _precisionShiftDelta : 0;
+        }
+
+        public bool GetPrecisionShiftSideBaseAtTop(bool leftSide) =>
+            leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+
+        public bool IsPrecisionShiftSideGenericShift(bool leftSide)
+        {
+            if (Config?.KeyboardConfig?.IsPrecisionShiftExercise != true)
+                return false;
+            return leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+        }
+
+        private bool IsLeftPrecisionColumnActive()
+        {
+            if (BitArrayQuestion == null)
+                return false;
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return BitArrayQuestion
+                .Select((active, index) => (active, index))
+                .Any(item => item.active &&
+                    (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        ? item.index % columns == 0
+                        : item.index < half));
+        }
+
+        private static string FormatHorizontalSideInstruction(int delta, bool isLeftSide)
+        {
+            if (delta == 0)
+                return string.Empty;
+
+            int distance = Math.Abs(delta);
+            if (delta > 0)
+                return $"--{distance}-->";
+            return $"<--{distance}--";
+        }
+
+        public bool[] GetTutorialQuestionBits()
+        {
+            return BitArrayQuestion?.ToArray() ?? Array.Empty<bool>();
+        }
+
+        public bool[] GetTutorialQuestionBits2()
+        {
+            return BitArrayQuestion2?.ToArray() ?? Array.Empty<bool>();
+        }
+
+        public bool[] GetTutorialAnswerBits()
+        {
+            if (BitArrayCorrectAnswer == null)
+                BuildCorrectAnswer();
+
+            return BitArrayCorrectAnswer?.ToArray() ?? GetTutorialQuestionBits();
+        }
+
+        public bool UsesPrecisionShiftTutorial() =>
+            Config?.KeyboardConfig?.IsPrecisionShiftExercise == true &&
+            CurrentOperation == Operation.MoveBy;
+
+        public int[] GetPrecisionShiftTutorialTargets()
+        {
+            int length = BitArrayQuestion?.Length ?? 0;
+            int[] targets = Enumerable.Range(0, length).ToArray();
+            if (!UsesPrecisionShiftTutorial())
+                return targets;
+
+            foreach (bool leftSide in new[] { true, false })
+            {
+                int[] active = GetPrecisionSideActiveIndices(leftSide);
+                if (active.Length == 0)
+                    continue;
+                int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+                bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+                bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+                // Vertical key indices increase visually upward (row 0 is drawn at the
+                // bottom), so Max is the upper key and Min is the lower key.
+                int fixedIndex = baseAtTop ? active.Max() : active.Min();
+                foreach (int index in active)
+                {
+                    if (isShift || index != fixedIndex)
+                        targets[index] = GetPrecisionShiftTarget(index, delta);
+                }
+            }
+
+            return targets;
+        }
+
+        public bool UsesShiftAsMinusFlipTutorial() =>
+            UsesPrecisionShiftTutorial() && _isPrecisionShiftAsMinus;
+
+        public bool[] GetShiftAsMinusTutorialBits()
+        {
+            bool[] movingBits = new bool[BitArrayQuestion?.Length ?? 0];
+            if (!_isPrecisionShiftAsMinus || BitArrayQuestion == null)
+                return movingBits;
+
+            bool movingLeftSide = _precisionShiftLeftDelta != 0;
+            foreach (int index in GetPrecisionSideActiveIndices(movingLeftSide))
+                movingBits[index] = true;
+            return movingBits;
+        }
+
+        public int GetShiftAsMinusFlipAxisSourceIndex()
+        {
+            if (!_isPrecisionShiftAsMinus)
+                return -1;
+
+            bool movingLeftSide = _precisionShiftLeftDelta != 0;
+            int[] active = GetPrecisionSideActiveIndices(movingLeftSide);
+            return active.Length == 2 ? active.Min() : -1;
+        }
+
+        public int[] GetShiftAsMinusFlipTutorialTargets()
+        {
+            int[] targets = GetPrecisionShiftTutorialTargets();
+            if (!_isPrecisionShiftAsMinus)
+                return targets;
+
+            bool movingLeftSide = _precisionShiftLeftDelta != 0;
+            int[] active = GetPrecisionSideActiveIndices(movingLeftSide);
+            if (active.Length != 2)
+                return targets;
+
+            int delta = movingLeftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            int nearAxisTarget = GetPrecisionShiftTarget(active.Min(), delta);
+            int farTarget = GetPrecisionShiftTarget(active.Max(), delta);
+            targets[active.Min()] = Math.Max(nearAxisTarget, farTarget);
+            targets[active.Max()] = Math.Min(nearAxisTarget, farTarget);
+            return targets;
+        }
+
+        public bool UsesArrowDirectionTutorial()
+        {
+            return Config?.KeyboardConfig != null &&
+                   (UsesOnKeyboardArrowExercise() || UsesArrowLabelExercise());
+        }
+
+        public bool IsOrdinalArrowTutorial()
+        {
+            return UsesArrowDirectionTutorial() &&
+                   GetCurrentArrowType() == ArrowType.Rounded;
+        }
+
+        public ArrowMovementMode CurrentArrowMovementMode => GetCurrentArrowMovementMode();
+
+        public string LastArrowMovementDebugText => _lastArrowMovementDebugText;
+
+        public bool IsSpecialOrdinalArrowTutorial()
+        {
+            return UsesArrowLabelExercise() &&
+                   GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.OrdinalStartAndLength;
+        }
+
+        public IReadOnlyList<int> GetArrowTutorialStepIndices()
+        {
+            if (!UsesArrowDirectionTutorial())
+                return Array.Empty<int>();
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return Array.Empty<int>();
+
+            List<int> indices = new();
+
+            if (UsesArrowLabelExercise())
+            {
+                ArrowLabelExerciseMode mode = GetCurrentArrowLabelExerciseMode();
+
+                if (mode == ArrowLabelExerciseMode.OrdinalStartAndLength)
+                {
+                    bool leftToRight = Config?.QuestionOrder != QuestionOrder.ToLeft;
+                    if (leftToRight)
+                    {
+                        for (int value = _arrowLabelStartValue + 1; value <= _arrowLabelEndValue; value++)
+                        {
+                            int index = GetKeyboardIndexForValue(value);
+                            if (index >= 0 && index < keyCount)
+                                indices.Add(index);
+                        }
+                    }
+                    else
+                    {
+                        for (int value = _arrowLabelEndValue - 1; value >= _arrowLabelStartValue; value--)
+                        {
+                            int index = GetKeyboardIndexForValue(value);
+                            if (index >= 0 && index < keyCount)
+                                indices.Add(index);
+                        }
+                    }
+                }
+                else if (mode == ArrowLabelExerciseMode.EndAndLengthWithMissingStart)
+                {
+                    int startIndex = GetKeyboardIndexForValue(_arrowLabelEndValue);
+                    for (int i = 0; i < _arrowLabelDistance; i++)
+                    {
+                        int index = startIndex - i;
+                        if (index >= 0 && index < keyCount)
+                            indices.Add(index);
+                    }
+                }
+                else
+                {
+                    int startIndex = GetKeyboardIndexForValue(_arrowLabelStartValue + 1);
+                    for (int i = 0; i < _arrowLabelDistance; i++)
+                    {
+                        int index = startIndex + i;
+                        if (index >= 0 && index < keyCount)
+                            indices.Add(index);
+                    }
+                }
+
+                return indices;
+            }
+
+            int currentValue = aboveNumber;
+            int stepCount = Math.Max(1, length);
+            bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
+            int minValue = withoutZero ? 1 : 0;
+            int maxValue = withoutZero ? keyCount : keyCount - 1;
+
+            if (IsOrdinalArrowTutorial() && dir == Direction.Left)
+            {
+                currentValue -= 1;
+                if (currentValue < minValue)
+                    currentValue = maxValue;
+            }
+            else if (IsOrdinalArrowTutorial() && dir == Direction.Right)
+            {
+                currentValue += 1;
+                if (currentValue > maxValue)
+                    currentValue = minValue;
+            }
+
+            for (int i = 0; i < stepCount; i++)
+            {
+                int index = GetKeyboardIndexForValue(currentValue);
+                if (index >= 0 && index < keyCount)
+                    indices.Add(index);
+
+                currentValue += dir == Direction.Right ? 1 : -1;
+
+                if (currentValue < minValue)
+                    currentValue = maxValue;
+                else if (currentValue > maxValue)
+                    currentValue = minValue;
+            }
+
+            return indices;
+        }
+
+        public IReadOnlyList<int> GetArrowMovementTutorialStepIndices()
+        {
+            IReadOnlyList<int> routeIndices = GetArrowTutorialStepIndices();
+            if (GetCurrentArrowMovementMode() == ArrowMovementMode.JumpToEnd && routeIndices.Count > 0)
+                return new List<int> { routeIndices[^1] };
+
+            if (GetCurrentArrowMovementMode() != ArrowMovementMode.JumpThroughMiddle || routeIndices.Count <= 1)
+                return routeIndices;
+
+            int middleIndex = Math.Max(0, (routeIndices.Count - 1) / 2);
+            int endIndex = routeIndices[^1];
+            int middle = routeIndices[middleIndex];
+            return middle == endIndex
+                ? new List<int> { endIndex }
+                : new List<int> { middle, endIndex };
+        }
+
+        public IReadOnlyList<int> GetArrowTutorialArcIndices()
+        {
+            if (!IsOrdinalArrowTutorial())
+                return Array.Empty<int>();
+
+            List<int> routeIndices = GetArrowTutorialStepIndices().ToList();
+            if (routeIndices.Count == 0)
+                return Array.Empty<int>();
+
+            int keyCount = BitArrayQuestion?.Length ?? 0;
+            if (keyCount <= 0)
+                return routeIndices;
+
+            int startIndex;
+            if (UsesArrowLabelExercise())
+            {
+                bool leftToRight = Config?.QuestionOrder != QuestionOrder.ToLeft;
+                int startValue = leftToRight ? _arrowLabelStartValue : _arrowLabelEndValue;
+                startIndex = GetKeyboardIndexForValue(startValue);
+            }
+            else
+            {
+                int directionStep = dir == Direction.Right ? 1 : -1;
+                startIndex = (routeIndices[0] - directionStep + keyCount) % keyCount;
+            }
+
+            if (startIndex >= 0 && startIndex < keyCount && startIndex != routeIndices[0])
+                routeIndices.Insert(0, startIndex);
+
+            if (GetCurrentArrowMovementMode() == ArrowMovementMode.JumpToEnd && routeIndices.Count > 1)
+                return new List<int> { routeIndices[0], routeIndices[^1] };
+
+            return routeIndices;
+        }
+
+        public bool[] GetPrimaryColorTargetBits()
+        {
+            return GetGroupByColorTargetBits(0);
+        }
+
+        public bool[] GetSecondaryColorTargetBits()
+        {
+            return GetGroupByColorTargetBits(1);
+        }
+
+        public bool[] GetTertiaryColorTargetBits()
+        {
+            return GetGroupByColorTargetBits(2);
+        }
+
+        public Color[] GetGroupByColorQuestionColors()
+        {
+            if (CurrentOperation != Operation.GroupByColor || _groupByColorQuestionGroups.Count == 0)
+                return Array.Empty<Color>();
+
+            Color[] colors = Enumerable.Repeat(Colors.White, BitArrayQuestion.Length).ToArray();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                bool[] bits = _groupByColorQuestionGroups[i];
+                Color color = GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)];
+                int limit = Math.Min(colors.Length, bits.Length);
+                for (int keyIndex = 0; keyIndex < limit; keyIndex++)
+                {
+                    if (bits[keyIndex])
+                        colors[keyIndex] = color;
+                }
+            }
+
+            return colors;
+        }
+
+        public override Color[]? GetQuestionKeyboardColors()
+        {
+            if (CurrentOperation == Operation.GroupByColor)
+                return GetGroupByColorQuestionColors();
+
+            return base.GetQuestionKeyboardColors();
+        }
+
+        public IReadOnlyList<GroupByColorStep> GetGroupByColorTutorialSteps()
+        {
+            List<GroupByColorStep> steps = new();
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                steps.Add(new GroupByColorStep(
+                    _groupByColorQuestionGroups[i],
+                    GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)],
+                    _groupByColorTargetDirections.Count > i ? _groupByColorTargetDirections[i] : Direction.Left,
+                    i < targets.Count ? targets[i] : Array.Empty<bool>()));
+            }
+
+            return OrderGroupByColorStepsByTargetPosition(steps);
+        }
+
+        public IReadOnlyList<GroupByColorStep> GetGroupByColorMissionArrows()
+        {
+            List<GroupByColorStep> steps = new();
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                steps.Add(new GroupByColorStep(
+                    i < targets.Count ? targets[i] : Array.Empty<bool>(),
+                    GroupByColorPalette[Math.Min(i, GroupByColorPalette.Length - 1)],
+                    _groupByColorTargetDirections.Count > i ? _groupByColorTargetDirections[i] : Direction.Left,
+                    i < targets.Count ? targets[i] : Array.Empty<bool>()));
+            }
+
+            return OrderGroupByColorStepsByTargetPosition(steps);
+        }
+
+        private static IReadOnlyList<GroupByColorStep> OrderGroupByColorStepsByTargetPosition(IEnumerable<GroupByColorStep> steps)
+        {
+            return steps
+                .OrderBy(step =>
+                {
+                    int index = Array.FindIndex(step.TargetBits, bit => bit);
+                    return index < 0 ? int.MaxValue : index;
+                })
+                .ToList();
+        }
+
+        private bool[] GetGroupByColorTargetBits(int groupIndex)
+        {
+            if (CurrentOperation != Operation.GroupByColor)
+                return Array.Empty<bool>();
+
+            List<bool[]> targets = BuildGroupByColorTargetGroups();
+            return groupIndex >= 0 && groupIndex < targets.Count
+                ? targets[groupIndex]
+                : Array.Empty<bool>();
+        }
+
+        private async Task SaveQuestionToDbAsync()
         {
             Data.SQLite.KeyboardQuestion s = new()
             {
@@ -396,16 +4068,37 @@ namespace GestureSample.Maui.Models
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
                 keyboard1 = BitArrayQuestion,
-                keyboard2 = BitArrayQuestion2
+                keyboard2 = BitArrayQuestion2,
+                Op = CurrentOperation,
+                dir = dir,
+                KeyboardRows = Config.KeyboardConfig?.Rows ?? 1,
+                KeyboardKeysInRow = Config.KeyboardConfig?.KeysInRow ?? BitArrayQuestion.Length,
+                ShowNumbersOnKeys = Config.KeyboardConfig?.ShowNumbersOnKeys == true,
+                KeyboardWeights = Config.KeyboardConfig?.WeightsArray?.ToArray(),
+                InitialKeyboardState = GetInitialKeyboardState(),
+                InitialKeyboardColors = GetInitialKeyboardColors(),
+                QuestionKeyboardColors = GetQuestionKeyboardColors(),
+                QuestionPromptText = GetKeyboardQuestionPromptText()
             };
 
-            if (Config.KeyboardConfig != null && Config.KeyboardConfig.IsArrow)
+            if (UsesOnKeyboardArrowExercise())
             {
                 s.aboveNumber = aboveNumber;
                 s.length = length;
             }
+            else if (UsesArrowLabelExercise())
+            {
+                s.aboveNumber = _arrowLabelStartValue;
+                s.length = _arrowLabelDistance;
+            }
 
-            _keyboardQuestionRepository.SaveAsync(s);
+            if (CurrentOperation == Operation.MoveBy)
+            {
+                s.MoveByLength = moveByLength;
+                s.MoveByDirection = moveBydir;
+            }
+
+            await _keyboardQuestionRepository.SaveAsync(s);
         }
 
         private void SnapshotPrev()
@@ -416,11 +4109,17 @@ namespace GestureSample.Maui.Models
 
         private void GenerateNonArrowExercise(Random r)
         {
+            if (CurrentOperation == Operation.GroupByColor)
+            {
+                GenerateGroupByColorExercise(r);
+                return;
+            }
+
             int from, length;
 
             int start = 0; int end = BitArrayQuestion.Length; int half = BitArrayQuestion.Length / 2;
             whichHand = null;
-            if (Config.IsOnlyOneHand)
+            if (Config.RestrictsLogicalKeyboardToOneHand)
             {
                 whichHand = Config.WhichHand ?? (r.Next(0, 2) == 0 ? Direction.Left : Direction.Right);
                 start = whichHand == Direction.Left ? 0 : BitArrayQuestion.Length / 2;
@@ -428,12 +4127,32 @@ namespace GestureSample.Maui.Models
             }
 
                 // first pair (preserve original behavior: min length 1)
+            if (Config.KeyboardConfig?.IsPrecisionPinchExercise == true)
+            {
+                BitArrayQuestion = GenerateTwoKeyPinch(r, start, end);
+            }
+            else
+            {
                 (from, length) = ChooseFromAndLength(r, 1, start, end);
-            BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+                BitArrayQuestion = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            }
 
             // second pair (original code allowed length to be 0 initially; use minLength 0 to match)
-            (from, length) = ChooseFromAndLength(r, 0, start, end);
-            BitArrayQuestion2 = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            if (Config.KeyboardConfig?.IsPrecisionPinchExercise == true)
+            {
+                BitArrayQuestion2 = GenerateTwoKeyPinch(r, start, end);
+            }
+            else
+            {
+                (from, length) = ChooseFromAndLength(r, 0, start, end);
+                BitArrayQuestion2 = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+            }
+
+            if (CurrentOperation == Operation.MoveBy && Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+            {
+                ConfigurePrecisionShift(r);
+                return;
+            }
 
             // move-by configuration
             moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -444,7 +4163,7 @@ namespace GestureSample.Maui.Models
                 while (BitArrayQuestion[0] && BitArrayQuestion[BitArrayQuestion.Length - 1])
                 {
                     (from, length) = ChooseFromAndLength(r, 1, start, end);
-                    BitArrayQuestion = (Config.isOnlySequence) ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
+                    BitArrayQuestion = Config.OnlySequence ? GenerateSequenceArrayQuestion(from, length) : RandomArray(start, end);
                 }
 
                 if (BitArrayQuestion[0] || BitArrayQuestion[BitArrayQuestion.Length - 1])
@@ -484,12 +4203,767 @@ namespace GestureSample.Maui.Models
                 }
                 moveByLength = r.Next(1, maxLength + 1);
             }
+            else if(CurrentOperation is Operation.MoveBy && !Config.OnlyToTen)
+            {
+                moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
+                moveByLength = r.Next(1, BitArrayQuestion.Length);
+            }
 
+        }
+
+        private void ConfigurePrecisionShift(Random random)
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            _precisionShiftLeftDelta = 0;
+            _precisionShiftRightDelta = 0;
+            _precisionShiftLeftIsShift = false;
+            _precisionShiftRightIsShift = false;
+            _precisionGrammarCondition = string.Empty;
+            _isPrecisionShiftAsMinus = false;
+            int minimum = Math.Max(1, keyboard.PrecisionShiftMinDistance);
+            int maximum = Math.Max(minimum, keyboard.PrecisionShiftMaxDistance);
+            bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
+            bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
+
+            if (keyboard.IsPrecisionSignLearningExercise && _questionNumber < 3)
+            {
+                ConfigurePrecisionSignLearningIntro(_questionNumber);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
+            if (keyboard.IsPrecisionGrammarExercise)
+            {
+                const int maximumStartAttempts = 24;
+                bool configured = false;
+                for (int attempt = 0; attempt < maximumStartAttempts && !configured; attempt++)
+                {
+                    configured = ConfigurePrecisionGrammarMission(
+                        random, minimum, maximum, leftIsActive, rightIsActive);
+                    if (!configured)
+                        BitArrayQuestion = GenerateTwoKeyPinch(random, 0, BitArrayQuestion.Length);
+                }
+                if (!configured)
+                    throw new InvalidOperationException("Could not create a non-HOLD grammar mission.");
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
+            if (keyboard.IsPrecisionSynchronousProcessExercise)
+            {
+                ConfigureSynchronousProcessMission(random, minimum, maximum);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
+            if (keyboard.IsGripTransformationPracticeExercise)
+            {
+                ConfigureGripTransformationPracticeMission(random, minimum, maximum);
+                FinalizePrecisionShiftConfiguration(minimum);
+                return;
+            }
+
+            if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
+                    GetPrecisionSideTransformCandidates(true, minimum, maximum);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> rightCandidates =
+                    GetPrecisionSideTransformCandidates(false, minimum, maximum);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> sharedCandidates = leftCandidates
+                    .Where(left => rightCandidates.Contains(left))
+                    .ToList();
+                if (sharedCandidates.Count > 0)
+                {
+                    var preferredBottomCandidates = keyboard.PreferBothHandsOnBottom
+                        ? sharedCandidates
+                            .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                            .ToList()
+                        : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+                    var pool = preferredBottomCandidates.Count > 0 && random.Next(100) < 70
+                        ? preferredBottomCandidates
+                        : sharedCandidates;
+                    var shared = pool[random.Next(pool.Count)];
+                    _precisionShiftLeftDelta = _precisionShiftRightDelta = shared.Delta;
+                    _precisionShiftLeftIsShift = _precisionShiftRightIsShift = shared.IsShift;
+                    _precisionShiftLeftBaseAtTop = _precisionShiftRightBaseAtTop = shared.BaseAtTop;
+                }
+            }
+            else if (leftIsActive)
+                ChoosePrecisionSideTransform(random, true, minimum, maximum,
+                    out _precisionShiftLeftDelta, out _precisionShiftLeftIsShift, out _precisionShiftLeftBaseAtTop);
+            if (rightIsActive && !keyboard.PrecisionShiftSynchronizeHands)
+                ChoosePrecisionSideTransform(random, false, minimum, maximum,
+                    out _precisionShiftRightDelta, out _precisionShiftRightIsShift, out _precisionShiftRightBaseAtTop);
+
+            FinalizePrecisionShiftConfiguration(minimum);
+        }
+
+        private void ConfigureSynchronousProcessMission(Random random, int minimum, int maximum)
+        {
+            List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates =
+                GetPrecisionSideTransformCandidates(true, minimum, maximum);
+            List<(int Delta, bool IsShift, bool BaseAtTop)> rightCandidates =
+                GetPrecisionSideTransformCandidates(false, minimum, maximum);
+            List<((int Delta, bool IsShift, bool BaseAtTop) Left,
+                  (int Delta, bool IsShift, bool BaseAtTop) Right)> pairs =
+                (from left in leftCandidates
+                 from right in rightCandidates
+                 where left != right
+                 select (left, right)).ToList();
+
+            if (pairs.Count == 0)
+                throw new InvalidOperationException(
+                    "Could not create two different legal one-step hand commands.");
+
+            var mission = pairs[random.Next(pairs.Count)];
+            (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) =
+                mission.Left;
+            (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) =
+                mission.Right;
+        }
+
+        private void ConfigureGripTransformationPracticeMission(
+            Random random,
+            int minimum,
+            int maximum)
+        {
+            var missions = new List<((int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+
+            List<(int Delta, bool IsShift, bool BaseAtTop)> leftUpperMoves =
+                GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                    .ToList();
+            List<(int Delta, bool IsShift, bool BaseAtTop)> rightUpperMoves =
+                GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop)
+                    .ToList();
+
+            // One hand changes its upper endpoint.
+            foreach (var move in leftUpperMoves)
+                missions.Add((move, null));
+            foreach (var move in rightUpperMoves)
+                missions.Add((null, move));
+
+            // Both upper endpoints change together. Independent selection naturally
+            // includes both same-direction and opposite-direction combinations.
+            foreach (var left in leftUpperMoves)
+            foreach (var right in rightUpperMoves)
+                missions.Add((left, right));
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int[] leftRows = GetPrecisionSideActiveIndices(true)
+                .Select(index => index / columns).OrderBy(row => row).ToArray();
+            int[] rightRows = GetPrecisionSideActiveIndices(false)
+                .Select(index => index / columns).OrderBy(row => row).ToArray();
+
+            if (leftRows.Length == 2 && rightRows.Length == 2)
+            {
+                void AddShiftMission(bool moveLeft, int delta, int weight)
+                {
+                    if (delta == 0 ||
+                        !CanApplyPrecisionSideTransform(moveLeft, delta, isShift: true, baseAtTop: false))
+                        return;
+                    var shift = (Delta: delta, IsShift: true, BaseAtTop: false);
+                    for (int i = 0; i < weight; i++)
+                        missions.Add(moveLeft ? (shift, null) : (null, shift));
+                }
+
+                // Main shift vocabulary: place one grip immediately above the other.
+                AddShiftMission(moveLeft: true, rightRows.Max() + 1 - leftRows.Min(), weight: 4);
+                AddShiftMission(moveLeft: false, leftRows.Max() + 1 - rightRows.Min(), weight: 4);
+
+                // Smaller family: align the two upper endpoints.
+                AddShiftMission(moveLeft: true, rightRows.Max() - leftRows.Max(), weight: 1);
+                AddShiftMission(moveLeft: false, leftRows.Max() - rightRows.Max(), weight: 1);
+            }
+
+            if (missions.Count == 0)
+                throw new InvalidOperationException("Could not create a legal grip transformation mission.");
+
+            var mission = missions[random.Next(missions.Count)];
+            if (mission.Left is { } leftMission)
+                (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) = leftMission;
+            if (mission.Right is { } rightMission)
+                (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) = rightMission;
+        }
+
+        private void ConfigurePrecisionSignLearningIntro(int exerciseIndex)
+        {
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int rows = Math.Max(5, Config.KeyboardConfig.Rows);
+            int column = Math.Min(exerciseIndex % Math.Min(2, columns), columns - 1);
+            bool[] pinch = new bool[BitArrayQuestion.Length];
+
+            // 1: enlarge upward by two rows.
+            // 2: squeeze downward by two rows.
+            // 3: shift the complete grip downward by two rows.
+            int lowerRow;
+            int upperRow;
+            int delta;
+            bool isShift;
+            switch (exerciseIndex)
+            {
+                case 0:
+                    lowerRow = 0;
+                    upperRow = Math.Min(2, rows - 3);
+                    delta = 2;
+                    isShift = false;
+                    break;
+                case 1:
+                    lowerRow = 0;
+                    upperRow = Math.Min(4, rows - 1);
+                    delta = -2;
+                    isShift = false;
+                    break;
+                default:
+                    lowerRow = 2;
+                    upperRow = Math.Min(4, rows - 1);
+                    delta = -2;
+                    isShift = true;
+                    break;
+            }
+
+            pinch[(lowerRow * columns) + column] = true;
+            pinch[(upperRow * columns) + column] = true;
+            BitArrayQuestion = pinch;
+
+            if (column == 0)
+            {
+                _precisionShiftLeftDelta = delta;
+                _precisionShiftLeftIsShift = isShift;
+                _precisionShiftLeftBaseAtTop = false;
+            }
+            else
+            {
+                _precisionShiftRightDelta = delta;
+                _precisionShiftRightIsShift = isShift;
+                _precisionShiftRightBaseAtTop = false;
+            }
+        }
+
+        private bool ConfigurePrecisionGrammarMission(
+            Random random,
+            int minimum,
+            int maximum,
+            bool leftIsActive,
+            bool rightIsActive)
+        {
+            var missions = new List<(string Label,
+                (int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+            var leftResizes = leftIsActive
+                ? GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
+                : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+            var rightResizes = rightIsActive
+                ? GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                    .Where(candidate => !candidate.IsShift && !candidate.BaseAtTop).ToList()
+                : new List<(int Delta, bool IsShift, bool BaseAtTop)>();
+            AddRandomEqualHandMission(missions, random, "RESIZE — KEEP LOWER KEYS DOWN",
+                leftResizes, rightResizes);
+
+            var stackingMissions = new List<(string Label,
+                (int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)>();
+            if (Config.KeyboardConfig.PrecisionPinchMoveOptions.HasFlag(PrecisionPinchMoveOptions.ShiftWhole))
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                foreach (bool moveLeft in new[] { true, false })
+                {
+                    if (moveLeft ? !leftIsActive : !rightIsActive)
+                        continue;
+                    int[] moving = GetPrecisionSideActiveIndices(moveLeft);
+                    int[] other = GetPrecisionSideActiveIndices(!moveLeft);
+                    if (moving.Length != 2 || other.Length != 2)
+                        continue;
+                    int delta = other.Max() / columns + 1 - moving.Min() / columns;
+                    if (delta <= 0 || !CanApplyPrecisionSideTransform(moveLeft, delta,
+                            isShift: true, baseAtTop: false))
+                        continue;
+                    var shift = (Delta: delta, IsShift: true, BaseAtTop: false);
+                    stackingMissions.Add((moveLeft
+                            ? "MOVE LEFT HAND ABOVE RIGHT" : "MOVE RIGHT HAND ABOVE LEFT",
+                        moveLeft ? shift : null, moveLeft ? null : shift));
+                }
+            }
+
+            // Choose the family explicitly so the rare move stays at 10%,
+            // regardless of how many legal resize commands a grip has.
+            var pool = stackingMissions.Count > 0 && (missions.Count == 0 || random.Next(100) < 10)
+                ? stackingMissions : missions;
+            if (pool.Count == 0)
+                return false;
+            var mission = pool[random.Next(pool.Count)];
+            _precisionGrammarCondition = mission.Label;
+            if (mission.Left is { } left)
+                (_precisionShiftLeftDelta, _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) = left;
+            if (mission.Right is { } right)
+                (_precisionShiftRightDelta, _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop) = right;
+            return _precisionShiftLeftDelta != 0 || _precisionShiftRightDelta != 0;
+        }
+        private static void AddRandomEqualHandMission(
+            List<(string Label, (int Delta, bool IsShift, bool BaseAtTop)? Left,
+                (int Delta, bool IsShift, bool BaseAtTop)? Right)> missions,
+            Random random,
+            string label,
+            List<(int Delta, bool IsShift, bool BaseAtTop)> leftCandidates,
+            List<(int Delta, bool IsShift, bool BaseAtTop)> rightCandidates)
+        {
+            List<int> scopes = new();
+            if (leftCandidates.Count > 0)
+                scopes.Add(0);
+            if (rightCandidates.Count > 0)
+                scopes.Add(1);
+            if (leftCandidates.Count > 0 && rightCandidates.Count > 0)
+                scopes.Add(2);
+            if (scopes.Count == 0)
+                return;
+
+            int scope = scopes[random.Next(scopes.Count)];
+            (int Delta, bool IsShift, bool BaseAtTop)? left = scope is 0 or 2
+                ? leftCandidates[random.Next(leftCandidates.Count)]
+                : null;
+            (int Delta, bool IsShift, bool BaseAtTop)? right = scope is 1 or 2
+                ? rightCandidates[random.Next(rightCandidates.Count)]
+                : null;
+            string scopeLabel = scope == 0 ? "LEFT HAND" : scope == 1 ? "RIGHT HAND" : "BOTH HANDS";
+            missions.Add(($"{label} — {scopeLabel}", left, right));
+        }
+
+        private void FinalizePrecisionShiftConfiguration(int minimum)
+        {
+            bool leftIsActive = _precisionShiftLeftDelta != 0;
+            _precisionShiftDelta = leftIsActive ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            moveByLength = Math.Max(Math.Abs(_precisionShiftLeftDelta), Math.Abs(_precisionShiftRightDelta));
+            if (moveByLength == 0)
+                moveByLength = minimum;
+            moveBydir = _precisionShiftDelta >= 0 ? Direction.Right : Direction.Left;
+
+            // Finalize legality here, before action text, arrows, tutorial targets and
+            // the correct answer are exposed. Every consumer now sees the same shift.
+            // Grammar missions are assembled from already-legal candidates and may
+            // intentionally leave one hand at HOLD, so they must not be expanded into
+            // an unintended two-hand mission by the general legality fallback.
+            if (!Config.KeyboardConfig.IsPrecisionGrammarExercise)
+                EnsurePrecisionShiftTransformsAreLegal();
+        }
+
+        private void ChoosePrecisionSideTransform(
+            Random random,
+            bool leftSide,
+            int minimum,
+            int maximum,
+            out int delta,
+            out bool isShift,
+            out bool baseAtTop)
+        {
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates =
+                GetPrecisionSideTransformCandidates(leftSide, minimum, maximum);
+
+            if (candidates.Count == 0)
+            {
+                delta = 0;
+                isShift = false;
+                baseAtTop = false;
+                return;
+            }
+
+            int moveLowerPercent = Config.KeyboardConfig.PrecisionMoveLowerPercent;
+            if (moveLowerPercent >= 0)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> moveLowerCandidates =
+                    candidates.Where(candidate => !candidate.IsShift && candidate.BaseAtTop).ToList();
+                List<(int Delta, bool IsShift, bool BaseAtTop)> otherCandidates =
+                    candidates.Where(candidate => candidate.IsShift || !candidate.BaseAtTop).ToList();
+                bool chooseMoveLower = moveLowerCandidates.Count > 0 &&
+                                       (otherCandidates.Count == 0 ||
+                                        random.Next(100) < Math.Clamp(moveLowerPercent, 0, 100));
+                if (chooseMoveLower)
+                {
+                    (delta, isShift, baseAtTop) =
+                        moveLowerCandidates[random.Next(moveLowerCandidates.Count)];
+                    return;
+                }
+
+                if (otherCandidates.Count > 0)
+                    candidates = otherCandidates;
+            }
+
+            bool preferSingleKeyMovement =
+                !Config.KeyboardConfig.PrecisionShiftBothHands &&
+                Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.All;
+            if (preferSingleKeyMovement)
+            {
+                List<(int Delta, bool IsShift, bool BaseAtTop)> singleKeyCandidates =
+                    candidates.Where(candidate => !candidate.IsShift).ToList();
+                List<(int Delta, bool IsShift, bool BaseAtTop)> wholeShiftCandidates =
+                    candidates.Where(candidate => candidate.IsShift).ToList();
+
+                // Stage 4 is primarily about transforming one finger around its fixed
+                // base. Keep occasional whole-grip shifts so the full vocabulary remains.
+                bool chooseSingleKey = singleKeyCandidates.Count > 0 &&
+                                       (wholeShiftCandidates.Count == 0 || random.Next(5) != 0);
+                List<(int Delta, bool IsShift, bool BaseAtTop)> weightedPool =
+                    chooseSingleKey ? singleKeyCandidates : wholeShiftCandidates;
+                (delta, isShift, baseAtTop) = weightedPool[random.Next(weightedPool.Count)];
+                return;
+            }
+
+            (delta, isShift, baseAtTop) = candidates[random.Next(candidates.Count)];
+        }
+
+        private List<(int Delta, bool IsShift, bool BaseAtTop)> GetPrecisionSideTransformCandidates(
+            bool leftSide,
+            int minimum,
+            int maximum)
+        {
+            PrecisionPinchMoveOptions options = Config.KeyboardConfig.PrecisionPinchMoveOptions;
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates = new();
+            for (int distance = minimum; distance <= maximum; distance++)
+            {
+                foreach (int signedDistance in new[] { -distance, distance })
+                {
+                    if (options.HasFlag(PrecisionPinchMoveOptions.ShiftWhole) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: true, baseAtTop: false))
+                        candidates.Add((signedDistance, true, false));
+
+                    if (options.HasFlag(PrecisionPinchMoveOptions.MoveUpper) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: false, baseAtTop: false))
+                        candidates.Add((signedDistance, false, false));
+                    if (options.HasFlag(PrecisionPinchMoveOptions.MoveLower) &&
+                        CanApplyPrecisionSideTransform(leftSide, signedDistance, isShift: false, baseAtTop: true))
+                        candidates.Add((signedDistance, false, true));
+                }
+            }
+            return candidates;
+        }
+
+        private bool CanApplyPrecisionSideTransform(bool leftSide, int delta, bool isShift, bool baseAtTop)
+        {
+            int[] active = GetPrecisionSideActiveIndices(leftSide);
+            if (active.Length != 2)
+                return false;
+
+            int fixedIndex = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (baseAtTop ? active.Max() : active.Min())
+                : (baseAtTop ? active.Min() : active.Max());
+            List<int> transformed = new(active.Length);
+            foreach (int index in active)
+            {
+                if (!isShift && index == fixedIndex)
+                {
+                    transformed.Add(index);
+                    continue;
+                }
+
+                int target = GetPrecisionShiftTarget(index, delta);
+                if (!IsPrecisionTargetOnSide(target, leftSide))
+                    return false;
+                transformed.Add(target);
+
+                if (!isShift)
+                {
+                    // The moving finger must remain on its original side of the fixed
+                    // finger: equality would merge them and passing it would cross them.
+                    bool preservesOrder = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        // Vertical indices increase visually upward.
+                        ? (baseAtTop ? target < fixedIndex : target > fixedIndex)
+                        : (baseAtTop ? target > fixedIndex : target < fixedIndex);
+                    if (!preservesOrder)
+                        return false;
+                }
+            }
+
+            if (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                int maximumInterval = Math.Clamp(
+                    Config.KeyboardConfig.PrecisionPinchMaxInterval,
+                    1,
+                    Math.Max(1, Config.KeyboardConfig.Rows - 1));
+                int[] rows = transformed.Select(index => index / columns).ToArray();
+                if (rows.Max() - rows.Min() > maximumInterval)
+                    return false;
+            }
+            return true;
+        }
+
+        private int[] GetPrecisionSideActiveIndices(bool leftSide)
+        {
+            if (BitArrayQuestion == null)
+                return Array.Empty<int>();
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return Enumerable.Range(0, BitArrayQuestion.Length)
+                .Where(index => BitArrayQuestion[index] &&
+                    (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                        ? (index % columns == 0) == leftSide
+                        : (index < half) == leftSide))
+                .OrderBy(index => index)
+                .ToArray();
+        }
+
+        private int GetPrecisionShiftTarget(int index, int delta)
+        {
+            if (Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical)
+            {
+                int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+                // The keyboard grid draws logical row 0 at the bottom. Increasing the
+                // logical row therefore moves visually upward.
+                return index + (delta * columns);
+            }
+            return index + delta;
+        }
+
+        private bool IsPrecisionTargetOnSide(int target, bool leftSide)
+        {
+            if (target < 0 || BitArrayQuestion == null || target >= BitArrayQuestion.Length)
+                return false;
+
+            int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
+            int half = BitArrayQuestion.Length / 2;
+            return Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                ? (target % columns == 0) == leftSide
+                : (target < half) == leftSide;
+        }
+
+        private void GenerateGroupByColorExercise(Random r)
+        {
+            int start = 0;
+            int end = BitArrayQuestion.Length;
+            whichHand = null;
+            if (Config.RestrictsLogicalKeyboardToOneHand)
+            {
+                whichHand = Config.WhichHand ?? (r.Next(0, 2) == 0 ? Direction.Left : Direction.Right);
+                start = whichHand == Direction.Left ? 0 : BitArrayQuestion.Length / 2;
+                end = whichHand == Direction.Left ? BitArrayQuestion.Length / 2 : BitArrayQuestion.Length;
+            }
+
+            _groupByColorQuestionGroups.Clear();
+            _groupByColorTargetDirections.Clear();
+            BitArrayQuestion3 = null;
+
+            int groupCount = Math.Clamp(Config.KeyboardConfig?.GroupByColorColorCount ?? 2, 2, 3);
+            if (groupCount == 3)
+            {
+                if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.AssociativityEdges)
+                    GenerateAssociativityThreeColorGroupByColorExercise(r, start, end);
+                else
+                    GenerateThreeColorGroupByColorExercise(r, start, end);
+            }
+            else
+            {
+                if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.CommutativityEdges)
+                    GenerateCommutativityTwoColorGroupByColorExercise(r, start, end);
+                else
+                    GenerateTwoColorGroupByColorExercise(r, start, end);
+            }
+
+            BitArrayQuestion = _groupByColorQuestionGroups[0];
+            BitArrayQuestion2 = _groupByColorQuestionGroups[1];
+            BitArrayQuestion3 = _groupByColorQuestionGroups.Count > 2 ? _groupByColorQuestionGroups[2] : null;
+            IsPrimaryColorAssignedToLeft = _groupByColorTargetDirections.Count > 0 &&
+                                           _groupByColorTargetDirections[0] == Direction.Left;
+        }
+
+        private void GenerateTwoColorGroupByColorExercise(Random r, int start, int end)
+        {
+            bool[] primary;
+            bool[] secondary;
+            do
+            {
+                primary = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+                secondary = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+            }
+            while (SumArray(primary) == 0 ||
+                   SumArray(secondary) == 0 ||
+                   AreOverlapingSets(primary, secondary));
+
+            _groupByColorQuestionGroups.Add(primary);
+            _groupByColorQuestionGroups.Add(secondary);
+            AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
+        }
+
+        private void GenerateCommutativityTwoColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int available = Math.Max(2, end - start);
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 2 }
+                ? ResolveGroupByColorCounts(2, available, Config.KeyboardConfig.GroupByColorCounts)
+                : CreateRandomTwoColorEdgeCounts(r, available);
+            bool yellowOnLeft = r.Next(2) == 0;
+
+            bool[] yellow = yellowOnLeft
+                ? BuildRangeBits(BitArrayQuestion.Length, start, counts[0])
+                : BuildRangeBits(BitArrayQuestion.Length, end - counts[0], counts[0]);
+            bool[] green = yellowOnLeft
+                ? BuildRangeBits(BitArrayQuestion.Length, end - counts[1], counts[1])
+                : BuildRangeBits(BitArrayQuestion.Length, start, counts[1]);
+
+            _groupByColorQuestionGroups.Add(yellow);
+            _groupByColorQuestionGroups.Add(green);
+            _groupByColorTargetDirections.Add(yellowOnLeft ? Direction.Right : Direction.Left);
+            _groupByColorTargetDirections.Add(yellowOnLeft ? Direction.Left : Direction.Right);
+        }
+
+        private static int[] CreateRandomTwoColorEdgeCounts(Random r, int availableSlots)
+        {
+            int maxPerSide = Math.Max(1, availableSlots - 1);
+            int yellowCount = r.Next(1, maxPerSide + 1);
+            int greenMax = Math.Max(1, availableSlots - yellowCount);
+            int greenCount = r.Next(1, greenMax + 1);
+            return new[] { yellowCount, greenCount };
+        }
+
+        private void GenerateThreeColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 3 } configuredCounts
+                ? configuredCounts.Take(3).ToArray()
+                : new[] { 2, 1, 1 };
+
+            if (Config.KeyboardConfig?.GroupByColorKeepOuterColorsOnSides == true &&
+                Config.KeyboardConfig.GroupByColorKeepBlueInMiddle)
+            {
+                _groupByColorQuestionGroups.Add(BuildRangeBits(BitArrayQuestion.Length, start, counts[0]));
+                _groupByColorQuestionGroups.Add(BuildMiddleBlueBits(r, start, end, counts[0], counts[1], counts[2]));
+                _groupByColorQuestionGroups.Add(BuildRangeBits(BitArrayQuestion.Length, end - counts[2], counts[2]));
+            }
+            else
+            {
+                List<bool[]> groups = new();
+                while (groups.Count < 3)
+                {
+                    bool[] candidate = Config.OnlySequence ? GenerateRandomSequence(r, start, end) : RandomArray(start, end);
+                    if (SumArray(candidate) == 0 || groups.Any(existing => AreOverlapingSets(existing, candidate)))
+                        continue;
+
+                    groups.Add(candidate);
+                }
+
+                _groupByColorQuestionGroups.AddRange(groups);
+            }
+
+            AssignGroupByColorDirections(r, _groupByColorQuestionGroups.Count);
+        }
+
+        private void GenerateAssociativityThreeColorGroupByColorExercise(Random r, int start, int end)
+        {
+            int available = Math.Max(3, end - start);
+            int[] counts = ResolveGroupByColorCounts(3, available, new[] { 3, 2, 2 });
+
+            bool yellowOnLeft = r.Next(2) == 0;
+            bool blueNearYellow = r.Next(2) == 0;
+
+            bool[] yellow;
+            bool[] green;
+            bool[] blue;
+
+            if (yellowOnLeft)
+            {
+                yellow = BuildRangeBits(BitArrayQuestion.Length, start, counts[0]);
+                green = BuildRangeBits(BitArrayQuestion.Length, end - counts[1], counts[1]);
+                blue = blueNearYellow
+                    ? BuildRangeBits(BitArrayQuestion.Length, start + counts[0], counts[2])
+                    : BuildRangeBits(BitArrayQuestion.Length, end - counts[1] - counts[2], counts[2]);
+
+                _groupByColorTargetDirections.Add(Direction.Left);
+                _groupByColorTargetDirections.Add(Direction.Right);
+                _groupByColorTargetDirections.Add(blueNearYellow ? Direction.Right : Direction.Left);
+            }
+            else
+            {
+                yellow = BuildRangeBits(BitArrayQuestion.Length, end - counts[0], counts[0]);
+                green = BuildRangeBits(BitArrayQuestion.Length, start, counts[1]);
+                blue = blueNearYellow
+                    ? BuildRangeBits(BitArrayQuestion.Length, end - counts[0] - counts[2], counts[2])
+                    : BuildRangeBits(BitArrayQuestion.Length, start + counts[1], counts[2]);
+
+                _groupByColorTargetDirections.Add(Direction.Right);
+                _groupByColorTargetDirections.Add(Direction.Left);
+                _groupByColorTargetDirections.Add(blueNearYellow ? Direction.Left : Direction.Right);
+            }
+
+            _groupByColorQuestionGroups.Add(yellow);
+            _groupByColorQuestionGroups.Add(green);
+            _groupByColorQuestionGroups.Add(blue);
+        }
+
+        private void AssignGroupByColorDirections(Random r, int groupCount)
+        {
+            bool allowSameSideTargets = Config.KeyboardConfig?.GroupByColorAllowSameSideTargets == true;
+
+            if (groupCount <= 0)
+                return;
+
+            if (!allowSameSideTargets && groupCount == 2)
+            {
+                bool firstLeft = r.Next(2) == 0;
+                _groupByColorTargetDirections.Add(firstLeft ? Direction.Left : Direction.Right);
+                _groupByColorTargetDirections.Add(firstLeft ? Direction.Right : Direction.Left);
+                return;
+            }
+
+            for (int i = 0; i < groupCount; i++)
+                _groupByColorTargetDirections.Add(r.Next(2) == 0 ? Direction.Left : Direction.Right);
+        }
+
+        private bool[] BuildMiddleBlueBits(Random r, int start, int end, int leftCount, int blueCount, int rightCount)
+        {
+            int middleStart = start + leftCount;
+            int middleEndExclusive = end - rightCount;
+            int maxStart = Math.Max(middleStart, middleEndExclusive - blueCount);
+            int from = r.Next(middleStart, maxStart + 1);
+            return BuildRangeBits(BitArrayQuestion.Length, from, blueCount);
+        }
+
+        private int[] ResolveGroupByColorCounts(int groupCount, int availableSlots, int[] fallbackCounts)
+        {
+            int[] counts = Config.KeyboardConfig?.GroupByColorCounts is { Length: >= 1 } configuredCounts
+                ? configuredCounts.Take(groupCount).Concat(Enumerable.Repeat(1, Math.Max(0, groupCount - configuredCounts.Length))).Take(groupCount).ToArray()
+                : fallbackCounts.Take(groupCount).ToArray();
+
+            if (counts.Length < groupCount)
+                counts = counts.Concat(Enumerable.Repeat(1, groupCount - counts.Length)).ToArray();
+
+            for (int i = 0; i < counts.Length; i++)
+                counts[i] = Math.Max(1, counts[i]);
+
+            int total = counts.Sum();
+            while (total > availableSlots)
+            {
+                int index = Array.IndexOf(counts, counts.Max());
+                if (index < 0 || counts[index] <= 1)
+                    break;
+
+                counts[index]--;
+                total--;
+            }
+
+            return counts;
+        }
+
+        private static bool[] BuildRangeBits(int totalLength, int from, int count)
+        {
+            bool[] bits = new bool[totalLength];
+            for (int i = 0; i < count && from + i < totalLength; i++)
+                bits[from + i] = true;
+
+            return bits;
+        }
+
+        private bool[] GenerateRandomSequence(Random r, int start, int end)
+        {
+            (int from, int len) = ChooseFromAndLength(r, 1, start, end);
+            return GenerateSequenceArrayQuestion(from, len);
         }
 
         public bool IsCloseEnough(bool[] candidate, int allowedDifferences = 1)
         {
             if (candidate == null) return false;
+
+            if (CheckFreeSizeGripAnswer(candidate) is bool freeSizeResult)
+                return freeSizeResult;
 
             // Prefer comparing to the precomputed canonical correct answer
             if (BitArrayCorrectAnswer != null)
@@ -527,6 +5001,61 @@ namespace GestureSample.Maui.Models
                     return false;
             }
             return true;
+        }
+
+        private bool? CheckFreeSizeGripAnswer(bool[] candidate)
+        {
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize != true ||
+                IsSequenceMemorizeFirstResponse() ||
+                _sequenceMemorizeFirstPinch == null ||
+                _sequenceMemorizeSecondPinch == null)
+                return null;
+
+            FreeSizeGripRule? rule = _twoHandCombinationKind switch
+            {
+                TwoHandCombinationOptions.Associativity =>
+                    Config.KeyboardConfig.TwoHandMagnitudeVocabularyMode switch
+                    {
+                        TwoHandMagnitudeVocabularyMode.Intuitive => FreeSizeGripRule.Boundary,
+                        TwoHandMagnitudeVocabularyMode.Qualitative => _twoHandCombinationMagnitude == 1
+                            ? FreeSizeGripRule.BoundaryLittle : FreeSizeGripRule.BoundaryMuch,
+                        _ => null
+                    },
+                TwoHandCombinationOptions.ThroughTenParts => _twoHandCombinationOutsideFirst
+                    ? FreeSizeGripRule.InsidePart : FreeSizeGripRule.OutsidePart,
+                TwoHandCombinationOptions.SplitJump => FreeSizeGripRule.SplitJump,
+                TwoHandCombinationOptions.ResizeUpper => FreeSizeGripRule.ResizeUpper,
+                TwoHandCombinationOptions.ResizeLowerAttached => FreeSizeGripRule.ResizeLowerAttached,
+                TwoHandCombinationOptions.MuchSmaller => FreeSizeGripRule.MuchSmaller,
+                TwoHandCombinationOptions.MuchBigger => FreeSizeGripRule.MuchBigger,
+                _ => null
+            };
+            return rule.HasValue
+                ? FreeSizeGripAnswer.Accepts(_sequenceMemorizeFirstPinch,
+                    _sequenceMemorizeSecondPinch, candidate, rule.Value,
+                    _twoHandCombinationBoundaryMovesUp)
+                : null;
+        }
+
+        private void RebaseLinkedCombinationOnAcceptedAnswer(bool[] accepted)
+        {
+            if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize != true ||
+                IsSequenceMemorizeFirstResponse() || _pendingHalfDerivedFirst == null ||
+                _sequenceMemorizeSecondPinch == null ||
+                accepted.SequenceEqual(_sequenceMemorizeSecondPinch))
+                return;
+
+            bool[]? nextTarget = _pendingHalfDerivedKind switch
+            {
+                TwoHandCombinationOptions.Split => FreeSizeGripAnswer.BuildPartsFollowUp(accepted, moveOutside: false),
+                TwoHandCombinationOptions.ThroughTenParts => FreeSizeGripAnswer.BuildPartsFollowUp(accepted, moveOutside: true),
+                _ => null
+            };
+            if (nextTarget != null)
+            {
+                _pendingHalfDerivedFirst = accepted.ToArray();
+                _pendingHalfDerivedSecond = nextTarget;
+            }
         }
 
         // Overload so callers can pass the PianoKeyboard directly
@@ -582,7 +5111,9 @@ namespace GestureSample.Maui.Models
             switch (CurrentOperation)
             {
                 case Operation.Copy:
-                    BitArrayCorrectAnswer = BitArrayQuestion.ToArray();
+                    BitArrayCorrectAnswer = Config.KeyboardConfig?.CopyPrecisionPinchToOtherHand == true
+                        ? TransferPrecisionPinchToOtherHand(BitArrayQuestion)
+                        : BitArrayQuestion.ToArray();
                     break;
 
                 case Operation.Mirror:
@@ -618,12 +5149,24 @@ namespace GestureSample.Maui.Models
                             BitArrayCorrectAnswer[i] = (i < len / 2) ? (i < countL) : (i >= len - countR);
                     }
                     break;
+                case Operation.GroupByColor:
+                    {
+                        foreach (bool[] target in BuildGroupByColorTargetGroups())
+                        {
+                            for (int i = 0; i < len && i < target.Length; i++)
+                                BitArrayCorrectAnswer[i] = BitArrayCorrectAnswer[i] || target[i];
+                        }
+                    }
+                    break;
 
                 case Operation.MoveBy:
                     {
-                        int moveIndex = moveBydir == Direction.Right ? moveByLength : len - moveByLength;
-                        for (int k = 0; k < len; k++)
-                            BitArrayCorrectAnswer[k] = BitArrayQuestion[(k - moveIndex + len) % len];
+                        if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                        {
+                            ApplyPrecisionShiftAnswer();
+                            break;
+                        }
+                        ApplyLegacyMoveAnswer();
                     }
                     break;
 
@@ -663,6 +5206,268 @@ namespace GestureSample.Maui.Models
                     BitArrayCorrectAnswer = null;
                     break;
             }
+        }
+
+        private void ApplyPrecisionShiftAnswer()
+        {
+            foreach (bool leftSide in new[] { true, false })
+            {
+                int[] active = GetPrecisionSideActiveIndices(leftSide);
+                if (active.Length == 0)
+                    continue;
+                int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+                bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+                bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+                int fixedIndex = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical
+                    ? (baseAtTop ? active.Max() : active.Min())
+                    : (baseAtTop ? active.Min() : active.Max());
+                foreach (int index in active)
+                {
+                    int target = isShift || index != fixedIndex
+                        ? GetPrecisionShiftTarget(index, delta)
+                        : index;
+                    if (target >= 0 && target < BitArrayCorrectAnswer.Length)
+                        BitArrayCorrectAnswer[target] = true;
+                }
+            }
+        }
+
+        private void EnsurePrecisionShiftTransformsAreLegal()
+        {
+            KeyboardConfig keyboard = Config.KeyboardConfig;
+            int minimum = Math.Max(1, keyboard.PrecisionShiftMinDistance);
+            int maximum = Math.Max(minimum, keyboard.PrecisionShiftMaxDistance);
+            bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
+            bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
+
+            if (leftIsActive && rightIsActive && keyboard.PrecisionShiftSynchronizeHands)
+            {
+                bool currentIsLegal =
+                    CanApplyPrecisionSideTransform(true, _precisionShiftLeftDelta,
+                        _precisionShiftLeftIsShift, _precisionShiftLeftBaseAtTop) &&
+                    CanApplyPrecisionSideTransform(false, _precisionShiftRightDelta,
+                        _precisionShiftRightIsShift, _precisionShiftRightBaseAtTop);
+                if (!currentIsLegal)
+                {
+                    List<(int Delta, bool IsShift, bool BaseAtTop)> sharedCandidates =
+                        GetPrecisionSideTransformCandidates(true, minimum, maximum)
+                            .Where(candidate => GetPrecisionSideTransformCandidates(false, minimum, maximum)
+                                .Contains(candidate))
+                            .ToList();
+                    if (sharedCandidates.Count > 0)
+                    {
+                        var replacement = ChooseClosestLegalPrecisionTransform(
+                            sharedCandidates,
+                            _precisionShiftLeftDelta,
+                            _precisionShiftLeftIsShift,
+                            _precisionShiftLeftBaseAtTop);
+                        _precisionShiftLeftDelta = _precisionShiftRightDelta = replacement.Delta;
+                        _precisionShiftLeftIsShift = _precisionShiftRightIsShift = replacement.IsShift;
+                        _precisionShiftLeftBaseAtTop = _precisionShiftRightBaseAtTop = replacement.BaseAtTop;
+                    }
+                }
+            }
+            else
+            {
+                if (leftIsActive)
+                    EnsurePrecisionSideTransformIsLegal(true, minimum, maximum);
+                if (rightIsActive)
+                    EnsurePrecisionSideTransformIsLegal(false, minimum, maximum);
+            }
+
+            _precisionShiftDelta = leftIsActive ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            moveByLength = Math.Max(Math.Abs(_precisionShiftLeftDelta), Math.Abs(_precisionShiftRightDelta));
+            moveBydir = _precisionShiftDelta >= 0 ? Direction.Right : Direction.Left;
+        }
+
+        private void EnsurePrecisionSideTransformIsLegal(bool leftSide, int minimum, int maximum)
+        {
+            int delta = leftSide ? _precisionShiftLeftDelta : _precisionShiftRightDelta;
+            bool isShift = leftSide ? _precisionShiftLeftIsShift : _precisionShiftRightIsShift;
+            bool baseAtTop = leftSide ? _precisionShiftLeftBaseAtTop : _precisionShiftRightBaseAtTop;
+            if (CanApplyPrecisionSideTransform(leftSide, delta, isShift, baseAtTop))
+                return;
+
+            List<(int Delta, bool IsShift, bool BaseAtTop)> candidates =
+                GetPrecisionSideTransformCandidates(leftSide, minimum, maximum);
+            if (candidates.Count == 0)
+                return;
+
+            var replacement = ChooseClosestLegalPrecisionTransform(candidates, delta, isShift, baseAtTop);
+            if (leftSide)
+            {
+                _precisionShiftLeftDelta = replacement.Delta;
+                _precisionShiftLeftIsShift = replacement.IsShift;
+                _precisionShiftLeftBaseAtTop = replacement.BaseAtTop;
+            }
+            else
+            {
+                _precisionShiftRightDelta = replacement.Delta;
+                _precisionShiftRightIsShift = replacement.IsShift;
+                _precisionShiftRightBaseAtTop = replacement.BaseAtTop;
+            }
+        }
+
+        private static (int Delta, bool IsShift, bool BaseAtTop) ChooseClosestLegalPrecisionTransform(
+            IEnumerable<(int Delta, bool IsShift, bool BaseAtTop)> candidates,
+            int requestedDelta,
+            bool requestedIsShift,
+            bool requestedBaseAtTop) =>
+            candidates
+                .OrderBy(candidate => candidate.IsShift == requestedIsShift ? 0 : 1)
+                .ThenBy(candidate => candidate.BaseAtTop == requestedBaseAtTop ? 0 : 1)
+                .ThenBy(candidate => Math.Abs(Math.Abs(candidate.Delta) - Math.Abs(requestedDelta)))
+                .First();
+
+        private void ApplyLegacyMoveAnswer()
+        {
+            int length = BitArrayQuestion.Length;
+            int signedDistance = moveBydir == Direction.Right ? moveByLength : -moveByLength;
+            bool wraps = !Config.OnlyToTen;
+            for (int index = 0; index < length; index++)
+            {
+                if (!BitArrayQuestion[index])
+                    continue;
+
+                int target = index + signedDistance;
+                if (wraps)
+                    target = ((target % length) + length) % length;
+                if (target >= 0 && target < length)
+                    BitArrayCorrectAnswer[target] = true;
+            }
+        }
+
+        private List<bool[]> BuildGroupByColorTargetGroups()
+        {
+            List<bool[]> targets = new();
+            if (CurrentOperation != Operation.GroupByColor || _groupByColorQuestionGroups.Count == 0)
+                return targets;
+
+            if ((Config.KeyboardConfig?.GroupByColorLayoutMode ?? GroupByColorLayoutMode.Free) == GroupByColorLayoutMode.AssociativityEdges &&
+                _groupByColorQuestionGroups.Count >= 3)
+            {
+                return BuildAssociativityTargetGroups();
+            }
+
+            int leftOffset = 0;
+            int rightOffset = 0;
+            int keyboardLength = BitArrayQuestion.Length;
+
+            for (int i = 0; i < _groupByColorQuestionGroups.Count; i++)
+            {
+                bool[] source = _groupByColorQuestionGroups[i];
+                int count = SumArray(source);
+                bool[] target = new bool[keyboardLength];
+                Direction direction = _groupByColorTargetDirections.Count > i
+                    ? _groupByColorTargetDirections[i]
+                    : Direction.Left;
+
+                if (direction == Direction.Left)
+                {
+                    for (int keyIndex = 0; keyIndex < count && leftOffset + keyIndex < keyboardLength; keyIndex++)
+                        target[leftOffset + keyIndex] = true;
+
+                    leftOffset += count;
+                }
+                else
+                {
+                    for (int keyIndex = 0; keyIndex < count && rightOffset + keyIndex < keyboardLength; keyIndex++)
+                        target[keyboardLength - 1 - rightOffset - keyIndex] = true;
+
+                    rightOffset += count;
+                }
+
+                targets.Add(target);
+            }
+
+            return targets;
+        }
+
+        private List<bool[]> BuildAssociativityTargetGroups()
+        {
+            List<bool[]> targets = new();
+            int keyboardLength = BitArrayQuestion.Length;
+
+            bool yellowTargetsLeft = _groupByColorTargetDirections.Count > 0 && _groupByColorTargetDirections[0] == Direction.Left;
+            bool greenTargetsLeft = _groupByColorTargetDirections.Count > 1 && _groupByColorTargetDirections[1] == Direction.Left;
+            bool blueTargetsLeft = _groupByColorTargetDirections.Count > 2 && _groupByColorTargetDirections[2] == Direction.Left;
+
+            int yellowCount = SumArray(_groupByColorQuestionGroups[0]);
+            int greenCount = SumArray(_groupByColorQuestionGroups[1]);
+            int blueCount = SumArray(_groupByColorQuestionGroups[2]);
+
+            bool[] yellow = new bool[keyboardLength];
+            bool[] green = new bool[keyboardLength];
+            bool[] blue = new bool[keyboardLength];
+
+            int leftOffset = 0;
+            int rightOffset = 0;
+
+            if (yellowTargetsLeft)
+            {
+                FillRange(yellow, leftOffset, yellowCount, true);
+                leftOffset += yellowCount;
+                if (blueTargetsLeft)
+                    FillRange(blue, leftOffset, blueCount, true);
+            }
+            else
+            {
+                FillRange(yellow, rightOffset, yellowCount, false);
+                rightOffset += yellowCount;
+                if (!blueTargetsLeft)
+                    FillRange(blue, rightOffset, blueCount, false);
+            }
+
+            if (greenTargetsLeft)
+            {
+                FillRange(green, leftOffset, greenCount, true);
+                leftOffset += greenCount;
+                if (blueTargetsLeft && !yellowTargetsLeft)
+                    FillRange(blue, leftOffset, blueCount, true);
+            }
+            else
+            {
+                FillRange(green, rightOffset, greenCount, false);
+                rightOffset += greenCount;
+                if (!blueTargetsLeft && yellowTargetsLeft)
+                    FillRange(blue, rightOffset, blueCount, false);
+            }
+
+            targets.Add(yellow);
+            targets.Add(green);
+            targets.Add(blue);
+            return targets;
+        }
+
+        private static void FillRange(bool[] target, int offset, int count, bool fromLeft)
+        {
+            for (int keyIndex = 0; keyIndex < count && keyIndex < target.Length; keyIndex++)
+            {
+                int absoluteIndex = fromLeft
+                    ? offset + keyIndex
+                    : target.Length - 1 - offset - keyIndex;
+
+                if (absoluteIndex >= 0 && absoluteIndex < target.Length)
+                    target[absoluteIndex] = true;
+            }
+        }
+
+        private bool[] BuildLeftPackedBits(bool[] source)
+        {
+            bool[] packed = new bool[source.Length];
+            int count = SumArray(source);
+            for (int i = 0; i < count && i < packed.Length; i++)
+                packed[i] = true;
+            return packed;
+        }
+
+        private bool[] BuildRightPackedBits(bool[] source)
+        {
+            bool[] packed = new bool[source.Length];
+            int count = SumArray(source);
+            for (int i = 0; i < count && i < packed.Length; i++)
+                packed[packed.Length - 1 - i] = true;
+            return packed;
         }
         public static bool Equals(bool[] bitArrayAnswer, bool[] BitArrayQuestion)
         {

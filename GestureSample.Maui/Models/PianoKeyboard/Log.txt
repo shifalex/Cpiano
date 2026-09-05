@@ -1,0 +1,181 @@
+[turesample.maui] Explicit concurrent copying GC freed 1267(81KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5405KB/10MB, paused 328us,55us total 10.531ms
+
+[EGL_emulation] app_time_stats: avg=605.85ms min=13.96ms max=34782.97ms count=59
+
+[DOTNET] Main Page AppearingAlex
+
+[WindowOnBackDispatcher] OnBackInvokedCallback is not enabled for the application.
+
+[WindowOnBackDispatcher] Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+
+[turesample.maui] Explicit concurrent copying GC freed 4101(495KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5438KB/10MB, paused 421us,57us total 11.760ms
+
+[turesample.maui] Explicit concurrent copying GC freed 553(52KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5417KB/10MB, paused 434us,52us total 12.526ms
+
+[EGL_emulation] app_time_stats: avg=16.50ms min=10.81ms max=20.33ms count=59
+
+[turesample.maui] Explicit concurrent copying GC freed 861(78KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5418KB/10MB, paused 340us,53us total 11.056ms
+
+[EGL_emulation] app_time_stats: avg=12.49ms min=1.76ms max=30.53ms count=60
+
+[EGL_emulation] app_time_stats: avg=16.33ms min=4.75ms max=19.13ms count=60
+
+[turesample.maui] Explicit concurrent copying GC freed 1753(385KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5417KB/10MB, paused 772us,50us total 11.988ms
+
+[EGL_emulation] app_time_stats: avg=16.52ms min=7.63ms max=20.31ms count=60
+
+[EGL_emulation] app_time_stats: avg=16.57ms min=14.14ms max=19.37ms count=60
+
+[turesample.maui] Explicit concurrent copying GC freed 1398(94KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5402KB/10MB, paused 592us,51us total 10.157ms
+
+[EGL_emulation] app_time_stats: avg=16.58ms min=8.08ms max=23.71ms count=60
+
+[turesample.maui] Explicit concurrent copying GC freed 1356(81KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5417KB/10MB, paused 344us,72us total 11.400ms
+
+[EGL_emulation] app_time_stats: avg=21.18ms min=11.36ms max=301.83ms count=61
+
+[DOTNET] Heading height for btnInit: 55
+
+[DOTNET] from:5 length: 1
+
+[DOTNET] from:4 length: 0
+
+[0:] Question is		: 000001
+
+[0:] Correct answer is	: 000010
+
+[0:] Is it ok?			: True
+
+[WindowOnBackDispatcher] OnBackInvokedCallback is not enabled for the application.
+
+[WindowOnBackDispatcher] Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[MaterialButton] MaterialButton manages its own background to control elevation, shape, color and states. Consider using backgroundTint, shapeAppearance and other attributes where available. A custom background will ignore these attributes and you should consider handling interaction states such as pressed, focused and disabled
+
+[0:] [KOH] #1 Host.Loaded (before) Keyboard(W,H)=(-1.0,-1.0) Keys=6 k0(X,Y,W,H)=(0.0,0.0,-1.0,-1.0)
+
+[0:] [KOH] #1 Host.Loaded (before) Keyboard(W,H)=(-1.0,-1.0) Keys=6 k0(X,Y,W,H)=(0.0,0.0,-1.0,-1.0)
+
+[0:] [KOH] #1 Host.Loaded (before) Keyboard(W,H)=(-1.0,-1.0) Keys=6 k0(X,Y,W,H)=(0.0,0.0,-1.0,-1.0)
+
+Thread started: <Thread Pool> #16
+
+Thread started: <Thread Pool> #17
+
+Thread started: <Thread Pool> #18
+
+Thread started: <Thread Pool> #19
+
+[RippleDrawable] The RippleDrawable.STYLE_PATTERNED animation is not supported for a non-hardware accelerated Canvas. Skipping animation.
+
+[0:] [KOH] #1 Host.Loaded (after) ok=False Keyboard(W,H)=(-1.0,-1.0) Keys=6 k0(X,Y,W,H)=(0.0,0.0,-1.0,-1.0)
+
+[0:] [KOH] #1 Host.Loaded (after) ok=False Keyboard(W,H)=(-1.0,-1.0) Keys=6 k0(X,Y,W,H)=(0.0,0.0,-1.0,-1.0)
+
+[0:] [KOH] #1 Host.Loaded (after) ok=True Keyboard(W,H)=(411.4,558.9) Keys=6 k0(X,Y,W,H)=(0.0,60.0,62.7,498.9)
+
+[EGL_emulation] app_time_stats: avg=17.18ms min=1.74ms max=394.71ms count=42
+
+[turesample.maui] Explicit concurrent copying GC freed 13316(1004KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5901KB/11MB, paused 336us,52us total 11.935ms
+
+[turesample.maui] Explicit concurrent copying GC freed 4142(319KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5790KB/11MB, paused 330us,57us total 12.744ms
+
+[EGL_emulation] app_time_stats: avg=3544.41ms min=3544.41ms max=3544.41ms count=1
+
+[RippleDrawable] The RippleDrawable.STYLE_PATTERNED animation is not supported for a non-hardware accelerated Canvas. Skipping animation.
+
+[turesample.maui] Explicit concurrent copying GC freed 1288(90KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5797KB/11MB, paused 445us,50us total 12.577ms
+
+[EGL_emulation] app_time_stats: avg=19.04ms min=11.12ms max=149.27ms count=53
+
+[EGL_emulation] app_time_stats: avg=18.11ms min=13.28ms max=51.02ms count=56
+
+[turesample.maui] Explicit concurrent copying GC freed 5131(199KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5790KB/11MB, paused 349us,53us total 12.042ms
+
+[EGL_emulation] app_time_stats: avg=18.33ms min=11.54ms max=65.38ms count=57
+
+[EGL_emulation] app_time_stats: avg=239.79ms min=6.20ms max=2032.67ms count=9
+
+[turesample.maui] Explicit concurrent copying GC freed 1854(286KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5798KB/11MB, paused 340us,57us total 12.336ms
+
+[OpenGLRenderer] Unable to match the desired swap behavior.
+
+[0:] [KOH] #2 Keyboard.LayoutReady (before) Keyboard(W,H)=(862.5,216.8) Keys=6 k0(X,Y,W,H)=(0.0,60.0,62.7,498.9)
+
+[0:] [KOH] #2 Keyboard.LayoutReady (after) ok=True Keyboard(W,H)=(862.5,216.8) Keys=6 k0(X,Y,W,H)=(101.2,60.0,104.2,156.8)
+
+[turesample.maui] Explicit concurrent copying GC freed 2802(182KB) AllocSpace objects, 2(40KB) LOS objects, 49% free, 5804KB/11MB, paused 503us,56us total 12.984ms
+
+[OpenGLRenderer] Unable to match the desired swap behavior.
+
+[0:] [KOH] #3 Keyboard.LayoutReady (before) Keyboard(W,H)=(411.4,558.9) Keys=6 k0(X,Y,W,H)=(101.2,60.0,104.2,156.8)
+
+[0:] [KOH] #3 Keyboard.LayoutReady (after) ok=True Keyboard(W,H)=(411.4,558.9) Keys=6 k0(X,Y,W,H)=(0.0,60.0,62.7,498.9)
+
+[turesample.maui] Explicit concurrent copying GC freed 4219(291KB) AllocSpace objects, 13(260KB) LOS objects, 49% free, 5817KB/11MB, paused 338us,50us total 10.961ms
+
+[turesample.maui] Explicit concurrent copying GC freed 865(48KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5784KB/11MB, paused 1.190ms,55us total 13.813ms
+
+[DOTNET] Special sounds
+
+[EGL_emulation] app_time_stats: avg=151.44ms min=2.68ms max=2132.70ms count=15
+
+[EGL_emulation] app_time_stats: avg=592.94ms min=105.76ms max=1080.12ms count=2
+
+[turesample.maui] Explicit concurrent copying GC freed 1926(272KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5804KB/11MB, paused 358us,51us total 11.474ms
+
+[DOTNET] from:4 length: 1
+
+[DOTNET] from:4 length: 1
+
+[0:] Question is		: 000010
+
+[0:] Correct answer is	: 010000
+
+[0:] Is it ok?			: True
+
+[EGL_emulation] app_time_stats: avg=277.33ms min=1.66ms max=1925.40ms count=7
+
+[DOTNET] Special sounds
+
+[EGL_emulation] app_time_stats: avg=129.85ms min=1.67ms max=892.77ms count=7
+
+[turesample.maui] Explicit concurrent copying GC freed 1937(271KB) AllocSpace objects, 0(0B) LOS objects, 49% free, 5800KB/11MB, paused 356us,80us total 11.478ms

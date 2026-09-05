@@ -1,79 +1,369 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:GestureSample.Maui.Models"
-				x:Class="GestureSample.Views.ShowDataXamlKeyboard">
-    <Grid>
-        <!-- Define Row Definitions -->
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <!-- For Pickers -->
-            <RowDefinition Height="Auto" />
-            <!-- For Header Grid -->
-            <RowDefinition Height="*" />
-            <!-- For CollectionView -->
-        </Grid.RowDefinitions>
+             x:Class="GestureSample.Views.ShowDataXamlKeyboard">
+    <ContentPage.Resources>
+        <Style x:Key="ShowDataPickerStyle" TargetType="Picker">
+            <Setter Property="FontFamily" Value="Georgia" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextColor" Value="#342048" />
+            <Setter Property="TitleColor" Value="#8B7D9C" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+        </Style>
+        <Style x:Key="ShowDataFilterLabelStyle" TargetType="Label">
+            <Setter Property="FontFamily" Value="Georgia" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CharacterSpacing" Value="1.5" />
+            <Setter Property="TextColor" Value="#8A789B" />
+        </Style>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout x:Name="PickerPanel" Grid.Row="0" Padding="8,8,8,0" Spacing="6">
+            <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="DATE" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                    <Picker x:Name="DatePicker"
+                            Title="Pick a day"
+                            SelectedIndexChanged="OnDatePickerSelectedIndexChanged"
+                            Style="{StaticResource ShowDataPickerStyle}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="GAME" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                    <Picker x:Name="GamePicker"
+                            Title="Pick a session"
+                            SelectedIndexChanged="OnPickerSelectedIndexChanged"
+                            Style="{StaticResource ShowDataPickerStyle}"
+                            HorizontalOptions="FillAndExpand" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
 
-        <!-- Pickers -->
-        <StackLayout Orientation="Vertical" Grid.Row="0" Padding="10,10,10,0">
-            <Picker x:Name="DatePicker" Title="Select a Date" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged" FontFamily="Courier New"/>
-            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged" FontFamily="Courier New"/>
-        </StackLayout>
-
-        <!-- Header Grid -->
-        <Grid Grid.Row="1" ColumnDefinitions="45,90,15,220" Padding="5" BackgroundColor="MediumPurple" HorizontalOptions="FillAndExpand">
-            <Label Grid.Column="0" Text="#" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="1" Text="Seconds" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="3" Text="Question" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-        </Grid>
-
-        <CollectionView x:Name="Questions" ItemsSource="{Binding MainItems}" Grid.Row="2">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Grid >
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition x:Name="SubGridRow" Height="{Binding SubGridHeight}" />
-                        </Grid.RowDefinitions>
-                        <HorizontalStackLayout Grid.Row="0"  Padding="20" Margin="10" >
-                            <!-- Main Item Label -->
-                            <Label Text="{Binding Question.QuestionNumber}" FontAttributes="Bold" Padding="10" />
-                            <local:PianoKeyboardReadOnly HeightRequest="150" x:Name="MyKeyboard" Keys="{Binding Question.keyboard1}" AboveNumber="{Binding Question.aboveNumber}" ArrowLength="{Binding Question.length}" Direction="{Binding Question.dir}" >
-                                
-                                
-                            </local:PianoKeyboardReadOnly>
-                            <!-- Toggle Button -->
-                            <Button Text="{Binding ButtonText}" Clicked="OnToggleSubgridClicked" />
-                        </HorizontalStackLayout>
-                        <!-- Sub-CollectionView -->
-                        <CollectionView Grid.Row="1"
-                                        x:Name="SubCollection"
-                ItemsSource="{Binding SubItems}"
-                IsVisible="{Binding IsSubCollectionVisible}"
-                HeightRequest="{Binding SubGridHeight}"
-                Margin="0,10,0,10"
-                >
-                            <CollectionView.ItemTemplate>
-                                <DataTemplate>
-                                    <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" BackgroundColor="{Binding RowBackgroundColor}" VerticalOptions="FillAndExpand">
-                                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
-                                            <Label Grid.Column="0" Text="{Binding id}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                                            <Label Grid.Column="1" Text="{Binding EventTime}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="2" Text="{Binding EventType}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="3" Text="{Binding KeyNumber}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                            <Label Grid.Column="4" Text="{Binding Row}" HorizontalOptions="Center" VerticalOptions="Center" />
-                                        </Grid>
-                                    </Frame>
-                                </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
+        <Grid Grid.Row="1" RowDefinitions="Auto,*">
+            <Border x:Name="TimingRecommendationsContainer"
+                    Grid.Row="0"
+                    Margin="10,8,10,0"
+                    Padding="10"
+                    BackgroundColor="#FFFDFE"
+                    Stroke="#D9CBEA"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 16"
+                    IsVisible="False">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Timing Tuning"
+                           FontFamily="Georgia"
+                           FontAttributes="Bold"
+                           FontSize="15"
+                           TextColor="#4A2F68" />
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+                          ColumnSpacing="8">
+                        <Label Grid.Column="0" Text="Stage" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                        <Label Grid.Column="1" Text="Try" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="2" Text="Pattern" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="3" Text="After" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
+                        <Label Grid.Column="4" Text="Whole" Style="{StaticResource ShowDataFilterLabelStyle}" HorizontalTextAlignment="Center" />
                     </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                    <CollectionView x:Name="TimingRecommendationsList"
+                                    SelectionMode="None"
+                                    ItemSizingStrategy="MeasureAllItems"
+                                    HeightRequest="180">
+                        <CollectionView.ItemsLayout>
+                            <LinearItemsLayout Orientation="Vertical" ItemSpacing="4" />
+                        </CollectionView.ItemsLayout>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0"
+                                           Text="{Binding StageName}"
+                                           LineBreakMode="TailTruncation"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding AttemptCount}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="2"
+                                           Text="{Binding DominantPatternText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="3"
+                                           Text="{Binding AfterLastKeyText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                    <Label Grid.Column="4"
+                                           Text="{Binding WholeAnswerText}"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="#342048" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
 
+            <CollectionView x:Name="Questions"
+                            Grid.Row="1"
+                            Margin="0,8,0,0"
+                            SelectionMode="None"
+                            ItemSizingStrategy="MeasureAllItems"
+                            VerticalScrollBarVisibility="Always"
+                            ItemsUpdatingScrollMode="KeepScrollOffset">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical"
+                                       ItemSpacing="4" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame BorderColor="LightGray"
+                               CornerRadius="8"
+                               Padding="10"
+                               Margin="10,6"
+                               BackgroundColor="{Binding Question.RowBackgroundColor}">
+                            <VerticalStackLayout Spacing="8">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+                                <Label Grid.Column="0"
+                                       Text="{Binding Question.QuestionNumber}"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center" />
+                                <BoxView Grid.Column="1"
+                                         WidthRequest="12"
+                                         HeightRequest="12"
+                                         CornerRadius="6"
+                                         Color="{Binding Question.ResultLightColor}"
+                                         VerticalOptions="Center" />
+                                <Label Grid.Column="2"
+                                       Text="{Binding Question.ResultStatusText}"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center"
+                                       LineBreakMode="NoWrap" />
+                                <Button Grid.Column="3"
+                                        Text="Replay"
+                                        Clicked="OnReplayClicked"
+                                        IsEnabled="{Binding HasReplay}" />
+                                <Button Grid.Column="4"
+                                        Text="Replay All"
+                                        Clicked="OnReplayAllClicked"
+                                        IsVisible="{Binding HasCombinedReplay}"
+                                        IsEnabled="{Binding HasCombinedReplay}" />
+                            </Grid>
 
+                            <Label Text="{Binding Question.AttemptText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="NoWrap" />
 
+                            <Label Text="{Binding Question.TutorialStatusText}"
+                                   FontSize="12"
+                                   TextColor="DarkOrange"
+                                   FontAttributes="Bold"
+                                   LineBreakMode="NoWrap"
+                                   IsVisible="{Binding Question.WasTutorialUsed}" />
+
+                            <Label Text="{Binding Question.QuestionCodeText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding ShowQuestionCode}" />
+
+                            <Grid ColumnDefinitions="Auto,40,12,40,16,40"
+                                  ColumnSpacing="4"
+                                  IsVisible="{Binding ShowPpwState}">
+                                <Label Grid.Column="0"
+                                       Text="PPW"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center"
+                                       Margin="0,6,0,0" />
+                                <Frame Grid.Column="1"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.Addend1Color}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Addend1}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="2"
+                                       Text="{Binding PpwOpText}"
+                                       VerticalOptions="Center"
+                                       FontSize="16" />
+                                <Frame Grid.Column="3"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.Addend2Color}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Addend2}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="4"
+                                       Text="="
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center"
+                                       FontSize="16" />
+                                <Frame Grid.Column="5"
+                                       BorderColor="Black"
+                                       CornerRadius="5"
+                                       Padding="1"
+                                       BackgroundColor="{Binding PpwState.SumColor}"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding PpwState.Sum}"
+                                           HorizontalOptions="Start"
+                                           HorizontalTextAlignment="Start"
+                                           VerticalOptions="Center"
+                                           FontSize="16" />
+                                </Frame>
+                            </Grid>
+
+                            <Label Text="{Binding ComplexArrowEquationText}"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="DarkSlateGray"
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding HasComplexArrowEquation}" />
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.HasPromptText}">
+                                <Label Text="Q"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <Label Text="{Binding Question.QuestionPromptText}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       VerticalOptions="Center"
+                                       LineBreakMode="NoWrap" />
+                            </HorizontalStackLayout>
+
+                            <Label Text="{Binding TimingSummaryText}"
+                                   FontSize="12"
+                                   TextColor="DimGray"
+                                   LineBreakMode="WordWrap"
+                                   IsVisible="{Binding HasTimingSummary}" />
+
+                            <VerticalStackLayout Spacing="4"
+                                                 IsVisible="{Binding Question.ShowCombinedArrowKeyboard}">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0"
+                                           Text="{Binding Question.CombinedArrowKeyboardLabel}"
+                                           FontAttributes="Bold"
+                                           FontSize="12"
+                                           VerticalOptions="Center" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Question.SubmittedTimeText}"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Center"
+                                           FontSize="12"
+                                           IsVisible="{Binding Question.HasSubmittedKeyboard}" />
+                                </Grid>
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.CombinedArrowKeyboardColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           Weights="{Binding Question.KeyboardWeights}"
+                                                           AboveNumber="{Binding Question.aboveNumber}"
+                                                           ArrowLength="{Binding Question.length}"
+                                                           Direction="{Binding Question.dir}"
+                                                           InputTransparent="True"
+                                                           HorizontalOptions="Fill" />
+                                <Label Text="{Binding Question.CombinedArrowLegendText}"
+                                       FontSize="11"
+                                       TextColor="DimGray"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.ShowPrimaryQuestionKeyboard}">
+                                <Label Text="Q"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.QuestionSnapshotColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           Weights="{Binding Question.KeyboardWeights}"
+                                                           AboveNumber="{Binding Question.aboveNumber}"
+                                                           ArrowLength="{Binding Question.length}"
+                                                           Direction="{Binding Question.dir}"
+                                                           Compact="True"
+                                                           InputTransparent="True" />
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.ShowInitialKeyboardPreview}">
+                                <Label Text="Init"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.InitialKeyboardSnapshotColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           Weights="{Binding Question.KeyboardWeights}"
+                                                           Compact="True"
+                                                           InputTransparent="True" />
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="8"
+                                                   IsVisible="{Binding Question.HasVisibleSecondQuestionKeyboard}">
+                                <Label Text="Q2"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       VerticalOptions="Center" />
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.SecondQuestionSnapshotColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           Weights="{Binding Question.KeyboardWeights}"
+                                                           InputTransparent="True" />
+                            </HorizontalStackLayout>
+
+                            <VerticalStackLayout Spacing="6"
+                                                 IsVisible="{Binding Question.ShowSeparateSubmittedKeyboard}">
+                                <Grid ColumnDefinitions="Auto,*"
+                                      ColumnSpacing="8">
+                                    <Label Grid.Column="0"
+                                           Text="A"
+                                           FontAttributes="Bold"
+                                           FontSize="12"
+                                           VerticalOptions="Center" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Question.SubmittedTimeText}"
+                                           HorizontalOptions="End"
+                                           VerticalOptions="Center"
+                                           FontSize="12"
+                                           LineBreakMode="NoWrap" />
+                                </Grid>
+                                <local:KeyboardSnapshotView KeyColors="{Binding Question.SubmittedKeyboardSnapshotColors}"
+                                                           KeysInRow="{Binding Question.KeyboardKeysInRow}"
+                                                           Rows="{Binding Question.KeyboardRows}"
+                                                           Weights="{Binding Question.KeyboardWeights}"
+                                                           Compact="False"
+                                                           InputTransparent="True"
+                                                           HorizontalOptions="Fill" />
+                            </VerticalStackLayout>
+
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
+        <Grid x:Name="LoadingOverlay"
+              Grid.RowSpan="2"
+              BackgroundColor="#CCFFFFFF"
+              ZIndex="20">
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                <ActivityIndicator IsRunning="True" Color="#6F4B82" />
+                <Label Text="Loading data…" FontFamily="Georgia" TextColor="#342048" />
+            </VerticalStackLayout>
+        </Grid>
     </Grid>
 </ContentPage>

@@ -58,12 +58,15 @@
     //ODO: Back button from Grid to "New Number"
     //ODO: split pianoKeyboard and number games
 
+
+    //TODO: Hand tutorials
     //TODO: Through ten instead text boxes
     //TODO: Prev button disable when needed
     //TODO: Audion - sound BEKA/CountOn/CountUsual
     //TODO: More user friendly beginer boolean algebra
     //TODO: BUG - equations???
     //TODO: BUG - + in some binay algebra still left
+    //TODO: shift cyclical, shift only part. Equivalences
     //TODO: From Keyboard to PPW and back
     //TODO: Kyboard going up & down - create my own buttons on screen?? Ot use someone else's keyboard
     //TODO: DUMP data button
@@ -235,45 +238,461 @@
         Straight,
         Rounded
     }
+
+    public enum ArrowMovementMode
+    {
+        Legacy = 0,
+        AllTogether = 1,
+        Arpeggio = 2,
+        Splited = 3,
+        MiddleSplited = 4,
+        JumpToEnd = 5,
+        OneByOne = 6,
+        JumpThroughMiddle = 7
+    }
+
+    [Flags]
+    public enum KeyboardFeatureFlags
+    {
+        None = 0,
+        ShowNumbersOnKeys = 1,
+        ImposeEdges = 2,
+        ImposeSerialization = 4,
+        WithoutZero = 8,
+        AllowRemoval = 16,
+        KeyboardOnlyForHelp = 32,
+        KeyboardAsQuestion = 64,
+        ArrowQuestion = 128,
+        Multicolor = 256,
+        HelpAvailable = 512,
+        PermutationTraceColors = 1024,
+        HideMainKeyboard = 2048
+    }
+
+    [Flags]
+    public enum ArrowFeatureFlags
+    {
+        None = 0,
+        DynamicLength = 1,
+        Rounded = 2
+    }
+
+    [Flags]
+    public enum ArrowMovementModeFlags
+    {
+        None = 0,
+        AllTogether = 1,
+        Arpeggio = 2,
+        Splited = 4,
+        MiddleSplited = 8,
+        JumpToEnd = 16,
+        OneByOne = 32,
+        JumpThroughMiddle = 64,
+        CountOn = OneByOne,
+        All = AllTogether | Arpeggio | Splited | MiddleSplited | JumpToEnd | OneByOne | JumpThroughMiddle
+    }
+
+    [Flags]
+    public enum KeyboardAudioFeatureFlags
+    {
+        None = 0,
+        NumberVoice = 1,
+        SingleVoice = 2,
+        MultipleVoices = 4
+    }
+
+    public enum PpwKeyboardSeedMode
+    {
+        None = 0,
+        VisiblePartPressed = 1,
+        WholePressed = 2,
+        VisiblePartsColored = 3
+    }
+
+    public enum KeyboardColorInteractionMode
+    {
+        Default = 0,
+        AddSecondColor = 1,
+        RemoveWithRed = 2
+    }
+
+    public enum GroupByColorLayoutMode
+    {
+        Free = 0,
+        CommutativityEdges = 1,
+        AssociativityEdges = 2
+    }
+
+    public enum ArrowLabelExerciseMode
+    {
+        None = 0,
+        StartAndLength = 1,
+        StartAndEndWithMissingLength = 2,
+        EndAndLengthWithMissingStart = 3,
+        OrdinalStartAndLength = 4,
+        ComplexBridgeToNextTen = 5,
+        ComplexLongDistance = 6,
+        ComplexBridgeToAnyNextTen = 7
+    }
+
+    [Flags]
+    public enum ArrowPromptKindFlags
+    {
+        None = 0,
+        OnKeyboard = 1,
+        SpecialPrompt = 2
+    }
+
+    [Flags]
+    public enum ArrowRouteKindFlags
+    {
+        None = 0,
+        Cardinal = 1,
+        Ordinal = 2
+    }
+
+    public enum ArrowFeedbackMode
+    {
+        Icon = 0,
+        CorrectResponse = 1
+    }
+
+    public enum ArrowDirectionMode
+    {
+        Auto = 0,
+        LeftToRight = 1,
+        RightToLeft = 2,
+        Alternating = 3,
+        Random = 4
+    }
+
+    public enum ArrowLabelRetryMode
+    {
+        None = 0,
+        ShowKeyboardHelp = 1,
+        RevealComplexThroughTen = 2
+    }
+
+    public enum KeyLabelVerticalPosition
+    {
+        Middle = 0,
+        Top = 1
+    }
+
+    public enum PrecisionShiftAxis
+    {
+        Horizontal = 0,
+        Vertical = 1
+    }
+
+    [Flags]
+    public enum PrecisionPinchMoveOptions
+    {
+        None = 0,
+        ShiftWhole = 1,
+        MoveLower = 2,
+        MoveUpper = 4,
+        All = ShiftWhole | MoveLower | MoveUpper
+    }
+
+    [Flags]
+    public enum TwoHandCombinationOptions
+    {
+        None = 0,
+        Commutativity = 1 << 0,
+        Associativity = 1 << 1,
+        ResizeUpper = 1 << 2,
+        ResizeLowerAttached = 1 << 3,
+        FlipAdditionSubtraction = 1 << 4,
+        Difference = 1 << 5,
+        Split = 1 << 6,
+        SplitJump = 1 << 7,
+        NearHalf = 1 << 8,
+        HalfOfHalf = 1 << 9,
+        LittleSmaller = 1 << 10,
+        MuchSmaller = 1 << 11,
+        LittleBigger = 1 << 12,
+        MuchBigger = 1 << 13,
+        Half = 1 << 14,
+        SubtrahendOneStepBigger = 1 << 15,
+        IncreaseLowerByOne = 1 << 16,
+        IncreaseUpperByOne = 1 << 17,
+        DecreaseLowerByOne = 1 << 18,
+        DecreaseUpperByOne = 1 << 19,
+        SubtrahendOneStepSmaller = 1 << 20,
+        MoreThanHalf = 1 << 21,
+        LessThanHalf = 1 << 22,
+        ThroughTenParts = 1 << 23,
+        Default = Associativity | FlipAdditionSubtraction | Difference | Split | Half |
+                  MoreThanHalf | LessThanHalf |
+                  ThroughTenParts |
+                  SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
+                  IncreaseLowerByOne | DecreaseLowerByOne |
+                  IncreaseUpperByOne | DecreaseUpperByOne,
+        All = Commutativity | Associativity | ResizeUpper | ResizeLowerAttached |
+              FlipAdditionSubtraction | Difference | Split | SplitJump |
+              HalfOfHalf | LittleSmaller | MuchSmaller | LittleBigger | MuchBigger | Half |
+              SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
+              IncreaseLowerByOne | IncreaseUpperByOne | DecreaseLowerByOne | DecreaseUpperByOne |
+              MoreThanHalf | LessThanHalf
+              | ThroughTenParts
+    }
+
+    public enum TwoHandMagnitudeVocabularyMode
+    {
+        Intuitive = 0,
+        Qualitative = 1,
+        Numeric = 2
+    }
+
     public class KeyboardConfig
     {
+        public void NormalizeWeightedLayout()
+        {
+            if (WeightsArray == null || WeightsArray.Length == 0)
+                return;
+
+            Rows = Rows <= 0 ? 1 : Rows;
+            KeysInRow = KeysInRow <= 0 ? 1 : KeysInRow;
+
+            int configuredKeyCount = Rows * KeysInRow;
+            if (configuredKeyCount == WeightsArray.Length)
+                return;
+
+            if (Rows == 1 || WeightsArray.Length % Rows != 0)
+            {
+                Rows = 1;
+                KeysInRow = WeightsArray.Length;
+                return;
+            }
+
+            KeysInRow = Math.Max(1, WeightsArray.Length / Rows);
+        }
 
 
         public SyncType SyncType { get; set; } = 0;
         public int TextBoxesQuantity { get; set; } = 0;
         public int Rows { get; set; } = 1;
-        public bool ShowNumbersOnKeys { get; set; } = false;
+        public KeyboardFeatureFlags KeyboardFeatures { get; set; } = KeyboardFeatureFlags.WithoutZero;
+        public ArrowFeatureFlags ArrowFeatures { get; set; } = ArrowFeatureFlags.None;
+        public KeyboardAudioFeatureFlags AudioFeatures { get; set; } = KeyboardAudioFeatureFlags.None;
+        public bool ShowNumbersOnKeys
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ShowNumbersOnKeys);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ShowNumbersOnKeys
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ShowNumbersOnKeys;
+        }
 
         public int KeysInRow { get; set; } = 10;
-        public bool ImposeEdges { get; set; } = false;
-        public bool ImposeSerealization { get; set; } = false;
-        public bool WithoutZero { get; set; } = true;
-        public bool AllowRemoval { get; set; } = false;
+        public bool AllowKeyWidthAdjustment { get; set; } = false;
+        public bool IsPrecisionPinchExercise { get; set; } = false;
+        public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
+        public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
+        public bool IsTwoHandCombinationMemorize { get; set; } = false;
+        public bool IsTwoHandCopyMemorize { get; set; } = false;
+        public TwoHandCombinationOptions TwoHandCombinationOptions { get; set; } = TwoHandCombinationOptions.Default;
+        public bool AnimateTwoHandCombinations { get; set; } = true;
+        // Temporary presentation choice for +− / −+: set true to restore the flip.
+        public bool UseFlipAnimationForAdditionSubtraction { get; set; } = false;
+        public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
+        public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
+        public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;
+        // Legacy property name retained for saved settings. Controls first-state-only
+        // presentation; combination exercises always accept the final state directly.
+        public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
+        public TwoHandMagnitudeVocabularyMode TwoHandMagnitudeVocabularyMode { get; set; } =
+            TwoHandMagnitudeVocabularyMode.Intuitive;
+        public bool AllowImmediateCorrectPrecisionAnswer { get; set; } = false;
+        public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
+        public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
+        public bool ShowPrecisionPinchGuideLine { get; set; } = true;
+        public bool SeparatePrecisionPinchColumnsOnTablet { get; set; } = false;
+        public double PrecisionPinchTabletColumnGap { get; set; } = 96;
+        public bool IsTransformativePrecisionCopyExercise { get; set; } = false;
+        public bool CopyPrecisionPinchToOtherHand { get; set; } = false;
+        public bool IsVerticalPrecisionPinchExercise { get; set; } = false;
+        public bool IsPrecisionShiftExercise { get; set; } = false;
+        public bool IsPrecisionSignLearningExercise { get; set; } = false;
+        public bool IsPrecisionSynchronousProcessExercise { get; set; } = false;
+        public bool IsGripTransformationPracticeExercise { get; set; } = false;
+        public bool PrecisionShiftBothHands { get; set; } = false;
+        public PrecisionShiftAxis PrecisionShiftAxis { get; set; } = PrecisionShiftAxis.Horizontal;
+        public PrecisionPinchMoveOptions PrecisionPinchMoveOptions { get; set; } = PrecisionPinchMoveOptions.All;
+        public int PrecisionMoveLowerPercent { get; set; } = -1;
+        public bool PrecisionShiftSynchronizeHands { get; set; } = false;
+        public bool PrecisionShiftStaggerHandsInitially { get; set; } = false;
+        public bool PreferBothHandsOnBottom { get; set; } = false;
+        public bool IsPrecisionGrammarExercise { get; set; } = false;
+        public int PrecisionShiftNewPinchPercent { get; set; } = 0;
+        public int PrecisionShiftMinDistance { get; set; } = 1;
+        public int PrecisionShiftMaxDistance { get; set; } = 1;
+        public int PrecisionPinchMaxInterval { get; set; } = int.MaxValue;
+        public bool IsPrecisionArrowDesignLab { get; set; } = false;
+        public bool ImposeEdges
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ImposeEdges);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ImposeEdges
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ImposeEdges;
+        }
+        public bool ImposeSerealization
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ImposeSerialization);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ImposeSerialization
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ImposeSerialization;
+        }
+        public bool WithoutZero
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.WithoutZero);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.WithoutZero
+                : KeyboardFeatures & ~KeyboardFeatureFlags.WithoutZero;
+        }
+        public bool AllowRemoval
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.AllowRemoval);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.AllowRemoval
+                : KeyboardFeatures & ~KeyboardFeatureFlags.AllowRemoval;
+        }
 
         public int AddendsNum { get; set; } = 2;
 
-        public bool KeyboardOnlyForHelp { get; set; } = false;
-        public bool KeyboardAsAQuestion { get; set; } = false;
+        public bool KeyboardOnlyForHelp
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.KeyboardOnlyForHelp);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.KeyboardOnlyForHelp
+                : KeyboardFeatures & ~KeyboardFeatureFlags.KeyboardOnlyForHelp;
+        }
+        public bool KeyboardAsAQuestion
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.KeyboardAsQuestion);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.KeyboardAsQuestion
+                : KeyboardFeatures & ~KeyboardFeatureFlags.KeyboardAsQuestion;
+        }
+        public bool HideMainKeyboard
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.HideMainKeyboard);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.HideMainKeyboard
+                : KeyboardFeatures & ~KeyboardFeatureFlags.HideMainKeyboard;
+        }
 
         public int SecondsPressingToAnswer { get; set; } = 2;
 
         public int[] DummiesArray = null;
         public int LeftAddendIndex { get; set; } = 0;
 
-        public bool IsArrow { get; set; } = false;
+        public bool IsArrow
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.ArrowQuestion);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.ArrowQuestion
+                : KeyboardFeatures & ~KeyboardFeatureFlags.ArrowQuestion;
+        }
 
-        public bool IsMulticolor { get; set; } = false;
-        public ArrowType ArrowType { get; set; } = ArrowType.Straight;
-        public bool? IsArrowLengthDynamic { get; set; } = false;
+        public bool IsMulticolor
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.Multicolor);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.Multicolor
+                : KeyboardFeatures & ~KeyboardFeatureFlags.Multicolor;
+        }
+        public ArrowType ArrowType
+        {
+            get => ArrowFeatures.HasFlag(ArrowFeatureFlags.Rounded) ? ArrowType.Rounded : ArrowType.Straight;
+            set => ArrowFeatures = value == ArrowType.Rounded
+                ? ArrowFeatures | ArrowFeatureFlags.Rounded
+                : ArrowFeatures & ~ArrowFeatureFlags.Rounded;
+        }
+        public bool? IsArrowLengthDynamic
+        {
+            get => ArrowFeatures.HasFlag(ArrowFeatureFlags.DynamicLength);
+            set => ArrowFeatures = value == true
+                ? ArrowFeatures | ArrowFeatureFlags.DynamicLength
+                : ArrowFeatures & ~ArrowFeatureFlags.DynamicLength;
+        }
 
         public int[] WeightsArray = null;
         public List<List<int>> DependancyArray = null;
+        public bool UseDynamicMultiplicationWeights { get; set; } = false;
+        public bool UseWeightedCustomStageTargets { get; set; } = false;
+        public bool AllowImpossibleWeightedAnswer { get; set; } = false;
+        public int MaskThirdArrowAfterCycleCount { get; set; } = 0;
+        public bool UseFullHandTutorial { get; set; } = false;
+        public bool AllowAnswerTimePanelToggleFromKeyboardHeader { get; set; } = true;
+        public bool AllowSumHeaderVisibilityToggle { get; set; } = false;
+        public GroupByColorLayoutMode GroupByColorLayoutMode { get; set; } = GroupByColorLayoutMode.Free;
+        public ArrowLabelExerciseMode ArrowLabelExerciseMode { get; set; } = ArrowLabelExerciseMode.None;
+        public int MaxArrowLabelDistance { get; set; } = 0;
+        public bool EnableArrowLabelRetry { get; set; } = false;
+        public ArrowLabelRetryMode ArrowLabelRetryMode { get; set; } = ArrowLabelRetryMode.None;
+        public bool UseKeyboardQuestionAfterArrowLabelHelp { get; set; } = false;
+        public ArrowLabelExerciseMode ArrowLabelRetryAlternateMode { get; set; } = ArrowLabelExerciseMode.None;
+        public MissingValueTargetFlags SpecialArrowRetryAlternateTargets { get; set; } = MissingValueTargetFlags.None;
+        public bool UseFixedComplexMiddle { get; set; } = false;
+        public bool AllowRtlComplexPrompts { get; set; } = false;
+        public bool AllowLearnerChosenComplexMiddle { get; set; } = false;
+        public bool StartArrowLabelRetryWithEquation { get; set; } = false;
+        public ArrowPromptKindFlags AllowedArrowPromptKinds { get; set; } = ArrowPromptKindFlags.None;
+        public ArrowRouteKindFlags AllowedArrowRouteKinds { get; set; } = ArrowRouteKindFlags.None;
+        public MissingValueTargetFlags SpecialArrowMissingTargets { get; set; } = MissingValueTargetFlags.None;
+        public ArrowFeedbackMode ArrowFeedbackMode { get; set; } = ArrowFeedbackMode.Icon;
+        public ArrowDirectionMode ArrowDirectionMode { get; set; } = ArrowDirectionMode.Auto;
+        public ArrowMovementMode ArrowMovementMode { get; set; } = ArrowMovementMode.Legacy;
+        public ArrowMovementModeFlags AllowedArrowMovementModes { get; set; } = ArrowMovementModeFlags.None;
+        public bool EnableSecondArrowLeftTrace { get; set; } = false;
+        public KeyLabelVerticalPosition KeyLabelVerticalPosition { get; set; } = KeyLabelVerticalPosition.Middle;
+        public int GroupByColorColorCount { get; set; } = 2;
+        public int[]? GroupByColorCounts { get; set; }
+        public bool GroupByColorAllowSameSideTargets { get; set; } = false;
+        public bool GroupByColorKeepOuterColorsOnSides { get; set; } = false;
+        public bool GroupByColorKeepBlueInMiddle { get; set; } = false;
+        public PpwKeyboardSeedMode PpwKeyboardSeedMode { get; set; } = PpwKeyboardSeedMode.None;
+        public KeyboardColorInteractionMode ColorInteractionMode { get; set; } = KeyboardColorInteractionMode.Default;
+        public bool EnableColorDrag { get; set; } = false;
 
-        public bool IsNumberVoice { get; set; } = false;
-        public bool IsVoice { get; set; } = false;
-        public bool IsVoices { get; set; } = false;
+        public bool IsNumberVoice
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.NumberVoice);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.NumberVoice
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.NumberVoice;
+        }
+        public bool IsVoice
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.SingleVoice);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.SingleVoice
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.SingleVoice;
+        }
+        public bool IsVoices
+        {
+            get => AudioFeatures.HasFlag(KeyboardAudioFeatureFlags.MultipleVoices);
+            set => AudioFeatures = value
+                ? AudioFeatures | KeyboardAudioFeatureFlags.MultipleVoices
+                : AudioFeatures & ~KeyboardAudioFeatureFlags.MultipleVoices;
+        }
 
-        public bool IsHelpNeeded { get; set; } = false;
+        public bool IsHelpNeeded
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.HelpAvailable);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.HelpAvailable
+                : KeyboardFeatures & ~KeyboardFeatureFlags.HelpAvailable;
+        }
+
+        public bool UsePermutationTraceColors
+        {
+            get => KeyboardFeatures.HasFlag(KeyboardFeatureFlags.PermutationTraceColors);
+            set => KeyboardFeatures = value
+                ? KeyboardFeatures | KeyboardFeatureFlags.PermutationTraceColors
+                : KeyboardFeatures & ~KeyboardFeatureFlags.PermutationTraceColors;
+        }
 
     }
 }

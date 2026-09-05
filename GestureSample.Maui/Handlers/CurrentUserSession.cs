@@ -13,8 +13,7 @@ namespace GestureSample.Maui.Handlers
         // Once loaded, this property will be available for synchronous access.
         public User ActiveUser { get; private set; }
 
-        // An event you can use to notify subscribers when the active user changes.
-        //public event EventHandler<User> ActiveUserChanged;
+        public event EventHandler ActiveUserChanged;
 
         // A reference to your repository (you might inject this via DI instead)
         private UserRepository _userRepo = ServiceHelper.GetService<UserRepository>();
@@ -25,11 +24,17 @@ namespace GestureSample.Maui.Handlers
         /// <param name="userId">The ID of the user to load.</param>
         public async Task LoadUserAsync(Guid? userId)
         {
+            if (!userId.HasValue || userId.Value == Guid.Empty)
+            {
+                ActiveUser = null;
+                ActiveUserChanged?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
             // Asynchronously load the user data using the repository.
             ActiveUser = await _userRepo.GetByIdAsync(userId);
 
-            // Notify any subscribers that the active user has changed.
-           // ActiveUserChanged?.Invoke(this, ActiveUser);
+            ActiveUserChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

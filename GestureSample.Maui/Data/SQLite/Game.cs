@@ -5,7 +5,6 @@ using Microsoft.Maui.Platform;
 using MongoDB.Driver.Core.Operations;
 using SQLite;
 using Supabase.Postgrest.Models;
-using System.Text.Json;
 //using Realms;
 
 namespace GestureSample.Maui.Data.SQLite
@@ -85,7 +84,9 @@ namespace GestureSample.Maui.Data.SQLite
         {
             string status = FinalStatus switch { 0 => "Lose", 1 => "WIN!", _ => "" };
             string time = (TimeEnd - TimeStart).ToFormattedString("mm:ss");
-            string formattedGameName = GameName?.Replace("Level ", "L").Replace("Multiplication", "X:") ?? string.Empty;
+            string formattedGameName = GetEffectiveDisplayName()
+                .Replace("Level ", "L")
+                .Replace("Multiplication", "X:");
 
             string prefix = $"{index.ToString().PadLeft(3)} {TimeStart:t} ";
             string suffix = $"{status} {time} {Wins - Losses}/{Wins}".PadLeft(14);
@@ -118,6 +119,24 @@ namespace GestureSample.Maui.Data.SQLite
             //return displayString;
         }
 
+        public string GetEffectiveDisplayName()
+        {
+            if (Config?.FromNumToNum == true)
+                return "From num to num";
+
+            if (Config?.KeyboardConfig?.UseDynamicMultiplicationWeights == true)
+                return "Weighted Multiplication";
+
+            if (Config?.KeyboardConfig?.WeightsArray != null &&
+                Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                Config.UIQuestionType == UIQuestionType.OneText)
+            {
+                return "Weighted Abacus";
+            }
+
+            return GameName ?? string.Empty;
+        }
+
 
         // Ignore GameConfig during table creation
         [Ignore]
@@ -127,8 +146,8 @@ namespace GestureSample.Maui.Data.SQLite
         [Column("ConfigJson")]
         public string ConfigJson
         {
-            get => Config != null ? JsonSerializer.Serialize(Config) : null;
-            set => Config = value != null ? JsonSerializer.Deserialize<GameConfig>(value) : null;
+            get => Config != null ? GameConfigJson.Serialize(Config) : null;
+            set => Config = value != null ? GameConfigJson.Deserialize(value) : null;
         }
 
         //public Color[] KeysPressed { get; set; }
