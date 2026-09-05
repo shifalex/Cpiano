@@ -265,7 +265,9 @@ namespace GestureSample.Views.Tests
                 return;
 
             int version = ++_sequenceFeedbackChangeVersion;
-            if (progress == 0)
+            if (progress == 0 &&
+                !_config.KeyboardConfig.IsTwoHandCombinationMemorize &&
+                !_config.KeyboardConfig.IsGripTransformationPracticeExercise)
             {
                 await Task.Delay(800);
                 if (version != _sequenceFeedbackChangeVersion || !_isPageVisible)
@@ -1027,19 +1029,7 @@ namespace GestureSample.Views.Tests
 
             bool useCalmAttemptIndicator = UsesCalmAttemptIndicator();
             bool currentPressIsCorrect = IsCurrentKeyboardPressAlreadyCorrect();
-            if (useCalmAttemptIndicator && !currentPressIsCorrect && _pianoPressProgress.IsVisible)
-                _pianoPressProgress.IsVisible = false;
-
-            bool isFeedbackState = _currentUiState == PlayUiState.FeedbackCorrect ||
-                                   _currentUiState == PlayUiState.FeedbackWrong;
-            bool showTutorialStepCounter = !string.IsNullOrWhiteSpace(_tutorialStepCounterText);
-            if (useCalmAttemptIndicator)
-            {
-                _customProgressHost.IsVisible = currentPressIsCorrect &&
-                                                !isFeedbackState &&
-                                                !showTutorialStepCounter &&
-                                                (!_isArrowLabelRetryHelpVisible || IsActiveArrowKeyboardQuestion);
-            }
+            _customProgressHost.IsVisible = ShouldShowKeyboardProgress();
 
             double hostWidth = _customProgressHost.Width > 0
                 ? _customProgressHost.Width
@@ -1052,7 +1042,7 @@ namespace GestureSample.Views.Tests
 
             if (_calmAttemptIndicator != null && useCalmAttemptIndicator)
             {
-                bool showAttemptIndicator = progress > 0 &&
+                bool showAttemptIndicator = _pianoPressProgress.IsVisible && progress > 0 &&
                                             !currentPressIsCorrect &&
                                             _currentUiState is not PlayUiState.FeedbackCorrect and not PlayUiState.FeedbackWrong &&
                                             string.IsNullOrWhiteSpace(_tutorialStepCounterText);
@@ -1066,6 +1056,16 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private bool ShouldShowKeyboardProgress() =>
+            _pianoPressProgress?.IsVisible == true &&
+            _pianoPressProgress.Progress > 0 &&
+            (!UsesCalmAttemptIndicator() || IsCurrentKeyboardPressAlreadyCorrect()) &&
+            !ShouldUseInlineKeyboardCheckButton() &&
+            _currentUiState is not PlayUiState.FeedbackCorrect and not PlayUiState.FeedbackWrong &&
+            _sequenceFirstFeedbackProgress == 0 &&
+            string.IsNullOrWhiteSpace(_tutorialStepCounterText) &&
+            (!_isArrowLabelRetryHelpVisible || IsActiveArrowKeyboardQuestion);
+
         private void RefreshStatusActionSlot()
         {
             bool showTutorialStepCounter = !string.IsNullOrWhiteSpace(_tutorialStepCounterText);
@@ -1077,22 +1077,14 @@ namespace GestureSample.Views.Tests
                                              !isFeedbackState &&
                                              !showTutorialStepCounter;
             bool usesInlineCheck = ShouldUseInlineKeyboardCheckButton();
-            bool currentPressIsCorrect = IsCurrentKeyboardPressAlreadyCorrect();
             bool showInlineCheck = usesInlineCheck &&
                                    _btnKeyboardCheckInline != null &&
                                    _btnKeyboardCheckInline.IsVisible &&
                                    !isFeedbackState &&
                                    !showTutorialStepCounter;
-            bool showProgress = _pianoPressProgress != null &&
-                                (!UsesCalmAttemptIndicator() || currentPressIsCorrect) &&
-                                !usesInlineCheck &&
-                                !isFeedbackState &&
-                                !showSequenceFirstFeedback &&
-                                !showTutorialStepCounter &&
-                                (!_isArrowLabelRetryHelpVisible || IsActiveArrowKeyboardQuestion);
-
-            if (_pianoPressProgress != null)
-                _pianoPressProgress.IsVisible = showProgress;
+            // The keyboard timer owns IsVisible; refreshing layout must not start
+            // a progress display while the timer is idle or showing the initial grip.
+            bool showProgress = ShouldShowKeyboardProgress();
 
             if (_customProgressHost != null)
             {
@@ -2209,6 +2201,7 @@ namespace GestureSample.Views.Tests
                         {
                             if (_config.KeyboardOnly)
                             {
+                                _taskMainHost.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
                                 _taskMainHost.SetPrecisionPinchGuideVisible(
                                     _config.KeyboardConfig.IsPrecisionPinchExercise &&
@@ -2228,13 +2221,7 @@ namespace GestureSample.Views.Tests
                                         if (showFullSequence)
                                         {
                                             await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
-                                            if (_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
-                                            {
-                                                // The initial state is the prompt in this mode. Keep it
-                                                // visible and ask the learner to produce the target.
-                                                memorizeGamePlay.AdvanceSequenceMemorizeToLastResponse();
-                                            }
-                                            else
+                                            if (!_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
                                             {
                                                 if (memorizeGamePlay.ShouldAnimateTwoHandCombinationTransition())
                                                 {
@@ -2273,7 +2260,15 @@ namespace GestureSample.Views.Tests
                                             await Task.Delay(TimeSpan.FromSeconds(memorizeDelay));
                                         }
 
-                                        if (!_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
+                                        if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                                        {
+                                            if (_config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
+                                                await _taskMainHost.FadeStaticOverlayAlphaAsync(0.18f, 500u, "PersistentQuestionFade");
+                                            else
+                                                ShowDimmedStartingGrip(_taskMainHost, memorizeGamePlay);
+                                            memorizeGamePlay.AdvanceSequenceMemorizeToLastResponse();
+                                        }
+                                        else
                                             _taskMainHost.SetStaticBits(Array.Empty<bool>());
                                     }
                                     finally
@@ -2294,6 +2289,11 @@ namespace GestureSample.Views.Tests
                                 !deferPrecisionSignLearningTutorial)
                             {
                                 await RunRecordedKeyboardTutorialAsync(_taskMainHost);
+                            }
+                            if (_config.KeyboardOnly && !deferPrecisionSignLearningTutorial &&
+                                _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds <= 0)
+                            {
+                                await DimPersistentQuestionAsync(_taskMainHost);
                             }
                         }
                         }
@@ -2363,6 +2363,8 @@ namespace GestureSample.Views.Tests
                     // the tutorial's introductory pause and movement explanation.
                     await Task.Yield();
                     await RunRecordedKeyboardTutorialAsync(_taskMainHost);
+                    if (_config.KeyboardOnly)
+                        await DimPersistentQuestionAsync(_taskMainHost);
                 }
                 if (preparedAnswerKeyboardEarly &&
                     _isPageVisible &&
@@ -5153,6 +5155,20 @@ namespace GestureSample.Views.Tests
             }
         }
 
+        private static void ShowDimmedStartingGrip(KeyboardOverlayHost host, BitArrayGamePlay gamePlay)
+        {
+            // Restore only the faint reference, without replaying the initial state.
+            host.SetStaticOverlayAlpha(0.18f);
+            host.SetStaticBits(gamePlay.GetSequenceMemorizeFirstPreview());
+        }
+
+        private static async Task DimPersistentQuestionAsync(KeyboardOverlayHost host)
+        {
+            host.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
+            await Task.Delay(1000);
+            await host.FadeStaticOverlayAlphaAsync(0.18f, 500u, "PersistentQuestionFade");
+        }
+
         private async Task RunMemorizeHelpAsync(
             KeyboardOverlayHost host,
             BitArrayGamePlay gamePlay)
@@ -5172,6 +5188,15 @@ namespace GestureSample.Views.Tests
 
             try
             {
+                host.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
+                if (_config.KeyboardConfig.IsTwoHandCombinationMemorize &&
+                    _config.KeyboardConfig.AskOnlyTwoHandCombinationTarget)
+                {
+                    host.SetStaticBits(gamePlay.GetSequenceMemorizeFirstPreview());
+                    await Task.Delay(TimeSpan.FromSeconds(seconds));
+                    await host.FadeStaticOverlayAlphaAsync(0.18f, 500u, "PersistentQuestionFade");
+                    return;
+                }
                 if (_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
                 {
                     host.SetStaticBits(gamePlay.GetSequenceMemorizeFirstPreview());
@@ -5183,11 +5208,15 @@ namespace GestureSample.Views.Tests
                     host.SetStaticBits(gamePlay.GetTutorialQuestionBits());
                 }
                 await Task.Delay(TimeSpan.FromSeconds(seconds));
+                if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                {
+                    ShowDimmedStartingGrip(host, gamePlay);
+                }
             }
             finally
             {
                 host.SetStaticBits(
-                    _config.KeyboardConfig.AskOnlyTwoHandCombinationTarget
+                    _config.KeyboardConfig.IsTwoHandCombinationMemorize
                         ? gamePlay.GetSequenceMemorizeFirstPreview()
                         : Array.Empty<bool>());
                 if (useAndroidInputBlock)
@@ -7284,6 +7313,14 @@ namespace GestureSample.Views.Tests
                     // make sure rects are synced before animating
                     _taskMainHost.SyncOverlay();
 
+                    if (_config.KeyboardConfig.IsTwoHandCombinationMemorize &&
+                        _config.KeyboardConfig.AskOnlyTwoHandCombinationTarget &&
+                        _gamePlay is BitArrayGamePlay firstStateGamePlay)
+                    {
+                        await RunMemorizeHelpAsync(_taskMainHost, firstStateGamePlay);
+                        return;
+                    }
+
                     if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
                         _config.KeyboardConfig.AnimateTwoHandCombinations &&
                         _gamePlay is BitArrayGamePlay animatedGamePlay &&
@@ -7294,6 +7331,10 @@ namespace GestureSample.Views.Tests
                         SetKeyboardInteractionEnabled(false);
                         try
                         {
+                            _taskMainHost.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
+                            _taskMainHost.SetStaticBits(animatedGamePlay.GetSequenceMemorizeFirstPreview());
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Max(1,
+                                _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds)));
                             _taskMainHost.SetStaticBits(Array.Empty<bool>());
                             if (animatedGamePlay.ShouldUseTwoHandCombinationFlipAnimation())
                             {
@@ -7318,12 +7359,20 @@ namespace GestureSample.Views.Tests
                                     settleMs: 0);
                             }
                             _taskMainHost.SetStaticBits(animatedGamePlay.GetSequenceMemorizeSecondPreview());
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Max(1,
+                                _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds)));
+                            if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
+                            {
+                                ShowDimmedStartingGrip(_taskMainHost, animatedGamePlay);
+                            }
                         }
                         finally
                         {
                             _taskMainHost.ClearAnim();
                             _taskMainHost.SetStaticBits(
-                                animatedGamePlay.GetSequenceMemorizeSecondPreview());
+                                _config.KeyboardConfig.IsTwoHandCombinationMemorize
+                                    ? animatedGamePlay.GetSequenceMemorizeFirstPreview()
+                                    : animatedGamePlay.GetSequenceMemorizeSecondPreview());
                             _taskMainHost.SetTutorialMode(false);
                             if (_isPageVisible)
                             {

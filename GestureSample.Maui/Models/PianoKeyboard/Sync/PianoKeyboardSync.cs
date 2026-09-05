@@ -25,6 +25,13 @@ namespace GestureSample.Maui.Models
         private bool _isTickRunning;
         private DateTime? _lastCorrectSequenceFirstUtc;
         private string? _lastSequenceCueSignature;
+        private DateTime? _holdGestureStartedUtc;
+        private DateTime? _lastHoldHintUtc;
+        private bool[] _holdGestureBits = Array.Empty<bool>();
+        private bool _holdGestureWasCorrect;
+        private int _incorrectQuickTapCount;
+        public event Action<bool[], int>? HoldHintRequested;
+        public event Action? HoldHintCancelled;
 
         public PianoKeyboardSync(PPWGamePlay gamePlay, Label lblTimer, ProgressBar pressProgress, KeyboardConfig pianoConfig)
             : base(gamePlay, lblTimer, pianoConfig)
@@ -59,10 +66,16 @@ namespace GestureSample.Maui.Models
             return AnyPressed() && !IsGripPracticeStartingCopy();
         }
 
+        private bool UsesStartingGripCue =>
+            _pianoConfig.IsGripTransformationPracticeExercise ||
+            _pianoConfig.IsTwoHandCombinationMemorize;
+
         private bool IsGripPracticeStartingCopy() =>
-            _pianoConfig.IsGripTransformationPracticeExercise &&
+            UsesStartingGripCue &&
             _gamePlay is BitArrayGamePlay gripGame &&
-            ToBitArray().SequenceEqual(gripGame.BitArrayQuestion);
+            ToBitArray().SequenceEqual(_pianoConfig.IsTwoHandCombinationMemorize
+                ? gripGame.GetSequenceMemorizeFirstPreview()
+                : gripGame.BitArrayQuestion);
 
         protected void ResetProgressVisual()
         {
@@ -173,6 +186,7 @@ namespace GestureSample.Maui.Models
                 return;
 
             _isChecking = true;
+            CancelHoldHint();
             timer.Stop();
             IsEnabled = true;
             InputTransparent = true;
@@ -215,7 +229,7 @@ namespace GestureSample.Maui.Models
 
             // In target-only Stage 5.1 every non-empty grip is an attempt. Let the
             // timer communicate that immediately, even before the target is correct.
-            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+            if (_pianoConfig.IsTwoHandCombinationMemorize)
                 return 0;
 
             if (!IsReadySequenceFinalCandidate())
@@ -231,6 +245,8 @@ namespace GestureSample.Maui.Models
                 return;
             }
 
+            UpdateHoldHint(isDown);
+
             if (isDown)
             {
                 // A glide into a new key is timing-equivalent to a fresh key press.
@@ -241,7 +257,7 @@ namespace GestureSample.Maui.Models
             if (isDown && TryAcceptSequenceFirstWithoutSubmission())
                 return;
 
-            if (_pianoConfig.IsGripTransformationPracticeExercise)
+            if (UsesStartingGripCue)
             {
                 if (IsGripPracticeStartingCopy())
                 {
@@ -303,9 +319,60 @@ namespace GestureSample.Maui.Models
             return true;
         }
 
+        private void UpdateHoldHint(bool isDown)
+        {
+            // Toggle keyboards retain their answer on release; sequences have their
+            // own recognition cues. Neither should teach a sustained physical hold.
+            if (SECONDS_TO_ANSWER <= 0 || _pianoConfig.IsMulticolor ||
+                _pianoConfig.IsPrecisionPinchSequenceMemorize ||
+                this is PianoKeyboardTimedToggle || !_isLifecycleActive)
+                return;
+
+            DateTime now = DateTime.UtcNow;
+            if (isDown)
+            {
+                HoldHintCancelled?.Invoke();
+                _holdGestureStartedUtc ??= now;
+                _holdGestureBits = ToBitArray();
+                // Capture correctness before releasing keys clears the answer.
+                _holdGestureWasCorrect = _gamePlay.IsCloseEnough(this, allowedDifferences: 0);
+                return;
+            }
+
+            if (AnyPressed())
+                return;
+
+            DateTime? started = _holdGestureStartedUtc;
+            _holdGestureStartedUtc = null;
+            if (!started.HasValue || (now - started.Value).TotalMilliseconds > 450 ||
+                !_holdGestureBits.Any(bit => bit))
+                return;
+
+            if (_holdGestureWasCorrect)
+                _incorrectQuickTapCount = 0;
+            else if (++_incorrectQuickTapCount < 3)
+                return;
+
+            if (_lastHoldHintUtc.HasValue && (now - _lastHoldHintUtc.Value).TotalSeconds < 8)
+                return;
+
+            // This is guidance only: never evaluate or submit the released answer.
+            _lastHoldHintUtc = now;
+            _incorrectQuickTapCount = 0;
+            HoldHintRequested?.Invoke(_holdGestureBits, SECONDS_TO_ANSWER);
+        }
+
+        private void CancelHoldHint()
+        {
+            _holdGestureStartedUtc = null;
+            _holdGestureBits = Array.Empty<bool>();
+            _holdGestureWasCorrect = false;
+            HoldHintCancelled?.Invoke();
+        }
+
         protected override async Task<bool> OnBeforeKeyUpAsync()
         {
-            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+            if (_pianoConfig.IsTwoHandCombinationMemorize)
                 return false;
 
             if (!IsReadySequenceFinalCandidate())
@@ -326,7 +393,7 @@ namespace GestureSample.Maui.Models
 
         private bool TryShowIncorrectSequenceLastWithoutSubmission()
         {
-            if (_pianoConfig.AskOnlyTwoHandCombinationTarget)
+            if (_pianoConfig.IsTwoHandCombinationMemorize)
                 return false;
 
             if (!IsReadySequenceFinalCandidate() ||
@@ -420,7 +487,7 @@ namespace GestureSample.Maui.Models
         private bool CanSubmitCurrentSequenceState()
         {
             return !_pianoConfig.IsPrecisionPinchSequenceMemorize ||
-                   _pianoConfig.AskOnlyTwoHandCombinationTarget ||
+                   _pianoConfig.IsTwoHandCombinationMemorize ||
                    IsReadySequenceFinalCandidate();
         }
 
@@ -441,6 +508,7 @@ namespace GestureSample.Maui.Models
 
         public void SetLifecycleActive(bool active)
         {
+            CancelHoldHint();
             _isLifecycleActive = active;
             if (!active)
             {
@@ -464,7 +532,7 @@ namespace GestureSample.Maui.Models
                 return;
 
             _isChecking = false;
-            if (_pianoConfig.AskOnlyTwoHandCombinationTarget && IsWaitingForSequenceLast())
+            if (_pianoConfig.IsTwoHandCombinationMemorize && IsWaitingForSequenceLast())
                 _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
             InputTransparent = false;
             if (timer != null && !timer.IsRunning)
@@ -479,6 +547,9 @@ namespace GestureSample.Maui.Models
 
         private void ResetSyncState()
         {
+            CancelHoldHint();
+            _incorrectQuickTapCount = 0;
+            _lastHoldHintUtc = null;
             _seconds_pressed = 0;
             _pressStartUtc = null;
             _lastSequenceCueSignature = null;
