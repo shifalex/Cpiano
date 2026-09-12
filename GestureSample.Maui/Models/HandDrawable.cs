@@ -12,6 +12,9 @@ namespace GestureSample.Maui.Models
         // Position is the top-left offset applied to the whole hand drawing.
         public PointF Position { get; set; } = new PointF(0, 0);
 
+        public float DesiredWidth { get; set; }
+        public float DesiredHeight { get; set; }
+
         // Opacity from 0 (invisible) to 1 (opaque).
         public float Opacity { get; set; } = 1f;
 
@@ -39,8 +42,8 @@ namespace GestureSample.Maui.Models
             canvas.FillColor = fillColor;
 
             // Calculate scaling factors relative to the available dirty rect
-            float handWidth = dirtyRect.Width * 0.7f;
-            float handHeight = dirtyRect.Height * 0.7f;
+            float handWidth = DesiredWidth > 0 ? DesiredWidth : dirtyRect.Width * 0.7f;
+            float handHeight = DesiredHeight > 0 ? DesiredHeight : dirtyRect.Height * 0.7f;
             float fingerWidth = handWidth / 5;
             float fingerHeight = handHeight * 0.6f;
             float thumbHeight = handHeight * 0.3f;

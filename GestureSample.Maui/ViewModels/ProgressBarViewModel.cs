@@ -3,10 +3,14 @@
     public class ProgressBarViewModel : ThreeDoublesViewModel
     {
         private int progress = 0;
+        private void StartProgressTimer()
+        {
+            Application.Current?.Dispatcher.StartTimer(TimeSpan.FromMilliseconds(200), onTimer);
+        }
 
         public ProgressBarViewModel()
         {
-            Device.StartTimer(TimeSpan.FromMilliseconds(200), onTimer);
+            StartProgressTimer();
         }
 
         private bool onTimer()
@@ -36,7 +40,7 @@
             {
                 progress = 0;
                 AddText("Starting ProgressBars again.");
-                Device.StartTimer(TimeSpan.FromMilliseconds(200), onTimer);
+                StartProgressTimer();
             }
         }
     }

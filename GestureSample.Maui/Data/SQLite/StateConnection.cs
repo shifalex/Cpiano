@@ -22,7 +22,7 @@ namespace GestureSample.Maui.Data.SQLite
         private StateConnection()
         {
             Console.WriteLine("Creating Database");
-            InitializeDatabase().Wait();
+            InitializeDatabase().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         private async Task InitializeDatabase()
@@ -35,11 +35,57 @@ namespace GestureSample.Maui.Data.SQLite
             Database = new SQLiteAsyncConnection(_dbPath);
             Console.WriteLine($"Database created successfully");
 
-            await CreateTableAsync<QuestionAnswer>();
-            await CreateTableAsync<KeyboardQuestion>();
-            await CreateTableAsync<Game>();
-            await CreateTableAsync<KeyEvent>();
-            await CreateTableAsync<User>();
+            await CreateTableAsync<QuestionAnswer>().ConfigureAwait(false);
+            await CreateTableAsync<QuestionAnswerPart>().ConfigureAwait(false);
+            await CreateTableAsync<KeyboardQuestion>().ConfigureAwait(false);
+            await CreateTableAsync<Game>().ConfigureAwait(false);
+            await CreateTableAsync<KeyEvent>().ConfigureAwait(false);
+            await CreateTableAsync<TimerChangeEvent>().ConfigureAwait(false);
+            await CreateTableAsync<VisibilityChangeEvent>().ConfigureAwait(false);
+            await CreateTableAsync<CustomStageDefinition>().ConfigureAwait(false);
+            await CreateTableAsync<CustomStageFlowDefinition>().ConfigureAwait(false);
+            await CreateTableAsync<User>().ConfigureAwait(false);
+            await EnsureColumnAsync("Game", "WasSynced", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondarySum", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2", "INTEGER NOT NULL DEFAULT -1111").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondarySumEnabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend1Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswer", "SecondaryAddend2Enabled", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "PartKind", "TEXT NOT NULL DEFAULT 'Visible'").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "EntryName", "TEXT NOT NULL DEFAULT ''").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "IsCorrect", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("QuestionAnswerPart", "RecordedAt", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedTime", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "MoveByLength", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "MoveByDirectionJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardRows", "INTEGER NOT NULL DEFAULT 1").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardKeysInRow", "INTEGER NOT NULL DEFAULT 10").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "WasTutorialUsed", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "WasHeaderResultToggleUsed", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyDownCount", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "DistinctKeyCount", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "PressClusterCount", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "LargestPressClusterSize", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "MaxInterKeyGapMs", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "AverageInterKeyGapMs", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "FirstKeyToSubmitMs", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "LastKeyToSubmitMs", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "PressPatternKind", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "ShowNumbersOnKeys", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionPromptText", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "KeyboardWeightsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "InitialKeyboardStateJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionKeyboardColorsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionKeyboardColorsJson2", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardColorsJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "InitialKeyboardColorsJson", "TEXT").ConfigureAwait(false);
             Console.WriteLine($"Tables created successfully");
             //await MigrateAndResetWasSyncedAsync();
         }
@@ -49,7 +95,7 @@ namespace GestureSample.Maui.Data.SQLite
             try
             {
                 //_database.DropTableAsync<QuestionAnswer>().Wait();
-                Database.CreateTableAsync<T>().Wait();
+                await Database.CreateTableAsync<T>().ConfigureAwait(false);
                 Console.WriteLine($"Table '{typeof(T).Name}' created successfully.");
             }
             catch (Exception ex)
@@ -62,6 +108,23 @@ namespace GestureSample.Maui.Data.SQLite
                 // Database.CreateTableAsync<T>().Wait();
                 //Console.WriteLine($"Table '{typeof(T).Name}' created successfully.");
                 Console.WriteLine($"table {typeof(T).Name} initialization failed: {ex.Message}");
+            }
+        }
+
+        private async Task EnsureColumnAsync(string tableName, string columnName, string columnDefinition)
+        {
+            try
+            {
+                List<ColumnInfo> columns = await Database.GetTableInfoAsync(tableName).ConfigureAwait(false);
+                if (columns.Any(column => column.Name.Equals(columnName, StringComparison.OrdinalIgnoreCase)))
+                    return;
+
+                await Database.ExecuteAsync($"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};").ConfigureAwait(false);
+                Console.WriteLine($"Column '{columnName}' added to '{tableName}'.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Column '{columnName}' on '{tableName}' initialization failed: {ex.Message}");
             }
         }
 
@@ -78,19 +141,12 @@ namespace GestureSample.Maui.Data.SQLite
                 //bool columnExists = columns.Any(c => c.Name.Equals("WasSynced", StringComparison.InvariantCultureIgnoreCase));
                 Console.WriteLine("Column 'WasSynced' adding... 3");
 
-                if (true/*!columnExists*/)
-                {
-                    // Add the column since it doesn't exist.
-                    await connection.ExecuteAsync("ALTER TABLE Game ADD COLUMN WasSynced BOOLEAN NOT NULL DEFAULT 0;");
-                    Console.WriteLine("Column 'WasSynced' added successfully.");
+                // Add the column since it doesn't exist.
+                await connection.ExecuteAsync("ALTER TABLE Game ADD COLUMN WasSynced BOOLEAN NOT NULL DEFAULT 0;");
+                Console.WriteLine("Column 'WasSynced' added successfully.");
                 // Update all rows so that WasSynced is false (0)
                 await connection.ExecuteAsync("UPDATE Game SET WasSynced = 0;");
                 Console.WriteLine("Updated all 'Game' records: WasSynced set to false (0).");
-                }
-                else
-                {
-                    Console.WriteLine("Column 'WasSynced' already exists.");
-                }
 
             }
             catch (Exception ex)

@@ -1,0 +1,15 @@
+canvas.FillColor = Colors.SandyBrown.WithAlpha(0.9f);
+canvas.StrokeColor = Colors.Black;
+canvas.StrokeSize = 3;
+
+var body = new RectF(20, 25, 90, 55);
+canvas.FillRoundedRectangle(body, 12);
+canvas.DrawRoundedRectangle(body, 12);
+
+PathF pointer = new();
+pointer.MoveTo(65, 95);
+pointer.LineTo(85, 125);
+pointer.LineTo(45, 125);
+pointer.Close();
+canvas.FillPath(pointer);
+canvas.DrawPath(pointer);

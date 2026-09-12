@@ -10,14 +10,24 @@ namespace GestureSample.Maui.Views
 
     public partial class CreateUserPage : ContentPage
     {
+        private sealed class NumericInputOption
+        {
+            public string Label { get; init; } = string.Empty;
+            public NumericInputMode Value { get; init; }
+            public override string ToString() => Label;
+        }
+
         private readonly UserRepository _userRepo;
+        private readonly UserPreferenceService _userPreferenceService;
         private readonly bool _firstUser;
 
         public CreateUserPage(bool firstUser = false)
         {
             InitializeComponent();
             _userRepo = ServiceHelper.GetService<UserRepository>();
+            _userPreferenceService = ServiceHelper.GetService<UserPreferenceService>();
             _firstUser = firstUser;
+            ConfigureNumericInputPicker();
         }
 
         private async void OnCreateButtonClicked(object sender, EventArgs e)
@@ -40,6 +50,8 @@ namespace GestureSample.Maui.Views
             };
 
             await _userRepo.SaveAsync(newUser);
+            NumericInputMode preferredMode = GetSelectedNumericInputMode();
+            _userPreferenceService.SetPreferredNumericInputMode(newUser.Id, preferredMode);
             var currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
 
             if (_firstUser)
@@ -58,6 +70,24 @@ namespace GestureSample.Maui.Views
                 // If not first user, just go back to whoever called this page (e.g. SwitchUserPage)
                 await Navigation.PopAsync();
             }
+        }
+
+        private void ConfigureNumericInputPicker()
+        {
+            NumericInputPicker.ItemsSource = new[]
+            {
+                new NumericInputOption { Label = "Stage default", Value = NumericInputMode.Auto },
+                new NumericInputOption { Label = "App keypad", Value = NumericInputMode.AppKeypad },
+                new NumericInputOption { Label = "System keyboard", Value = NumericInputMode.SystemKeyboard }
+            };
+            NumericInputPicker.SelectedIndex = 0;
+        }
+
+        private NumericInputMode GetSelectedNumericInputMode()
+        {
+            return NumericInputPicker.SelectedItem is NumericInputOption option
+                ? option.Value
+                : NumericInputMode.Auto;
         }
     }
 }

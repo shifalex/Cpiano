@@ -1,11 +1,6 @@
 ﻿using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
 using GestureSample.Maui.Handlers;
-using GestureSample.Views;
-using GestureSample.Maui.Views;
-using GestureSample.Views.Tests;
-using Microsoft.Maui.Controls;
-using static SQLite.SQLite3;
 
 namespace GestureSample.Maui.Models
 {
@@ -24,7 +19,7 @@ namespace GestureSample.Maui.Models
 
         public int _questionNumber = 0;
         protected int _questionsWrong = 0;
-        private bool _lastQuestionWrong = false;
+        protected bool _lastQuestionWrong = false;
 
         protected Data.SQLite.Game _gameData;
         public virtual int Sum { get; set; }
@@ -40,17 +35,50 @@ namespace GestureSample.Maui.Models
         public bool IsFirstGuess { get; set; } = true;
 
         protected int _currentTriadIndex = 0;
+        protected int? _dynamicKeyboardWeightValue;
+        protected int? _dynamicKeyboardExpectedPressCount;
+        protected readonly HashSet<int> _weightedCustomReachableSums = new();
+        protected readonly HashSet<int> _weightedCustomImpossibleSums = new();
+        protected bool _currentWeightedTargetRequiresImpossibleAnswer;
+        private string? _weightedTargetPoolCacheKey;
+
+        public PPWObject GenerateSecondaryTriad(int sum, int? addend1Min=null, int? addend1Max = null)
+        {
+            List<PPWObject> possibleSums = PossibleTriads.Where(t => t.Sum == sum).ToList();
+            if(addend1Min.HasValue && addend1Max.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 >= addend1Min.Value && t.Addend1<= addend1Max.Value).ToList();
+            else if (addend1Min.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 >= addend1Min.Value).ToList();
+            else if (addend1Max.HasValue)
+                possibleSums = possibleSums.Where(t => t.Addend1 <= addend1Max.Value).ToList();
+            if (possibleSums.Count > 0)
+            {
+                Random r = new();
+                int index = r.Next(possibleSums.Count);
+                return possibleSums[index];
+            }
+            return null;
+        }
+
+        public PPWObject GenerateTriadBySum(int sum, int? addend1Min = null, int? addend1Max = null)
+        {
+            Random r = new();
+            int addend1 = addend1Min.HasValue && addend1Max.HasValue? r.Next((int)addend1Min,(int)addend1Max+1) :r.Next(1,sum);
+            return new PPWObject(addend1, sum - addend1, sum);
+
+        }
 
         public int _tasksMade = 0;
         public int _losesMade = 0;
         public DateTime StartTime = DateTime.Now;
 
-        protected readonly SimpleViewCellsPage _view;
-
         public GameConfig Config;
 
         private readonly GameRepository _gameRepository;
         private readonly QuestionAnswerRepository _questionAnswerRepository;
+        private readonly KeyboardQuestionRepository _keyboardQuestionRepository;
+        private readonly KeyEventRepository _keyEventRepository;
+        private bool _gameInitialized = false;
 
         // plan runtime
         private int _planStepIndex = 0;
@@ -60,9 +88,7 @@ namespace GestureSample.Maui.Models
 
         // snapshot of last question (PPW form)
         private (int a1, int a2, int s, Operation op, VariableTypes vt)? _prevPPWQuestion;
-        private (int a1, int a2, int s)? _prevPPWAnswer; // if you ever want it
-
-
+        private PPWObject? _prevResolvedTriad;
         protected ExercisePlanStep? CurrentPlanStep
         {
             get
@@ -111,13 +137,15 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        public PPWGamePlay(SimpleViewCellsPage view, GameConfig config)
+        public PPWGamePlay(GameConfig config)
         {
 
             _gameRepository = ServiceHelper.GetService<GameRepository>();
             _questionAnswerRepository = ServiceHelper.GetService<QuestionAnswerRepository>();
-            _view = view; Config = config;
-            CurrentOperation = Config.OperationList[0];
+            _keyboardQuestionRepository = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            _keyEventRepository = ServiceHelper.GetService<KeyEventRepository>();
+            Config = config;
+            CurrentOperation = Config.OperationList.Count > 0 ? Config.OperationList[0] : Operation.Sum;
 
              _gameData = new()
              {
@@ -125,18 +153,38 @@ namespace GestureSample.Maui.Models
                  Id = GameId,
                  GameName = config.GameName,
                  Config = config
-             };
-            _gameRepository.SaveAsync(_gameData);
+            };
+            _planSeed = Config?.Plan?.Seed ?? Environment.TickCount;
+            _planRandom = new Random(_planSeed);
 
 
+            if (!UsesWeightedKeyboardTargetGeneration())
+                GeneratePossibleTriadsSet();
 
-            GeneratePossibleTriadsSet();
+            EnsureWeightedTargetPools();
 
 
             //SaveState();
         }
-        protected async Task SaveState(int resultStatus =-1)
+
+        protected async Task EnsureGameInitializedAsync()
         {
+            if (_gameInitialized)
+                return;
+
+            await _gameRepository.SaveAsync(_gameData);
+            _gameInitialized = true;
+        }
+
+        protected async Task SaveState(int resultStatus =-1, bool syncAfterSave = true)
+        {
+            await EnsureGameInitializedAsync();
+            await MarkGameAsDirtyAsync();
+
+            int persistedAddend1 = GetPersistedQuestionAnswerAddend1();
+            int persistedAddend2 = GetPersistedQuestionAnswerAddend2();
+            int persistedSum = GetPersistedQuestionAnswerSum();
+            Operation persistedOperation = GetPersistedQuestionAnswerOperation();
 
             QuestionAnswer s = new()
             {
@@ -144,121 +192,368 @@ namespace GestureSample.Maui.Models
                 GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
-                Op = CurrentOperation,
-                Addend1 = this.addend1,
-                Addend2 = this.addend2,
-                Sum = this.Sum, //TODO:make more elegant
+                Op = persistedOperation,
+                Addend1 = persistedAddend1,
+                Addend2 = persistedAddend2,
+                Sum = persistedSum,
                 ResultStatus = resultStatus
             };
             await _questionAnswerRepository.SaveAsync(s);
             qaState = s ;
+            if (syncAfterSave)
+                await TrySyncSupabaseStateAsync();
     }
+
+        protected virtual int GetPersistedQuestionAnswerAddend1() => addend1;
+
+        protected virtual int GetPersistedQuestionAnswerAddend2() => addend2;
+
+        protected virtual int GetPersistedQuestionAnswerSum() => Sum;
+
+        protected virtual Operation GetPersistedQuestionAnswerOperation() => CurrentOperation;
+
+        protected async Task MarkGameAsDirtyAsync()
+        {
+            _gameData.WasSynced = false;
+            await _gameRepository.UpdateAsync(_gameData);
+        }
+
+        protected async Task TrySyncSupabaseStateAsync()
+        {
+            try
+            {
+                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                if (activeUser == null)
+                    return;
+
+                await GestureSample.Maui.Data.SupaBase.SupabaseService.SyncUnsyncedGamesAndRelatedDataAsync(activeUser);
+                _gameData.WasSynced = true;
+                await _gameRepository.UpdateAsync(_gameData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Supabase sync skipped: {ex.Message}");
+            }
+        }
 
     private bool IsCorrectInput()
         {
-            int minAddend2 = Config.MinAddend2 == NAN ? Config.MinAddend : Config.MinAddend2;
-            int maxAddend2 = Config.MaxAddend2 == NAN ? Config.MaxAddend : Config.MaxAddend2;
+            // Distorted repeat questions deliberately show an equivalent triad
+            // whose visible operands may sit just outside the generation bounds.
+            // NAN still means that the learner left a required value unresolved.
+            if (Config.UseDistortedVariantInRepeatSequence)
+                return addend1 != NAN && addend2 != NAN && Sum != NAN;
+
+            int minAddend2 = Config.EffectiveMinAddend2;
+            int maxAddend2 = Config.EffectiveMaxAddend2;
             if (addend1 > Config.MaxAddend || addend1 < Config.MinAddend || addend2 > maxAddend2 || addend2 < minAddend2 || Sum > Config.MaxSum || Sum < Config.MinSum)
                 return false;
             return true;
         }
 
-
-
-        public virtual async Task<bool> CheckAsync()
+        protected void BeginExercise()
         {
-            if (!IsCorrectInput())
+            _status = Statement.Neutral;
+            _guessNumber = 0;
+            _questionNumber++;
+        }
+
+        public void ResetStatusToNeutral()
+        {
+            _status = Statement.Neutral;
+        }
+
+        protected void IncrementGuessNumber()
+        {
+            _guessNumber++;
+        }
+
+        protected virtual ExerciseGenerationResult CreateGeneratedExerciseResult()
+        {
+            return new ExerciseGenerationResult
+            {
+                ActionText = CurrentOperation.ToDString()
+            };
+        }
+
+        protected virtual async Task PersistGeneratedExerciseAsync()
+        {
+            await SaveState(syncAfterSave: false);
+
+            if (ShouldPersistKeyboardQuestion())
+                await SaveKeyboardQuestionToDbAsync();
+        }
+
+        public virtual Color[]? GetInitialKeyboardColors()
+        {
+            if (Config?.KeyboardConfig == null)
+                return null;
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            Color[] keyboardColors = Enumerable.Repeat(Colors.White, keyCount).ToArray();
+
+            switch (Config.KeyboardConfig.PpwKeyboardSeedMode)
+            {
+                case PpwKeyboardSeedMode.VisiblePartPressed:
+                    FillColorRange(keyboardColors, GetVisibleKnownAddendValue(), Colors.Yellow);
+                    return keyboardColors;
+
+                case PpwKeyboardSeedMode.WholePressed:
+                    FillColorRange(keyboardColors, Sum == NAN ? 0 : Sum, Colors.Yellow);
+                    return keyboardColors;
+
+                case PpwKeyboardSeedMode.VisiblePartsColored:
+                    if (addend1 != NAN)
+                        FillColorRange(keyboardColors, addend1, Colors.Yellow);
+                    if (addend2 != NAN)
+                        FillColorRange(keyboardColors, addend2, Colors.LightGreen, addend1 == NAN ? 0 : addend1);
+                    return keyboardColors;
+
+                default:
+                    return null;
+            }
+        }
+
+        public virtual bool[]? GetInitialKeyboardState()
+        {
+            Color[]? initialColors = GetInitialKeyboardColors();
+            if (initialColors == null || initialColors.Length == 0)
+                return null;
+
+            bool[] state = new bool[initialColors.Length];
+            for (int i = 0; i < initialColors.Length; i++)
+                state[i] = initialColors[i] != Colors.White && initialColors[i] != Colors.Transparent;
+
+            return state.Any(bit => bit) ? state : null;
+        }
+
+        public virtual Color[]? GetQuestionKeyboardColors()
+        {
+            return null;
+        }
+
+        public virtual Color[]? GetSecondQuestionKeyboardColors()
+        {
+            return null;
+        }
+
+        public virtual string? GetKeyboardQuestionPromptText()
+        {
+            if (Config?.UIQuestionType == UIQuestionType.OneText)
+            {
+                if (Sum != NAN)
+                    return Sum.ToString();
+                if (addend1 != NAN)
+                    return addend1.ToString();
+                if (addend2 != NAN)
+                    return addend2.ToString();
+            }
+
+            if (addend1 != NAN || addend2 != NAN || Sum != NAN)
+            {
+                string left = addend1 == NAN ? "?" : addend1.ToString();
+                string right = addend2 == NAN ? "?" : addend2.ToString();
+                string total = Sum == NAN ? "?" : Sum.ToString();
+                string op = CurrentOperation.ToDString();
+                return $"{left} {op} {right} = {total}";
+            }
+
+            return null;
+        }
+
+        protected virtual bool ShouldPersistKeyboardQuestion()
+        {
+            return Config?.KeyboardConfig != null &&
+                   !Config.KeyboardConfig.KeyboardOnlyForHelp;
+        }
+
+        protected virtual async Task SaveKeyboardQuestionToDbAsync()
+        {
+            if (_keyboardQuestionRepository == null || Config?.KeyboardConfig == null)
+                return;
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            var question = new Data.SQLite.KeyboardQuestion
+            {
+                GameId = GameId.ToString(),
+                QuestionNumber = _questionNumber,
+                Time = DateTime.Now,
+                Op = CurrentOperation,
+                KeyboardRows = Math.Max(1, Config.KeyboardConfig.Rows),
+                KeyboardKeysInRow = Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : keyCount,
+                ShowNumbersOnKeys = Config.KeyboardConfig.ShowNumbersOnKeys,
+                KeyboardWeights = Config.KeyboardConfig.WeightsArray?.ToArray(),
+                InitialKeyboardState = GetInitialKeyboardState(),
+                InitialKeyboardColors = GetInitialKeyboardColors(),
+                QuestionKeyboardColors = GetQuestionKeyboardColors(),
+                QuestionKeyboardColors2 = GetSecondQuestionKeyboardColors(),
+                QuestionPromptText = GetKeyboardQuestionPromptText()
+            };
+
+            await _keyboardQuestionRepository.SaveAsync(question);
+        }
+
+        private static void FillColorRange(Color[] keyboardColors, int count, Color color, int startIndex = 0)
+        {
+            int safeStart = Math.Max(0, startIndex);
+            int safeEnd = Math.Min(keyboardColors.Length, safeStart + Math.Max(0, count));
+
+            for (int i = safeStart; i < safeEnd; i++)
+            {
+                keyboardColors[i] = color;
+            }
+        }
+
+        protected ExerciseCheckResult CreateCheckResult(bool isCorrect, bool isWrongInput = false, GameCompletionResult? completion = null, bool refreshCurrentQuestion = false)
+        {
+            return new ExerciseCheckResult
+            {
+                IsCorrect = isCorrect,
+                IsWrongInput = isWrongInput,
+                Status = _status,
+                Completion = completion,
+                RefreshCurrentQuestion = refreshCurrentQuestion
+            };
+        }
+
+        protected async Task<GameCompletionResult?> RegisterSuccessfulAttemptAsync(int resultStatus = 1, Func<Task>? onSuccess = null)
+        {
+            _tasksMade++;
+            await SaveState(resultStatus, syncAfterSave: false);
+            _lastQuestionWrong = false;
+
+            if (onSuccess != null)
+                await onSuccess();
+
+            return await PersistGameProgressAsync();
+        }
+
+        protected async Task<GameCompletionResult?> RegisterFailedAttemptAsync(int resultStatus = 0, Func<Task>? onFailure = null)
+        {
+            _losesMade++;
+            await SaveState(resultStatus, syncAfterSave: false);
+            if (!_lastQuestionWrong)
+            {
+                _questionsWrong++;
+                _lastQuestionWrong = true;
+            }
+
+            if (onFailure != null)
+                await onFailure();
+
+            return await PersistGameProgressAsync();
+        }
+
+        protected async Task<GameCompletionResult?> PersistGameProgressAsync()
+        {
+            await EnsureGameInitializedAsync();
+
+            bool isWin = Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0);
+            bool isLose = Config.NumberOfMistakesToLose == _losesMade;
+            bool isGameOver = isWin || isLose;
+
+            if (isGameOver)
+            {
+                _gameData.FinalStatus = isWin ? 1 : 0;
+                _gameData.TimeEnd = DateTime.Now;
+                _gameData.Wins = _questionNumber;
+                _gameData.Losses = _questionsWrong;
+                GameOver = true;
+                await _gameRepository.UpdateAsync(_gameData);
+
+                CurrentUserSession? currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+                BackgroundSyncService? backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+                backgroundSyncService?.TryStartSync(currentUserSession?.ActiveUser);
+
+                return new GameCompletionResult
+                {
+                    GameId = GameId,
+                    IsWin = isWin,
+                    Duration = DateTime.Now.Subtract(StartTime)
+                };
+            }
+
+            _gameData.TimeEnd = DateTime.Now;
+            _gameData.Wins = _tasksMade;
+            _gameData.Losses = _losesMade;
+            await _gameRepository.UpdateAsync(_gameData);
+            return null;
+        }
+
+
+
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync()
+        {
+            bool isCorrectEquation = CurrentOperation switch
+            {
+                Operation.Multiplication => addend1 * addend2 == Sum,
+                Operation.Sum => addend1 + addend2 == Sum,
+                Operation.Minus => Sum - addend1 == addend2,
+                _ => true
+            };
+
+            // A mathematically correct completed equation is valid even when a
+            // stage's generation bounds are narrower than a displayed variant.
+            // Bounds distinguish malformed wrong answers; they must not turn a
+            // correct answer into WRONG INPUT.
+            if (!isCorrectEquation && !IsCorrectInput())
             {
                 _status = Statement.WrongInput;
-                addend1 = oldA1; addend2 = oldA2; Sum = oldS;
-                await _view.UpdateView();
-                return false;
+                addend1 = oldA1;
+                addend2 = oldA2;
+                Sum = oldS;
+                return CreateCheckResult(isCorrect: false, isWrongInput: true);
             }
-            else
-            {
-                _guessNumber++;
-                _status = CurrentOperation switch
-                {
-                    Operation.Multiplication => (addend1 * addend2 == Sum) ? Statement.True : Statement.False,
-                    //GameType.Logic => Statement.True,
-                    Operation.Sum => (addend1 + addend2 == Sum) ? Statement.True : Statement.False,
-                    _ => Statement.True
-                };
-                if (Config.IsHistory && _status == Statement.True &&
-                    (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
-                    (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any())))
-                    _status = Statement.New;
 
-                if (_status == Statement.True)
+            IncrementGuessNumber();
+            _status = isCorrectEquation ? Statement.True : Statement.False;
+
+            if (Config.IsHistory && _status == Statement.True &&
+                (AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend1).Any() ||
+                (Config.IsHistorySymetrical && AllHistory.Where(item => item.Sum == Sum && item.Addend1 == addend2).Any())))
+            {
+                _status = Statement.New;
+            }
+
+            GameCompletionResult? completion = null;
+            if (_status == Statement.True)
+            {
+                completion = await RegisterSuccessfulAttemptAsync(onSuccess: async () =>
                 {
-                    _tasksMade++;
-                    await SaveState(1);
-                    _lastQuestionWrong = false;
                     if (Config.IsHistory)
                     {
                         RemoveItemToHistory(addend1, addend2, Sum);
                     }
 
-                }
-                if (_status == Statement.False || _status == Statement.New)
-                {
-                    _losesMade++;
-                    await SaveState(_status == Statement.New ? 2 : 0);
-                    if (!_lastQuestionWrong)
-                    {
-                        _questionsWrong++;
-                        _lastQuestionWrong = true;
-                    }
-                    addend1 = oldA1; addend2 = oldA2; Sum = oldS;
-                }
-                if (Config.NumberOfTasksToWin == _tasksMade || Config.NumberOfMistakesToLose == _losesMade || (Config.IsHistory && PossibleTriads.Count == 0))
-                {
-                    _gameData.FinalStatus = (Config.NumberOfTasksToWin == _tasksMade || (Config.IsHistory && PossibleTriads.Count == 0)) ? 1 : 0;
-                    _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _questionNumber;
-                    _gameData.Losses = _questionsWrong;
-                    GameOver = true;
-                    /*    if (PossibleTriads.Count == 0)
-                    {
-                    _status = Statement.Win2(DateTime.Now.Subtract(StartTime)); ;
-                        GeneratePossibleTriadsSet();
-                        AllHistory.Clear(); Config.VariableTypes = (Config.VariableTypes == VariableTypes.OneNoSum) ? VariableTypes.TwoNoSum : VariableTypes.OneNoSum;
-                        StartTime = DateTime.Now;
-                    
-                    }*/
-                    await _gameRepository.UpdateAsync(_gameData);
-
-                    var winLoseTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                    {
-                        if (_gameData.FinalStatus == 0)
-                            await Statement.Lose();
-                        else
-                            await Statement.Win(DateTime.Now.Subtract(StartTime));
-                    });
-
-                    var navigationTask = MainThread.InvokeOnMainThreadAsync(async () =>
-                    {
-                        Console.WriteLine("trying to move to ShowDataXaml");
-                        var newMainPage = new NavigationPage(new MainPage("Control Categories", null));
-                        Application.Current.MainPage = newMainPage;
-                        await newMainPage.Navigation.PushAsync(new ShowDataXaml(false, GameId));
-                    });
-
-                    // Start both concurrently and await both to finish
-                    await Task.WhenAll(winLoseTask, navigationTask);
-                }
-                else
-                {
-                    _gameData.TimeEnd = DateTime.Now;
-                    _gameData.Wins = _tasksMade;
-                    _gameData.Losses = _losesMade;
-                    //_gameData.FinalTime = (TimeSpan)(DateTime.Now - _gameData.TimeStart);
-                    await _gameRepository.UpdateAsync(_gameData);
-                    await _view.UpdateView();
-                }
-                return _status == Statement.True;
+                    await Task.CompletedTask;
+                });
             }
 
+            if (_status == Statement.False || _status == Statement.New)
+            {
+                completion = await RegisterFailedAttemptAsync(_status == Statement.New ? 2 : 0, onFailure: async () =>
+                {
+                    addend1 = oldA1;
+                    addend2 = oldA2;
+                    Sum = oldS;
+                    await Task.CompletedTask;
+                });
+            }
+
+            return CreateCheckResult(isCorrect: _status == Statement.True, completion: completion);
+        }
+
+        public virtual async Task<bool> CheckAsync()
+        {
+            return (await EvaluateAsync()).IsCorrect;
         }
 
         public virtual bool IsCloseEnough(PianoKeyboard keyboard, int allowedDifferences = 1)
@@ -287,35 +582,410 @@ namespace GestureSample.Maui.Models
         }
 
         int oldA1, oldA2, oldS;
-        public virtual async Task<bool> Check(int a1, int a2, int s)
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync(int a1, int a2, int s)
         {
             oldA1 = addend1; oldA2 = addend2; oldS = Sum;
             if(addend1 == NAN) addend1 = a1; 
             if(addend2 == NAN) addend2 = a2;
             if (Sum == NAN) Sum = s;
-            bool result = await CheckAsync();
-            return result;
+            return await EvaluateAsync();
         }
 
-        public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        public virtual async Task<bool> Check(int a1, int a2, int s)
         {
+            return (await EvaluateAsync(a1, a2, s)).IsCorrect;
+        }
+
+        public virtual async Task<ExerciseCheckResult> EvaluateAsync(PianoKeyboard pianoKeyboard)
+        {
+            if (UsesSeededPpwKeyboardStage())
+            {
+                return await EvaluateSeededPpwKeyboardStageAsync(pianoKeyboard);
+            }
+
+            if (UsesDynamicKeyboardMultiplication())
+            {
+                return await EvaluateDynamicKeyboardMultiplicationAsync(pianoKeyboard);
+            }
+
+            if (UsesWeightedSingleTargetKeyboardStage())
+            {
+                return await EvaluateWeightedSingleTargetKeyboardStageAsync(pianoKeyboard);
+            }
+
+            if (UsesWeightedCustomStageTargets())
+            {
+                return await EvaluateWeightedCustomStageAsync(pianoKeyboard);
+            }
+
             int keyboardSum = Sum;
             if (Sum == NAN && (pianoKeyboard.Addend1>=0 && pianoKeyboard.Addend2>=0)) {
                if( pianoKeyboard.Addend1 == addend1 && pianoKeyboard.Addend2 == addend2)
                  keyboardSum = pianoKeyboard.Sum; //if the sum is not set, it is set to the sum of addends
                 else
-                    keyboardSum = pianoKeyboard.Sum == Config.MinSum ? ++Config.MinSum : Config.MinSum;
+                    keyboardSum = GetAlternateValidSum(pianoKeyboard.Sum);
             }
-            bool b = await Check(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
-            
-            _view.IsEnabled = false;
-            await Task.Delay(Config.SecondsTillNextExercise * 1000);
-             _view.IsEnabled = true;
+            ExerciseCheckResult result = await EvaluateAsync(pianoKeyboard.Addend1, pianoKeyboard.Addend2, keyboardSum);
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), result.IsCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
             Console.WriteLine("CheckAsync(Enabled returned): {0} {1}={2}", pianoKeyboard.Addend1, pianoKeyboard.Addend2, Sum);
-            return b;
+            return result;
         }
 
-        public virtual void GenerateExercise()
+        private bool UsesSeededPpwKeyboardStage()
+        {
+            return Config?.KeyboardConfig != null &&
+                   Config.KeyboardConfig.PpwKeyboardSeedMode != PpwKeyboardSeedMode.None;
+        }
+
+        private bool HasSingleMissingAddendQuestion()
+        {
+            return Sum != NAN &&
+                   ((addend1 == NAN && addend2 != NAN) ||
+                    (addend2 == NAN && addend1 != NAN));
+        }
+
+        private int GetVisibleKnownAddendValue()
+        {
+            if (addend1 != NAN && addend2 == NAN)
+                return addend1;
+
+            if (addend2 != NAN && addend1 == NAN)
+                return addend2;
+
+            return 0;
+        }
+
+        private int GetMissingAddendValue()
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return 0;
+
+            return Sum - GetVisibleKnownAddendValue();
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateSeededPpwKeyboardStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = Config.KeyboardConfig.PpwKeyboardSeedMode switch
+            {
+                PpwKeyboardSeedMode.VisiblePartPressed => EvaluateVisiblePartKeyboardStage(pianoKeyboard),
+                PpwKeyboardSeedMode.WholePressed => EvaluateWholePressedKeyboardStage(pianoKeyboard),
+                _ => false
+            };
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private bool EvaluateVisiblePartKeyboardStage(PianoKeyboard pianoKeyboard)
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return false;
+
+            int visiblePart = GetVisibleKnownAddendValue();
+            int missingPart = GetMissingAddendValue();
+
+            if (Config.KeyboardConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor)
+            {
+                return pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart &&
+                       pianoKeyboard.GetColorCount(Colors.LightGreen) == missingPart;
+            }
+
+            int totalPressed = pianoKeyboard.GetNonFreeColorCount();
+            return totalPressed == Sum && Math.Max(0, totalPressed - visiblePart) == missingPart;
+        }
+
+        private bool EvaluateWholePressedKeyboardStage(PianoKeyboard pianoKeyboard)
+        {
+            if (!HasSingleMissingAddendQuestion())
+                return false;
+
+            int visiblePart = GetVisibleKnownAddendValue();
+            int missingPart = GetMissingAddendValue();
+
+            if (Config.KeyboardConfig.ColorInteractionMode != KeyboardColorInteractionMode.RemoveWithRed)
+            {
+                return pianoKeyboard.GetNonFreeColorCount() == Sum &&
+                       pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart;
+            }
+
+            return pianoKeyboard.GetColorCount(Colors.Red) == missingPart &&
+                   pianoKeyboard.GetColorCount(Colors.Yellow) == visiblePart;
+        }
+
+        private bool UsesDynamicKeyboardMultiplication()
+        {
+            return CurrentOperation == Operation.Multiplication &&
+                   Config?.KeyboardConfig?.UseDynamicMultiplicationWeights == true &&
+                   _dynamicKeyboardWeightValue.HasValue &&
+                   _dynamicKeyboardExpectedPressCount.HasValue;
+        }
+
+        private bool UsesWeightedSingleTargetKeyboardStage()
+        {
+            return Config?.KeyboardConfig?.WeightsArray != null &&
+                   Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                   Config.UIQuestionType == UIQuestionType.OneText &&
+                   !UsesDynamicKeyboardMultiplication() &&
+                   !UsesWeightedCustomStageTargets() &&
+                   CurrentOperation == Operation.Sum;
+        }
+
+        private bool UsesWeightedCustomStageTargets()
+        {
+            return Config?.KeyboardConfig?.UseWeightedCustomStageTargets == true &&
+                   Config.KeyboardConfig.WeightsArray != null &&
+                   Config.KeyboardConfig.WeightsArray.Length > 0 &&
+                   Config.UIQuestionType == UIQuestionType.OneText;
+        }
+
+        private bool UsesWeightedKeyboardTargetGeneration()
+        {
+            return UsesWeightedSingleTargetKeyboardStage() || UsesWeightedCustomStageTargets();
+        }
+
+        public bool SupportsImpossibleWeightedAnswer =>
+            UsesWeightedCustomStageTargets() &&
+            Config?.KeyboardConfig?.AllowImpossibleWeightedAnswer == true &&
+            _weightedCustomImpossibleSums.Count > 0;
+
+        public bool CurrentWeightedTargetRequiresImpossibleAnswer => _currentWeightedTargetRequiresImpossibleAnswer;
+
+        private void EnsureWeightedTargetPools()
+        {
+            if (!UsesWeightedKeyboardTargetGeneration())
+                return;
+
+            int[] weights = Config.KeyboardConfig.WeightsArray
+                .Where(weight => weight > 0)
+                .Take(10)
+                .ToArray();
+
+            if (weights.Length == 0)
+                return;
+
+            int minTarget = Config.MinSum;
+            int maxTarget = Config.MaxSum;
+            bool allowImpossible = UsesWeightedCustomStageTargets() && Config.KeyboardConfig.AllowImpossibleWeightedAnswer;
+            string cacheKey = $"{minTarget}:{maxTarget}:{allowImpossible}:{string.Join(",", weights)}";
+
+            if (string.Equals(_weightedTargetPoolCacheKey, cacheKey, StringComparison.Ordinal))
+                return;
+
+            _weightedTargetPoolCacheKey = cacheKey;
+            _weightedCustomReachableSums.Clear();
+            _weightedCustomImpossibleSums.Clear();
+            _currentWeightedTargetRequiresImpossibleAnswer = false;
+
+            HashSet<int> rollingSums = new() { 0 };
+
+            foreach (int weight in weights)
+            {
+                HashSet<int> nextSums = new(rollingSums);
+                foreach (int existingSum in rollingSums)
+                {
+                    int nextSum = existingSum + weight;
+                    if (nextSum <= maxTarget)
+                        nextSums.Add(nextSum);
+                }
+
+                rollingSums = nextSums;
+            }
+
+            foreach (int reachableSum in rollingSums)
+            {
+                if (reachableSum >= minTarget && reachableSum <= maxTarget)
+                    _weightedCustomReachableSums.Add(reachableSum);
+            }
+
+            if (allowImpossible)
+            {
+                for (int target = minTarget; target <= maxTarget; target++)
+                {
+                    if (!_weightedCustomReachableSums.Contains(target))
+                        _weightedCustomImpossibleSums.Add(target);
+                }
+            }
+        }
+
+        private int[] BuildWeightedCustomStageFactors(Random r)
+        {
+            EnsureWeightedTargetPools();
+
+            List<int> weightedTargets = _weightedCustomReachableSums
+                .Concat(_weightedCustomImpossibleSums)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToList();
+
+            if (weightedTargets.Count == 0)
+            {
+                int fallback = Math.Max(1, Config.MinSum);
+                _currentWeightedTargetRequiresImpossibleAnswer = false;
+                return new[] { NAN, NAN, fallback };
+            }
+
+            int chosenTarget = weightedTargets[r.Next(weightedTargets.Count)];
+            _currentWeightedTargetRequiresImpossibleAnswer = _weightedCustomImpossibleSums.Contains(chosenTarget);
+            return new[] { NAN, NAN, chosenTarget };
+        }
+
+        private int[] BuildWeightedSingleTargetFactors(Random r)
+        {
+            EnsureWeightedTargetPools();
+
+            if (_weightedCustomReachableSums.Count == 0)
+            {
+                int fallback = Math.Max(1, Config.MinSum);
+                _currentWeightedTargetRequiresImpossibleAnswer = false;
+                return new[] { NAN, NAN, fallback };
+            }
+
+            List<int> weightedTargets = _weightedCustomReachableSums.OrderBy(value => value).ToList();
+            int chosenTarget = weightedTargets[r.Next(weightedTargets.Count)];
+            _currentWeightedTargetRequiresImpossibleAnswer = false;
+            return new[] { NAN, NAN, chosenTarget };
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateDynamicKeyboardMultiplicationAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            int pressedKeysCount = pianoKeyboard.ToBitArray().Count(bit => bit);
+            bool isCorrect =
+                pianoKeyboard.Sum == Sum &&
+                pressedKeysCount == _dynamicKeyboardExpectedPressCount.Value;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateWeightedSingleTargetKeyboardStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = pianoKeyboard.Sum == Sum;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private async Task<ExerciseCheckResult> EvaluateWeightedCustomStageAsync(PianoKeyboard pianoKeyboard)
+        {
+            IncrementGuessNumber();
+
+            bool isCorrect = !_currentWeightedTargetRequiresImpossibleAnswer &&
+                             pianoKeyboard.Sum == Sum;
+
+            _status = isCorrect ? Statement.True : Statement.False;
+            await SaveKeyboardAttemptSnapshotAsync(pianoKeyboard.ToBitArray(), isCorrect, DateTime.Now, pianoKeyboard.GetCurrentColors());
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        public virtual async Task<ExerciseCheckResult> EvaluateImpossibleWeightedAnswerAsync()
+        {
+            if (!SupportsImpossibleWeightedAnswer)
+                return CreateCheckResult(isCorrect: false);
+
+            IncrementGuessNumber();
+
+            bool isCorrect = _currentWeightedTargetRequiresImpossibleAnswer;
+            _status = isCorrect ? Statement.True : Statement.False;
+
+            GameCompletionResult? completion = isCorrect
+                ? await RegisterSuccessfulAttemptAsync()
+                : await RegisterFailedAttemptAsync();
+
+            return CreateCheckResult(isCorrect, completion: completion);
+        }
+
+        private int GetAlternateValidSum(int excludedSum)
+        {
+            if (Config.MinSum != excludedSum)
+                return Config.MinSum;
+
+            if (Config.MaxSum != excludedSum)
+                return Config.MaxSum;
+
+            return excludedSum;
+        }
+
+        public virtual async Task<bool> CheckAsync(PianoKeyboard pianoKeyboard)
+        {
+            return (await EvaluateAsync(pianoKeyboard)).IsCorrect;
+        }
+
+        private async Task SaveKeyboardAttemptSnapshotAsync(bool[] submittedKeyboard, bool isCorrect, DateTime submittedTime, Color[]? submittedKeyboardColors = null)
+        {
+            if (!ShouldPersistKeyboardQuestion() || _keyboardQuestionRepository == null || _keyEventRepository == null)
+                return;
+
+            var savedAttempt = await _keyboardQuestionRepository.SaveSubmittedSnapshotAsync(
+                GameId.ToString(),
+                _questionNumber,
+                submittedKeyboard,
+                submittedTime,
+                isCorrect ? 1 : 0,
+                submittedKeyboardColors);
+
+            if (savedAttempt == null)
+                return;
+
+            await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
+        }
+
+        protected async Task FinalizeKeyboardAttemptAsync(Data.SQLite.KeyboardQuestion savedAttempt, DateTime submittedTime)
+        {
+            if (_keyEventRepository == null || _keyboardQuestionRepository == null)
+                return;
+
+            await _keyEventRepository.AssignPendingEventsToAttemptAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber);
+            await _keyEventRepository.SaveCheckEventAsync(GameId.ToString(), _questionNumber, savedAttempt.AttemptNumber, submittedTime);
+
+            List<KeyEvent> attemptEvents = await _keyEventRepository.GetAttemptEventsAsync(
+                GameId.ToString(),
+                _questionNumber,
+                savedAttempt.AttemptNumber);
+
+            KeyboardAttemptTimingMetrics metrics = KeyboardTimingAnalyzer.AnalyzeAttempt(attemptEvents, submittedTime);
+            savedAttempt.KeyDownCount = metrics.KeyDownCount;
+            savedAttempt.DistinctKeyCount = metrics.DistinctKeyCount;
+            savedAttempt.PressClusterCount = metrics.PressClusterCount;
+            savedAttempt.LargestPressClusterSize = metrics.LargestPressClusterSize;
+            savedAttempt.MaxInterKeyGapMs = metrics.MaxInterKeyGapMs;
+            savedAttempt.AverageInterKeyGapMs = metrics.AverageInterKeyGapMs;
+            savedAttempt.FirstKeyToSubmitMs = metrics.FirstKeyToSubmitMs;
+            savedAttempt.LastKeyToSubmitMs = metrics.LastKeyToSubmitMs;
+            savedAttempt.PressPatternKind = (int)metrics.PressPatternKind;
+
+            await _keyboardQuestionRepository.UpdateAsync(savedAttempt);
+        }
+
+        public virtual Task<ExerciseGenerationResult> GenerateExerciseAsync()
         {
             Random r = new();
 
@@ -325,12 +995,13 @@ namespace GestureSample.Maui.Models
             ResolveQuestionSource(r, step);
 
             // runtime bookkeeping (same as your current pattern)
-            _status = Statement.Neutral;
-            _guessNumber = 0;
-            _questionNumber++;
-
-            SaveState();
-            _view.UpdateView(true);
+            BeginExercise();
+            ExerciseGenerationResult generatedExercise = CreateGeneratedExerciseResult();
+            return Task.FromResult(new ExerciseGenerationResult
+            {
+                ActionText = generatedExercise.ActionText,
+                PersistenceTask = PersistGeneratedExerciseAsync()
+            });
         }
 
         private void ResolveOperation(Random r, ExercisePlanStep? step)
@@ -356,6 +1027,8 @@ namespace GestureSample.Maui.Models
                 if (step.Kind == PlanStepKind.RepeatQuestion && _prevPPWQuestion.HasValue)
                 {
                     RestorePrevPPWQuestion();
+                    if (step.OpMode == PlanOpMode.Fixed)
+                        CurrentOperation = step.Operation;
                     return;
                 }
 
@@ -371,47 +1044,322 @@ namespace GestureSample.Maui.Models
 
             // your existing triad bookkeeping likely happens elsewhere;
             // if you handle it here, keep it:
-            _currentTriadIndex = (_currentTriadIndex + 1) % Config.RepeatingTimesOfTriad;
-
+            _currentTriadIndex = (_currentTriadIndex + 1) % (Config.RepeatingTimesOfTriad>1? Config.RepeatingTimesOfTriad: Config.RepeatingTimesOfSum);
             SnapshotPrevPPWQuestion();
         }
 
         private void GenerateNewPPWQuestion(Random r)
         {
             // pick factor set depending on operation
-            int[] factors =
-                (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide)
-                    ? FactorsMultiplication
-                    : Factors;
+            int[] factors = UsesWeightedCustomStageTargets()
+                ? BuildWeightedCustomStageFactors(r)
+                : UsesWeightedSingleTargetKeyboardStage()
+                    ? BuildWeightedSingleTargetFactors(r)
+                    : Config.UseSumMinusLargerAddendRepeatSequence && CurrentOperation == Operation.Sum
+                        ? BuildSumMinusLargerAddendFactors(r)
+                        : (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide ? FactorsMultiplication : Factors);
 
-            // Decide which value becomes NAN based on Config.VariableTypes
-            int n = (Config.VariableTypes == VariableTypes.OneCanBeSum) ? r.Next(3) : r.Next(2);
+            ConfigureDynamicKeyboardMultiplicationWeights(r, factors);
 
-            switch (Config.VariableTypes)
+            if (Config.isLargerAddend1 && factors[0] < factors[1])
             {
-                case VariableTypes.OneCanBeSum:
-                case VariableTypes.OneNoSum:
-                    factors[n] = NAN;
-                    break;
+                int temp = factors[0];
+                factors[0] = factors[1];
+                factors[1] = temp;
+            }
 
-                case VariableTypes.SumOnly:
-                    factors[2] = NAN;
-                    break;
+            _prevResolvedTriad = new PPWObject(factors[0], factors[1], factors[2]);
 
-                case VariableTypes.TwoNoSum:
-                    factors[0] = NAN;
-                    factors[1] = NAN;
-                    break;
-
-                default:
-                    for (int i = 0; i < 3; i++)
-                        if (i != n) factors[i] = NAN;
-                    break;
+            if (!TryApplySumMinusLargerAddendRepeatVariant(r, factors) &&
+                !TryApplyDistortedRepeatVariant(factors))
+            {
+                foreach (int index in ChooseHiddenValueIndexes(r, factors))
+                    factors[index] = NAN;
             }
 
             addend1 = factors[0];
             addend2 = factors[1];
             Sum = factors[2];
+        }
+
+        private int[] BuildSumMinusLargerAddendFactors(Random r)
+        {
+            if (_currentTriadIndex > 0 && _prevResolvedTriad != null)
+                return new[] { _prevResolvedTriad.Addend1, _prevResolvedTriad.Addend2, _prevResolvedTriad.Sum };
+
+            List<PPWObject> candidates = new();
+            int minLargerAddend = Math.Max(1, Config.MinAddend);
+            int maxLargerAddend = Math.Max(minLargerAddend, Config.MaxAddend);
+
+            for (int sumValue = Math.Max(1, Config.MinSum); sumValue <= Config.MaxSum; sumValue++)
+            {
+                for (int largerAddend = minLargerAddend; largerAddend <= maxLargerAddend; largerAddend++)
+                {
+                    int negativeAddend = sumValue - largerAddend;
+                    int distance = largerAddend - sumValue;
+
+                    if (distance <= 0)
+                        continue;
+
+                    if (!IsTriadWithinConfig(negativeAddend, largerAddend, sumValue))
+                        continue;
+
+                    if (!IsTriadWithinConfig(sumValue, distance, largerAddend))
+                        continue;
+
+                    candidates.Add(new PPWObject(sumValue, distance, largerAddend));
+                }
+            }
+
+            if (candidates.Count == 0)
+                return Factors;
+
+            PPWObject chosen = candidates[r.Next(candidates.Count)];
+            return new[] { chosen.Addend1, chosen.Addend2, chosen.Sum };
+        }
+
+        private bool TryApplySumMinusLargerAddendRepeatVariant(Random r, int[] factors)
+        {
+            if (!Config.UseSumMinusLargerAddendRepeatSequence ||
+                factors == null ||
+                factors.Length < 3 ||
+                Config.RepeatingTimesOfTriad <= 1 ||
+                _currentTriadIndex <= 0 ||
+                _currentTriadIndex >= Config.RepeatingTimesOfTriad ||
+                CurrentOperation != Operation.Sum ||
+                _prevResolvedTriad == null)
+            {
+                return false;
+            }
+
+            int sumValue = _prevResolvedTriad.Addend1;
+            int largerAddend = _prevResolvedTriad.Sum;
+            int negativeAddend = sumValue - largerAddend;
+
+            if (!IsTriadWithinConfig(negativeAddend, largerAddend, sumValue))
+                return false;
+
+            bool hideLeftNegativeAddend = r.Next(2) == 0;
+            factors[0] = hideLeftNegativeAddend ? NAN : largerAddend;
+            factors[1] = hideLeftNegativeAddend ? largerAddend : NAN;
+            factors[2] = sumValue;
+            return true;
+        }
+
+        private bool TryApplyDistortedRepeatVariant(int[] factors)
+        {
+            if (!Config.UseDistortedVariantInRepeatSequence ||
+                factors == null ||
+                factors.Length < 3 ||
+                Config.RepeatingTimesOfTriad <= 1 ||
+                _currentTriadIndex <= 0 ||
+                _currentTriadIndex >= Config.RepeatingTimesOfTriad ||
+                CurrentOperation != Operation.Sum ||
+                !_prevPPWQuestion.HasValue)
+            {
+                return false;
+            }
+
+            if (!TryBuildDistortedDisplayedQuestion(_prevPPWQuestion.Value, out int displayA1, out int displayA2, out int displaySum))
+                return false;
+
+            factors[0] = displayA1;
+            factors[1] = displayA2;
+            factors[2] = displaySum;
+            return true;
+        }
+
+        private bool TryBuildDistortedDisplayedQuestion((int a1, int a2, int s, Operation op, VariableTypes vt) previousQuestion, out int displayA1, out int displayA2, out int displaySum)
+        {
+            displayA1 = NAN;
+            displayA2 = NAN;
+            displaySum = NAN;
+
+            if (previousQuestion.a1 == NAN)
+            {
+                int resolvedA1 = previousQuestion.s;
+                int resolvedA2 = previousQuestion.a2;
+                int resolvedSum = resolvedA1 + resolvedA2;
+                if (!IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                    return false;
+
+                displayA1 = resolvedA1;
+                displayA2 = resolvedA2;
+                displaySum = NAN;
+                return true;
+            }
+
+            if (previousQuestion.a2 == NAN)
+            {
+                int resolvedA1 = previousQuestion.a1;
+                int resolvedA2 = previousQuestion.s;
+                int resolvedSum = resolvedA1 + resolvedA2;
+                if (!IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                    return false;
+
+                displayA1 = resolvedA1;
+                displayA2 = resolvedA2;
+                displaySum = NAN;
+                return true;
+            }
+
+            if (previousQuestion.s == NAN)
+            {
+                if (previousQuestion.a1 >= previousQuestion.a2)
+                {
+                    int resolvedA1 = previousQuestion.a1 - previousQuestion.a2;
+                    int resolvedA2 = previousQuestion.a2;
+                    int resolvedSum = previousQuestion.a1;
+                    if (resolvedA1 < 0 || !IsTriadWithinConfig(resolvedA1, resolvedA2, resolvedSum))
+                        return false;
+
+                    displayA1 = NAN;
+                    displayA2 = resolvedA2;
+                    displaySum = resolvedSum;
+                    return true;
+                }
+
+                int altResolvedA1 = previousQuestion.a1;
+                int altResolvedA2 = previousQuestion.a2 - previousQuestion.a1;
+                int altResolvedSum = previousQuestion.a2;
+                if (altResolvedA2 < 0 || !IsTriadWithinConfig(altResolvedA1, altResolvedA2, altResolvedSum))
+                    return false;
+
+                displayA1 = altResolvedA1;
+                displayA2 = NAN;
+                displaySum = altResolvedSum;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsTriadWithinConfig(int candidateA1, int candidateA2, int candidateSum)
+        {
+            return candidateA1 >= Config.MinAddend &&
+                   candidateA1 <= Config.MaxAddend &&
+                   candidateA2 >= Config.EffectiveMinAddend2 &&
+                   candidateA2 <= Config.EffectiveMaxAddend2 &&
+                   candidateSum >= Config.MinSum &&
+                   candidateSum <= Config.MaxSum;
+        }
+
+        private void ConfigureDynamicKeyboardMultiplicationWeights(Random r, int[] factors)
+        {
+            _dynamicKeyboardWeightValue = null;
+            _dynamicKeyboardExpectedPressCount = null;
+
+            if (CurrentOperation != Operation.Multiplication ||
+                Config?.KeyboardConfig?.UseDynamicMultiplicationWeights != true ||
+                factors == null ||
+                factors.Length < 3)
+            {
+                return;
+            }
+
+            bool useFirstFactorAsWeight = r.Next(2) == 0;
+            _dynamicKeyboardWeightValue = useFirstFactorAsWeight ? factors[0] : factors[1];
+            _dynamicKeyboardExpectedPressCount = useFirstFactorAsWeight ? factors[1] : factors[0];
+
+            int keyCount = Math.Max(
+                1,
+                (Config.KeyboardConfig.KeysInRow > 0 ? Config.KeyboardConfig.KeysInRow : 10) *
+                Math.Max(1, Config.KeyboardConfig.Rows));
+
+            Config.KeyboardConfig.WeightsArray = Enumerable.Repeat(_dynamicKeyboardWeightValue.Value, keyCount).ToArray();
+            Config.KeyboardConfig.ShowNumbersOnKeys = true;
+        }
+
+        private List<int> ChooseHiddenValueIndexes(Random r, int[]? currentFactors = null)
+        {
+            List<int[]> candidates = new();
+            int hiddenCount = Math.Clamp(Config.HiddenValueCount, 0, 3);
+
+            if (hiddenCount == 0)
+                return new List<int>();
+
+            for (int mask = 1; mask < 8; mask++)
+            {
+                List<int> indexes = new();
+                for (int i = 0; i < 3; i++)
+                {
+                    if ((mask & (1 << i)) != 0)
+                        indexes.Add(i);
+                }
+
+                if (indexes.Count != hiddenCount)
+                    continue;
+
+                if (!indexes.All(IsHiddenTargetAllowed))
+                    continue;
+
+                if (Config.KeepsSumVisible && indexes.Contains(2))
+                    continue;
+
+                if (Config.KeepsAtLeastOneAddendVisible && indexes.Contains(0) && indexes.Contains(1))
+                    continue;
+
+                candidates.Add(indexes.ToArray());
+            }
+
+            if (Config.UseDistortedVariantInRepeatSequence &&
+                CurrentOperation == Operation.Sum &&
+                Config.RepeatingTimesOfTriad > 1 &&
+                _currentTriadIndex == 0 &&
+                hiddenCount == 1 &&
+                currentFactors != null &&
+                currentFactors.Length >= 3)
+            {
+                List<int[]> distortionFriendlyCandidates = candidates
+                    .Where(indexes => CanDistortDisplayedQuestion(currentFactors[0], currentFactors[1], currentFactors[2], indexes[0]))
+                    .ToList();
+
+                if (distortionFriendlyCandidates.Count > 0)
+                    candidates = distortionFriendlyCandidates;
+            }
+
+            if (candidates.Count == 0)
+            {
+                return Config.VariableTypes switch
+                {
+                    VariableTypes.SumOnly => new List<int> { 2 },
+                    VariableTypes.TwoNoSum => new List<int> { 0, 1 },
+                    VariableTypes.Three => new List<int> { r.Next(2) == 0 ? 1 : 0, 2 },
+                    VariableTypes.OneCanBeSum => new List<int> { r.Next(3) },
+                    _ => new List<int> { r.Next(2) }
+                };
+            }
+
+            return candidates[r.Next(candidates.Count)].ToList();
+        }
+
+        private bool CanDistortDisplayedQuestion(int a1, int a2, int sum, int hiddenIndex)
+        {
+            (int displayA1, int displayA2, int displaySum) previousDisplay = hiddenIndex switch
+            {
+                0 => (NAN, a2, sum),
+                1 => (a1, NAN, sum),
+                2 => (a1, a2, NAN),
+                _ => (a1, a2, sum)
+            };
+
+            return TryBuildDistortedDisplayedQuestion(
+                (previousDisplay.displayA1, previousDisplay.displayA2, previousDisplay.displaySum, CurrentOperation, Config.VariableTypes),
+                out _,
+                out _,
+                out _);
+        }
+
+        private bool IsHiddenTargetAllowed(int index)
+        {
+            MissingValueTargetFlags target = index switch
+            {
+                0 => MissingValueTargetFlags.Addend1,
+                1 => MissingValueTargetFlags.Addend2,
+                _ => MissingValueTargetFlags.Sum
+            };
+
+            return Config.AllowedMissingValueTargets.HasFlag(target);
         }
 
         private void RestorePrevPPWQuestion()
@@ -439,34 +1387,48 @@ namespace GestureSample.Maui.Models
             {
                 Random r = new();
                 int[] factors = new int[3];
-                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
+                if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex>0 &&
+                    !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex>= Config.RepeatingTimesOfSum))
                 {
-                    _currentTriadIndex = 0;
-                }
-                if (_currentTriadIndex == 0)
-                {
-                    _currentTriadIndex++;
-                }
-                else { 
-                    factors[2] = this.Sum;
-                    factors[0] = this.addend1;
-                    factors[1] = this.addend2;
-                    if(r.Next(2)==1) {
-                        factors[0] = this.addend2;
-                        factors[1] = this.addend1;
+                    PPWObject repeatSource = _prevResolvedTriad ?? new PPWObject(this.addend1, this.addend2, this.Sum);
+                    factors[2] = repeatSource.Sum;
+                    if (Config.RepeatingTimesOfTriad > 1)
+                    {
+                        factors[0] = repeatSource.Addend1;
+                        factors[1] = repeatSource.Addend2;
+                        if (r.Next(2) == 1)
+                        {
+                            factors[0] = repeatSource.Addend2;
+                            factors[1] = repeatSource.Addend1;
+                        }
                     }
-                    _currentTriadIndex++;
+                    else if (Config.RepeatingTimesOfSum > 1)
+                    {
+                        PPWObject newTriad = GenerateSecondaryTriad(factors[2]);
+                        if (newTriad != null)
+                        {
+                            factors[0] = newTriad.Addend1;
+                            factors[1] = newTriad.Addend2;
+                        }
+                        else
+                        {
+                            factors[0] = repeatSource.Addend1;
+                            factors[1] = repeatSource.Addend2;
+                        }
+                    }
                     return factors;
                 }   
                 
+                
+
                 if (    IsFirstGuess /*&& !Config.OnlyThrougTen*/)
                 {
-                    if (Config.MaxSum < 100)
-                    { factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; }
+                        factors[0] = Config.DefaultTriad.Addend1; factors[1] = Config.DefaultTriad.Addend2; factors[2] = Config.DefaultTriad.Sum; 
+               
                         IsFirstGuess = false;
-                    addend1 = Config.DefaultTriad.Addend1; addend2 = Config.DefaultTriad.Addend2; Sum = Config.DefaultTriad.Sum;
-                    if (IsCorrectInput())
-                        return factors;
+                        addend1 = factors[0]; addend2 = factors[1]; Sum = factors[2];
+                        if (IsCorrectInput())
+                            return factors;
                 }
 
                 if (Config.OnlyCloseTriad)
@@ -509,6 +1471,15 @@ namespace GestureSample.Maui.Models
                         }
                     } 
                     while (!PossibleTriads.Contains(new PPWObject(factors[0], factors[1], factors[2])));
+                    return factors;
+                }
+
+                if (PossibleTriads.Count == 0)
+                {
+                    PPWObject fallbackTriad = Config.DefaultTriad;
+                    factors[0] = fallbackTriad.Addend1;
+                    factors[1] = fallbackTriad.Addend2;
+                    factors[2] = fallbackTriad.Sum;
                     return factors;
                 }
 
@@ -563,25 +1534,35 @@ namespace GestureSample.Maui.Models
             {
                 Random r = new();
                 int[] factors = new int[3];
-                if (_currentTriadIndex >= Config.RepeatingTimesOfTriad)
+                if ((Config.RepeatingTimesOfTriad > 1 || Config.RepeatingTimesOfSum > 1) && _currentTriadIndex > 0 &&
+                    !(_currentTriadIndex >= Config.RepeatingTimesOfTriad && _currentTriadIndex >= Config.RepeatingTimesOfSum))
                 {
-                    _currentTriadIndex = 0;
-                }
-                if (_currentTriadIndex == 0)
-                {
-                    _currentTriadIndex++;
-                }
-                else
-                {
-                    factors[2] = this.Sum;
-                    factors[0] = this.addend1;
-                    factors[1] = this.addend2;
-                    if (r.Next(2) == 1)
+                    PPWObject repeatSource = _prevResolvedTriad ?? new PPWObject(this.addend1, this.addend2, this.Sum);
+                    factors[2] = repeatSource.Sum;
+                    if (Config.RepeatingTimesOfTriad > 1)
                     {
-                        factors[0] = this.addend2;
-                        factors[1] = this.addend1;
+                        factors[0] = repeatSource.Addend1;
+                        factors[1] = repeatSource.Addend2;
+                        if (r.Next(2) == 1)
+                        {
+                            factors[0] = repeatSource.Addend2;
+                            factors[1] = repeatSource.Addend1;
+                        }
                     }
-                    _currentTriadIndex++;
+                    else if (Config.RepeatingTimesOfSum > 1)
+                    {
+                        PPWObject newTriad = GenerateSecondaryTriad(factors[2]);
+                        if (newTriad != null)
+                        {
+                            factors[0] = newTriad.Addend1;
+                            factors[1] = newTriad.Addend2;
+                        }
+                        else
+                        {
+                            factors[0] = repeatSource.Addend1;
+                            factors[1] = repeatSource.Addend2;
+                        }
+                    }
                     return factors;
                 }
 
@@ -594,12 +1575,134 @@ namespace GestureSample.Maui.Models
                     return factors;
                 }
 
+                if (IsFirstGuess)
+                {
+                    if (Config.DefaultTriad != null &&
+                        Config.DefaultTriad.Addend1 * Config.DefaultTriad.Addend2 == Config.DefaultTriad.Sum)
+                    {
+                        factors[0] = Config.DefaultTriad.Addend1;
+                        factors[1] = Config.DefaultTriad.Addend2;
+                        factors[2] = Config.DefaultTriad.Sum;
+
+                        IsFirstGuess = false;
+                        addend1 = factors[0];
+                        addend2 = factors[1];
+                        Sum = factors[2];
+
+                        if (IsCorrectInput())
+                            return factors;
+                    }
+
+                    IsFirstGuess = false;
+                }
+
+                if (Config.OnlyCloseTriad && !IsFirstGuess)
+                {
+                    PPWObject? benchmarkTriad = IsMultiplicationBenchmarkSequenceMode()
+                        ? GetPreferredBenchmarkMultiplicationTriad()
+                        : null;
+
+                    if (benchmarkTriad != null)
+                    {
+                        factors[0] = benchmarkTriad.Addend1;
+                        factors[1] = benchmarkTriad.Addend2;
+                        factors[2] = benchmarkTriad.Sum;
+                        return factors;
+                    }
+
+                    List<PPWObject> closeTriads = PossibleTriads
+                        .Where(item =>
+                            item.Addend1 == this.addend1 &&
+                            Math.Abs(item.Addend2 - this.addend2) <= 2 &&
+                            !(item.Addend1 == this.addend1 && item.Addend2 == this.addend2))
+                        .ToList();
+
+                    if (closeTriads.Count > 0)
+                    {
+                        PPWObject chosenTriad = closeTriads[r.Next(closeTriads.Count)];
+                        factors[0] = chosenTriad.Addend1;
+                        factors[1] = chosenTriad.Addend2;
+                        factors[2] = chosenTriad.Sum;
+                        return factors;
+                    }
+                }
+
+                if (PossibleTriads.Count > 0)
+                {
+                    PPWObject chosenTriad = PossibleTriads[r.Next(PossibleTriads.Count)];
+                    factors[0] = chosenTriad.Addend1;
+                    factors[1] = chosenTriad.Addend2;
+                    factors[2] = chosenTriad.Sum;
+                    return factors;
+                }
+
                 factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
                 factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
                 factors[2] = factors[0] * factors[1];
 
+                while (factors[2] < Config.MinSum || factors[2] > Config.MaxSum)
+                {
+                    factors[0] = r.Next(Config.MinAddend, Config.MaxAddend + 1);
+                    factors[1] = r.Next(Config.MinAddend2, Config.MaxAddend2 + 1);
+                    factors[2] = factors[0] * factors[1];
+                }
+
                 return factors;
             }
+        }
+
+        private bool IsMultiplicationBenchmarkSequenceMode()
+        {
+            return string.Equals(Config?.GameName, "Multiplication Benchmarks", StringComparison.Ordinal);
+        }
+
+        private PPWObject? GetPreferredBenchmarkMultiplicationTriad()
+        {
+            int benchmarkStepIndex = Math.Max(0, _questionNumber - 2);
+            bool changeFirstMultiplier = benchmarkStepIndex % 2 == 0;
+            int preferredDelta = GetBenchmarkPreferredDelta(benchmarkStepIndex);
+
+            IEnumerable<PPWObject> candidates = PossibleTriads.Where(item =>
+                !(item.Addend1 == this.addend1 && item.Addend2 == this.addend2));
+
+            if (changeFirstMultiplier)
+            {
+                candidates = candidates.Where(item =>
+                    item.Addend2 == this.addend2 &&
+                    Math.Abs(item.Addend1 - this.addend1) <= 2);
+            }
+            else
+            {
+                candidates = candidates.Where(item =>
+                    item.Addend1 == this.addend1 &&
+                    Math.Abs(item.Addend2 - this.addend2) <= 2);
+            }
+
+            return OrderBenchmarkCandidates(
+                    candidates,
+                    candidate => changeFirstMultiplier
+                        ? candidate.Addend1 - this.addend1
+                        : candidate.Addend2 - this.addend2,
+                    preferredDelta)
+                .FirstOrDefault();
+        }
+
+        private static int GetBenchmarkPreferredDelta(int benchmarkStepIndex)
+        {
+            int[] preferredDeltas = { 1, 1, -1, 2, 2 };
+            return preferredDeltas[benchmarkStepIndex % preferredDeltas.Length];
+        }
+
+        private static IEnumerable<PPWObject> OrderBenchmarkCandidates(
+            IEnumerable<PPWObject> candidates,
+            Func<PPWObject, int> getDelta,
+            int preferredDelta)
+        {
+            return candidates
+                .OrderBy(candidate => getDelta(candidate) == preferredDelta ? 0 : 1)
+                .ThenBy(candidate => Math.Sign(getDelta(candidate)) == Math.Sign(preferredDelta) ? 0 : 1)
+                .ThenBy(candidate => Math.Abs(getDelta(candidate) - preferredDelta))
+                .ThenBy(candidate => Math.Abs(getDelta(candidate)));
         }
 
 
@@ -614,23 +1717,49 @@ namespace GestureSample.Maui.Models
         {
             PossibleTriads.Clear();
             int minAddend = Config.MinAddend, maxAddend = Config.MaxAddend, minSum = Config.MinSum, maxSum = Config.MaxSum;
-            int minAddend2 = Config.MinAddend2 == NAN ? minAddend : Config.MinAddend2;
-            int maxAddend2 = Config.MaxAddend2 == NAN ? maxAddend : Config.MaxAddend2;
+            int minAddend2 = Config.EffectiveMinAddend2;
+            int maxAddend2 = Config.EffectiveMaxAddend2;
+
+            if (CurrentOperation == Operation.Minus)
+            {
+                for (int leftValue = minSum; leftValue <= maxSum; leftValue++)
+                    for (int subtrahend = minAddend; subtrahend <= maxAddend; subtrahend++)
+                    {
+                        int result = leftValue - subtrahend;
+                        if (result < minAddend2 || result > maxAddend2)
+                            continue;
+
+                        PossibleTriads.Add(new PPWObject(subtrahend, result, leftValue));
+                        Console.WriteLine("{0} - {1}= {2}", leftValue, subtrahend, result);
+                    }
+
+                return;
+            }
 
             for (int i = minAddend; i <= maxAddend; i++)
                 for (int j = minAddend2; j <= (Config.IsHistorySymetrical ? Math.Min(i, maxAddend2) : maxAddend2); j++)
                 {
-                    int sum = (CurrentOperation == Operation.Multiplication || CurrentOperation == Operation.Divide) ? (i * j) : (i + j);
+                    int sum = CurrentOperation switch
+                    {
+                        Operation.Multiplication or Operation.Divide => i * j,
+                        _ => i + j
+                    };
                     if (sum >= minSum && sum <= maxSum)
                         if (!Config.OnlyThrougTen && !Config.OnlyToTen)
                         {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
                             Console.WriteLine("{0} {1}= {2}", i, j, sum);
                         }
-                        else if ((i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                        else if (!Config.OnlyToTen && (i / 10 + j / 10) < (i + j) / 10 && (i + j) % 10 != 0)
+                        {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
-                        else if(i+j<=10)
+                            Console.WriteLine("{0} {1}= {2}", i, j, sum);
+                        }
+                        else if (!Config.OnlyThrougTen && i + j <= 10)
+                        {
                             PossibleTriads.Add(new PPWObject(i, j, sum));
+                            Console.WriteLine("{0} {1}= {2}", i, j, sum);
+                        }
                 }
         }
 

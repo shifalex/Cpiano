@@ -31,6 +31,14 @@ namespace GestureSample.Maui.Data
                 .ToListAsync();
         }
 
+        public Task<List<Game>> GetUnsyncedByUserAsync(Guid userId)
+        {
+            return _database.Table<Game>()
+                .Where(game => game.UserId == userId && game.WasSynced == false)
+                .OrderBy(game => game.TimeStart)
+                .ToListAsync();
+        }
+
         public class GameNameResult
         {
             public string GameName { get; set; }
@@ -57,12 +65,38 @@ namespace GestureSample.Maui.Data
             return results.Select(r => r.GameName).OrderBy(r => r).ToList();
         }
 
-        public async Task UpdateAllToNotSynced()
+        public Task<int> UpdateAllToNotSynced(Guid userId)
         {
-            var results = await _database.QueryAsync<GameNameResult>(
-    "UPDATE Game SET WasSynced=0");
+            return _database.ExecuteAsync(
+                "UPDATE Game SET WasSynced = 0 WHERE UserId = ?",
+                userId.ToString());
+        }
 
+        public async Task<int> MarkSyncedAsync(Guid userId, IEnumerable<Guid> gameIds)
+        {
+            string[] ids = gameIds?
+                .Select(id => id.ToString())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray() ?? Array.Empty<string>();
 
+            if (ids.Length == 0)
+                return 0;
+
+            string placeholders = string.Join(", ", ids.Select(_ => "?"));
+            string sql = $"UPDATE Game SET WasSynced = 1 WHERE UserId = ? AND Id IN ({placeholders})";
+            object[] parameters = new object[ids.Length + 1];
+            parameters[0] = userId.ToString();
+            for (int i = 0; i < ids.Length; i++)
+                parameters[i + 1] = ids[i];
+
+            return await _database.ExecuteAsync(sql, parameters);
+        }
+
+        public Task<int> CountUnsyncedByUserAsync(Guid userId)
+        {
+            return _database.Table<Game>()
+                .Where(game => game.UserId == userId && game.WasSynced == false)
+                .CountAsync();
         }
 
         internal async Task UpdateAsync(List<Game> unsyncedGames)

@@ -197,3 +197,6 @@ project.lock.json
 # Visual Studio
 .vs/
 **/.vs/
+/file.patch
+/GestureSample.Maui/supabase.local.json
+/GestureSample.Maui/Resources/Raw/supabase.local.json
