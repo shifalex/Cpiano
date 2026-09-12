@@ -22,6 +22,7 @@ namespace GestureSample.Maui.Views
         private readonly BackgroundSyncService _backgroundSyncService;
         private readonly SyncToolbarStatusController _syncToolbarStatusController;
         private readonly ToolbarItem _syncToolbarItem;
+        private readonly LanguageSettingsView _languageSettings;
 
         public SwitchUserPage()
         {
@@ -38,6 +39,9 @@ namespace GestureSample.Maui.Views
                 Command = new Command(OnSyncToolbarClicked)
             };
             ToolbarItems.Add(_syncToolbarItem);
+            _languageSettings = new LanguageSettingsView();
+            _languageSettings.LanguageChanged += (_, _) => RefreshLanguage();
+            LanguageSettingsHost.Add(_languageSettings);
         }
 
         protected override async void OnAppearing()
@@ -49,6 +53,8 @@ namespace GestureSample.Maui.Views
             var users = await _userRepo.GetUsersAsync();
             UsersCollectionView.ItemsSource = users;
             LoadActiveUserPreference();
+            _languageSettings.Reload();
+            RefreshLanguage();
             RefreshSyncUi();
         }
 
@@ -83,9 +89,9 @@ namespace GestureSample.Maui.Views
         {
             NumericInputPicker.ItemsSource = new[]
             {
-                new NumericInputOption { Label = "Stage default", Value = NumericInputMode.Auto },
-                new NumericInputOption { Label = "App keypad", Value = NumericInputMode.AppKeypad },
-                new NumericInputOption { Label = "System keyboard", Value = NumericInputMode.SystemKeyboard }
+                new NumericInputOption { Label = AppLanguage.Text("Stage default"), Value = NumericInputMode.Auto },
+                new NumericInputOption { Label = AppLanguage.Text("App keypad"), Value = NumericInputMode.AppKeypad },
+                new NumericInputOption { Label = AppLanguage.Text("System keyboard"), Value = NumericInputMode.SystemKeyboard }
             };
         }
 
@@ -93,8 +99,8 @@ namespace GestureSample.Maui.Views
         {
             var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             ActiveUserPreferenceLabel.Text = activeUser == null
-                ? "Numeric keyboard"
-                : $"Numeric keyboard for {activeUser.Name}";
+                ? AppLanguage.Text("Numeric keyboard")
+                : $"{AppLanguage.Text("Numeric keyboard")}: {activeUser.Name}";
 
             NumericInputMode preferredMode = _userPreferenceService.GetPreferredNumericInputMode(activeUser?.Id);
             NumericInputOption? selectedOption = (NumericInputPicker.ItemsSource as IEnumerable<NumericInputOption>)
@@ -113,13 +119,23 @@ namespace GestureSample.Maui.Views
                 _userPreferenceService.SetPreferredNumericInputMode(activeUser.Id, option.Value);
         }
 
+        private void RefreshLanguage()
+        {
+            FlowDirection = LanguagePreferences.Get() == InterfaceLanguage.Hebrew
+                ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            ConfigureNumericInputPicker();
+            LoadActiveUserPreference();
+            AppLanguage.LocalizeSettings(this, false);
+            _syncToolbarItem.Text = AppLanguage.Text("Sync");
+        }
+
 
         private async void OnDampButtonClicked(object sender, EventArgs e)
         {
             User? activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             if (!_backgroundSyncService.TryStartSync(activeUser, forceFullResync: true))
             {
-                await DisplayAlert("Sync", _backgroundSyncService.IsSyncing ? "Sync is already running." : "No active user to sync.", "OK");
+                await DisplayAlert(AppLanguage.Text("Sync"), AppLanguage.Text(_backgroundSyncService.IsSyncing ? "Sync is already running." : "No active user to sync."), AppLanguage.Text("OK"));
                 return;
             }
 
@@ -131,7 +147,7 @@ namespace GestureSample.Maui.Views
             User? activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
             if (!_backgroundSyncService.TryStartSync(activeUser))
             {
-                await DisplayAlert("Sync", _backgroundSyncService.IsSyncing ? "Sync is already running." : "No active user to sync.", "OK");
+                await DisplayAlert(AppLanguage.Text("Sync"), AppLanguage.Text(_backgroundSyncService.IsSyncing ? "Sync is already running." : "No active user to sync."), AppLanguage.Text("OK"));
                 return;
             }
 

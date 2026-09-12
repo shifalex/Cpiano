@@ -342,16 +342,16 @@ namespace GestureSample.Views
                 for (int i = 0; i < mainItems.Count; i++)
                     mainItems[i].Question.RowBackgroundColor = i % 2 == 0 ? Colors.White : Colors.LightGray;
             }
-            Questions.ItemsSource = null;
-            Questions.ItemsSource = new ObservableCollection<MainItem>(mainItems);
-            if (mainItems.Count > 0)
-                Questions.ScrollTo(0, position: ScrollToPosition.Start, animate: false);
+            _browserItems = mainItems;
+            ShowCategories();
             //StateList.ItemsSource = gamePresses;
         }
 
         private async Task LoadTimingRecommendationsAsync()
         {
             TimingRecommendations.Clear();
+            TimingToggle.IsVisible = false;
+            TimingRecommendationsContainer.IsVisible = false;
 
             if (_forTeacher || GameIdentifiers == null || GameIdentifiers.Count == 0)
             {
@@ -397,7 +397,8 @@ namespace GestureSample.Views
                 });
             }
 
-            TimingRecommendationsContainer.IsVisible = TimingRecommendations.Count > 0;
+            TimingToggle.IsVisible = TimingRecommendations.Count > 0;
+            TimingRecommendationsContainer.IsVisible = false;
         }
 
 
@@ -718,6 +719,9 @@ namespace GestureSample.Views
             TimingRecommendations.Clear();
             TimingRecommendationsContainer.IsVisible = false;
             Questions.ItemsSource = null;
+            _browserItems.Clear();
+            TimingToggle.IsVisible = false;
+            ShowCategories();
         }
 
         private static List<KeyEvent> ResolveAttemptEvents(
@@ -912,7 +916,7 @@ namespace GestureSample.Views
         public string WholeAnswerText { get; set; } = string.Empty;
     }
 
-    public class MainItem : INotifyPropertyChanged
+    public partial class MainItem : INotifyPropertyChanged
     {
         public KeyboardQuestion Question { get; set; }
         public ShowState? PpwState { get; set; }

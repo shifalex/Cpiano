@@ -37,6 +37,15 @@ namespace GestureSample.Maui.Models
         public static readonly BindableProperty CompactProperty =
             BindableProperty.Create(nameof(Compact), typeof(bool), typeof(KeyboardSnapshotView), true, propertyChanged: OnSnapshotChanged);
 
+        public static readonly BindableProperty ReviewStyleProperty =
+            BindableProperty.Create(nameof(ReviewStyle), typeof(bool), typeof(KeyboardSnapshotView), false, propertyChanged: OnSnapshotChanged);
+
+        public bool ReviewStyle
+        {
+            get => (bool)GetValue(ReviewStyleProperty);
+            set => SetValue(ReviewStyleProperty, value);
+        }
+
         public bool[] Keys
         {
             get => (bool[])GetValue(KeysProperty);
@@ -142,7 +151,7 @@ namespace GestureSample.Maui.Models
                 Direction,
                 AboveNumber,
                 ArrowLength,
-                Compact);
+                Compact) + $":{ReviewStyle}";
             if (_lastSnapshotSignature == snapshotSignature)
                 return;
 
@@ -194,6 +203,15 @@ namespace GestureSample.Maui.Models
             if (AboveNumber.HasValue && ArrowLength.HasValue)
             {
                 keyboard.AddArrow(Direction, AboveNumber.Value, ArrowLength.Value);
+            }
+
+            if (ReviewStyle)
+            {
+                // Keep recorded key colors intact; only remove the unused black canvas.
+                keyboard.BackgroundColor = Colors.Transparent;
+                keyboard.MinimumWidthRequest = 0;
+                MaximumWidthRequest = keysInRow == 2 ? 260 : 520;
+                HorizontalOptions = LayoutOptions.Center;
             }
 
             Content = keyboard;

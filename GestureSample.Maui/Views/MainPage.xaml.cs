@@ -12,7 +12,18 @@ namespace GestureSample.Views
 {
     public partial class MainPage
     {
-        private PageConfig[] AllPages = new PageConfig[]
+        private readonly string _menuKey;
+        private ScrollView? _grippingScroll;
+        private ToolbarItem? _languageToolbar;
+        private readonly List<(Label Label, string Key)> _grippingLabels = new();
+        private InterfaceLanguage? _displayLanguage;
+        private bool _isNavigating;
+        private readonly Dictionary<string, MainPage> _submenus = new();
+        private PageConfig[]? _allPages;
+        private PageConfig[] AllPages => _allPages ??= CreateAllPages();
+
+        // Share definitions within a navigation tree, without sharing mutable titles globally.
+        private static PageConfig[] CreateAllPages() => new PageConfig[]
         {
 
 
@@ -43,8 +54,13 @@ namespace GestureSample.Views
                 new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.OneHand),
             new PageConfig("Gripping", "Remember two grips", () =>
                 new SimpleViewCellsPage(CreateTwoHandCopyMemorizeConfig()), menuSection: "Coordination", menuIcon: GrippingMenuIcon.TwoHands),
-            new PageConfig("Gripping", "Remember grip changes", () =>
-                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig()), menuSection: "Coordination", menuIcon: GrippingMenuIcon.ChangingHands),
+            new PageConfig("Gripping", "Remember grip changes — Easy", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
+                    TwoHandCombinationOptions.Easy, memorizeSeconds: 4, readInstructionAloud: false,
+                    easyStage: true, keepLeftAtBottom: true)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.RightHandMoving),
+            new PageConfig("Gripping", "Remember grip changes — Hard", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
+                    TwoHandCombinationOptions.Hard, memorizeBoth: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.ChangingHands),
 
             new PageConfig("Gripping", "Learn the arrows", () =>
                 new SimpleViewCellsPage(CreatePrecisionSignLearningConfig()), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.ShiftDown),
@@ -3022,17 +3038,22 @@ namespace GestureSample.Views
             int memorizeSeconds = 2,
             bool readInstructionAloud = true,
             bool askOnlyTarget = false,
-            TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive)
+            TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive,
+            bool memorizeBoth = true,
+            bool easyStage = false,
+            bool keepLeftAtBottom = false)
         {
             GameConfig config = CreatePrecisionCopyConfig(
-                "Remember grip changes",
+                easyStage ? "Remember grip changes — Easy" : "Remember grip changes — Hard",
                 bothHands: true,
                 copyOtherHand: false,
                 transformative: false);
             config.KeyboardConfig.Rows = combinations.HasFlag(TwoHandCombinationOptions.HalfOfHalf)
                 ? Math.Clamp(Math.Max(8, rows), 8, 12)
                 : Math.Clamp(rows, 7, 12);
-            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 5);
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 10);
+            config.KeyboardConfig.IsEasyTwoHandCombinationStage = easyStage;
+            config.KeyboardConfig.KeepLeftHandAtBottom = keepLeftAtBottom;
             config.KeyboardConfig.SecondsPressingToAnswer = 1;
             config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
             config.KeyboardConfig.IsTwoHandCombinationMemorize = true;
@@ -3043,6 +3064,7 @@ namespace GestureSample.Views
             config.KeyboardConfig.RandomizeTwoHandCombinationSizes = randomizeSizes;
             config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
             config.KeyboardConfig.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
+            config.KeyboardConfig.MemorizeBothTwoHandStates = memorizeBoth;
             config.KeyboardConfig.TwoHandMagnitudeVocabularyMode = magnitudeVocabularyMode;
             config.Plan = null;
             return config;
@@ -3079,7 +3101,14 @@ namespace GestureSample.Views
         private bool _hasNavigatedToSplash = false;
 
         public MainPage(string title, IEnumerable<PageConfig> contents)
+            : this(title, contents, null)
         {
+        }
+
+        private MainPage(string title, IEnumerable<PageConfig> contents, PageConfig[]? allPages)
+        {
+            _menuKey = title;
+            _allPages = allPages;
 
             _userRepo = ServiceHelper.GetService<UserRepository>();
             _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
@@ -3120,17 +3149,39 @@ namespace GestureSample.Views
             }
 
             InitializeComponent();
-            BindingContext = materializedContents;
-            MenuCollectionView.ItemsSource = materializedContents;
             if (string.Equals(title, "Gripping", StringComparison.OrdinalIgnoreCase))
                 ConfigureGrippingMenu(materializedContents);
+            else
+                BindingContext = materializedContents;
+            RefreshMenuLanguage();
         }
 
         private void ConfigureGrippingMenu(IReadOnlyCollection<PageConfig> items)
         {
-            Title = "Gripping";
-            MenuSubtitleLabel.Text = "Choose a gripping activity";
+            if (_grippingScroll != null) return;
+            Title = AppLanguage.Text("Gripping", true);
+            MenuSubtitleLabel.Text = AppLanguage.Text("Choose a gripping activity", true);
+            FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
+                ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            if (_languageToolbar == null)
+            {
+                _languageToolbar = new ToolbarItem();
+                _languageToolbar.Clicked += async (_, _) =>
+                {
+                    var settings = new LanguageSettingsView(gripping: true);
+                    var page = new ContentPage { Content = new ScrollView { Content = settings }, Padding = 20 };
+                    void Refresh() { page.Title = AppLanguage.Text("Gripping settings", true); }
+                    settings.LanguageChanged += (_, _) => Refresh();
+                    Refresh();
+                    await Navigation.PushAsync(page);
+                };
+                ToolbarItems.Add(_languageToolbar);
+            }
+            _languageToolbar.Text = AppLanguage.Text("Gripping settings", true);
             MenuCollectionView.IsVisible = false;
+            // The gripping cards replace the collection entirely.
+            MenuCollectionView.RemoveBinding(ItemsView.ItemsSourceProperty);
+            MenuCollectionView.ItemsSource = null;
             VerticalStackLayout coordination = BuildGrippingSection(
                 "Grip practice",
                 "Build control, memory, and coordination",
@@ -3160,9 +3211,13 @@ namespace GestureSample.Views
             tracks.Add(coordination, 0, 0);
             tracks.Add(symbolic, 1, 0);
 
+            bool? wasTwoColumns = null;
             void ApplyResponsiveColumns(double width)
             {
+                if (width <= 0) return;
                 bool useTwoColumns = width >= 720;
+                if (wasTwoColumns == useTwoColumns) return;
+                wasTwoColumns = useTwoColumns;
                 tracks.ColumnDefinitions[0].Width = useTwoColumns
                     ? new GridLength(1.45, GridUnitType.Star)
                     : GridLength.Star;
@@ -3185,6 +3240,7 @@ namespace GestureSample.Views
                 VerticalScrollBarVisibility = ScrollBarVisibility.Default
             };
             PageLayout.Add(scroll, 0, 1);
+            _grippingScroll = scroll;
         }
 
         private VerticalStackLayout BuildGrippingSection(
@@ -3196,18 +3252,20 @@ namespace GestureSample.Views
             VerticalStackLayout stack = new() { Spacing = 10 };
             stack.Add(new Label
             {
-                Text = title,
+                Text = AppLanguage.Text(title, true),
                 FontFamily = "OpenSansSemibold",
                 FontSize = 22,
                 TextColor = accent
             });
             stack.Add(new Label
             {
-                Text = subtitle,
+                Text = AppLanguage.Text(subtitle, true),
                 FontSize = 13,
                 TextColor = Color.FromArgb("#6F7280"),
                 Margin = new Thickness(0, -4, 0, 4)
             });
+            _grippingLabels.Add(((Label)stack.Children[0], title));
+            _grippingLabels.Add(((Label)stack.Children[1], subtitle));
 
             foreach (PageConfig item in items)
             {
@@ -3244,6 +3302,7 @@ namespace GestureSample.Views
                     TextColor = Color.FromArgb("#20232B"),
                     VerticalTextAlignment = TextAlignment.Center
                 };
+                _grippingLabels.Add((titleLabel, item.Title));
                 Grid cardContent = new()
                 {
                     ColumnSpacing = 12,
@@ -3311,6 +3370,7 @@ namespace GestureSample.Views
             currentUserSession.ActiveUserChanged -= OnActiveUserChanged;
             currentUserSession.ActiveUserChanged += OnActiveUserChanged;
             RefreshUserSettingsTitle();
+            RefreshMenuLanguage();
 
 
             // Check if navigation to SplashPage is needed
@@ -3347,7 +3407,32 @@ namespace GestureSample.Views
 
         private void OnActiveUserChanged(object sender, EventArgs e)
         {
-            MainThread.BeginInvokeOnMainThread(RefreshUserSettingsTitle);
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                RefreshUserSettingsTitle();
+                RefreshMenuLanguage();
+            });
+        }
+
+        private void RefreshMenuLanguage()
+        {
+            bool gripping = string.Equals(_menuKey, "Gripping", StringComparison.OrdinalIgnoreCase);
+            InterfaceLanguage language = LanguagePreferences.Get(gripping: gripping);
+            if (_displayLanguage == language) return;
+            _displayLanguage = language;
+
+            Title = AppLanguage.Translate(_menuKey, language);
+            MenuSubtitleLabel.Text = AppLanguage.Translate(
+                gripping ? "Choose a gripping activity" : "Choose an activity to begin", language);
+            FlowDirection = language == InterfaceLanguage.Hebrew
+                ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            if (_languageToolbar != null)
+                _languageToolbar.Text = AppLanguage.Translate("Gripping settings", language);
+            foreach (var (label, key) in _grippingLabels)
+                label.Text = AppLanguage.Translate(key, language);
+            if (!gripping && BindingContext is IEnumerable<PageConfig> items)
+                foreach (PageConfig item in items)
+                    item.RefreshDisplayTitle();
         }
 
         private void RefreshUserSettingsTitle()
@@ -3363,7 +3448,7 @@ namespace GestureSample.Views
             int pageCount = Navigation.NavigationStack.Count;
 
             //TODO: change to work without the title hack. or at least make a Main Title string
-            if (pageCount > 1 && Title!= "Control Categories")
+            if (pageCount > 1 && _menuKey != "Control Categories")
             {
                 // We are NOT on the root page; 
                 // use the former (default) back function:
@@ -3395,24 +3480,39 @@ namespace GestureSample.Views
 
         private async Task NavigateToMenuItem(PageConfig item)
         {
+            if (_isNavigating) return;
+            _isNavigating = true;
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 if (item.PageConstructor != null)
                 {
                     var page = item.PageConstructor.Invoke();
-                    await Navigation.PushAsync(page);
+                    System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: construction {elapsed.ElapsedMilliseconds} ms");
+                    await Navigation.PushAsync(page, animated: false);
                 }
                 else
                 {
                     var subpage = item.Title;
-                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >= 1100 || !pc.IsLargeScreenOnly));
-                    var page = new MainPage(subpage, contents);
-                    await Navigation.PushAsync(page);
+                    // Cache only menus. Exercises still get fresh state on each selection.
+                    if (!_submenus.TryGetValue(subpage, out MainPage page))
+                    {
+                        var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >= 1100 || !pc.IsLargeScreenOnly));
+                        page = new MainPage(subpage, contents, AllPages);
+                        _submenus.Add(subpage, page);
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: construction {elapsed.ElapsedMilliseconds} ms");
+                    await Navigation.PushAsync(page, animated: false);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);
+            }
+            finally
+            {
+                System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: navigation total {elapsed.ElapsedMilliseconds} ms");
+                _isNavigating = false;
             }
         }
 
@@ -3446,7 +3546,8 @@ namespace GestureSample.Views
 
             public bool IsLargeScreenOnly { get; }
             //public bool HasTutorial => Parent == "One operation" && PageConstructor != null;
-            public string DisplayTitle => Title;
+            public string DisplayTitle => AppLanguage.Text(Title, Parent == "Gripping");
+            public void RefreshDisplayTitle() => OnPropertyChanged(nameof(DisplayTitle));
             public string IconGlyph => Title switch
             {
                 "->" => "→",

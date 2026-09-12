@@ -6,7 +6,9 @@
              xmlns:data="clr-namespace:GestureSample.Maui.Data.SQLite"
 			 x:Class="GestureSample.Maui.Views.SwitchUserPage"
              Title="Switch User">
+    <ScrollView>
     <VerticalStackLayout Padding="20" Spacing="20">
+        <VerticalStackLayout x:Name="LanguageSettingsHost" />
         <CollectionView x:Name="UsersCollectionView" 
                         SelectionMode="Single"
                         SelectionChanged="OnUserSelected">
@@ -39,4 +41,5 @@
 
         <!--<Button Text="Delete All Users" Clicked="OnDeleteAllUsersClicked" BackgroundColor="Red" />-->
     </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

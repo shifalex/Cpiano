@@ -45,10 +45,15 @@ namespace GestureSample.Maui.Models
             !_pianoConfig.PrecisionShiftBothHands &&
             DeviceInfo.Platform != DevicePlatform.iOS;
         private bool _externalInputBlocked;
+        private GripInputGate? _gripInputGate;
+        public GripInputGate? GripGate => _pianoConfig.IsVerticalPrecisionPinchExercise
+            ? _gripInputGate ??= new GripInputGate() : null;
+        protected bool IsAnswerInputBlocked => _externalInputBlocked || GripGate?.CanPlay == false;
 
         public void SetExternalInputBlocked(bool blocked)
         {
             _externalInputBlocked = blocked;
+            GripGate?.SetBlocked(blocked);
             if (blocked)
             {
                 _glidingPrecisionKeys.Clear();
@@ -856,7 +861,7 @@ After:
 
         private async void OnKeyboardPanning(object? sender, MR.Gestures.PanEventArgs e)
         {
-            if (_externalInputBlocked)
+            if (IsAnswerInputBlocked)
                 return;
 
             if (_pianoConfig.IsPrecisionPinchExercise)
@@ -907,6 +912,10 @@ After:
 
         private void OnKeyboardPanned(object? sender, MR.Gestures.PanEventArgs e)
         {
+            // A completed pan may end the physical contact without a separate Up.
+            if (!e.Cancelled && GripGate is { CanPlay: false } gate &&
+                e.Sender is MR.Gestures.Button origin)
+                gate.Release(Convert.ToInt32(origin.CommandParameter));
             _draggingKeyIndex = null;
             _draggingKeyColor = Colors.Transparent;
         }
@@ -971,6 +980,9 @@ After:
         private async Task CompletePrecisionGlideAsync(MR.Gestures.Button origin)
         {
             if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current))
+                return;
+
+            if (GripGate != null && !GripGate.Release(Convert.ToInt32(origin.CommandParameter)))
                 return;
 
             if (await OnBeforeKeyUpAsync())
@@ -1084,7 +1096,12 @@ After:
 
         private async void OnDown(MR.Gestures.DownUpEventArgs e)
         {
-            if (_externalInputBlocked)
+            if (GripGate != null && !GripGate.Press(
+                Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter),
+                startsNewContactSequence: e.TriggeringTouches is { Length: > 0 } &&
+                    e.TriggeringTouches.Length == e.NumberOfTouches))
+                return;
+            if (IsAnswerInputBlocked)
                 return;
 
             KeyPressStarted?.Invoke();
@@ -1106,9 +1123,6 @@ After:
         }
         private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
-            if (_externalInputBlocked)
-                return;
-
             MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
             if (UsesNativePrecisionPanFallback &&
                 e.Cancelled &&
@@ -1116,6 +1130,13 @@ After:
             {
                 return;
             }
+
+            // A cancelled MR callback can hand the contact to the native pan.
+            // Keep it registered until that pan (or a real Up) releases the key.
+            if (GripGate != null && !GripGate.Release(Convert.ToInt32(releasedKey.CommandParameter)))
+                return;
+            if (_externalInputBlocked)
+                return;
 
             if (_pianoConfig.IsPrecisionPinchExercise &&
                 _glidingPrecisionKeys.Remove(releasedKey, out MR.Gestures.Button? glidedKey))
