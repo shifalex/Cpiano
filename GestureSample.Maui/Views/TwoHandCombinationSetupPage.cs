@@ -1,6 +1,8 @@
 using GestureSample.Maui;
 using GestureSample.Views.Tests;
 using Microsoft.Maui.Controls.Shapes;
+using GestureSample.Maui.Handlers;
+using GestureSample.Maui.Views;
 
 namespace GestureSample.Views;
 
@@ -14,34 +16,45 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     private readonly CheckBox _vary = new();
     private readonly CheckBox _readAloud = new();
     private readonly CheckBox _askOnlyTarget = new();
+    private readonly CheckBox _memorizeBoth = new();
+    private readonly CheckBox _keepLeftAtBottom = new();
+    private readonly bool _easyStage;
     private readonly Picker _magnitudeVocabulary = new()
     {
         Title = "Magnitude wording",
         ItemsSource = new[] { "Intuitive", "By a little / by a lot", "By exact number" }
     };
     private readonly Slider _rows = new() { Minimum = 7, Maximum = 12 };
-    private readonly Slider _seconds = new() { Minimum = 1, Maximum = 5 };
+    private readonly Slider _seconds = new() { Minimum = 1, Maximum = 10 };
     private readonly Label _summary = new();
     private readonly Page? _exercisePage;
+    private readonly List<Action> _refreshSliderLabels = new();
 
     public TwoHandCombinationSetupPage(KeyboardConfig? current = null, Page? exercisePage = null)
     {
         _exercisePage = exercisePage;
-        current ??= new KeyboardConfig { TwoHandCombinationOptions = TwoHandCombinationOptions.Default,
-            AnimateTwoHandCombinations = true, RandomizeTwoHandCombinationSizes = true,
-            Rows = 8, PrecisionPinchMemorizeDelaySeconds = 2, AskOnlyTwoHandCombinationTarget = false };
-        Title = "Stage 5.1 settings";
+        current ??= MainPage.CreateTwoHandCombinationMemorizeConfig(
+            TwoHandCombinationOptions.Hard, memorizeBoth: false).KeyboardConfig;
+        _easyStage = current.IsEasyTwoHandCombinationStage;
+        _keepLeftAtBottom.IsChecked = current.KeepLeftHandAtBottom;
+        Title = _easyStage ? "Easy grip changes settings" : "Hard grip changes settings";
         BackgroundColor = Color.FromArgb("#FFF9F4");
         _animate.IsChecked = current.AnimateTwoHandCombinations;
         _vary.IsChecked = current.RandomizeTwoHandCombinationSizes;
         _readAloud.IsChecked = current.ReadTwoHandCombinationInstructionAloud;
         _askOnlyTarget.IsChecked = current.AskOnlyTwoHandCombinationTarget;
+        _memorizeBoth.IsChecked = current.MemorizeBothTwoHandStates;
+        _memorizeBoth.CheckedChanged += (_, _) => RefreshRecallOptions();
+        RefreshRecallOptions();
         _magnitudeVocabulary.SelectedIndex = (int)current.TwoHandMagnitudeVocabularyMode;
         _rows.Value = Math.Clamp(current.Rows, 7, 12);
-        _seconds.Value = Math.Clamp(current.PrecisionPinchMemorizeDelaySeconds, 1, 5);
+        _seconds.Value = Math.Clamp(current.PrecisionPinchMemorizeDelaySeconds, 1, 10);
 
         VerticalStackLayout body = new() { Padding = new Thickness(18, 18, 18, 32), Spacing = 13 };
         body.Add(Hero());
+        var languageSettings = new LanguageSettingsView(gripping: true);
+        languageSettings.LanguageChanged += (_, _) => RefreshLanguage();
+        body.Add(languageSettings);
         body.Add(Toolbar());
         AddGroup(body, "Transformations", current,
             (TwoHandCombinationOptions.Commutativity, "⇄", "Commutativity", "Synchronous exchange"),
@@ -73,7 +86,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
 
         Label warning = new() { Text = "Choose at least one exercise.", TextColor = Colors.Firebrick,
             FontAttributes = FontAttributes.Bold, IsVisible = false, HorizontalTextAlignment = TextAlignment.Center };
-        Button save = new() { Text = exercisePage == null ? "Start Stage 5.1" : "Apply and restart Stage 5.1",
+        Button save = new() { Text = exercisePage == null ? "Start practice" : "Apply and restart practice",
             HeightRequest = 56, CornerRadius = 18, BackgroundColor = Accent, TextColor = Colors.White,
             FontSize = 17, FontAttributes = FontAttributes.Bold };
         save.Clicked += async (_, _) => await SaveAsync(warning);
@@ -87,6 +100,21 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         }
         body.Add(save);
         Content = new ScrollView { Content = body };
+        UpdateSummary();
+        RefreshLanguage();
+    }
+
+    private void RefreshLanguage()
+    {
+        FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
+            ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        int selected = _magnitudeVocabulary.SelectedIndex;
+        _magnitudeVocabulary.Title = AppLanguage.Text("Magnitude wording", true);
+        _magnitudeVocabulary.ItemsSource = new[] { "Intuitive", "By a little / by a lot", "By exact number" }
+            .Select(text => AppLanguage.Text(text, true)).ToArray();
+        _magnitudeVocabulary.SelectedIndex = selected;
+        AppLanguage.LocalizeSettings(this, true);
+        foreach (var refresh in _refreshSliderLabels) refresh();
         UpdateSummary();
     }
 
@@ -116,7 +144,17 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     {
         body.Add(new Label { Text = title, FontSize = 19, FontAttributes = FontAttributes.Bold,
             TextColor = Ink, Margin = new Thickness(2, 9, 0, 1) });
-        foreach (var item in items) body.Add(ChoiceCard(item, current.TwoHandCombinationOptions.HasFlag(item.Option)));
+        List<CheckBox> groupChoices = new();
+        Button all = MiniButton("Select all"), clear = MiniButton("Clear");
+        all.Clicked += (_, _) => { foreach (CheckBox check in groupChoices) check.IsChecked = true; };
+        clear.Clicked += (_, _) => { foreach (CheckBox check in groupChoices) check.IsChecked = false; };
+        body.Add(new HorizontalStackLayout { Spacing = 7, Children = { all, clear } });
+        foreach (var item in items)
+        {
+            if (_easyStage && (item.Option & TwoHandCombinationOptions.EasyExcluded) != 0) continue;
+            body.Add(ChoiceCard(item, current.TwoHandCombinationOptions.HasFlag(item.Option)));
+            groupChoices.Add(_choices[item.Option]);
+        }
     }
 
     private View ChoiceCard((TwoHandCombinationOptions Option, string Icon, string Title, string Detail) item, bool selected)
@@ -141,12 +179,26 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         card.GestureRecognizers.Add(tap); return card;
     }
 
+    private void RefreshRecallOptions()
+    {
+        if (_memorizeBoth.IsChecked)
+        {
+            _readAloud.IsChecked = false;
+            _askOnlyTarget.IsChecked = false;
+        }
+        _readAloud.IsEnabled = !_memorizeBoth.IsChecked;
+        _askOnlyTarget.IsEnabled = !_memorizeBoth.IsChecked;
+        _magnitudeVocabulary.IsEnabled = !_memorizeBoth.IsChecked;
+    }
+
     private View PracticeCard()
     {
         VerticalStackLayout v = new() { Spacing = 12 };
         v.Add(new Label { Text = "Practice feel", FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = Ink });
+        v.Add(ToggleRow("MEMORIZE BOTH", "Recall the first grip, then the second. Tap the title to hear the question.", _memorizeBoth));
         v.Add(ToggleRow("Quick movement animations", "Normal question color, no tutorial pause", _animate));
         v.Add(ToggleRow("Vary interval sizes", "Keep the bottom anchor while changing proportions", _vary));
+        v.Add(ToggleRow("Keep left hand at the bottom", "Prefer the same left-hand size between questions. Move the right hand when needed.", _keepLeftAtBottom));
         v.Add(ToggleRow("Read instruction aloud", "Speak the transformation shown above the keyboard", _readAloud));
         v.Add(ToggleRow("Show first state only", "Show the first state, then fade it without showing the second", _askOnlyTarget));
         v.Add(new VerticalStackLayout { Spacing = 3, Children =
@@ -154,8 +206,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             new Label { Text = "Magnitude vocabulary", FontAttributes = FontAttributes.Bold, TextColor = Ink },
             _magnitudeVocabulary
         }});
-        v.Add(SliderRow("Number-line height", _rows, x => $"{x:0} rows"));
-        v.Add(SliderRow("Memorize each position", _seconds, x => $"{x:0} sec"));
+        v.Add(SliderRow("Number-line height", _rows, x => $"{x:0} {AppLanguage.Text("rows", true)}"));
+        v.Add(SliderRow("Combination exposure time", _seconds, x => $"{x:0} {AppLanguage.Text("sec", true)}"));
         return new Border { Margin = new Thickness(0, 9, 0, 0), Padding = 17, BackgroundColor = Colors.White,
             Stroke = Color.FromArgb("#E9E1DC"), StrokeShape = new RoundRectangle { CornerRadius = 20 }, Content = v };
     }
@@ -168,7 +220,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         GameConfig config = MainPage.CreateTwoHandCombinationMemorizeConfig(selected, _animate.IsChecked,
             _vary.IsChecked, (int)Math.Round(_rows.Value), (int)Math.Round(_seconds.Value),
             _readAloud.IsChecked, _askOnlyTarget.IsChecked,
-            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex));
+            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex), _memorizeBoth.IsChecked,
+            _easyStage, _keepLeftAtBottom.IsChecked);
         SimpleViewCellsPage replacement = new(config);
         if (_exercisePage != null && Navigation.NavigationStack.Contains(_exercisePage))
         {
@@ -188,21 +241,23 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         int rows = (int)Math.Round(_rows.Value);
         if (!exercise.CanApplyTwoHandCombinationRowsWithoutRestart(rows))
         {
-            await DisplayAlert("Restart required",
-                "Changing the number-line height requires ‘Apply and restart Stage 5.1’. Other settings can be applied without restarting.",
-                "OK");
+            await DisplayAlert(AppLanguage.Text("Restart required", true),
+                AppLanguage.Text("Changing the number-line height requires restarting practice. Other settings can be applied without restarting.", true),
+                AppLanguage.Text("OK", true));
             return;
         }
 
         exercise.ApplyTwoHandCombinationSettings(selected, _animate.IsChecked, _vary.IsChecked,
             (int)Math.Round(_seconds.Value), _readAloud.IsChecked, _askOnlyTarget.IsChecked,
-            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex));
+            (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex), _memorizeBoth.IsChecked,
+            _keepLeftAtBottom.IsChecked);
         await Navigation.PopAsync();
     }
 
     private void SetAll(bool value) { foreach (CheckBox c in _choices.Values) c.IsChecked = value; UpdateSummary(); }
     private void UpdateSummary() { int n = _choices.Values.Count(x => x.IsChecked);
-        _summary.Text = n == 0 ? "No exercises selected" : $"{n} exercise{(n == 1 ? "" : "s")} selected"; }
+        _summary.Text = n == 0 ? AppLanguage.Text("No exercises selected", true)
+            : $"{n} {AppLanguage.Text("exercises selected", true)}"; }
     private static Button MiniButton(string text) => new() { Text = text, FontSize = 12,
         Padding = new Thickness(11, 5), CornerRadius = 13, BackgroundColor = Soft, TextColor = Accent };
 
@@ -213,10 +268,11 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             new Label { Text = detail, FontSize = 11, TextColor = Ink.WithAlpha(.6f) } } }, 0, 0); g.Add(check, 1, 0); return g;
     }
 
-    private static View SliderRow(string title, Slider slider, Func<double, string> format)
+    private View SliderRow(string title, Slider slider, Func<double, string> format)
     {
         slider.MinimumTrackColor = Accent; slider.ThumbColor = Accent;
         Label value = new() { Text = format(slider.Value), TextColor = Accent, FontAttributes = FontAttributes.Bold };
+        _refreshSliderLabels.Add(() => value.Text = format(Math.Round(slider.Value)));
         slider.ValueChanged += (_, e) => value.Text = format(Math.Round(e.NewValue));
         Grid h = new() { ColumnDefinitions = { new(GridLength.Star), new(GridLength.Auto) } };
         h.Add(new Label { Text = title, FontAttributes = FontAttributes.Bold, TextColor = Ink }, 0, 0); h.Add(value, 1, 0);

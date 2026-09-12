@@ -1,4 +1,4 @@
-using GestureSample.Maui.Data;
+﻿using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
 using Microsoft.Maui.Graphics;
@@ -1333,7 +1333,9 @@ namespace GestureSample.Maui.Models
 
             bool[] submittedKeyboard = pianoKeyboard.ToBitArray();
             ArrowMovementMode movementMode = GetCurrentArrowMovementMode();
-            bool result = CheckOnly(submittedKeyboard);
+            bool result = !(Config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
+                Config.KeyboardConfig.MemorizeBothTwoHandStates && IsSequenceMemorizeFirstResponse()) &&
+                CheckOnly(submittedKeyboard);
             DateTime submittedTime = DateTime.Now;
             if (result)
                 result = await CheckArrowMovementTimingAsync();
@@ -2401,7 +2403,9 @@ namespace GestureSample.Maui.Models
         {
             CurrentOperation = Operation.Copy;
 
-            if (!_sequenceMemorizeGenerateSecond)
+            // A combination is one question with two required grips. Skipping a
+            // question must never generate its second grip as a standalone answer.
+            if (!_sequenceMemorizeGenerateSecond || Config.KeyboardConfig.IsTwoHandCombinationMemorize)
             {
                 if (Config.KeyboardConfig.IsTwoHandCombinationMemorize)
                 {
@@ -2446,7 +2450,10 @@ namespace GestureSample.Maui.Models
             _sequenceMemorizeCurrentIsFirst = false;
         }
 
-        private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random)
+        private int? _preferredCombinationLeftSize;
+
+        private (bool[] First, bool[] Second) GenerateTwoHandCombinationPair(Random random,
+            int preferenceAttempt = 0, TwoHandCombinationOptions? preferredKind = null)
         {
             int rows = Math.Max(7, Config.KeyboardConfig.Rows);
             if (_pendingHalfDerivedFirst != null && _pendingHalfDerivedSecond != null)
@@ -2489,9 +2496,37 @@ namespace GestureSample.Maui.Models
                 ,(24, TwoHandCombinationOptions.ThroughTenParts)
             };
             TwoHandCombinationOptions enabled = Config.KeyboardConfig.TwoHandCombinationOptions;
+            bool easy = Config.KeyboardConfig.IsEasyTwoHandCombinationStage;
+            bool oneStepIntro = EasyGripIntro.Applies(easy, _questionNumber);
+            if (easy)
+            {
+                enabled &= ~TwoHandCombinationOptions.EasyExcluded;
+                // Generate the first four questions using single-step comparisons.
+                if (oneStepIntro)
+                {
+                    const TwoHandCombinationOptions introductoryOptions =
+                        TwoHandCombinationOptions.LittleSmaller | TwoHandCombinationOptions.LittleBigger;
+                    enabled &= introductoryOptions;
+                    if (enabled == TwoHandCombinationOptions.None)
+                        enabled = introductoryOptions;
+                }
+            }
+            if (Config.KeyboardConfig.KeepLeftHandAtBottom)
+                enabled &= ~TwoHandCombinationOptions.Commutativity;
+            if (preferredKind.HasValue)
+                enabled &= preferredKind.Value;
             var allowedCombinations = allCombinations.Where(item => enabled.HasFlag(item.Option)).ToArray();
             if (allowedCombinations.Length == 0)
-                allowedCombinations = allCombinations;
+                allowedCombinations = allCombinations.Where(item =>
+                    (easy ? TwoHandCombinationOptions.Easy : TwoHandCombinationOptions.Hard).HasFlag(item.Option)).ToArray();
+            bool startBothAtBottom = easy && (_questionNumber <= 1 || random.Next(4) != 0);
+            if (startBothAtBottom)
+            {
+                var bottomCombinations = allowedCombinations.Where(item =>
+                    item.Case is 6 or 8 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 23).ToArray();
+                if (bottomCombinations.Length > 0)
+                    allowedCombinations = bottomCombinations;
+            }
             var selectedCombination = allowedCombinations[random.Next(allowedCombinations.Length)];
             int combination = selectedCombination.Case;
             _twoHandCombinationKind = selectedCombination.Option;
@@ -2713,12 +2748,16 @@ namespace GestureSample.Maui.Models
             if (HasDisallowedTwoHandCombinationGap(first) ||
                 HasDisallowedTwoHandCombinationGap(second))
             {
-                return GenerateTwoHandCombinationPair(random);
+                return GenerateTwoHandCombinationPair(random, preferenceAttempt, preferredKind);
             }
+
+            if (startBothAtBottom && first.Right.Lower != 0 && second.Right.Lower == 0 &&
+                second.Left.Lower == 0)
+                (first, second) = (second, first);
 
             // Randomize which physical hand carries each interval, without changing
             // the mathematical relationship between the two displayed combinations.
-            if (random.Next(2) == 0)
+            if (!oneStepIntro && !Config.KeyboardConfig.KeepLeftHandAtBottom && random.Next(2) == 0)
             {
                 first = (first.Right, first.Left);
                 second = (second.Right, second.Left);
@@ -2729,6 +2768,8 @@ namespace GestureSample.Maui.Models
             // Stage 5.1 normally begins at the physical bottom so its intervals have
             // a stable origin. A future dedicated exercise may explicitly opt out.
             if (Config.KeyboardConfig.RandomizeTwoHandCombinationSizes &&
+                !oneStepIntro &&
+                !Config.KeyboardConfig.KeepLeftHandAtBottom &&
                 !Config.KeyboardConfig.AnchorTwoHandCombinationsToBottom)
             {
                 int usedRows = new[] { first.Left.Upper, first.Right.Upper, second.Left.Upper, second.Right.Upper }.Max() + 1;
@@ -2738,6 +2779,17 @@ namespace GestureSample.Maui.Models
                     first = (ShiftInterval(first.Left, offset), ShiftInterval(first.Right, offset));
                     second = (ShiftInterval(second.Left, offset), ShiftInterval(second.Right, offset));
                 }
+            }
+
+            if (oneStepIntro || Config.KeyboardConfig.KeepLeftHandAtBottom)
+            {
+                int leftSize = first.Left.Upper - first.Left.Lower + 1;
+                // Prefer continuity across questions, but never make a selected
+                // exercise impossible when it needs a different whole size.
+                if (!oneStepIntro && _preferredCombinationLeftSize is int preferred && leftSize != preferred &&
+                    preferenceAttempt < 12)
+                    return GenerateTwoHandCombinationPair(random, preferenceAttempt + 1, selectedCombination.Option);
+                _preferredCombinationLeftSize = leftSize;
             }
 
             bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
@@ -2758,7 +2810,7 @@ namespace GestureSample.Maui.Models
                 // with the very same whole size and physical hand assignment. Queue
                 // the requested transformation as the immediately following task.
                 bool[] otherHalf = BuildUpperHalfQuestion(firstBits);
-                bool useLowerHalf = _twoHandCombinationKind is
+                bool useLowerHalf = Config.KeyboardConfig.KeepLeftHandAtBottom || _twoHandCombinationKind is
                     TwoHandCombinationOptions.MoreThanHalf or
                     TwoHandCombinationOptions.LessThanHalf;
                 _pendingHalfDerivedFirst = useLowerHalf
@@ -2925,6 +2977,9 @@ namespace GestureSample.Maui.Models
             int equalSize = grow ? smaller : larger;
             int transformedSize = grow ? larger : smaller;
 
+            if (EasyGripIntro.Applies(Config.KeyboardConfig.IsEasyTwoHandCombinationStage, _questionNumber))
+                (equalSize, transformedSize) = EasyGripIntro.ChooseSizes(random, rows, grow, _preferredCombinationLeftSize);
+
             // Every comparative prompt now starts from two equal full jumps. On the
             // second frame only the right jump changes, making the direction and the
             // amount of the transformation unambiguous.
@@ -3054,6 +3109,16 @@ namespace GestureSample.Maui.Models
             _sequenceMemorizeCurrentIsFirst = false;
             _sequenceMemorizeGenerateSecond = false;
             return true;
+        }
+
+        public void RestartSequenceMemorizeRecall()
+        {
+            if (_sequenceMemorizeFirstPinch == null) return;
+            _sequenceMemorizeCurrentIsFirst = true;
+            _sequenceMemorizeGenerateSecond = true;
+            BitArrayQuestion = _sequenceMemorizeFirstPinch.ToArray();
+            BitArrayQuestion2 = Array.Empty<bool>();
+            BuildCorrectAnswer();
         }
 
         public bool[] GetSequenceMemorizeSecondPreview() =>
@@ -3529,7 +3594,13 @@ namespace GestureSample.Maui.Models
             };
         }
 
-        public string GetTwoHandCombinationActionText() => _twoHandCombinationKind switch
+        public string GetTwoHandCombinationActionText() => Config.KeyboardConfig.MemorizeBothTwoHandStates
+            ? "Remember the first, then the second" : GetTwoHandTransformationActionText();
+
+        public bool HasMovingSharedBoundary => _twoHandCombinationKind is
+            TwoHandCombinationOptions.Associativity or TwoHandCombinationOptions.ResizeLowerAttached;
+
+        public string GetTwoHandTransformationActionText() => _twoHandCombinationKind switch
         {
             TwoHandCombinationOptions.Commutativity => "COMMUTATIVITY",
             TwoHandCombinationOptions.Associativity => BuildSharedBoundaryActionText(),
@@ -4225,7 +4296,7 @@ namespace GestureSample.Maui.Models
             bool leftIsActive = keyboard.PrecisionShiftBothHands || IsLeftPrecisionColumnActive();
             bool rightIsActive = keyboard.PrecisionShiftBothHands || !leftIsActive;
 
-            if (keyboard.IsPrecisionSignLearningExercise && _questionNumber < 3)
+            if (keyboard.IsPrecisionSignLearningExercise && _questionNumber < PrecisionSignLearningIntro.Count)
             {
                 ConfigurePrecisionSignLearningIntro(_questionNumber);
                 FinalizePrecisionShiftConfiguration(minimum);
@@ -4391,38 +4462,11 @@ namespace GestureSample.Maui.Models
         private void ConfigurePrecisionSignLearningIntro(int exerciseIndex)
         {
             int columns = Math.Max(1, Config.KeyboardConfig.KeysInRow);
-            int rows = Math.Max(5, Config.KeyboardConfig.Rows);
             int column = Math.Min(exerciseIndex % Math.Min(2, columns), columns - 1);
             bool[] pinch = new bool[BitArrayQuestion.Length];
 
-            // 1: enlarge upward by two rows.
-            // 2: squeeze downward by two rows.
-            // 3: shift the complete grip downward by two rows.
-            int lowerRow;
-            int upperRow;
-            int delta;
-            bool isShift;
-            switch (exerciseIndex)
-            {
-                case 0:
-                    lowerRow = 0;
-                    upperRow = Math.Min(2, rows - 3);
-                    delta = 2;
-                    isShift = false;
-                    break;
-                case 1:
-                    lowerRow = 0;
-                    upperRow = Math.Min(4, rows - 1);
-                    delta = -2;
-                    isShift = false;
-                    break;
-                default:
-                    lowerRow = 2;
-                    upperRow = Math.Min(4, rows - 1);
-                    delta = -2;
-                    isShift = true;
-                    break;
-            }
+            var (lowerRow, upperRow, delta, isShift, baseAtTop) =
+                PrecisionSignLearningIntro.GetStep(exerciseIndex);
 
             pinch[(lowerRow * columns) + column] = true;
             pinch[(upperRow * columns) + column] = true;
@@ -4432,13 +4476,13 @@ namespace GestureSample.Maui.Models
             {
                 _precisionShiftLeftDelta = delta;
                 _precisionShiftLeftIsShift = isShift;
-                _precisionShiftLeftBaseAtTop = false;
+                _precisionShiftLeftBaseAtTop = baseAtTop;
             }
             else
             {
                 _precisionShiftRightDelta = delta;
                 _precisionShiftRightIsShift = isShift;
-                _precisionShiftRightBaseAtTop = false;
+                _precisionShiftRightBaseAtTop = baseAtTop;
             }
         }
 
@@ -5006,6 +5050,7 @@ namespace GestureSample.Maui.Models
         private bool? CheckFreeSizeGripAnswer(bool[] candidate)
         {
             if (Config.KeyboardConfig?.IsTwoHandCombinationMemorize != true ||
+                Config.KeyboardConfig.MemorizeBothTwoHandStates ||
                 IsSequenceMemorizeFirstResponse() ||
                 _sequenceMemorizeFirstPinch == null ||
                 _sequenceMemorizeSecondPinch == null)

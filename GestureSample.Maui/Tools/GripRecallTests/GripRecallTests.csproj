@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Models/PartPartWholeGameplay/EasyGripIntro.cs" Link="EasyGripIntro.cs" />
+    <Compile Include="../../Models/PianoKeyboard/Core/GripInputGate.cs" Link="GripInputGate.cs" />
+    <Compile Include="../../Models/PianoKeyboard/Core/GripPresentationClock.cs" Link="GripPresentationClock.cs" />
+    <Compile Include="../../Models/PartPartWholeGameplay/PrecisionSignLearningIntro.cs" Link="PrecisionSignLearningIntro.cs" />
+  </ItemGroup>
+</Project>

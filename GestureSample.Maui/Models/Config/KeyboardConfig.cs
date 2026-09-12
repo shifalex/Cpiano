@@ -429,6 +429,11 @@
                   SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
                   IncreaseLowerByOne | DecreaseLowerByOne |
                   IncreaseUpperByOne | DecreaseUpperByOne,
+        EasyExcluded = Commutativity | Associativity | ResizeLowerAttached | SplitJump |
+                       IncreaseLowerByOne | DecreaseLowerByOne,
+        RelativeSize = LittleSmaller | MuchSmaller | LittleBigger | MuchBigger,
+        Easy = (Default | RelativeSize) & ~EasyExcluded,
+        Hard = Default | ResizeLowerAttached,
         All = Commutativity | Associativity | ResizeUpper | ResizeLowerAttached |
               FlipAdditionSubtraction | Difference | Split | SplitJump |
               HalfOfHalf | LittleSmaller | MuchSmaller | LittleBigger | MuchBigger | Half |
@@ -498,8 +503,11 @@
         public bool RandomizeTwoHandCombinationSizes { get; set; } = true;
         public bool AnchorTwoHandCombinationsToBottom { get; set; } = true;
         public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;
+        public bool MemorizeBothTwoHandStates { get; set; } = true;
+        public bool IsEasyTwoHandCombinationStage { get; set; }
+        public bool KeepLeftHandAtBottom { get; set; }
         // Legacy property name retained for saved settings. Controls first-state-only
-        // presentation; combination exercises always accept the final state directly.
+        // presentation when MemorizeBothTwoHandStates is disabled.
         public bool AskOnlyTwoHandCombinationTarget { get; set; } = false;
         public TwoHandMagnitudeVocabularyMode TwoHandMagnitudeVocabularyMode { get; set; } =
             TwoHandMagnitudeVocabularyMode.Intuitive;
@@ -581,6 +589,16 @@
                 ? KeyboardFeatures | KeyboardFeatureFlags.HideMainKeyboard
                 : KeyboardFeatures & ~KeyboardFeatureFlags.HideMainKeyboard;
         }
+
+        public int MinimumAnswerTimeSeconds =>
+            IsTwoHandCombinationMemorize || IsTwoHandCopyMemorize ||
+            PrecisionShiftBothHands || IsPrecisionShiftExercise ||
+            IsGripTransformationPracticeExercise || IsPrecisionSynchronousProcessExercise ||
+            CopyPrecisionPinchToOtherHand ? 2 : 1;
+
+        public int NormalizeAnswerTimeSetting(int seconds) => seconds == 0 ? 0
+            : seconds < 0 ? Math.Min(seconds, -MinimumAnswerTimeSeconds)
+            : Math.Max(seconds, MinimumAnswerTimeSeconds);
 
         public int SecondsPressingToAnswer { get; set; } = 2;
 

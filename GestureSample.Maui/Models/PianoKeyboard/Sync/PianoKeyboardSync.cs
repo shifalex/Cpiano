@@ -14,6 +14,7 @@ namespace GestureSample.Maui.Models
         public event Action<double>? SequenceFirstProgressChanged;
         public virtual bool SupportsAnswerTimeTuner => true;
         public int AnswerTimeSetting => _secondsPressingToAnswerSetting;
+        public int MinimumAnswerTimeSeconds => _pianoConfig.MinimumAnswerTimeSeconds;
 
 
 
@@ -23,7 +24,7 @@ namespace GestureSample.Maui.Models
         private bool _isChecking = false;
         private bool _isLifecycleActive = true;
         private bool _isTickRunning;
-        private DateTime? _lastCorrectSequenceFirstUtc;
+        private bool _sequenceFirstRecognized;
         private string? _lastSequenceCueSignature;
         private DateTime? _holdGestureStartedUtc;
         private DateTime? _lastHoldHintUtc;
@@ -41,7 +42,8 @@ namespace GestureSample.Maui.Models
             //_pressProgress.Opacity = 0;
             //TODO:REALLY NOT SURE WHERE IS THE CORRECT PLACE FOR THIS - it should be in the gui - piano should give only text
             //_lblTimer.FontSize = 55;//(_seconds_pressed >= SECONDS_TO_ANSWER) ? 55 : 30;
-            _secondsPressingToAnswerSetting = pianoConfig.SecondsPressingToAnswer;
+            _secondsPressingToAnswerSetting = pianoConfig.NormalizeAnswerTimeSetting(pianoConfig.SecondsPressingToAnswer);
+            pianoConfig.SecondsPressingToAnswer = _secondsPressingToAnswerSetting;
             _secondsToAnswer = Math.Abs(_secondsPressingToAnswerSetting);
             UpdateProgressColor();
             pressCounter  = new int[NUMBER_OF_KEYS + 1];
@@ -63,7 +65,9 @@ namespace GestureSample.Maui.Models
 
         protected virtual bool HasActiveTimedAnswer()
         {
-            return AnyPressed() && !IsGripPracticeStartingCopy();
+            return !IsAnswerInputBlocked && AnyPressed() && !IsGripPracticeStartingCopy() &&
+                !(_pianoConfig.IsTwoHandCombinationMemorize && _pianoConfig.MemorizeBothTwoHandStates &&
+                  _gamePlay is BitArrayGamePlay sequence && sequence.IsSequenceMemorizeFirstResponse());
         }
 
         private bool UsesStartingGripCue =>
@@ -106,6 +110,7 @@ namespace GestureSample.Maui.Models
 
         public virtual void UpdateAnswerTimeSetting(int secondsPressingToAnswer)
         {
+            secondsPressingToAnswer = _pianoConfig.NormalizeAnswerTimeSetting(secondsPressingToAnswer);
             _secondsPressingToAnswerSetting = secondsPressingToAnswer;
             _secondsToAnswer = Math.Abs(secondsPressingToAnswer);
             _pianoConfig.SecondsPressingToAnswer = secondsPressingToAnswer;
@@ -182,14 +187,17 @@ namespace GestureSample.Maui.Models
 
         protected async Task PianoInitWithTimer()
         {
-            if (_isChecking)
+            if (_isChecking || IsAnswerInputBlocked || !CanSubmitCurrentSequenceState())
                 return;
 
             _isChecking = true;
             CancelHoldHint();
             timer.Stop();
             IsEnabled = true;
-            InputTransparent = true;
+            // _isChecking prevents duplicate submissions while the current grip
+            // remains editable. Only an accepted answer starts a blocked transition.
+            // Keep receiving physical releases while the answer is checked.
+            InputTransparent = GripGate == null;
 
             try
             {
@@ -197,6 +205,7 @@ namespace GestureSample.Maui.Models
                 ResetProgressVisual();
 
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
+                if (GripGate != null && checkResult.IsCorrect) SetExternalInputBlocked(true);
                 if (CheckCompletedAsync != null)
                     await CheckCompletedAsync(checkResult);
             }
@@ -204,6 +213,7 @@ namespace GestureSample.Maui.Models
             {
                 Console.WriteLine($"[ERROR] {DateTime.Now:dd/MM/yyyy HH:mm:ss}: Timed keyboard submit failed - {ex}");
                 ResetProgressVisual();
+                if (_isLifecycleActive && GripGate != null) SetExternalInputBlocked(false);
                 InputTransparent = false;
             }
             finally
@@ -240,7 +250,7 @@ namespace GestureSample.Maui.Models
 
         protected override async Task OnKeyStateChangedAsync(bool isDown)
         {
-            if (_isChecking)
+            if (_isChecking || IsAnswerInputBlocked)
             {
                 return;
             }
@@ -305,17 +315,26 @@ namespace GestureSample.Maui.Models
             }
 
             bool isCorrect = _gamePlay.IsCloseEnough(this, allowedDifferences: 0);
+            if (!isCorrect && pressed.SequenceEqual(sequenceGame.GetSequenceMemorizeSecondPreview()))
+            {
+                string signature = "missing-first:" + string.Concat(pressed.Select(bit => bit ? '1' : '0'));
+                if (_lastSequenceCueSignature != signature)
+                {
+                    _lastSequenceCueSignature = signature;
+                    SequenceFirstProgressChanged?.Invoke(-2);
+                }
+                return true;
+            }
             ShowSequenceCue(pressed, isCorrect);
             if (!isCorrect)
                 return true;
 
-            _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            _sequenceFirstRecognized = true;
             _pressStartUtc = null;
             _pressProgress.Progress = 0;
             if (!sequenceGame.AdvanceSequenceMemorizeToLastResponse())
                 return false;
 
-            SequenceFirstProgressChanged?.Invoke(1);
             return true;
         }
 
@@ -429,7 +448,7 @@ namespace GestureSample.Maui.Models
             }
 
             ShowSequenceCue(pressed, isCorrect: true);
-            _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            _sequenceFirstRecognized = true;
             _pressStartUtc = null;
             _pressProgress.Progress = 0;
             return true;
@@ -466,7 +485,7 @@ namespace GestureSample.Maui.Models
                 _gamePlay is BitArrayGamePlay sequenceGame &&
                 sequenceGame.IsSequenceMemorizeFirstResponse())
             {
-                _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+                _sequenceFirstRecognized = true;
             }
         }
 
@@ -477,15 +496,17 @@ namespace GestureSample.Maui.Models
                    !sequenceGame.IsSequenceMemorizeFirstResponse();
         }
 
-        private bool HasRecentSequenceFirst()
+        public void ResetSequenceRecognition()
         {
-            int seconds = Math.Max(1, _pianoConfig.PrecisionSequenceRecognitionWindowSeconds);
-            return _lastCorrectSequenceFirstUtc.HasValue &&
-                   DateTime.UtcNow - _lastCorrectSequenceFirstUtc.Value <= TimeSpan.FromSeconds(seconds);
+            // Acceptance lasts until the next exercise or a replay of the demonstration.
+            _sequenceFirstRecognized = false;
+            _lastSequenceCueSignature = null;
         }
 
         private bool CanSubmitCurrentSequenceState()
         {
+            if (_pianoConfig.IsTwoHandCombinationMemorize && _pianoConfig.MemorizeBothTwoHandStates)
+                return IsWaitingForSequenceLast();
             return !_pianoConfig.IsPrecisionPinchSequenceMemorize ||
                    _pianoConfig.IsTwoHandCombinationMemorize ||
                    IsReadySequenceFinalCandidate();
@@ -494,7 +515,7 @@ namespace GestureSample.Maui.Models
         private bool IsReadySequenceFinalCandidate()
         {
             if (!IsWaitingForSequenceLast() ||
-                !HasRecentSequenceFirst() ||
+                !_sequenceFirstRecognized ||
                 _gamePlay is not BitArrayGamePlay sequenceGame)
             {
                 return false;
@@ -512,6 +533,13 @@ namespace GestureSample.Maui.Models
             _isLifecycleActive = active;
             if (!active)
             {
+                if (GripGate != null)
+                {
+                    // Native releases may be lost while navigating. Clear the
+                    // answer too, so returning cannot submit a stale held grip.
+                    base.PianoInit();
+                    GripGate.ResetContacts();
+                }
                 timer?.Stop();
                 _pressStartUtc = null;
                 _seconds_pressed = 0;
@@ -532,11 +560,20 @@ namespace GestureSample.Maui.Models
                 return;
 
             _isChecking = false;
-            if (_pianoConfig.IsTwoHandCombinationMemorize && IsWaitingForSequenceLast())
-                _lastCorrectSequenceFirstUtc = DateTime.UtcNow;
+            if (_pianoConfig.IsTwoHandCombinationMemorize && !_pianoConfig.MemorizeBothTwoHandStates && IsWaitingForSequenceLast())
+                _sequenceFirstRecognized = true;
             InputTransparent = false;
             if (timer != null && !timer.IsRunning)
                 timer.Start();
+        }
+
+        public void RestartGripRetryTimer()
+        {
+            // Retain keys, contact ownership and glide origins so a wrong grip can
+            // be corrected in place. Give the next attempt its full answer time.
+            CancelHoldHint();
+            _seconds_pressed = 0;
+            ResetProgressVisual();
         }
 
         public override void PianoInit()

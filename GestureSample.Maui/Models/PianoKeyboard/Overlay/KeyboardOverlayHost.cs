@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace GestureSample.Maui.Models
 {
-    public sealed class KeyboardOverlayHost : Grid
+    public sealed partial class KeyboardOverlayHost : Grid
     {
         public const float DefaultStaticOverlayAlpha = 0.5f;
 
@@ -66,6 +66,7 @@ namespace GestureSample.Maui.Models
             public bool UseFlipInterpolation { get; set; }
             public bool ShowFlipAxis { get; set; }
             public bool ShowPrecisionPinchGuide { get; set; }
+            public bool ShowSharedBoundaryGuide { get; set; }
             public bool ShowPrecisionLearningSign { get; set; }
             public int[] PrecisionLearningDeltas { get; set; } = new int[2];
             public bool[] PrecisionLearningIsShift { get; set; } = new bool[2];
@@ -354,6 +355,21 @@ namespace GestureSample.Maui.Models
                     float guideBottom = selected.Max(item => item.Rect.Bottom);
                     canvas.DrawLine(guideX, guideTop, guideX, guideBottom);
 
+                }
+
+                if (ShowSharedBoundaryGuide && columns == 2)
+                {
+                    var hands = selectedKeys.GroupBy(item => item.Column)
+                        .OrderBy(hand => hand.Min(item => item.Index)).ToArray();
+                    if (hands.Length == 2)
+                    {
+                        // Rows count upward. Meet halfway between the facing key
+                        // edges, using the same interpolated rectangles as the grips.
+                        float boundaryY = (hands[0].Min(item => item.Rect.Top) +
+                                           hands[1].Max(item => item.Rect.Bottom)) / 2f;
+                        canvas.DrawLine(selectedKeys.Min(item => item.Rect.Left), boundaryY,
+                            selectedKeys.Max(item => item.Rect.Right), boundaryY);
+                    }
                 }
             }
 
@@ -678,6 +694,7 @@ namespace GestureSample.Maui.Models
             Keyboard = keyboard;
             _patternDrawable.KeyboardColumns = Math.Max(1, keyboard.Config?.KeysInRow ?? 1);
             Children.Add(Keyboard);
+            InitializeGripTurnCue();
 
             _inputShield = new BoxView
             {
@@ -721,6 +738,8 @@ namespace GestureSample.Maui.Models
         {
             if (isOn) CancelHoldHint();
             IsTutorialMode = isOn;
+            if (Keyboard is PianoKeyboard interactive && interactive.GripGate != null)
+                interactive.SetExternalInputBlocked(isOn);
 
             // Do not render a covering view. Transparent BoxViews above native
             // buttons are not visually reliable across WinUI/UIKit renderers
@@ -736,6 +755,12 @@ namespace GestureSample.Maui.Models
         public void SetPrecisionPinchGuideVisible(bool visible)
         {
             _patternDrawable.ShowPrecisionPinchGuide = visible;
+            Keyboard.InvalidateOverlay();
+        }
+
+        public void SetSharedBoundaryGuideEnabled(bool enabled)
+        {
+            _patternDrawable.ShowSharedBoundaryGuide = enabled;
             Keyboard.InvalidateOverlay();
         }
 
@@ -835,6 +860,7 @@ namespace GestureSample.Maui.Models
         // clear only animation layer
         public void ClearAnim()
         {
+            foreach (var animation in _presentationAnimations.Values.ToArray()) animation.Cancel();
             _patternDrawable.AnimBits = Array.Empty<bool>();
             _patternDrawable.AnimTargets = Array.Empty<int>();
             _patternDrawable.AnimProgress = 0f;
@@ -930,10 +956,10 @@ namespace GestureSample.Maui.Models
                 visibleIndices.Add(indices[i]);
                 _patternDrawable.TutorialArcIndices = visibleIndices.ToArray();
                 Keyboard.InvalidateOverlay();
-                await Task.Delay((int)stepMs);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(stepMs));
             }
 
-            await Task.Delay((int)holdMs);
+            await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
         }
 
         public void ShowHighlightedBits(
@@ -1058,7 +1084,7 @@ namespace GestureSample.Maui.Models
             _patternDrawable.SpawnAlpha = 0.55f;
             Keyboard.InvalidateOverlay();
 
-            await Task.Delay((int)holdMs);
+            await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
 
             await RunProgressAnimation(animName + "_out", fadeOutMs, t =>
             {
@@ -1258,6 +1284,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             }
 
             _patternDrawable.KeyRects = _keyRects;
+            _turnIcon?.Invalidate();
             overlay.Invalidate();
             return true;
         }
@@ -1270,19 +1297,44 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             _patternDrawable.CursorAlpha = 0.7f;
             Keyboard.InvalidateOverlay();
 
-            var tcs = new TaskCompletionSource();
-
-            new Animation(v =>
-            {
-                _patternDrawable.CursorIndex = (int?)(fromIndex + (toIndex - fromIndex) * v);
-                Keyboard.InvalidateOverlay();
-            })
-            .Commit(this, "CursorMove", 16, ms, Easing.CubicInOut, (v, c) => tcs.SetResult());
-
-            await tcs.Task;
+            await RunProgressAnimation("CursorMove", ms,
+                progress => _patternDrawable.CursorIndex = (int?)(fromIndex + (toIndex - fromIndex) * progress));
 
             _patternDrawable.CursorIndex = null;
             Keyboard.InvalidateOverlay();
+        }
+
+        private int _recallHintVersion;
+        private bool _recallHintActive;
+
+        public void CancelRecallHint()
+        {
+            _recallHintVersion++;
+            if (!_recallHintActive) return;
+            _recallHintActive = false;
+            this.AbortAnimation("RecallFirstHint");
+            ClearAnim();
+        }
+
+        public async Task FlashRecallHintAsync(bool[] bits)
+        {
+            CancelRecallHint();
+            int version = _recallHintVersion;
+            TrySyncOverlay();
+            _recallHintActive = true;
+            _patternDrawable.AnimBits = bits.ToArray();
+            _patternDrawable.AnimTargets = BuildShiftTargets(bits, 0);
+            _patternDrawable.AnimProgress = 1f;
+            _patternDrawable.AnimAlpha = 0f;
+            _patternDrawable.AnimColor = Colors.Yellow;
+            _patternDrawable.CursorIndex = null;
+            await RunProgressAnimation("RecallFirstHint", 700, t =>
+            {
+                if (version == _recallHintVersion && _recallHintActive)
+                    _patternDrawable.AnimAlpha = 0.55f * (float)Math.Sin(Math.PI * t);
+            });
+            if (version == _recallHintVersion)
+                CancelRecallHint();
         }
 
         public async Task PulseBitsAsync(
@@ -1322,7 +1374,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                 _patternDrawable.AnimAlpha = 0.55f * t;
             });
 
-            await Task.Delay((int)holdMs);
+            await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
 
             await RunProgressAnimation(animName + "_out", fadeOutMs, t =>
             {
@@ -1352,19 +1404,19 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             {
                 _patternDrawable.CursorIndex = indices[0];
                 Keyboard.InvalidateOverlay();
-                await Task.Delay((int)holdMs);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
 
                 for (int i = 1; i < indices.Count; i++)
                 {
                     await AnimateCursor(indices[i - 1], indices[i], stepMs);
                     _patternDrawable.CursorIndex = indices[i];
                     Keyboard.InvalidateOverlay();
-                    await Task.Delay((int)holdMs);
+                    await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
                 }
 
                 _patternDrawable.CursorIndex = null;
                 Keyboard.InvalidateOverlay();
-                await Task.Delay(120);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(120));
             }
         }
 
@@ -1411,7 +1463,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                     _patternDrawable.AnimAlpha = 0.55f;
                     _patternDrawable.SpawnAlpha = 0.55f;
                     Keyboard.InvalidateOverlay();
-                    await Task.Delay((int)holdMs);
+                    await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
 
                     current = ShiftOnceCyclical(current, shiftBy1);
                 }
@@ -1482,7 +1534,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                     t => _patternDrawable.AnimProgress = t
                 );
             }
-            await Task.Delay(2000);
+            await DelayPresentationAsync(TimeSpan.FromSeconds(2));
             // --- clear animation layer ---
             ClearAnim();
 
@@ -1511,7 +1563,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             await RunProgressAnimation("PrecisionShiftTutorial", ms,
                 progress => _patternDrawable.AnimProgress = progress);
             if (settleMs > 0)
-                await Task.Delay((int)settleMs);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(settleMs));
             ClearAnim();
         }
 
@@ -1586,7 +1638,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                 _patternDrawable.AnimProgress = 0;
                 Keyboard.InvalidateOverlay();
 
-                await Task.Delay(stepNumber == 0 ? 650 : 280);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(stepNumber == 0 ? 650 : 280));
                 if (stepNumber == 0)
                 {
                     await RunProgressAnimation("PrecisionSignArrowIn", 300,
@@ -1603,7 +1655,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                 stepNumber++;
             }
 
-            await Task.Delay(500);
+            await DelayPresentationAsync(TimeSpan.FromMilliseconds(500));
             await RunProgressAnimation("PrecisionSignCompleteFade", 180,
                 progress =>
                 {
@@ -1653,11 +1705,11 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
             Keyboard.InvalidateOverlay();
 
             if (showLeadIn)
-                await Task.Delay(ScaleDuration(ms, 0.18));
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(ScaleDuration(ms, 0.18)));
             await RunProgressAnimation("PrecisionShiftFlipTutorial", ms,
                 progress => _patternDrawable.AnimProgress = progress);
             if (settleMs > 0)
-                await Task.Delay((int)settleMs);
+                await DelayPresentationAsync(TimeSpan.FromMilliseconds(settleMs));
             ClearAnim();
         }
 
@@ -1669,6 +1721,8 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
     uint ms,
     Action<float> setProgress)
         {
+            if (Keyboard is PianoKeyboard piano && piano.GripGate != null)
+                return RunPausablePresentationAsync(name, ms, setProgress);
             var tcs = new TaskCompletionSource();
             this.AbortAnimation(name);
 

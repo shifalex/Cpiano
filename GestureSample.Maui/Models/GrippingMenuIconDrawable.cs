@@ -6,6 +6,7 @@ namespace GestureSample.Maui.Models
         TwoHands,
         HandOverKeyboard,
         ChangingHands,
+        RightHandMoving,
         ShiftDown,
         UpperUpAndDown,
         UpperUpAndShiftUp
@@ -50,6 +51,13 @@ namespace GestureSample.Maui.Models
                     }
                     canvas.FillColor = Colors.White;
                     DrawHand(canvas, -1, 4, .8f, .8f);
+                    break;
+                case GrippingMenuIcon.RightHandMoving:
+                    DrawHand(canvas, -3, 12, .7f, .7f);
+                    DrawHand(canvas, 39, -2, -.7f, .7f);
+                    canvas.StrokeSize = 1.5f;
+                    canvas.DrawLine(27, 33, 27, 25);
+                    DrawArrowHead(canvas, 27, 25, true, 2.5f);
                     break;
                 case GrippingMenuIcon.ChangingHands:
                     DrawHand(canvas, -3, 12, .7f, .7f);
