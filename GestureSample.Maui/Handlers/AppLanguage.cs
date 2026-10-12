@@ -109,6 +109,13 @@ public static class AppLanguage
     }
 
     private const string Catalog = """
+Segment length|אורך קטע|Длина отрезка
+Compare two grips|משווים שתי אחיזות|Сравниваем два хвата
+Add|חבר|Прибавь
+Subtract|חסר|Вычти
+Part and complementary part|חלק וחלק משלים|Часть и дополняющая часть
+Part inside|חלק בפנים|Часть внутри
+Part outside|חלק בחוץ|Часть снаружи
 Show eye / hand in all stages|הצגת עין / יד בכל השלבים|Показывать глаз / руку на всех этапах
 Always show eye / hand in all stages|הצגת עין / יד באופן קבוע בכל השלבים|Всегда показывать глаз / руку на всех этапах
 You can press now|אפשר ללחוץ עכשיו|Теперь можно нажимать

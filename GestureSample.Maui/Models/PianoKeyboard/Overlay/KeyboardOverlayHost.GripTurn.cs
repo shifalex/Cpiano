@@ -12,6 +12,13 @@ public sealed partial class KeyboardOverlayHost
     private GripInputPhase? _lastTurnPhase;
     private readonly GripPresentationClock _presentationClock = new();
     private bool _temporaryTurnCue;
+    private bool _helpTurnCuesEnabled;
+
+    public void SetHelpTurnCuesEnabled(bool enabled)
+    {
+        _helpTurnCuesEnabled = enabled;
+        RefreshGripTurnCue();
+    }
     private bool _showReadyAfterViolation;
     private CancellationTokenSource? _turnViolationCancellation;
     private readonly Dictionary<string, CancellationTokenSource> _presentationAnimations = new();
@@ -76,6 +83,7 @@ public sealed partial class KeyboardOverlayHost
         };
         Children.Add(_turnBadge);
         gate.Changed += RefreshGripTurnCue;
+        piano.QuestionPreviewChanged += RefreshGripTurnCue;
         gate.PrematurePress += ShowGripViolationCue;
         Loaded += (_, _) => RefreshGripTurnCue();
         Unloaded += (_, _) =>
@@ -93,7 +101,8 @@ public sealed partial class KeyboardOverlayHost
     private void RefreshGripTurnCue()
     {
         if (Keyboard is not PianoKeyboard piano || piano.GripGate is not { } gate || _turnHalo == null) return;
-        GripInputPhase phase = gate.Phase;
+        // The halo describes readiness to score, not whether physical touches are accepted.
+        GripInputPhase phase = piano.IsQuestionPreviewPending ? GripInputPhase.Watching : gate.Phase;
         Color ink = phase == GripInputPhase.Ready ? Color.FromArgb("#168657") : Color.FromArgb("#B75A32");
         _turnHalo.BackgroundColor = ink.WithAlpha(.08f);
         _turnHalo.Stroke = ink.WithAlpha(.42f);
@@ -117,7 +126,7 @@ public sealed partial class KeyboardOverlayHost
             }
             if (_temporaryTurnCue) HideTurnCueAfterDelay();
         }
-        bool showCue = _temporaryTurnCue;
+        bool showCue = _temporaryTurnCue && (!piano.UsesQuietArrowCues || _helpTurnCuesEnabled);
         _turnHalo.IsVisible = true;
         _ambientDrawing.Color = ink;
         _ambientDrawing.Visible = true;
@@ -139,6 +148,9 @@ public sealed partial class KeyboardOverlayHost
 
     private void ShowGripViolationCue()
     {
+        // Ordinary arrow questions must keep fading even while the learner touches them.
+        if (Keyboard is PianoKeyboard { UsesQuietArrowCues: true } && !_helpTurnCuesEnabled)
+            return;
         _turnViolationCancellation?.Cancel();
         _turnViolationCancellation = null;
         _temporaryTurnCue = true;
