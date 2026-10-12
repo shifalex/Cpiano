@@ -207,10 +207,12 @@ namespace GestureSample.Views.Tests
                 _answerTimeEnabledSwitch.IsEnabled = true;
 
             if (_answerTimeMinusButton != null)
-                _answerTimeMinusButton.IsEnabled = true;
+                _answerTimeMinusButton.IsEnabled = _pianoKeyboard is PianoKeyboardSync minusTimer &&
+                    GetEffectiveAnswerTimeMagnitude(minusTimer) > minusTimer.MinimumAnswerTimeSeconds;
 
             if (_answerTimePlusButton != null)
-                _answerTimePlusButton.IsEnabled = true;
+                _answerTimePlusButton.IsEnabled = _pianoKeyboard is PianoKeyboardSync plusTimer &&
+                    GetEffectiveAnswerTimeMagnitude(plusTimer) < AnswerTimeStateMaxSeconds;
 
             if (_answerTimeModeButton != null)
                 _answerTimeModeButton.IsEnabled = true;
@@ -355,6 +357,7 @@ namespace GestureSample.Views.Tests
                 return;
 
             ResetSequenceFeedback(restartRecall: true);
+            host.SetHelpTurnCuesEnabled(true);
             _tutorialRunning = true;
             SetPlayUiState(PlayUiState.Tutorial);
             bool useAndroidPinchInputBlock =
@@ -440,6 +443,7 @@ namespace GestureSample.Views.Tests
 
         private async Task RunRecordedKeyboardTutorialAsync(KeyboardOverlayHost host)
         {
+            host.SetHelpTurnCuesEnabled(true);
             await MarkCurrentKeyboardQuestionTutorialUsedAsync();
 
             if (_config.KeyboardConfig?.PrecisionPinchMemorizeDelaySeconds > 0 &&
@@ -474,6 +478,7 @@ namespace GestureSample.Views.Tests
             if (host == null || _gamePlay is not BitArrayGamePlay gp)
                 return;
 
+            host.SetHelpTurnCuesEnabled(true);
             await MarkCurrentKeyboardQuestionTutorialUsedAsync();
             host.SyncOverlay();
             await host.EnsureOverlaySyncedAsync();
@@ -2089,7 +2094,9 @@ namespace GestureSample.Views.Tests
                 _config.KeyboardConfig?.IsPrecisionShiftExercise == true && _taskMainHost != null;
             if (orderedArrowTransition)
             {
-                SetKeyboardInteractionEnabled(false);
+                if (_pianoKeyboard.UsesQuietArrowCues)
+                    _pianoKeyboard.SetQuestionPreviewBlocked(true);
+                SetKeyboardInteractionEnabled(_pianoKeyboard.UsesQuietArrowCues);
                 // Finish hiding the old directions before resetting either keyboard.
                 await FadePrecisionDirectionsAsync(0, 140);
             }
@@ -2100,7 +2107,10 @@ namespace GestureSample.Views.Tests
             bool preparedAnswerKeyboardEarly = newExercise && _isKeyboard && !_config.FromNumToNum;
             if (preparedAnswerKeyboardEarly)
             {
+                _taskMainHost?.SetHelpTurnCuesEnabled(false);
                 PrepareAnswerKeyboardForCurrentExercise();
+                if (_pianoKeyboard.UsesQuietArrowCues)
+                    _pianoKeyboard.SetQuestionPreviewBlocked(true);
                 if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
                     _taskMainHost != null)
                 {
@@ -2112,7 +2122,8 @@ namespace GestureSample.Views.Tests
                 }
                 else
                 {
-                    SetKeyboardInteractionEnabled(false);
+                    // Show and release physical presses normally; only evaluation waits for the fade.
+                    SetKeyboardInteractionEnabled(_pianoKeyboard.UsesQuietArrowCues);
                 }
             }
 
@@ -2480,7 +2491,8 @@ namespace GestureSample.Views.Tests
                     if (deferPrecisionSignLearningTutorial ||
                         (_config.IncludeTutorials && !_config.KeyboardConfig.IsPrecisionSignLearningExercise))
                         await RunRecordedKeyboardTutorialAsync(_taskMainHost);
-                    if (_config.KeyboardOnly && _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds <= 0)
+                    if (_pianoKeyboard.UsesQuietArrowCues ||
+                        (_config.KeyboardOnly && _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds <= 0))
                         await DimPersistentQuestionAsync(_taskMainHost);
                 }
                 else if (deferPrecisionSignLearningTutorial && _taskMainHost != null)
@@ -2498,6 +2510,7 @@ namespace GestureSample.Views.Tests
                 {
                     // At this point the prompt, direction and question keyboard all match.
                     // No later initialization is allowed to clear this first response.
+                    _pianoKeyboard.SetQuestionPreviewBlocked(false);
                     SetPageInteractionEnabled(true);
                     if (_pianoKeyboard is PianoKeyboardSync readySyncKeyboard)
                         readySyncKeyboard.NotifyQuestionReadyForInput();
@@ -2816,9 +2829,37 @@ namespace GestureSample.Views.Tests
 
             if (UsesManagedNumericInput)
             {
+                // The app keypad owns editing. Let the containing layout receive
+                // taps instead of relying on a read-only native text field.
+                entry.InputTransparent = true;
+                View selectionSurface = null;
                 TapGestureRecognizer tapGesture = new();
-                tapGesture.Tapped += (_, _) => SelectNumericEntry(entry);
-                entry.GestureRecognizers.Add(tapGesture);
+                tapGesture.Tapped += (_, args) =>
+                {
+                    Point? position = args.GetPosition(entry);
+                    if (position is Point point &&
+                        point.X >= 0 && point.X <= entry.Width &&
+                        point.Y >= 0 && point.Y <= entry.Height)
+                    {
+                        SelectNumericEntry(entry);
+                    }
+                };
+                void AttachSelectionSurface()
+                {
+                    View parent = entry.Parent as View;
+                    if (ReferenceEquals(selectionSurface, parent))
+                        return;
+                    selectionSurface?.GestureRecognizers.Remove(tapGesture);
+                    selectionSurface = parent;
+                    selectionSurface?.GestureRecognizers.Add(tapGesture);
+                }
+                entry.HandlerChanged += (_, _) => AttachSelectionSurface();
+                entry.PropertyChanged += (_, args) =>
+                {
+                    if (args.PropertyName == nameof(entry.Parent))
+                        AttachSelectionSurface();
+                };
+                AttachSelectionSurface();
 
                 entry.Focused += (_, _) =>
                 {
@@ -5353,9 +5394,19 @@ namespace GestureSample.Views.Tests
 
         private static async Task DimPersistentQuestionAsync(KeyboardOverlayHost host)
         {
-            host.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
-            await host.DelayPresentationAsync(TimeSpan.FromSeconds(1));
-            await host.FadeStaticOverlayAlphaAsync(0.18f, 500u, "PersistentQuestionFade");
+            PianoKeyboard quietKeyboard = host.Keyboard is PianoKeyboard { UsesQuietArrowCues: true } piano
+                ? piano : null;
+            quietKeyboard?.SetQuestionPreviewBlocked(true);
+            try
+            {
+                host.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
+                await host.DelayPresentationAsync(TimeSpan.FromSeconds(1));
+                await host.FadeStaticOverlayAlphaAsync(0.18f, 500u, "PersistentQuestionFade");
+            }
+            finally
+            {
+                quietKeyboard?.SetQuestionPreviewBlocked(false);
+            }
         }
 
         private Task HoldSequencePreviewAsync(KeyboardOverlayHost host, bool second, TimeSpan duration)
@@ -6565,9 +6616,9 @@ namespace GestureSample.Views.Tests
             if (newSetting != 0)
                 _lastNonZeroAnswerTimeSetting = newSetting;
 
-            await RecordTimerChangeAsync(oldSetting, newSetting, source);
             RefreshAnswerTimeTuner();
             RefreshCustomProgressVisual();
+            await RecordTimerChangeAsync(oldSetting, newSetting, source);
         }
 
         private async Task ToggleAnswerTimeModeAsync()
@@ -6607,18 +6658,10 @@ namespace GestureSample.Views.Tests
                 _answerTimeDismissShield.InputTransparent = true;
             }
 
-            if (isVisible && !UsesGrippingKeyboardDesign())
+            if (isVisible)
             {
                 PositionAnswerTimeTunerCard();
                 AttachAnswerTimeOutsideTap();
-            }
-            else if (isVisible)
-            {
-                // On touch-first grip screens the ancestor tap recognizer can delay
-                // or compete with a key's Down gesture on iOS. Key-down already
-                // dismisses this card, so no root recognizer is needed here.
-                PositionAnswerTimeTunerCard();
-                DetachAnswerTimeOutsideTap();
             }
             else
             {
@@ -6693,7 +6736,7 @@ namespace GestureSample.Views.Tests
         private void PositionAnswerTimeTunerCard(int remainingAttempts = 4)
         {
             if (!_isAnswerTimeTunerVisible ||
-                _answerTimeTunerCard is not VisualElement tunerCard ||
+                _answerTimeTunerCard is not View tunerCard ||
                 _btnAnswerTimePanel == null ||
                 _rootGrid == null)
             {
@@ -6703,7 +6746,7 @@ namespace GestureSample.Views.Tests
             void ApplyPosition()
             {
                 if (!_isAnswerTimeTunerVisible ||
-                    _answerTimeTunerCard is not VisualElement visibleCard ||
+                    _answerTimeTunerCard is not View visibleCard ||
                     _btnAnswerTimePanel == null ||
                     _rootGrid == null)
                 {
@@ -6726,7 +6769,6 @@ namespace GestureSample.Views.Tests
                 visibleCard.TranslationY = 0;
 
                 PointF buttonPoint = GetPointRelativeToRoot(_btnAnswerTimePanel);
-                PointF cardBasePoint = GetPointRelativeToRoot(visibleCard);
 
                 double targetX = buttonPoint.X + (buttonWidth / 2d) - (cardWidth / 2d);
                 double targetY = buttonPoint.Y + buttonHeight + 8;
@@ -6734,8 +6776,9 @@ namespace GestureSample.Views.Tests
                 targetX = Math.Clamp(targetX, 8, Math.Max(8, _rootGrid.Width - cardWidth - 8));
                 targetY = Math.Clamp(targetY, 8, Math.Max(8, _rootGrid.Height - cardHeight - 8));
 
-                visibleCard.TranslationX = targetX - cardBasePoint.X;
-                visibleCard.TranslationY = targetY - cardBasePoint.Y;
+                // Lay out the card at its actual touch bounds rather than moving
+                // it visually outside the bounds assigned by the grid.
+                visibleCard.Margin = new Thickness(targetX, targetY, 0, 0);
             }
 
             if (_rootGrid.Dispatcher?.IsDispatchRequired == true)
@@ -6778,10 +6821,14 @@ namespace GestureSample.Views.Tests
 
             _answerTimeMinusButton = new Button
             {
-                Text = "-",
-                FontSize = 22,
-                WidthRequest = 44,
-                HeightRequest = 44,
+                Text = "−",
+                FontSize = 28,
+                FontAttributes = FontAttributes.Bold,
+                Padding = Thickness.Zero,
+                WidthRequest = 48,
+                HeightRequest = 48,
+                MinimumWidthRequest = 48,
+                MinimumHeightRequest = 48,
                 CornerRadius = 12,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black
@@ -6799,9 +6846,13 @@ namespace GestureSample.Views.Tests
             _answerTimePlusButton = new Button
             {
                 Text = "+",
-                FontSize = 22,
-                WidthRequest = 44,
-                HeightRequest = 44,
+                FontSize = 28,
+                FontAttributes = FontAttributes.Bold,
+                Padding = Thickness.Zero,
+                WidthRequest = 48,
+                HeightRequest = 48,
+                MinimumWidthRequest = 48,
+                MinimumHeightRequest = 48,
                 CornerRadius = 12,
                 BackgroundColor = Colors.White,
                 TextColor = Colors.Black
@@ -6865,7 +6916,7 @@ namespace GestureSample.Views.Tests
                 StrokeThickness = 1,
                 Stroke = Color.FromArgb("#E8E0FF"),
                 BackgroundColor = Colors.White.WithAlpha(0.92f),
-                WidthRequest = 210,
+                WidthRequest = 270,
                 HorizontalOptions = LayoutOptions.Start,
                 VerticalOptions = LayoutOptions.Start,
                 ZIndex = 998,
@@ -7481,8 +7532,8 @@ namespace GestureSample.Views.Tests
                     Grid.SetRowSpan(_answerTimeDismissShield, 2);
 
                     grid.Add(answerTimeTuner);
-                    Grid.SetRow(answerTimeTuner, 1);
-                    Grid.SetRowSpan(answerTimeTuner, 2);
+                    Grid.SetRow(answerTimeTuner, 0);
+                    Grid.SetRowSpan(answerTimeTuner, grid.RowDefinitions.Count);
                 }
 
                 // Help button (top-right over the keyboard)
@@ -8389,10 +8440,7 @@ namespace GestureSample.Views.Tests
                 sliderPanel.IsVisible = isVisible;
                 sliderPanel.InputTransparent = !isVisible;
 
-                // An ancestor TapGestureRecognizer competes with MR.Gestures key
-                // Down on iPad. Key-down already closes the panel, so do not attach
-                // an outside-tap recognizer on iOS.
-                if (outsideSliderTap == null || DeviceInfo.Platform == DevicePlatform.iOS)
+                if (outsideSliderTap == null)
                     return;
 
                 bool isAttached = _rootGrid.GestureRecognizers.Contains(outsideSliderTap);
@@ -8484,7 +8532,7 @@ namespace GestureSample.Views.Tests
                     handGapSlider.Value = _precisionHandGap;
                 }
 
-                if (handGapOutsideTap == null || DeviceInfo.Platform == DevicePlatform.iOS)
+                if (handGapOutsideTap == null)
                     return;
 
                 bool isAttached = _rootGrid.GestureRecognizers.Contains(handGapOutsideTap);

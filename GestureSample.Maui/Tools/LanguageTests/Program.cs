@@ -53,6 +53,25 @@ Check(await AppLanguage.SpeakAsync("COMMUTATIVITY"), "Russian voice available");
 Check(TextToSpeech.Default.Language == "ru-RU" && TextToSpeech.Default.Spoken == "Переместительное свойство", "Narration language overrides text");
 LanguagePreferences.Set(InterfaceLanguage.Hebrew, true, true);
 Check(await AppLanguage.SpeakAsync("COMMUTATIVITY") && TextToSpeech.Default.Language == "iw-IL", "Legacy Hebrew locale supported");
+// Tutorial headings use the screen language independently from the narrated concept.
+foreach (var concept in new[] {
+    ("Segment length", "אורך קטע", "Длина отрезка"),
+    ("Add", "חבר", "Прибавь"),
+    ("Subtract", "חסר", "Вычти"),
+    ("Part and complementary part", "חלק וחלק משלים", "Часть и дополняющая часть"),
+    ("Part inside", "חלק בפנים", "Часть внутри"),
+    ("Part outside", "חלק בחוץ", "Часть снаружи") })
+{
+    LanguagePreferences.Set(InterfaceLanguage.Hebrew, false, true);
+    LanguagePreferences.Set(InterfaceLanguage.Russian, true, true);
+    Check(AppLanguage.Text(concept.Item1, true) == concept.Item2, "Hebrew tutorial heading: " + concept.Item1);
+    Check(await AppLanguage.SpeakAsync(concept.Item1) && TextToSpeech.Default.Spoken == concept.Item3
+        && TextToSpeech.Default.Language == "ru-RU", "Independent Russian tutorial narration: " + concept.Item1);
+    LanguagePreferences.Set(InterfaceLanguage.Hebrew, true, true);
+    Check(await AppLanguage.SpeakAsync(concept.Item1) && TextToSpeech.Default.Spoken == concept.Item2,
+        "Hebrew tutorial narration: " + concept.Item1);
+}
+LanguagePreferences.Set(InterfaceLanguage.English, false, true);
 TextToSpeech.Default.Locales.Clear();
 Check(AppLanguage.GetNarrationParts(" first , second, third ", InterfaceLanguage.English)
     .SequenceEqual(new[] { "first", "second", "third" }), "Generic comma splitting supports more than two parts");

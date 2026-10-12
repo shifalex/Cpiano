@@ -500,11 +500,11 @@ namespace GestureSample.Maui.Models
                 _ => true
             };
 
-            // A mathematically correct completed equation is valid even when a
-            // stage's generation bounds are narrower than a displayed variant.
-            // Bounds distinguish malformed wrong answers; they must not turn a
-            // correct answer into WRONG INPUT.
-            if (!isCorrectEquation && !IsCorrectInput())
+            // Multiplication answers must respect the stage's factor bounds,
+            // even when an out-of-range factorization has the correct product.
+            // Other operations can display equivalent variants outside their
+            // generation bounds.
+            if ((CurrentOperation == Operation.Multiplication || !isCorrectEquation) && !IsCorrectInput())
             {
                 _status = Statement.WrongInput;
                 addend1 = oldA1;

@@ -58,6 +58,7 @@ namespace GestureSample.Views
                 new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
                     TwoHandCombinationOptions.Easy, memorizeSeconds: 4, readInstructionAloud: false,
                     easyStage: true, keepLeftAtBottom: true)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.RightHandMoving),
+            new PageConfig("Gripping", "אורך האחיזה · טסט אנימציה", () => new IntervalAnimationPage(), menuSection: "Coordination", menuIcon: GrippingMenuIcon.HandOverKeyboard),
             new PageConfig("Gripping", "Remember grip changes — Hard", () =>
                 new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
                     TwoHandCombinationOptions.Hard, memorizeBoth: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.ChangingHands),

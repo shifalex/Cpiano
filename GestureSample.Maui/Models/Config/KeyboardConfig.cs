@@ -590,11 +590,7 @@
                 : KeyboardFeatures & ~KeyboardFeatureFlags.HideMainKeyboard;
         }
 
-        public int MinimumAnswerTimeSeconds =>
-            IsTwoHandCombinationMemorize || IsTwoHandCopyMemorize ||
-            PrecisionShiftBothHands || IsPrecisionShiftExercise ||
-            IsGripTransformationPracticeExercise || IsPrecisionSynchronousProcessExercise ||
-            CopyPrecisionPinchToOtherHand ? 2 : 1;
+        public int MinimumAnswerTimeSeconds => 1;
 
         public int NormalizeAnswerTimeSetting(int seconds) => seconds == 0 ? 0
             : seconds < 0 ? Math.Min(seconds, -MinimumAnswerTimeSeconds)

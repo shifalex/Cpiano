@@ -65,7 +65,7 @@ namespace GestureSample.Maui.Models
 
         protected virtual bool HasActiveTimedAnswer()
         {
-            return !IsAnswerInputBlocked && AnyPressed() && !IsGripPracticeStartingCopy() &&
+            return !IsAnswerInputBlocked && !IsQuestionPreviewPending && AnyPressed() && !IsGripPracticeStartingCopy() &&
                 !(_pianoConfig.IsTwoHandCombinationMemorize && _pianoConfig.MemorizeBothTwoHandStates &&
                   _gamePlay is BitArrayGamePlay sequence && sequence.IsSequenceMemorizeFirstResponse());
         }
@@ -187,7 +187,7 @@ namespace GestureSample.Maui.Models
 
         protected async Task PianoInitWithTimer()
         {
-            if (_isChecking || IsAnswerInputBlocked || !CanSubmitCurrentSequenceState())
+            if (_isChecking || IsAnswerInputBlocked || IsQuestionPreviewPending || !CanSubmitCurrentSequenceState())
                 return;
 
             _isChecking = true;
@@ -250,7 +250,7 @@ namespace GestureSample.Maui.Models
 
         protected override async Task OnKeyStateChangedAsync(bool isDown)
         {
-            if (_isChecking || IsAnswerInputBlocked)
+            if (_isChecking || IsAnswerInputBlocked || IsQuestionPreviewPending)
             {
                 return;
             }
@@ -391,6 +391,8 @@ namespace GestureSample.Maui.Models
 
         protected override async Task<bool> OnBeforeKeyUpAsync()
         {
+            if (IsQuestionPreviewPending)
+                return false;
             if (_pianoConfig.IsTwoHandCombinationMemorize)
                 return false;
 

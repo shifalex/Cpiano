@@ -45,10 +45,22 @@ namespace GestureSample.Maui.Models
             !_pianoConfig.PrecisionShiftBothHands &&
             DeviceInfo.Platform != DevicePlatform.iOS;
         private bool _externalInputBlocked;
+        private bool _questionPreviewBlocked;
+        public bool UsesQuietArrowCues => _pianoConfig.IsPrecisionGrammarExercise ||
+            _pianoConfig.IsGripTransformationPracticeExercise;
         private GripInputGate? _gripInputGate;
         public GripInputGate? GripGate => _pianoConfig.IsVerticalPrecisionPinchExercise
             ? _gripInputGate ??= new GripInputGate() : null;
         protected bool IsAnswerInputBlocked => _externalInputBlocked || GripGate?.CanPlay == false;
+        public bool IsQuestionPreviewPending => _questionPreviewBlocked;
+        public event Action? QuestionPreviewChanged;
+
+        public void SetQuestionPreviewBlocked(bool blocked)
+        {
+            if (_questionPreviewBlocked == blocked) return;
+            _questionPreviewBlocked = blocked;
+            QuestionPreviewChanged?.Invoke();
+        }
 
         public void SetExternalInputBlocked(bool blocked)
         {
