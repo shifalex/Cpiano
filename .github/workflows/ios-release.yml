@@ -71,8 +71,10 @@ jobs:
             echo "::warning title=Keychain partition permissions::Unable to set key partition list. Continuing to test whether signing identity is usable."
           fi
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          UUID=$(/usr/bin/security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin)
+          UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$RUNNER_TEMP/profile-check.plist")
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          test -n "$UUID"
+          echo "DIAG RESULT: Provisioning profile UUID extracted"
           echo "PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
