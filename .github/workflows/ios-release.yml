@@ -62,7 +62,14 @@ jobs:
           fi
           echo "DIAG RESULT: Apple Keychain import OK"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "DIAG: Checking imported signing identities"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "DIAG: Granting codesign access to imported private key"
+          if security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"; then
+            echo "DIAG RESULT: Keychain partition-list configured"
+          else
+            echo "::warning title=Keychain partition permissions::Unable to set key partition list. Continuing to test whether signing identity is usable."
+          fi
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           UUID=$(/usr/bin/security cms -D -i "$PROFILE_PATH" | /usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin)
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
