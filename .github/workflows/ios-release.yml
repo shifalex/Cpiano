@@ -34,10 +34,31 @@ jobs:
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
           echo "$CERT_B64" | base64 --decode > "$CERT_PATH"
           echo "$PROFILE_B64" | base64 --decode > "$PROFILE_PATH"
+          echo "DIAG: Decoded certificate bytes: $(wc -c < "$CERT_PATH" | tr -d ' ')"
+          echo "DIAG: Checking PKCS12 password and integrity using OpenSSL"
+          if openssl pkcs12 -in "$CERT_PATH" -noout -passin env:CERT_PASSWORD >/dev/null 2>&1; then
+            echo "DIAG RESULT: OpenSSL PKCS12 verification OK"
+          elif openssl pkcs12 -legacy -in "$CERT_PATH" -noout -passin env:CERT_PASSWORD >/dev/null 2>&1; then
+            echo "DIAG RESULT: OpenSSL PKCS12 verification OK (legacy)"
+          else
+            echo "::error title=PKCS12 verification failed::Certificate Base64, P12 password, or P12 integrity is incorrect. Recheck IOS_CERTIFICATE_BASE64 and IOS_CERTIFICATE_PASSWORD."
+            exit 1
+          fi
+          echo "DIAG: Checking provisioning profile decoding"
+          if ! security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile-check.plist" 2>/dev/null; then
+            echo "::error title=Provisioning profile invalid::IOS_PROVISION_PROFILE_BASE64 did not decode into a valid mobileprovision."
+            exit 1
+          fi
+          echo "DIAG RESULT: Provisioning profile parses OK"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          echo "DIAG: Importing PKCS12 into macOS Keychain"
+          if ! security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"; then
+            echo "::error title=Apple Keychain import failed::OpenSSL verified the P12, but Apple Keychain rejected it. Suspect PKCS12 encryption/MAC compatibility; re-export using OpenSSL -legacy with a nonempty password."
+            exit 1
+          fi
+          echo "DIAG RESULT: Apple Keychain import OK"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
