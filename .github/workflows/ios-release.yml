@@ -53,6 +53,8 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "DIAG: Checking PKCS12 encryption algorithms"
+          openssl pkcs12 -info -in "$CERT_PATH" -passin env:CERT_PASSWORD -noout 2>&1 | grep -E 'MAC:|PKCS7 Encrypted data:|Shrouded Keybag:' || true
           echo "DIAG: Importing PKCS12 into macOS Keychain"
           if ! security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"; then
             echo "::error title=Apple Keychain import failed::OpenSSL verified the P12, but Apple Keychain rejected it. Suspect PKCS12 encryption/MAC compatibility; re-export using OpenSSL -legacy with a nonempty password."
