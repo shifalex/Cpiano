@@ -18,7 +18,12 @@ jobs:
           dotnet-version: 8.0.311
 
       - name: Install MAUI iOS workload
-        run: dotnet workload install maui-ios --skip-manifest-update
+        working-directory: GestureSample.Maui
+        run: |
+          dotnet --version
+          dotnet workload install maui-ios --skip-manifest-update
+          dotnet workload list
+          dotnet workload restore GestureSample.Maui.csproj
 
       - name: Install signing credentials
         shell: bash
