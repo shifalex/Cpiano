@@ -1,0 +1,117 @@
+name: iOS Release IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode compatible with iOS 18
+        shell: bash
+        run: |
+          set -euo pipefail
+          for version in 16.2 16.1 16.0; do
+            if [[ -d "/Applications/Xcode_${version}.app/Contents/Developer" ]]; then
+              sudo xcode-select -s "/Applications/Xcode_${version}.app/Contents/Developer"
+              echo "Using Xcode ${version}"
+              xcodebuild -version
+              xcrun --sdk iphoneos --show-sdk-version
+              exit 0
+            fi
+          done
+          echo "::error title=Compatible Xcode missing::Need Xcode 16.x for the current Microsoft.iOS 18.0 SDK; inspect the runner image or switch macOS runner."
+          ls -d /Applications/Xcode*.app || true
+          exit 1
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.311
+
+      - name: Install MAUI iOS workload
+        working-directory: GestureSample.Maui
+        run: |
+          dotnet --version
+          dotnet workload install maui-ios --skip-manifest-update
+          dotnet workload list
+          dotnet workload restore GestureSample.Maui.csproj
+
+      - name: Install signing credentials
+        shell: bash
+        env:
+          CERT_B64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE_B64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/distribution.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          echo "$CERT_B64" | base64 --decode > "$CERT_PATH"
+          echo "$PROFILE_B64" | base64 --decode > "$PROFILE_PATH"
+          echo "DIAG: Decoded certificate bytes: $(wc -c < "$CERT_PATH" | tr -d ' ')"
+          echo "DIAG: Checking PKCS12 password and integrity using OpenSSL"
+          if openssl pkcs12 -in "$CERT_PATH" -noout -passin env:CERT_PASSWORD >/dev/null 2>&1; then
+            echo "DIAG RESULT: OpenSSL PKCS12 verification OK"
+          elif openssl pkcs12 -legacy -in "$CERT_PATH" -noout -passin env:CERT_PASSWORD >/dev/null 2>&1; then
+            echo "DIAG RESULT: OpenSSL PKCS12 verification OK (legacy)"
+          else
+            echo "::error title=PKCS12 verification failed::Certificate Base64, P12 password, or P12 integrity is incorrect. Recheck IOS_CERTIFICATE_BASE64 and IOS_CERTIFICATE_PASSWORD."
+            exit 1
+          fi
+          echo "DIAG: Checking provisioning profile decoding"
+          if ! security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile-check.plist" 2>/dev/null; then
+            echo "::error title=Provisioning profile invalid::IOS_PROVISION_PROFILE_BASE64 did not decode into a valid mobileprovision."
+            exit 1
+          fi
+          echo "DIAG RESULT: Provisioning profile parses OK"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "DIAG: Checking PKCS12 encryption algorithms"
+          openssl pkcs12 -info -in "$CERT_PATH" -passin env:CERT_PASSWORD -noout 2>&1 | grep -E 'MAC:|PKCS7 Encrypted data:|Shrouded Keybag:' || true
+          echo "DIAG: Importing PKCS12 into macOS Keychain"
+          if ! security import "$CERT_PATH" -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"; then
+            echo "::error title=Apple Keychain import failed::OpenSSL verified the P12, but Apple Keychain rejected it. Suspect PKCS12 encryption/MAC compatibility; re-export using OpenSSL -legacy with a nonempty password."
+            exit 1
+          fi
+          echo "DIAG RESULT: Apple Keychain import OK"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          echo "DIAG: Checking imported signing identities"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "DIAG: Granting codesign access to imported private key"
+          if security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"; then
+            echo "DIAG RESULT: Keychain partition-list configured"
+          else
+            echo "::warning title=Keychain partition permissions::Unable to set key partition list. Continuing to test whether signing identity is usable."
+          fi
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$RUNNER_TEMP/profile-check.plist")
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          test -n "$UUID"
+          echo "DIAG RESULT: Provisioning profile UUID extracted"
+          echo "PROFILE_UUID=$UUID" >> "$GITHUB_ENV"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Publish signed IPA
+        working-directory: GestureSample.Maui
+        shell: bash
+        run: |
+          dotnet publish GestureSample.Maui.csproj \
+            -f net8.0-ios -c Release \
+            -p:RuntimeIdentifier=ios-arm64 \
+            -p:ArchiveOnBuild=true \
+            -p:BuildIpa=true \
+            -p:CodesignProvision="$PROFILE_UUID" \
+            -p:CodesignKey="Apple Distribution"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpiano-release-ipa
+          path: '**/bin/Release/net8.0-ios/ios-arm64/publish/*.ipa'
+          if-no-files-found: error

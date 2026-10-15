@@ -6,42 +6,66 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Models;
-using SQLite;
+using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;
+using NewtonsoftJsonIgnore = Newtonsoft.Json.JsonIgnoreAttribute;
 
 namespace GestureSample.Maui.Data.SupaBase
 {
     [Table("KeyboardQuestion")]
     public class KeyboardQuestion : BaseModel
     {
-        [PrimaryKey, AutoIncrement]
+        [PrimaryKey("QuestionID", false)]
         public int QuestionID { get; set; }
         public int QuestionNumber { get; set; }
+        public int AttemptNumber { get; set; } = 0;
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public Guid UserId { get; set; } = (Guid)ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
+        public Guid UserId { get; set; } = Guid.Empty;
         public int ResultStatus { get; set; } = 0;
-
+        public bool WasTutorialUsed { get; set; } = false;
+        public bool WasHeaderResultToggleUsed { get; set; } = false;
+        public int KeyDownCount { get; set; } = 0;
+        public int DistinctKeyCount { get; set; } = 0;
+        public int PressClusterCount { get; set; } = 0;
+        public int LargestPressClusterSize { get; set; } = 0;
+        public int MaxInterKeyGapMs { get; set; } = 0;
+        public int AverageInterKeyGapMs { get; set; } = 0;
+        public int FirstKeyToSubmitMs { get; set; } = 0;
+        public int LastKeyToSubmitMs { get; set; } = 0;
+        public int PressPatternKind { get; set; } = 0;
 
         public int? aboveNumber { get; set; }
         public int? length { get; set; }
+        public int? MoveByLength { get; set; }
+        public int KeyboardRows { get; set; } = 1;
+        public int KeyboardKeysInRow { get; set; } = 10;
+        public bool ShowNumbersOnKeys { get; set; } = false;
+        public string? QuestionPromptText { get; set; }
 
-        [Ignore]
+        [NewtonsoftJsonIgnore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
 
 
         //public string Op { get; set; } = Operation.Sum.ToString();
 
         // Ignore GameConfig during table creation
-        [Ignore]
+        [NewtonsoftJsonIgnore]
         public bool[] keyboard1 { get; set; }
-        [Ignore]
+        [NewtonsoftJsonIgnore]
         public bool[] keyboard2 { get; set; }
-        [Ignore]
+        [NewtonsoftJsonIgnore]
         public Direction dir { get; set; } 
+        [NewtonsoftJsonIgnore]
+        public Direction MoveByDirection { get; set; } = Direction.Right;
+        [NewtonsoftJsonIgnore]
+        public bool[] SubmittedKeyboard { get; set; }
+        [NewtonsoftJsonIgnore]
+        public int[]? KeyboardWeights { get; set; }
+        [NewtonsoftJsonIgnore]
+        public bool[]? InitialKeyboardState { get; set; }
 
         // Serialize GameConfig as JSON for storage
-        [Column("ConfigJson")]
         public string ConfigJson
         {
             get => JsonSerializer.Serialize(keyboard1);
@@ -49,17 +73,15 @@ namespace GestureSample.Maui.Data.SupaBase
         }
 
         // Serialize GameConfig as JSON for storage
-        [Column("ConfigJson2")]
         public string ConfigJson2
         {
             get => JsonSerializer.Serialize(keyboard2);
             set => keyboard2 = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
         }
-        [Ignore]
+        [NewtonsoftJsonIgnore]
         public Operation Op { get; set; } = Operation.Sum;
 
         // Serialize GameConfig as JSON for storage
-        [Column("ConfigJson4")]
         public string ConfigJson4
         {
             get => JsonSerializer.Serialize(Op);
@@ -67,12 +89,37 @@ namespace GestureSample.Maui.Data.SupaBase
         }
 
         // Serialize GameConfig as JSON for storage
-        [Column("ConfigJson3")]
         public string ConfigJson3
         {
             get => JsonSerializer.Serialize(dir);
             set => dir = value != null ? JsonSerializer.Deserialize<Direction>(value) : Direction.Right;
         }
+
+        public string SubmittedKeyboardJson
+        {
+            get => JsonSerializer.Serialize(SubmittedKeyboard);
+            set => SubmittedKeyboard = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+
+        public string KeyboardWeightsJson
+        {
+            get => JsonSerializer.Serialize(KeyboardWeights);
+            set => KeyboardWeights = value != null ? JsonSerializer.Deserialize<int[]>(value) : null;
+        }
+
+        public string InitialKeyboardStateJson
+        {
+            get => JsonSerializer.Serialize(InitialKeyboardState);
+            set => InitialKeyboardState = value != null ? JsonSerializer.Deserialize<bool[]>(value) : null;
+        }
+
+        public string MoveByDirectionJson
+        {
+            get => JsonSerializer.Serialize(MoveByDirection);
+            set => MoveByDirection = value != null ? JsonSerializer.Deserialize<Direction>(value) : Direction.Right;
+        }
+
+        public DateTime? SubmittedTime { get; set; }
 
 
     }

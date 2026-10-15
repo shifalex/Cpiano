@@ -4,24 +4,32 @@
     {
         public KeyValueCell(string key, string value)
         {
-            View = new StackLayout()
+            Grid grid = new()
             {
                 Padding = new Thickness(15, 10),
-                Orientation = StackOrientation.Horizontal,
                 VerticalOptions = LayoutOptions.Center,
-                Children = {
-                    new Label () {
-                        Text = key,
-                        TextColor = Colors.Purple,
-                        HorizontalOptions = LayoutOptions.StartAndExpand
-                    },
-                    new Label () {
-                        Text = value,
-                        TextColor = Colors.Gray,
-                        HorizontalOptions = LayoutOptions.EndAndExpand
-                    }
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Star },
+                    new ColumnDefinition { Width = GridLength.Auto }
                 }
             };
+
+            grid.Add(new Label
+            {
+                Text = key,
+                TextColor = Colors.Purple,
+                HorizontalOptions = LayoutOptions.Start
+            }, 0, 0);
+
+            grid.Add(new Label
+            {
+                Text = value,
+                TextColor = Colors.Gray,
+                HorizontalOptions = LayoutOptions.End
+            }, 1, 0);
+
+            View = grid;
         }
     }
 }

@@ -9,8 +9,8 @@ namespace GestureSample.Maui.Models
         private int _streakWrong = 0;
         private readonly int CORRECT_TO_LEVEL_UP = 20, WRONG_TO_LEVEL_DOWN = 5;
 
-        private Label _lblStats;
-        private Picker _pkrLevel;
+        private Label? _lblStats;
+        private Picker? _pkrLevel;
 
 
         public string StatsString
@@ -23,23 +23,27 @@ namespace GestureSample.Maui.Models
             }
         }
 
+        public DecompositionGamePlay(GameConfig config) : base(config)
+        {
+        }
 
-
-        public DecompositionGamePlay(SimpleViewCellsPage view, GameConfig config, Label lblStats, Picker pkrLevel) : base(view, config)
+        public void AttachDashboard(Label lblStats, Picker pkrLevel)
         {
             _lblStats = lblStats;
             _pkrLevel = pkrLevel;
             _pkrLevel.BindingContext = this;
 
-            _lblStats.Text = StatsString;
+            if (_pkrLevel.SelectedIndex < 0)
+                _pkrLevel.SelectedIndex = _level - 1;
 
             UpdateLevelStats();
+            _lblStats.Text = StatsString;
         }
 
-        public override async Task<bool> CheckAsync()
+        public override async Task<ExerciseCheckResult> EvaluateAsync()
         {
-            bool check = await base.CheckAsync();
-            if (check) { _streakCorrect++; } else { _streakWrong++; }
+            ExerciseCheckResult result = await base.EvaluateAsync();
+            if (result.IsCorrect) { _streakCorrect++; } else { _streakWrong++; }
 
 
             if (_streakWrong >= WRONG_TO_LEVEL_DOWN)
@@ -53,8 +57,14 @@ namespace GestureSample.Maui.Models
                 UpdateLevelStats();
             }
 
-            _lblStats.Text = StatsString;
-            return check;
+            if (_lblStats != null)
+                _lblStats.Text = StatsString;
+            return result;
+        }
+
+        public override async Task<bool> CheckAsync()
+        {
+            return (await EvaluateAsync()).IsCorrect;
         }
 
         protected override int[] Factors
@@ -70,15 +80,17 @@ namespace GestureSample.Maui.Models
             }
         }
         private bool _levelChangedByUser = false;
-        public void SelectedIndexChanged(object sender, EventArgs e)
+        public async Task<ExerciseGenerationResult> OnLevelSelectedAsync(int selectedIndex)
         {
-            _level = _pkrLevel.SelectedIndex + 1;
+            if (_pkrLevel == null)
+                throw new InvalidOperationException("Decomposition dashboard is not attached.");
+
+            _level = selectedIndex + 1;
             _levelChangedByUser = true;
             _streakCorrect = 0; _streakWrong = 0;
             UpdateLevelStats();
             _levelChangedByUser = false;
-            GenerateExercise();
-
+            return await GenerateExerciseAsync();
         }
 
         private void UpdateLevelStats()
@@ -109,6 +121,9 @@ namespace GestureSample.Maui.Models
                     break;
                 default: _level = 2; break;
             }
+
+            if (_pkrLevel == null)
+                return;
 
             if (!_levelChangedByUser)
                 _pkrLevel.SelectedIndex = _level - 1;

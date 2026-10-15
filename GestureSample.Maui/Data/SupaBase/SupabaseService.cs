@@ -11,23 +11,47 @@ using static GestureSample.Maui.Data.GameRepository;
 using System.ComponentModel;
 using System.Reflection;
 using EnumsNET;
+using Supabase.Postgrest.Attributes;
+using static Supabase.Postgrest.Constants;
+using System.Threading;
+using Microsoft.Maui.Networking;
 
 namespace GestureSample.Maui.Data.SupaBase
 {
     public static class SupabaseService
     {
-        
-        private static readonly string _supabaseUrl = "https://njsspracfpbyozvandph.supabase.co";
-        private static readonly string _supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qc3NwcmFjZnBieW96dmFuZHBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMTg5MzcsImV4cCI6MjA1MTU5NDkzN30.yrk-QUINVC1rR4km1dO0X5OaMEdZbmGUGtgExTcxOiA";
-        private static readonly string _supabaseUserName = "alex.shifrin@mail.huji.ac.il";
-        private static readonly string _supabasePassword = "34U_2iGtnq4fA6a";
+        public sealed class SyncOfflineException : Exception
+        {
+            public SyncOfflineException()
+                : base("Sync skipped: internet connection is offline.")
+            {
+            }
 
-private static readonly SupabaseClient _supabase = new(
-           _supabaseUrl,
-            _supabaseKey
-        );
+            public SyncOfflineException(Exception innerException)
+                : base("Sync skipped: internet connection is offline.", innerException)
+            {
+            }
+        }
+
+        private sealed class LocalRelatedSyncBatch
+        {
+            public Dictionary<Guid, List<SQLite.QuestionAnswer>> QuestionAnswersByGameId { get; init; } = new();
+            public Dictionary<Guid, List<SQLite.QuestionAnswerPart>> QuestionAnswerPartsByGameId { get; init; } = new();
+            public Dictionary<Guid, List<SQLite.KeyboardQuestion>> KeyboardQuestionsByGameId { get; init; } = new();
+            public Dictionary<Guid, List<SQLite.KeyEvent>> KeyEventsByGameId { get; init; } = new();
+        }
+
+        private readonly record struct RelatedSyncSummary(string Label, int GamesTouched, int RecordsInserted);
+
+        private static readonly Lazy<SupabaseLocalConfig> _config = new(SupabaseLocalConfig.LoadOrThrow);
+        private static readonly Lazy<SupabaseClient> _supabase = new(() =>
+            new SupabaseClient(
+                _config.Value.Url,
+                _config.Value.AnonKey
+            ));
         // In-memory storage of the current session's JWT
         private static string? _currentJwt;
+        private static SupabaseClient Client => _supabase.Value;
 
        
         #region Logging Helpers
@@ -42,6 +66,17 @@ private static readonly SupabaseClient _supabase = new(
             Console.WriteLine($"[ERROR] {DateTime.Now}: {message} - Exception: {ex.Message}");
         }
 
+        private static bool IsOfflineException(Exception ex)
+        {
+            if (Connectivity.Current.NetworkAccess != NetworkAccess.Internet)
+                return true;
+
+            string message = ex.Message ?? string.Empty;
+            return message.Contains("offline", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("internet connection", StringComparison.OrdinalIgnoreCase) ||
+                   message.Contains("network connection", StringComparison.OrdinalIgnoreCase);
+        }
+
         #endregion
 
         /// <summary>
@@ -53,12 +88,12 @@ private static readonly SupabaseClient _supabase = new(
         public static async Task SignInWithPasswordAsync(string email, string password)
         {
             // SignIn returns a Session where session.User is null if credentials are invalid
-            var session = await _supabase.Auth.SignIn(email, password);
+            var session = await Client.Auth.SignIn(email, password);
             if (session?.User == null)
                 throw new Exception("Sign in failed: invalid credentials");
             else
             {
-                _currentJwt = _supabase.Auth.CurrentSession?.AccessToken;
+                _currentJwt = Client.Auth.CurrentSession?.AccessToken;
                 LogInfo($"Supabase JWT: {_currentJwt}");
             }
         }
@@ -68,50 +103,33 @@ private static readonly SupabaseClient _supabase = new(
         /// </summary>
         public static async Task SignOutAsync()
         {
-            await _supabase.Auth.SignOut();
+            await Client.Auth.SignOut();
         }
 
         /// <summary>
         /// Indicates whether a user is currently signed in.
         /// </summary>
-        public static bool IsSignedIn => _supabase.Auth.CurrentSession != null;
+        public static bool IsSignedIn => Client.Auth.CurrentSession != null;
 
         /// <summary>
         /// Retrieves the current session's access token (JWT), or null if not signed in.
         /// </summary>
-        public static string? AccessToken => _supabase.Auth.CurrentSession?.AccessToken;
+        public static string? AccessToken => Client.Auth.CurrentSession?.AccessToken;
 
 
         public static async Task<List<User>> GetUsersOfUser(SQLite.User user)
         {
+            if (user == null || !user.IsTeacher)
+                return new List<User>();
+
             try
             {
-
-
-                //if (!user.IsTeacher) return null;
-
-
-
-                /* await SignInWithPasswordAsync(_supabaseUserName, _supabasePassword);
-                 if (string.IsNullOrEmpty(_currentJwt))
-                     throw new InvalidOperationException("User not signed in.");
-
-                 if (string.IsNullOrEmpty(_supabase.Auth.CurrentSession?.AccessToken))
-                     throw new InvalidOperationException("User not signed in.");
-                 var options = new Supabase.Functions.Client.InvokeFunctionOptions
-                 {
-                     Headers = new Dictionary<string, string>
-         {
-             { "Authorization", $"Bearer {_currentJwt}" }
-         }
-                 };*/
-
                 var parameters = new Dictionary<string, object>
 {
     { "user_id", user.Id } // Replace userId with the actual UUID value
 };
 
-                var users = await _supabase.Rpc<List<User>>("get_users_by_classroom", parameters);
+                var users = await Client.Rpc<List<User>>("get_users_by_classroom", parameters);
                 //var users = response.Model;
 
                 //var users = await _supabase.Functions.Invoke<List<User>>("select-users-by-classroom", options: options);
@@ -119,6 +137,12 @@ private static readonly SupabaseClient _supabase = new(
             }
             catch (Exception ex)
             {
+                if (ex.Message.Contains("User is not a teacher", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogInfo("GetUsersOfUser skipped classroom lookup because the user is not a teacher.");
+                    return new List<User>();
+                }
+
                 LogError("Error in GetUsersOfUser", ex);
                 throw;
             }
@@ -132,7 +156,7 @@ private static readonly SupabaseClient _supabase = new(
             }
 
             //string userIdString = userID.Value.ToString("D"); // Use the "D" format for consistent GUID string representation
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
                 .Where(game => game.UserId == (Guid)userID)
         .Get();
@@ -144,7 +168,7 @@ private static readonly SupabaseClient _supabase = new(
         public static async Task<List<SQLite.Game>> GetRecordsByGameNamesAsync(Guid? userID, string gameName)
         {
            
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
         .Where(g => g.UserId == userID && g.FinalStatus==1)
         .Get();
@@ -160,7 +184,7 @@ private static readonly SupabaseClient _supabase = new(
                 return new List<string>();
             }
             // SELECT DISTINCT with an alias matching the property name in your class
-            var result = await _supabase
+            var result = await Client
         .From<Game>()
         .Where(g => g.UserId == userID)
         .Get();
@@ -177,13 +201,17 @@ private static readonly SupabaseClient _supabase = new(
 
         public static async Task<List<SQLite.QuestionAnswer>> GetAnswersByQueryAsync(Guid GameId)
         {
-            var result = await _supabase.From<QuestionAnswer>().Where(state => state.GameId == GameId).Get();
+            var result = await Client.From<QuestionAnswer>().Where(state => state.GameId == GameId).Get();
             return result.Models.Select(QA => ConvertFrom<SupaBase.QuestionAnswer, SQLite.QuestionAnswer>(QA)).ToList();
         }
 
         public static async Task<List<SQLite.KeyboardQuestion>> GetKeyboardQuestionByQueryAsync(Guid? selectedIdentifier)
         {
-            var result = await _supabase.From<KeyboardQuestion>().Where(state => state.GameId == selectedIdentifier.ToString()).Get();
+            if (!selectedIdentifier.HasValue)
+                return new List<SQLite.KeyboardQuestion>();
+
+            string gameId = selectedIdentifier.Value.ToString();
+            var result = await Client.From<KeyboardQuestion>().Where(state => state.GameId == gameId).Get();
 
             LogInfo("Retrived states");
             return result.Models.Select(q => ConvertFrom<SupaBase.KeyboardQuestion, SQLite.KeyboardQuestion>(q)).ToList();
@@ -192,7 +220,7 @@ private static readonly SupabaseClient _supabase = new(
 
         public static async Task<List<SQLite.KeyEvent>> GetKeyEventsByQueryAsync(Guid GameId)
         {
-            var result = await _supabase.From<KeyEvent>().Where(state => state.GameId == GameId.ToString()).Get();
+            var result = await Client.From<KeyEvent>().Where(state => state.GameId == GameId.ToString()).Get();
             return result.Models.Select(keyEvent => ConvertFrom<SupaBase.KeyEvent, SQLite.KeyEvent>(keyEvent)).ToList(); 
         }
 
@@ -243,7 +271,14 @@ private static readonly SupabaseClient _supabase = new(
             }
             catch (Exception ex)
             {
+                if (ex is SyncOfflineException || IsOfflineException(ex))
+                {
+                    LogInfo("SyncUserDataAsync skipped because the internet connection is offline.");
+                    throw ex is SyncOfflineException ? ex : new SyncOfflineException(ex);
+                }
+
                 LogError("Error in SyncUserDataAsync", ex);
+                throw;
             }
         }
 
@@ -258,7 +293,7 @@ private static readonly SupabaseClient _supabase = new(
                 LogInfo("Starting SyncUserAsync.");
 
                 // Check if the user exists remotely.
-                var existingResponse = await _supabase
+                var existingResponse = await Client
                     .From<User>()
                     .Where(u => u.Id == user.Id)
                     .Get();
@@ -270,7 +305,7 @@ private static readonly SupabaseClient _supabase = new(
                 // Use Upsert so that if the record exists it will be updated,
                 // and if not, it will be inserted.
                 var SupabaseUser = ConvertFrom<SQLite.User, SupaBase.User>(user);
-                await _supabase.From<User>().Upsert(SupabaseUser);
+                await Client.From<User>().Upsert(SupabaseUser);
                 LogInfo("User record upserted.");
 
                 LogInfo("Completed SyncUserAsync.");
@@ -307,12 +342,13 @@ private static readonly SupabaseClient _supabase = new(
 
                 // 3. Batch upsert all remote games.
                 // Note: Batch upsert minimizes the number of HTTP calls.
-                await _supabase.From<SupaBase.Game>().Upsert(remoteGameBatch);
+                await Client.From<SupaBase.Game>().Upsert(remoteGameBatch);
                 LogInfo($"Upserted {remoteGameBatch.Count} games to SupaBase.");
 
-                // 4. Insert related QuestionAnswer records for each newly upserted game.
+                // 4. Replace related game rows so repeated syncs stay safe.
                 var newGameIds = unsyncedGames.Select(g => g.Id).ToList();
-                await InsertQuestionAnswersForNewGamesAsync(newGameIds);
+                var relatedData = await LoadRelatedDataForGamesAsync(newGameIds);
+                await ReplaceRelatedDataForGamesAsync(newGameIds, relatedData);
 
                 LogInfo("Finished SyncUnsyncedGamesAndRelatedDataAsync successfully.");
 
@@ -320,15 +356,22 @@ private static readonly SupabaseClient _supabase = new(
                 foreach (var localGame in unsyncedGames)
                 {
                     localGame.WasSynced = true;
-                    LogInfo("Chaged Asynced status synced.");
                 }
                 var gameRepo = ServiceHelper.GetService<GameRepository>();
-                await gameRepo.UpdateAsync(unsyncedGames);
-                LogInfo("Marked local games as synced.");
+                int markedCount = await gameRepo.MarkSyncedAsync(user.Id, unsyncedGames.Select(game => game.Id));
+                LogInfo($"Marked {markedCount} local games as synced.");
+                int unsyncedRemaining = await gameRepo.CountUnsyncedByUserAsync(user.Id);
+                LogInfo($"Unsynced local games remaining for user {user.Id}: {unsyncedRemaining}.");
 
             }
             catch (Exception ex)
             {
+                if (ex is SyncOfflineException || IsOfflineException(ex))
+                {
+                    LogInfo("SyncUnsyncedGamesAndRelatedDataAsync skipped because the internet connection is offline.");
+                    throw ex is SyncOfflineException ? ex : new SyncOfflineException(ex);
+                }
+
                 LogError("Unexpected error in SyncUnsyncedGamesAndRelatedDataAsync", ex);
                 throw;
             }
@@ -340,10 +383,7 @@ private static readonly SupabaseClient _supabase = new(
         private static async Task<List<SQLite.Game>> GetLocalUnsyncedGamesAsync(SQLite.User user)
         {
             var gameRepo = ServiceHelper.GetService<GameRepository>();
-            var allGames = await gameRepo.GetAllByUserAsync(user.Id);
-            //return allGames;
-            // Filter by WasSynced == false.
-            var unsynced = allGames.Where(g => g.WasSynced == false && g.UserId == user.Id).ToList();
+            var unsynced = await gameRepo.GetUnsyncedByUserAsync(user.Id);
             LogInfo($"Found {unsynced.Count} unsynced local games for user {user.Id}.");
             return unsynced;
         }
@@ -364,7 +404,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(q => q.UserId == user.Id && IsQuestionEligibleForSync(q))
                     .ToList();
 
-                var response = await _supabase.From<KeyboardQuestion>().Get();
+                var response = await Client.From<KeyboardQuestion>().Get();
                 var remoteQuestions = response.Models;
 
                 await SyncEntitiesAsync(
@@ -400,7 +440,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(a => a.GameId == user.Id.ToString() && IsAnswerEligibleForSync(a))
                     .ToList();
 
-                var response = await _supabase.From<KeyboardAnswer>().Get();
+                var response = await Client.From<KeyboardAnswer>().Get();
                 var remoteAnswers = response.Models;
 
                 await SyncEntitiesAsync(
@@ -436,7 +476,7 @@ private static readonly SupabaseClient _supabase = new(
                     .Where(e => e.GameId == user.Id.ToString() && IsKeyEventEligibleForSync(e))
                     .ToList();
 
-                var response = await _supabase.From<KeyEvent>().Get();
+                var response = await Client.From<KeyEvent>().Get();
                 var remoteEvents = response.Models;
 
                 await SyncEntitiesAsync(
@@ -455,38 +495,210 @@ private static readonly SupabaseClient _supabase = new(
             }
         }*/
 
-        /// <summary>
-        /// Syncs Question Answers.
-        /// </summary>
-        private static async Task InsertQuestionAnswersForNewGamesAsync(List<Guid> gameIds)
+        private static async Task<LocalRelatedSyncBatch> LoadRelatedDataForGamesAsync(List<Guid> gameIds)
         {
             var qaRepo = ServiceHelper.GetService<QuestionAnswerRepository>();
-            foreach (var gameId in gameIds)
-            {
-                try
-                {
-                    var localQAs = await qaRepo.GetAnswersByQueryAsync(gameId);
-                    if (localQAs.Any())
-                    {
-                        // Convert each local QuestionAnswer (SQLite.QuestionAnswer) to SupaBase.QuestionAnswer.
-                        var supabaseQAs = localQAs
-                            .Select(qa => ConvertFrom<SQLite.QuestionAnswer, SupaBase.QuestionAnswer>(qa))
-                            .ToList();
+            var qaPartRepo = ServiceHelper.GetService<QuestionAnswerPartRepository>();
+            var keyboardQuestionRepo = ServiceHelper.GetService<KeyboardQuestionRepository>();
+            var keyEventRepo = ServiceHelper.GetService<KeyEventRepository>();
 
-                        // Batch insert the converted QuestionAnswer records.
-                        await _supabase.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
-                        LogInfo($"Inserted {supabaseQAs.Count} SupaBase QuestionAnswer records for Game {gameId}.");
-                    }
-                    else
-                    {
-                        LogInfo($"No local QuestionAnswer records for Game {gameId}.");
-                    }
-                }
-                catch (Exception ex)
+            var allQuestionAnswersTask = qaRepo.GetByGameIdsAsync(gameIds);
+            var allQuestionAnswerPartsTask = qaPartRepo.GetByGameIdsAsync(gameIds);
+            var allKeyboardQuestionsTask = keyboardQuestionRepo.GetByGameIdsAsync(gameIds);
+            var allKeyEventsTask = keyEventRepo.GetByGameIdsAsync(gameIds);
+
+            await Task.WhenAll(allQuestionAnswersTask, allQuestionAnswerPartsTask, allKeyboardQuestionsTask, allKeyEventsTask);
+
+            Dictionary<Guid, List<SQLite.QuestionAnswer>> questionAnswersByGameId = allQuestionAnswersTask.Result
+                .Where(qa => !string.IsNullOrWhiteSpace(qa.GameId))
+                .GroupBy(qa => Guid.Parse(qa.GameId))
+                .ToDictionary(group => group.Key, group => group.OrderBy(item => item.Time).ToList());
+
+            Dictionary<Guid, List<SQLite.QuestionAnswerPart>> questionAnswerPartsByGameId = allQuestionAnswerPartsTask.Result
+                .Where(part => !string.IsNullOrWhiteSpace(part.GameId))
+                .GroupBy(part => Guid.Parse(part.GameId))
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderBy(item => item.QuestionNumber)
+                        .ThenBy(item => item.AttemptNumber)
+                        .ThenBy(item => item.RecordedAt)
+                        .ThenBy(item => item.Id)
+                        .ToList());
+
+            Dictionary<Guid, List<SQLite.KeyboardQuestion>> keyboardQuestionsByGameId = allKeyboardQuestionsTask.Result
+                .Where(question => !string.IsNullOrWhiteSpace(question.GameId))
+                .GroupBy(question => Guid.Parse(question.GameId))
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderBy(item => item.QuestionNumber)
+                        .ThenBy(item => item.AttemptNumber)
+                        .ThenBy(item => item.Time)
+                        .ToList());
+
+            Dictionary<Guid, List<SQLite.KeyEvent>> keyEventsByGameId = allKeyEventsTask.Result
+                .Where(keyEvent => !string.IsNullOrWhiteSpace(keyEvent.GameId))
+                .GroupBy(keyEvent => Guid.Parse(keyEvent.GameId))
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderBy(item => item.EventTime)
+                        .ThenBy(item => item.id)
+                        .ToList());
+
+            return new LocalRelatedSyncBatch
+            {
+                QuestionAnswersByGameId = questionAnswersByGameId,
+                QuestionAnswerPartsByGameId = questionAnswerPartsByGameId,
+                KeyboardQuestionsByGameId = keyboardQuestionsByGameId,
+                KeyEventsByGameId = keyEventsByGameId
+            };
+        }
+
+        private static async Task ReplaceRelatedDataForGamesAsync(List<Guid> gameIds, LocalRelatedSyncBatch relatedData)
+        {
+            var gameIdsWithQuestionAnswers = gameIds
+                .Where(gameId => relatedData.QuestionAnswersByGameId.ContainsKey(gameId))
+                .ToList();
+            var gameIdsWithQuestionAnswerParts = gameIds
+                .Where(gameId => relatedData.QuestionAnswerPartsByGameId.ContainsKey(gameId))
+                .ToList();
+            var gameIdsWithKeyboardQuestions = gameIds
+                .Where(gameId => relatedData.KeyboardQuestionsByGameId.ContainsKey(gameId))
+                .ToList();
+            var gameIdsWithKeyEvents = gameIds
+                .Where(gameId => relatedData.KeyEventsByGameId.ContainsKey(gameId))
+                .ToList();
+
+            LogInfo($"QuestionAnswer sync will touch {gameIdsWithQuestionAnswers.Count} game(s).");
+            LogInfo($"QuestionAnswerPart sync will touch {gameIdsWithQuestionAnswerParts.Count} game(s).");
+            LogInfo($"KeyboardQuestion sync will touch {gameIdsWithKeyboardQuestions.Count} game(s).");
+            LogInfo($"KeyEvent sync will touch {gameIdsWithKeyEvents.Count} game(s).");
+
+            RelatedSyncSummary questionAnswerSummary = await ProcessGamesInParallelAsync(
+                gameIdsWithQuestionAnswers,
+                async gameId => await ReplaceQuestionAnswersForGameAsync(gameId, relatedData.QuestionAnswersByGameId[gameId]),
+                "QuestionAnswer");
+
+            RelatedSyncSummary questionAnswerPartSummary = await ProcessGamesInParallelAsync(
+                gameIdsWithQuestionAnswerParts,
+                async gameId => await ReplaceQuestionAnswerPartsForGameAsync(gameId, relatedData.QuestionAnswerPartsByGameId[gameId]),
+                "QuestionAnswerPart");
+
+            RelatedSyncSummary keyboardQuestionSummary = await ProcessGamesInParallelAsync(
+                gameIdsWithKeyboardQuestions,
+                async gameId => await ReplaceKeyboardQuestionsForGameAsync(gameId, relatedData.KeyboardQuestionsByGameId[gameId]),
+                "KeyboardQuestion");
+
+            RelatedSyncSummary keyEventSummary = await ProcessGamesInParallelAsync(
+                gameIdsWithKeyEvents,
+                async gameId => await ReplaceKeyEventsForGameAsync(gameId, relatedData.KeyEventsByGameId[gameId]),
+                "KeyEvent");
+
+            LogInfo($"{questionAnswerSummary.Label} sync summary: {questionAnswerSummary.GamesTouched} game(s), {questionAnswerSummary.RecordsInserted} record(s).");
+            LogInfo($"{questionAnswerPartSummary.Label} sync summary: {questionAnswerPartSummary.GamesTouched} game(s), {questionAnswerPartSummary.RecordsInserted} record(s).");
+            LogInfo($"{keyboardQuestionSummary.Label} sync summary: {keyboardQuestionSummary.GamesTouched} game(s), {keyboardQuestionSummary.RecordsInserted} record(s).");
+            LogInfo($"{keyEventSummary.Label} sync summary: {keyEventSummary.GamesTouched} game(s), {keyEventSummary.RecordsInserted} record(s).");
+        }
+
+        private static async Task<RelatedSyncSummary> ProcessGamesInParallelAsync(
+            IReadOnlyList<Guid> gameIds,
+            Func<Guid, Task<int>> action,
+            string label,
+            int maxDegreeOfParallelism = 6)
+        {
+            int processedGames = 0;
+            int insertedRecords = 0;
+
+            await Parallel.ForEachAsync(
+                gameIds,
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (gameId, _) =>
                 {
-                    LogError($"Error inserting QuestionAnswer records for Game {gameId}.", ex);
-                }
-            }
+                    int records = await action(gameId);
+                    Interlocked.Add(ref insertedRecords, records);
+
+                    int processed = Interlocked.Increment(ref processedGames);
+                    if (processed % 25 == 0 || processed == gameIds.Count)
+                        LogInfo($"{label} sync progress: {processed}/{gameIds.Count} game(s).");
+                });
+
+            return new RelatedSyncSummary(label, gameIds.Count, insertedRecords);
+        }
+
+        private static async Task<int> ReplaceQuestionAnswersForGameAsync(Guid gameId, List<SQLite.QuestionAnswer> localQAs)
+        {
+            if (localQAs == null || localQAs.Count == 0)
+                return 0;
+
+            await Client.From<SupaBase.QuestionAnswer>()
+                .Where(state => state.GameId == gameId)
+                .Delete();
+
+            var supabaseQAs = localQAs
+                .Select(qa => ConvertFrom<SQLite.QuestionAnswer, SupaBase.QuestionAnswer>(qa))
+                .ToList();
+
+            await Client.From<SupaBase.QuestionAnswer>().Insert(supabaseQAs);
+            return supabaseQAs.Count;
+        }
+
+        private static async Task<int> ReplaceQuestionAnswerPartsForGameAsync(Guid gameId, List<SQLite.QuestionAnswerPart> localParts)
+        {
+            if (localParts == null || localParts.Count == 0)
+                return 0;
+
+            string gameIdText = gameId.ToString();
+
+            await Client.From<SupaBase.QuestionAnswerPart>()
+                .Where(part => part.GameId == gameIdText)
+                .Delete();
+
+            var supabaseParts = localParts
+                .Select(part => ConvertFrom<SQLite.QuestionAnswerPart, SupaBase.QuestionAnswerPart>(part))
+                .ToList();
+
+            await Client.From<SupaBase.QuestionAnswerPart>().Insert(supabaseParts);
+            return supabaseParts.Count;
+        }
+
+        private static async Task<int> ReplaceKeyboardQuestionsForGameAsync(Guid gameId, List<SQLite.KeyboardQuestion> localQuestions)
+        {
+            if (localQuestions == null || localQuestions.Count == 0)
+                return 0;
+
+            string gameIdText = gameId.ToString();
+
+            await Client.From<SupaBase.KeyboardQuestion>()
+                .Where(state => state.GameId == gameIdText)
+                .Delete();
+
+            var supabaseQuestions = localQuestions
+                .Select(question => ConvertFrom<SQLite.KeyboardQuestion, SupaBase.KeyboardQuestion>(question))
+                .ToList();
+
+            await Client.From<SupaBase.KeyboardQuestion>().Insert(supabaseQuestions);
+            return supabaseQuestions.Count;
+        }
+
+        private static async Task<int> ReplaceKeyEventsForGameAsync(Guid gameId, List<SQLite.KeyEvent> localEvents)
+        {
+            if (localEvents == null || localEvents.Count == 0)
+                return 0;
+
+            string gameIdText = gameId.ToString();
+
+            await Client.From<SupaBase.KeyEvent>()
+                .Where(state => state.GameId == gameIdText)
+                .Delete();
+
+            var supabaseEvents = localEvents
+                .Select(keyEvent => ConvertFrom<SQLite.KeyEvent, SupaBase.KeyEvent>(keyEvent))
+                .ToList();
+
+            await Client.From<SupaBase.KeyEvent>().Insert(supabaseEvents);
+            return supabaseEvents.Count;
         }
 
         /// <summary>
@@ -514,7 +726,7 @@ private static readonly SupabaseClient _supabase = new(
                 var toInsert = localData.Where(x => !remoteKeys.Contains(keySelector(x))).ToList();
                 if (toInsert.Any())
                 {
-                    await _supabase.From<T>().Insert(toInsert);
+                await Client.From<T>().Insert(toInsert);
                     LogInfo($"{typeof(T).Name}: Inserted {toInsert.Count} new record(s).");
                 }
                 else
@@ -531,7 +743,7 @@ private static readonly SupabaseClient _supabase = new(
                     var list = localData.ToList();
                     if (list.Any())
                     {
-                        await _supabase.From<T>().Upsert(list);
+                await Client.From<T>().Upsert(list);
                         LogInfo($"{typeof(T).Name}: Upserted {list.Count} record(s).");
                     }
                     else
@@ -570,6 +782,14 @@ private static readonly SupabaseClient _supabase = new(
                     sp.CanWrite);
                 if (sourceProp != null)
                 {
+                    bool isRemoteAutoGeneratedIntegerPrimaryKey =
+                        typeof(TSource).Namespace?.Contains(".Data.SupaBase", StringComparison.Ordinal) == true &&
+                        sourceProp.GetCustomAttribute<PrimaryKeyAttribute>() != null &&
+                        (sourceProp.PropertyType == typeof(int) || sourceProp.PropertyType == typeof(long));
+
+                    if (isRemoteAutoGeneratedIntegerPrimaryKey)
+                        continue;
+
                     var value = targetProp.GetValue(target);
                     if (value != null && sourceProp.PropertyType != targetProp.PropertyType)
                     {
