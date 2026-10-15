@@ -9,8 +9,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+      - name: Select Xcode compatible with iOS 18
+        shell: bash
+        run: |
+          set -euo pipefail
+          for version in 16.2 16.1 16.0; do
+            if [[ -d "/Applications/Xcode_${version}.app/Contents/Developer" ]]; then
+              sudo xcode-select -s "/Applications/Xcode_${version}.app/Contents/Developer"
+              echo "Using Xcode ${version}"
+              xcodebuild -version
+              xcrun --sdk iphoneos --show-sdk-version
+              exit 0
+            fi
+          done
+          echo "::error title=Compatible Xcode missing::Need Xcode 16.x for the current Microsoft.iOS 18.0 SDK; inspect the runner image or switch macOS runner."
+          ls -d /Applications/Xcode*.app || true
+          exit 1
 
       - name: Set up .NET 8 SDK
         uses: actions/setup-dotnet@v4
