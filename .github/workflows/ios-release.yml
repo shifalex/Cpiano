@@ -1,35 +1,30 @@
-name: iOS Release IPA
+name: iOS TestFlight .NET 10
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode compatible with iOS 18
+      - name: Select Xcode 26
         shell: bash
         run: |
           set -euo pipefail
-          for version in 16.2 16.1 16.0; do
-            if [[ -d "/Applications/Xcode_${version}.app/Contents/Developer" ]]; then
-              sudo xcode-select -s "/Applications/Xcode_${version}.app/Contents/Developer"
-              echo "Using Xcode ${version}"
-              xcodebuild -version
-              xcrun --sdk iphoneos --show-sdk-version
-              exit 0
-            fi
-          done
-          echo "::error title=Compatible Xcode missing::Need Xcode 16.x for the current Microsoft.iOS 18.0 SDK; inspect the runner image or switch macOS runner."
-          ls -d /Applications/Xcode*.app || true
-          exit 1
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          XCODE_MAJOR=$(xcodebuild -version | awk '/^Xcode / {split($2, a, "."); print a[1]}')
+          if [[ "$XCODE_MAJOR" != "26" ]]; then
+            echo "::error title=Wrong Xcode version::Expected Xcode 26 for App Store Connect."
+            exit 1
+          fi
 
-      - name: Set up .NET 8 SDK
+      - name: Set up .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.311
+          dotnet-version: '10.0.400'
 
       - name: Install MAUI iOS workload
         working-directory: GestureSample.Maui
@@ -37,7 +32,7 @@ jobs:
           dotnet --version
           dotnet workload install maui-ios --skip-manifest-update
           dotnet workload list
-          dotnet workload restore GestureSample.Maui.csproj
+          dotnet workload list
 
       - name: Install signing credentials
         shell: bash
@@ -102,7 +97,7 @@ jobs:
         shell: bash
         run: |
           dotnet publish GestureSample.Maui.csproj \
-            -f net8.0-ios -c Release \
+            -f net10.0-ios -c Release \
             -p:RuntimeIdentifier=ios-arm64 \
             -p:ArchiveOnBuild=true \
             -p:BuildIpa=true \
@@ -112,6 +107,6 @@ jobs:
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cpiano-release-ipa
-          path: '**/bin/Release/net8.0-ios/ios-arm64/publish/*.ipa'
+          name: cpiano-testflight-net10-ipa
+          path: '**/bin/Release/net10.0-ios/ios-arm64/publish/*.ipa'
           if-no-files-found: error
