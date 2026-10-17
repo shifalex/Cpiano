@@ -9,49 +9,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26.0
+      - name: Select Xcode 26.2 and verify matching simulator runtime
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -d /Applications/Xcode_26.0.1.app/Contents/Developer ]]; then
-            sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
-          elif [[ -d /Applications/Xcode_26.0.app/Contents/Developer ]]; then
-            sudo xcode-select -s /Applications/Xcode_26.0.app/Contents/Developer
-          else
-            echo "::error title=Xcode 26.0 missing::The current .NET iOS workload requires Xcode 26.0."
-            ls -d /Applications/Xcode_26*.app || true
-            exit 1
-          fi
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
-          XCODE_VERSION=$(xcodebuild -version | awk '/^Xcode / {print $2}')
-          if [[ "$XCODE_VERSION" != 26.0* ]]; then
-            echo "::error title=Wrong Xcode version::Expected Xcode 26.0.x; found $XCODE_VERSION."
-            exit 1
-          fi
-
-      - name: Install matching iOS 26.0 Simulator runtime for actool
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Available simulator runtimes before install:"
-          xcrun simctl runtime list || true
-          echo "Downloading iOS 26.0 simulator runtime for Xcode 26.0 asset compilation..."
-          xcodebuild -downloadPlatform iOS -buildVersion 26.0
-          echo "Available simulator runtimes after install:"
           xcrun simctl runtime list
+          test "$(xcodebuild -version | awk '/^Xcode / {print $2}')" = "26.2"
+          xcrun simctl runtime list | grep -q 'iOS 26.2'
 
       - name: Set up .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.400'
+          dotnet-version: '10.0.103'
 
       - name: Install MAUI iOS workload
         working-directory: GestureSample.Maui
         run: |
           dotnet --version
-          dotnet workload install maui-ios --skip-manifest-update
-          dotnet workload list
+          dotnet workload install maui-ios --version 10.0.103
           dotnet workload list
 
       - name: Install signing credentials
