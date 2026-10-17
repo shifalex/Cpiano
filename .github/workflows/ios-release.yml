@@ -99,6 +99,7 @@ jobs:
             -p:TargetFrameworks=net10.0-ios \
             -p:RuntimeIdentifier=ios-arm64 \
             -p:ArchiveOnBuild=true \
+            -p:ApplicationVersion="$GITHUB_RUN_NUMBER" \
             -p:BuildIpa=true \
             -p:CodesignProvision="$PROFILE_UUID" \
             -p:CodesignKey="Apple Distribution"
@@ -109,3 +110,34 @@ jobs:
           name: cpiano-testflight-net10-ipa
           path: '**/bin/Release/net10.0-ios/ios-arm64/publish/*.ipa'
           if-no-files-found: error
+
+      - name: Upload IPA to App Store Connect for TestFlight
+        shell: bash
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$APPSTORE_KEY_ID" || { echo "::error::APPSTORE_KEY_ID secret is missing"; exit 1; }
+          test -n "$APPSTORE_ISSUER_ID" || { echo "::error::APPSTORE_ISSUER_ID secret is missing"; exit 1; }
+          test -n "$APPSTORE_PRIVATE_KEY" || { echo "::error::APPSTORE_PRIVATE_KEY secret is missing"; exit 1; }
+
+          KEY_DIR="$RUNNER_TEMP/appstore-private-keys"
+          mkdir -p "$KEY_DIR"
+          chmod 700 "$KEY_DIR"
+          printf '%s\n' "$APPSTORE_PRIVATE_KEY" > "$KEY_DIR/AuthKey_${APPSTORE_KEY_ID}.p8"
+          chmod 600 "$KEY_DIR/AuthKey_${APPSTORE_KEY_ID}.p8"
+          echo "APPSTORE_PRIVATE_KEY=" >> "$GITHUB_ENV"
+
+          IPA_DIR="GestureSample.Maui/bin/Release/net10.0-ios/ios-arm64/publish"
+          mapfile -t ipa_files < <(find "$IPA_DIR" -maxdepth 1 -type f -name '*.ipa')
+          if [[ ${#ipa_files[@]} -ne 1 ]]; then
+            echo "::error title=IPA not found::Expected exactly one .ipa in $IPA_DIR; found ${#ipa_files[@]}."
+            exit 1
+          fi
+          echo "Uploading signed IPA to App Store Connect (build $GITHUB_RUN_NUMBER)..."
+          export API_PRIVATE_KEYS_DIR="$KEY_DIR"
+          xcrun altool --upload-app -f "${ipa_files[0]}" -t ios \
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID"
+          echo "Upload submitted. Wait for App Store Connect processing before inviting testers."
