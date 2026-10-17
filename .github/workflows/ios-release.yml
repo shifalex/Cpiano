@@ -30,6 +30,17 @@ jobs:
             exit 1
           fi
 
+      - name: Install matching iOS 26.0 Simulator runtime for actool
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Available simulator runtimes before install:"
+          xcrun simctl runtime list || true
+          echo "Downloading iOS 26.0 simulator runtime for Xcode 26.0 asset compilation..."
+          xcodebuild -downloadPlatform iOS -buildVersion 26.0
+          echo "Available simulator runtimes after install:"
+          xcrun simctl runtime list
+
       - name: Set up .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
