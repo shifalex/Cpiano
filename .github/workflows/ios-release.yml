@@ -98,6 +98,7 @@ jobs:
         run: |
           dotnet publish GestureSample.Maui.csproj \
             -f net10.0-ios -c Release \
+            -p:TargetFrameworks=net10.0-ios \
             -p:RuntimeIdentifier=ios-arm64 \
             -p:ArchiveOnBuild=true \
             -p:BuildIpa=true \
