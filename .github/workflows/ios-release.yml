@@ -138,6 +138,14 @@ jobs:
           IPA_FILE=$(find "$IPA_DIR" -maxdepth 1 -type f -name '*.ipa' -print -quit)
           echo "Uploading signed IPA to App Store Connect (build $GITHUB_RUN_NUMBER)..."
           export API_PRIVATE_KEYS_DIR="$KEY_DIR"
+          UPLOAD_LOG="$RUNNER_TEMP/appstore-upload.log"
+          set +e
           xcrun altool --upload-app -f "$IPA_FILE" -t ios \
-            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID"
-          echo "Upload submitted. Wait for App Store Connect processing before inviting testers."
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID" 2>&1 | tee "$UPLOAD_LOG"
+          UPLOAD_EXIT=${PIPESTATUS[0]}
+          set -e
+          if [[ "$UPLOAD_EXIT" -ne 0 ]] || grep -Eqi '(UPLOAD FAILED|Validation failed|Failed to upload package|STATE_ERROR.VALIDATION_ERROR)' "$UPLOAD_LOG"; then
+            echo "::error title=App Store Connect rejected upload::Apple upload or validation failed. Check the altool log above."
+            exit 1
+          fi
+          echo "Upload command completed without reported errors. Confirm processing in App Store Connect."
