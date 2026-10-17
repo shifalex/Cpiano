@@ -35,7 +35,7 @@ namespace GestureSample.Maui.Data.SQLite
         {
             var label = new Label { Text = text, FontSize = fontSize };
             var size = label.Measure(double.PositiveInfinity, double.PositiveInfinity);
-            return size.Request.Width;
+            return size.Width;
         }
 
         private string TruncateFormattedGameName(string formattedGameName, string prefix, string suffix, double fontSize, double availableWidth)
