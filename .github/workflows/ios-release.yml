@@ -128,16 +128,16 @@ jobs:
           chmod 700 "$KEY_DIR"
           printf '%s\n' "$APPSTORE_PRIVATE_KEY" > "$KEY_DIR/AuthKey_${APPSTORE_KEY_ID}.p8"
           chmod 600 "$KEY_DIR/AuthKey_${APPSTORE_KEY_ID}.p8"
-          echo "APPSTORE_PRIVATE_KEY=" >> "$GITHUB_ENV"
 
           IPA_DIR="GestureSample.Maui/bin/Release/net10.0-ios/ios-arm64/publish"
-          mapfile -t ipa_files < <(find "$IPA_DIR" -maxdepth 1 -type f -name '*.ipa')
-          if [[ ${#ipa_files[@]} -ne 1 ]]; then
-            echo "::error title=IPA not found::Expected exactly one .ipa in $IPA_DIR; found ${#ipa_files[@]}."
+          IPA_COUNT=$(find "$IPA_DIR" -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')
+          if [[ "$IPA_COUNT" -ne 1 ]]; then
+            echo "::error title=IPA not found::Expected exactly one .ipa in $IPA_DIR; found $IPA_COUNT."
             exit 1
           fi
+          IPA_FILE=$(find "$IPA_DIR" -maxdepth 1 -type f -name '*.ipa' -print -quit)
           echo "Uploading signed IPA to App Store Connect (build $GITHUB_RUN_NUMBER)..."
           export API_PRIVATE_KEYS_DIR="$KEY_DIR"
-          xcrun altool --upload-app -f "${ipa_files[0]}" -t ios \
+          xcrun altool --upload-app -f "$IPA_FILE" -t ios \
             --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID"
           echo "Upload submitted. Wait for App Store Connect processing before inviting testers."
