@@ -9,15 +9,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode 26
+      - name: Select Xcode 26.0
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -d /Applications/Xcode_26.0.1.app/Contents/Developer ]]; then
+            sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
+          elif [[ -d /Applications/Xcode_26.0.app/Contents/Developer ]]; then
+            sudo xcode-select -s /Applications/Xcode_26.0.app/Contents/Developer
+          else
+            echo "::error title=Xcode 26.0 missing::The current .NET iOS workload requires Xcode 26.0."
+            ls -d /Applications/Xcode_26*.app || true
+            exit 1
+          fi
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
-          XCODE_MAJOR=$(xcodebuild -version | awk '/^Xcode / {split($2, a, "."); print a[1]}')
-          if [[ "$XCODE_MAJOR" != "26" ]]; then
-            echo "::error title=Wrong Xcode version::Expected Xcode 26 for App Store Connect."
+          XCODE_VERSION=$(xcodebuild -version | awk '/^Xcode / {print $2}')
+          if [[ "$XCODE_VERSION" != 26.0* ]]; then
+            echo "::error title=Wrong Xcode version::Expected Xcode 26.0.x; found $XCODE_VERSION."
             exit 1
           fi
 
