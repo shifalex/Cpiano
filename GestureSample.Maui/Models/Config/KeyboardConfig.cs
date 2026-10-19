@@ -524,6 +524,7 @@
         public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
         public bool ShowPrecisionPinchGuideLine { get; set; } = true;
+        public bool ShowPrecisionPinchXorLine { get; set; } = false;
         public bool SeparatePrecisionPinchColumnsOnTablet { get; set; } = false;
         public double PrecisionPinchTabletColumnGap { get; set; } = 96;
         public bool IsTransformativePrecisionCopyExercise { get; set; } = false;

@@ -215,7 +215,11 @@ namespace GestureSample.Maui.Models
                 ResetProgressVisual();
 
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
-                if (GripGate != null && checkResult.IsCorrect) SetExternalInputBlocked(true);
+                if (GripGate != null && checkResult.IsCorrect)
+                {
+                    GripGate.RememberCorrectAnswerHold();
+                    SetExternalInputBlocked(true);
+                }
                 if (CheckCompletedAsync != null)
                     await CheckCompletedAsync(checkResult);
             }

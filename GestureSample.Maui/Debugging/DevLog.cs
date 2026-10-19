@@ -3,14 +3,17 @@ using System.Diagnostics;
 
 namespace GestureSample.Debugging
 {
-    internal static class DevLog
+    public static class DevLog
     {
-        internal static event Action<string>? Line;
+        public static event Action<string>? Line;
 
-        internal static void Write(string message)
+        public static void Write(string message)
         {
             Debug.WriteLine(message);
             Line?.Invoke(message);
         }
+
+        public static void Write(string format, params object[] args)
+            => Write(string.Format(format, args));
     }
 }
