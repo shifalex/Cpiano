@@ -954,16 +954,32 @@ namespace GestureSample.Maui.Models
             }
         }
 
-        protected void ScheduleNormalizeAllPianoKeyVisuals()
+        private readonly HashSet<MR.Gestures.Button> _pendingKeyVisuals = new();
+        private bool _keyVisualRefreshScheduled;
+
+        protected void ScheduleNormalizeAllPianoKeyVisuals() => ScheduleNormalizePianoKeyVisuals(null);
+
+        protected void ScheduleNormalizePianoKeyVisuals(MR.Gestures.Button? changedKey)
         {
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                NormalizeAllPianoKeyVisuals();
+                if (changedKey != null)
+                    _pendingKeyVisuals.Add(changedKey);
+                else if (btnKeys != null)
+                    foreach (var key in btnKeys) _pendingKeyVisuals.Add(key);
+                if (_keyVisualRefreshScheduled) return;
+                _keyVisualRefreshScheduled = true;
 
-                Dispatcher?.DispatchDelayed(TimeSpan.FromMilliseconds(40), () =>
+                void Refresh()
                 {
-                    NormalizeAllPianoKeyVisuals();
-                });
+                    _keyVisualRefreshScheduled = false;
+                    var keys = _pendingKeyVisuals.ToArray();
+                    _pendingKeyVisuals.Clear();
+                    foreach (var key in keys) NormalizePianoKeyVisual(key);
+                }
+                // Keep the delayed native-state repair, batching simultaneous contacts.
+                if (Dispatcher == null) Refresh();
+                else Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(40), Refresh);
             });
         }
 

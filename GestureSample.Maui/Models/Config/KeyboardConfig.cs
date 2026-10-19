@@ -1,5 +1,7 @@
 ﻿namespace GestureSample.Maui
 {
+    public enum GripAnchorHand { Left, Right, Both }
+
     //ODO: addends of history get lost
     //ODO: number shows keyboard when shouldnt
     //ODO: keyboard questions
@@ -423,6 +425,8 @@
         MoreThanHalf = 1 << 21,
         LessThanHalf = 1 << 22,
         ThroughTenParts = 1 << 23,
+        RaiseBothEqually = 1 << 24,
+        RaiseAnchorOnly = 1 << 25,
         Default = Associativity | FlipAdditionSubtraction | Difference | Split | Half |
                   MoreThanHalf | LessThanHalf |
                   ThroughTenParts |
@@ -433,14 +437,14 @@
                        IncreaseLowerByOne | DecreaseLowerByOne,
         RelativeSize = LittleSmaller | MuchSmaller | LittleBigger | MuchBigger,
         Easy = (Default | RelativeSize) & ~EasyExcluded,
-        Hard = Default | ResizeLowerAttached,
+        Hard = Default | ResizeLowerAttached | RaiseBothEqually | RaiseAnchorOnly,
         All = Commutativity | Associativity | ResizeUpper | ResizeLowerAttached |
               FlipAdditionSubtraction | Difference | Split | SplitJump |
               HalfOfHalf | LittleSmaller | MuchSmaller | LittleBigger | MuchBigger | Half |
               SubtrahendOneStepBigger | SubtrahendOneStepSmaller |
               IncreaseLowerByOne | IncreaseUpperByOne | DecreaseLowerByOne | DecreaseUpperByOne |
               MoreThanHalf | LessThanHalf
-              | ThroughTenParts
+              | ThroughTenParts | RaiseBothEqually | RaiseAnchorOnly
     }
 
     public enum TwoHandMagnitudeVocabularyMode
@@ -492,6 +496,10 @@
         public int KeysInRow { get; set; } = 10;
         public bool AllowKeyWidthAdjustment { get; set; } = false;
         public bool IsPrecisionPinchExercise { get; set; } = false;
+        public bool SupportsGripChildAssistance => IsVerticalPrecisionPinchExercise &&
+            !IsPrecisionShiftExercise && !IsPrecisionPinchSequenceMemorize &&
+            !IsTwoHandCombinationMemorize && !IsPrecisionSynchronousProcessExercise &&
+            !IsGripTransformationPracticeExercise && !IsPrecisionGrammarExercise;
         public int PrecisionPinchMemorizeDelaySeconds { get; set; } = 0;
         public bool IsPrecisionPinchSequenceMemorize { get; set; } = false;
         public bool IsTwoHandCombinationMemorize { get; set; } = false;
@@ -505,6 +513,7 @@
         public bool ReadTwoHandCombinationInstructionAloud { get; set; } = true;
         public bool MemorizeBothTwoHandStates { get; set; } = true;
         public bool IsEasyTwoHandCombinationStage { get; set; }
+        public GripAnchorHand TwoHandCombinationAnchorHand { get; set; } = GripAnchorHand.Left;
         public bool KeepLeftHandAtBottom { get; set; }
         // Legacy property name retained for saved settings. Controls first-state-only
         // presentation when MemorizeBothTwoHandStates is disabled.
@@ -515,6 +524,7 @@
         public int PrecisionSequenceRecognitionWindowSeconds { get; set; } = 8;
         public int PrecisionPinchSequenceSecondMaxDistance { get; set; } = 1;
         public bool ShowPrecisionPinchGuideLine { get; set; } = true;
+        public bool ShowPrecisionPinchXorLine { get; set; } = false;
         public bool SeparatePrecisionPinchColumnsOnTablet { get; set; } = false;
         public double PrecisionPinchTabletColumnGap { get; set; } = 96;
         public bool IsTransformativePrecisionCopyExercise { get; set; } = false;

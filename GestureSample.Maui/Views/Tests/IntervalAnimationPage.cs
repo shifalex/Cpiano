@@ -177,7 +177,8 @@ public sealed class IntervalAnimationPage : ContentPage
                 canvas.DrawString(i.ToString(), 28, y, 32, keyHeight, HorizontalAlignment.Center, VerticalAlignment.Center);
             }
             // Contact faces coincide with key centers; pads occupy the outward halves.
-            _hand.Draw(canvas, keyX + keyWidth * .13f, upperY, lowerY, keyHeight, 140, _handAlpha);
+            _hand.Draw(canvas, keyX + keyWidth * .13f, upperY, lowerY, keyHeight, 140, _handAlpha,
+                upperFingerExtension: keyWidth * .13f - keyHeight / 8);
             canvas.RestoreState();
         }
     }

@@ -13,6 +13,19 @@ public sealed partial class KeyboardOverlayHost
     private readonly GripPresentationClock _presentationClock = new();
     private bool _temporaryTurnCue;
     private bool _helpTurnCuesEnabled;
+    private int _combinationCueVersion;
+
+    public async void NotifyNextCombinationVisible()
+    {
+        if (Keyboard is not PianoKeyboard { GripGate: { } gate }) return;
+        int version = ++_combinationCueVersion;
+        gate.BeginPreviousAnswerGrace();
+        RefreshGripTurnCue();
+        double remaining = gate.PreviousAnswerGraceRemaining;
+        if (remaining <= 0) return;
+        await Task.Delay(TimeSpan.FromMilliseconds(remaining));
+        if (version == _combinationCueVersion) RefreshGripTurnCue();
+    }
 
     public void SetHelpTurnCuesEnabled(bool enabled)
     {
@@ -24,6 +37,41 @@ public sealed partial class KeyboardOverlayHost
     private readonly Dictionary<string, CancellationTokenSource> _presentationAnimations = new();
     private GraphicsView? _keyboardAmbient;
     private readonly GripAmbientDrawable _ambientDrawing = new();
+    private bool _glowRequested;
+    private float _glowStrength;
+    private Color _glowInk = Colors.Red;
+    private Color? _glowTargetInk;
+
+    private void UpdateGripGlow(bool needed, Color ink)
+    {
+        if (_glowRequested == needed && Equals(_glowTargetInk, ink)) return;
+        _glowRequested = needed;
+        _glowTargetInk = ink;
+        this.AbortAnimation("GripGlowFade");
+        float start = _glowStrength;
+        Color startInk = _glowInk;
+        new Animation(value =>
+        {
+            float t = (float)value;
+            _glowStrength = start + ((needed ? 1f : 0f) - start) * t;
+            _glowInk = new Color(startInk.Red + (ink.Red - startInk.Red) * t,
+                startInk.Green + (ink.Green - startInk.Green) * t,
+                startInk.Blue + (ink.Blue - startInk.Blue) * t);
+            _ambientDrawing.Strength = _glowStrength;
+            _ambientDrawing.Color = _glowInk;
+            if (_turnHalo != null)
+            {
+                _turnHalo.Opacity = _glowStrength;
+                _turnHalo.BackgroundColor = _glowInk.WithAlpha(.02f);
+                _turnHalo.Stroke = _glowInk.WithAlpha(.22f);
+            }
+            if (_turnBadge != null) _turnBadge.Opacity = _glowStrength;
+            if (_turnDrawing != null) _turnDrawing.Color = _glowInk;
+            _turnIcon?.Invalidate();
+            _keyboardAmbient?.Invalidate();
+        }, 0, 1).Commit(this, "GripGlowFade",
+            length: needed ? 300u : 600u, easing: Easing.CubicInOut);
+    }
 
     public View CreateGripAmbientView(VisualElement keyboardShell)
     {
@@ -48,14 +96,15 @@ public sealed partial class KeyboardOverlayHost
     {
         public Color Color = Colors.Transparent;
         public bool Visible;
+        public float Strength;
         public void Draw(ICanvas canvas, RectF bounds)
         {
-            if (!Visible) return;
+            if (!Visible || Strength <= 0) return;
             // Explicit translucent bands render outside the opaque keyboard on iPad;
             // they do not rely on a native shadow escaping a clipped rounded border.
             for (int inset = 0; inset < 24; inset += 2)
             {
-                canvas.FillColor = Color.WithAlpha(.012f + inset * .0015f);
+                canvas.FillColor = Color.WithAlpha((.003f + inset * .00035f) * Strength);
                 canvas.FillRoundedRectangle(bounds.X + inset, bounds.Y + inset,
                     Math.Max(0, bounds.Width - inset * 2), Math.Max(0, bounds.Height - inset * 2), 28 - inset * .5f);
             }
@@ -67,7 +116,7 @@ public sealed partial class KeyboardOverlayHost
         if (Keyboard is not PianoKeyboard piano || piano.GripGate is not { } gate) return;
         _turnHalo = new Border
         {
-            InputTransparent = true, ZIndex = -1, Margin = new Thickness(-6),
+            InputTransparent = true, ZIndex = -1, Margin = new Thickness(-6), Opacity = 0,
             StrokeShape = new RoundRectangle { CornerRadius = 24 }, StrokeThickness = 2
         };
         Children.Insert(0, _turnHalo);
@@ -75,7 +124,7 @@ public sealed partial class KeyboardOverlayHost
         _turnIcon = new GraphicsView { Drawable = _turnDrawing, InputTransparent = true };
         _turnBadge = new Border
         {
-            InputTransparent = true, ZIndex = 100, Padding = 0,
+            InputTransparent = true, ZIndex = 100, Padding = 0, Opacity = 0,
             HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Fill,
             BackgroundColor = Colors.Transparent, StrokeThickness = 0,
             StrokeShape = new RoundRectangle { CornerRadius = 18 },
@@ -88,11 +137,19 @@ public sealed partial class KeyboardOverlayHost
         Loaded += (_, _) => RefreshGripTurnCue();
         Unloaded += (_, _) =>
         {
+            _combinationCueVersion++;
             _turnViolationCancellation?.Cancel();
             _temporaryTurnCue = false;
             _showReadyAfterViolation = false;
             foreach (var animation in _presentationAnimations.Values.ToArray()) animation.Cancel();
             this.AbortAnimation("GripTurnPulse");
+            this.AbortAnimation("GripGlowFade");
+            _glowRequested = false;
+            _glowTargetInk = null;
+            _glowStrength = _ambientDrawing.Strength = 0;
+            _turnHalo.Opacity = 0;
+            _turnBadge.Opacity = 0;
+            _keyboardAmbient?.Invalidate();
             _lastTurnPhase = null;
         };
         RefreshGripTurnCue();
@@ -103,10 +160,7 @@ public sealed partial class KeyboardOverlayHost
         if (Keyboard is not PianoKeyboard piano || piano.GripGate is not { } gate || _turnHalo == null) return;
         // The halo describes readiness to score, not whether physical touches are accepted.
         GripInputPhase phase = piano.IsQuestionPreviewPending ? GripInputPhase.Watching : gate.Phase;
-        Color ink = phase == GripInputPhase.Ready ? Color.FromArgb("#168657") : Color.FromArgb("#B75A32");
-        _turnHalo.BackgroundColor = ink.WithAlpha(.08f);
-        _turnHalo.Stroke = ink.WithAlpha(.42f);
-        _turnHalo.Shadow = new Shadow { Brush = new SolidColorBrush(ink), Opacity = .42f, Radius = 24, Offset = new Point(0, 0) };
+        Color ink = phase == GripInputPhase.Ready ? Color.FromArgb("#168657") : Colors.Red;
         bool phaseChanged = _lastTurnPhase != phase;
         if (phaseChanged)
         {
@@ -126,28 +180,36 @@ public sealed partial class KeyboardOverlayHost
             }
             if (_temporaryTurnCue) HideTurnCueAfterDelay();
         }
-        bool showCue = _temporaryTurnCue && (!piano.UsesQuietArrowCues || _helpTurnCuesEnabled);
-        _turnHalo.IsVisible = true;
-        _ambientDrawing.Color = ink;
-        _ambientDrawing.Visible = true;
+        bool previousHoldEye = gate.ShowPreviousAnswerEye;
+        bool showCue = (_temporaryTurnCue || previousHoldEye) && !gate.IgnorePreviousAnswerHold &&
+            (!piano.UsesQuietArrowCues || _helpTurnCuesEnabled);
+        bool gripOnly = piano.Config.SupportsGripChildAssistance && GripChildPreferences.GripOnly;
+        _turnHalo.IsVisible = !gripOnly;
+        _ambientDrawing.Visible = !gripOnly;
         _keyboardAmbient?.Invalidate();
-        _turnBadge!.IsVisible = showCue;
+        _turnBadge!.IsVisible = !gripOnly && !gate.IgnorePreviousAnswerHold;
+        UpdateGripGlow(showCue && !gripOnly, ink);
 
-        SemanticProperties.SetDescription(_turnBadge, AppLanguage.Text(phase switch
+        GripInputPhase cuePhase = previousHoldEye ? GripInputPhase.Watching : phase;
+        SemanticProperties.SetDescription(_turnBadge, AppLanguage.Text(cuePhase switch
         {
             GripInputPhase.Ready => "You can press now",
             GripInputPhase.Lift => "Lift your fingers",
             _ => "Watch and wait"
         }, true));
         if (!showCue) this.AbortAnimation("GripTurnPulse");
-        _turnDrawing!.Phase = phase;
-        _turnDrawing.Color = ink;
+        // Fade the outgoing symbol; do not turn a fading hand into an eye.
+        if (showCue) _turnDrawing!.Phase = cuePhase;
         _turnIcon!.Invalidate();
         if (phaseChanged) PulseGripTurnCue();
     }
 
     private void ShowGripViolationCue()
     {
+        if (Keyboard is PianoKeyboard { GripGate: { } gate } && gate.IgnorePreviousAnswerHold)
+            return;
+        if (Keyboard.Config.SupportsGripChildAssistance && GripChildPreferences.GripOnly)
+            return;
         // Ordinary arrow questions must keep fading even while the learner touches them.
         if (Keyboard is PianoKeyboard { UsesQuietArrowCues: true } && !_helpTurnCuesEnabled)
             return;
@@ -168,6 +230,12 @@ public sealed partial class KeyboardOverlayHost
         _turnViolationCancellation = cancellation;
         try
         {
+            if (Keyboard is PianoKeyboard { GripGate: { } gate } && gate.PreviousAnswerGraceRemaining > 0)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(gate.PreviousAnswerGraceRemaining), cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested();
+                RefreshGripTurnCue();
+            }
             // Give the green hand its full display time, even after a long wait
             // or when the last held finger is released after the demonstration.
             await Task.Delay(1000, cancellation.Token);
@@ -229,15 +297,11 @@ public sealed partial class KeyboardOverlayHost
         new Animation(value =>
         {
             double pulse = Math.Sin(value * Math.PI);
-            _turnBadge.Opacity = 1 - .12 * pulse;
             _turnIcon!.TranslationY = _lastTurnPhase == GripInputPhase.Lift ? -5 * pulse : 0;
-            _turnHalo!.Opacity = 1 - .25 * pulse;
-            if (_keyboardAmbient != null) _keyboardAmbient.Opacity = 1 - .25 * pulse;
         }, 0, 1).Commit(this, "GripTurnPulse", length: 700,
             finished: (_, _) =>
             {
-                _turnBadge.Opacity = 1; _turnIcon!.TranslationY = 0; _turnHalo!.Opacity = 1;
-                if (_keyboardAmbient != null) _keyboardAmbient.Opacity = 1;
+                _turnIcon!.TranslationY = 0;
             },
             repeat: () => IsLoaded && _temporaryTurnCue && _lastTurnPhase == GripInputPhase.Lift);
     }
@@ -245,7 +309,7 @@ public sealed partial class KeyboardOverlayHost
     private sealed class GripTurnDrawable : IDrawable
     {
         public GripInputPhase Phase;
-        public Color Color = Colors.DarkOrange;
+        public Color Color = Colors.Red;
         public Func<RectF[]> GetKeyRects = () => Array.Empty<RectF>();
         public void Draw(ICanvas canvas, RectF bounds)
         {
