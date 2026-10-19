@@ -30,6 +30,8 @@ namespace GestureSample.Maui.Models
         protected readonly KeyboardConfig _pianoConfig;
         public event Action? HeadingTapped;
         public event Action? KeyPressStarted;
+        public bool[] GripAssistanceTarget => _gamePlay is BitArrayGamePlay game
+            ? game.BitArrayQuestion : Array.Empty<bool>();
 
         protected readonly Microsoft.Maui.Controls.Label _lblTimer;
         protected bool _patterns;

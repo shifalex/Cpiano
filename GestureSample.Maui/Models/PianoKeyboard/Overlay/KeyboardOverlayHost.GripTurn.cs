@@ -103,7 +103,7 @@ public sealed partial class KeyboardOverlayHost
         if (Keyboard is not PianoKeyboard piano || piano.GripGate is not { } gate || _turnHalo == null) return;
         // The halo describes readiness to score, not whether physical touches are accepted.
         GripInputPhase phase = piano.IsQuestionPreviewPending ? GripInputPhase.Watching : gate.Phase;
-        Color ink = phase == GripInputPhase.Ready ? Color.FromArgb("#168657") : Color.FromArgb("#B75A32");
+        Color ink = phase == GripInputPhase.Ready ? Color.FromArgb("#168657") : Colors.Red;
         _turnHalo.BackgroundColor = ink.WithAlpha(.08f);
         _turnHalo.Stroke = ink.WithAlpha(.42f);
         _turnHalo.Shadow = new Shadow { Brush = new SolidColorBrush(ink), Opacity = .42f, Radius = 24, Offset = new Point(0, 0) };
@@ -127,11 +127,12 @@ public sealed partial class KeyboardOverlayHost
             if (_temporaryTurnCue) HideTurnCueAfterDelay();
         }
         bool showCue = _temporaryTurnCue && (!piano.UsesQuietArrowCues || _helpTurnCuesEnabled);
-        _turnHalo.IsVisible = true;
+        bool gripOnly = piano.Config.SupportsGripChildAssistance && GripChildPreferences.GripOnly;
+        _turnHalo.IsVisible = !gripOnly;
         _ambientDrawing.Color = ink;
-        _ambientDrawing.Visible = true;
+        _ambientDrawing.Visible = !gripOnly;
         _keyboardAmbient?.Invalidate();
-        _turnBadge!.IsVisible = showCue;
+        _turnBadge!.IsVisible = showCue && !gripOnly;
 
         SemanticProperties.SetDescription(_turnBadge, AppLanguage.Text(phase switch
         {
@@ -148,6 +149,8 @@ public sealed partial class KeyboardOverlayHost
 
     private void ShowGripViolationCue()
     {
+        if (Keyboard.Config.SupportsGripChildAssistance && GripChildPreferences.GripOnly)
+            return;
         // Ordinary arrow questions must keep fading even while the learner touches them.
         if (Keyboard is PianoKeyboard { UsesQuietArrowCues: true } && !_helpTurnCuesEnabled)
             return;
@@ -245,7 +248,7 @@ public sealed partial class KeyboardOverlayHost
     private sealed class GripTurnDrawable : IDrawable
     {
         public GripInputPhase Phase;
-        public Color Color = Colors.DarkOrange;
+        public Color Color = Colors.Red;
         public Func<RectF[]> GetKeyRects = () => Array.Empty<RectF>();
         public void Draw(ICanvas canvas, RectF bounds)
         {

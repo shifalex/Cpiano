@@ -6,21 +6,19 @@ namespace GestureSample.Maui.Models;
 public sealed class SideGripDrawable
 {
     public void Draw(ICanvas canvas, float tipX, float upperCenter, float lowerCenter,
-        float keyHeight, float width, float opacity = 1)
+        float keyHeight, float width, float opacity = 1, float upperFingerExtension = 0)
     {
         canvas.SaveState();
-        // Reflect the complete profile between the contact centers: the long finger
-        // is above and the short finger below, including their nails and palm shape.
-        canvas.Translate(0, upperCenter + lowerCenter);
-        canvas.Scale(1, -1);
         canvas.Alpha = Math.Clamp(opacity, 0, 1);
         float half = keyHeight / 2;
         float back = tipX + width;
-        float upperTip = tipX + width * .09f;
-        float lowerTip = tipX - width * .1f;
-        // Authoring coordinates are reflected above; contact faces remain on the held keys.
+        // The long index finger reaches the upper key; the shorter thumb reaches
+        // the lower key. This shared profile is also used by the tutorials.
+        float upperTip = tipX - upperFingerExtension;
+        float lowerTip = tipX;
         var hand = new PathF();
         hand.MoveTo(upperTip + half / 2, upperCenter - half);
+        // Keep the rounded wrist spanning both fingers, as in the reference.
         hand.CurveTo(back - width * .2f, upperCenter - half,
             back + half, upperCenter - half, back + half, upperCenter + keyHeight);
         hand.LineTo(back + half, lowerCenter + half);
@@ -29,9 +27,9 @@ public sealed class SideGripDrawable
         hand.LineTo(lowerTip + half / 2, lowerCenter + half);
         hand.CurveTo(lowerTip - half / 2, lowerCenter + half,
             lowerTip - half / 2, lowerCenter, lowerTip + half / 2, lowerCenter);
-        hand.LineTo(back - width * .32f, lowerCenter);
-        hand.CurveTo(back - width * .12f, lowerCenter,
-            back - width * .12f, upperCenter, back - width * .35f, upperCenter);
+        hand.LineTo(back - width * .48f, lowerCenter);
+        hand.CurveTo(back - width * .14f, lowerCenter - half,
+            back - width * .14f, upperCenter, back - width * .22f, upperCenter);
         hand.LineTo(upperTip + half / 2, upperCenter);
         hand.CurveTo(upperTip - half / 2, upperCenter,
             upperTip - half / 2, upperCenter - half, upperTip + half / 2, upperCenter - half);

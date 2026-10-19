@@ -101,7 +101,7 @@ namespace GestureSample.Views.Tests
                     break;
 
                 case PlayUiState.FeedbackWrong:
-                    _statusLight1.BackgroundColor = Colors.IndianRed;
+                    _statusLight1.BackgroundColor = Colors.Red;
                     _statusLight1Icon.Text = "✕";
                  //   _lblStatement.Text = text ?? "❌";
                  //   _pianoPressProgress.Opacity = 0;
@@ -2325,6 +2325,8 @@ namespace GestureSample.Views.Tests
                                     _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
 
                                 int memorizeDelay = _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds;
+                                if (_config.KeyboardConfig.SupportsGripChildAssistance && GripChildPreferences.GripOnly)
+                                    memorizeDelay = 0;
                                 if (memorizeDelay > 0)
                                 {
                                     _taskMainHost.SetTutorialMode(true);
@@ -2376,7 +2378,9 @@ namespace GestureSample.Views.Tests
                                         }
                                         else if (!_config.KeyboardConfig.IsPrecisionPinchSequenceMemorize)
                                         {
-                                            await _taskMainHost.DelayPresentationAsync(TimeSpan.FromSeconds(memorizeDelay));
+                                            await _taskMainHost.DelayPresentationAsync(TimeSpan.FromSeconds(
+                                                _config.KeyboardConfig.SupportsGripChildAssistance && GripChildPreferences.StartImmediately
+                                                    ? 0 : memorizeDelay));
                                         }
 
                                         if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
@@ -2392,6 +2396,8 @@ namespace GestureSample.Views.Tests
                                                 memorizeGamePlay.AdvanceSequenceMemorizeToLastResponse();
                                             }
                                         }
+                                        else if (_config.KeyboardConfig.SupportsGripChildAssistance && GripChildPreferences.StartImmediately)
+                                            _taskMainHost.SetStaticOverlayAlpha(0.18f);
                                         else
                                             _taskMainHost.SetStaticBits(Array.Empty<bool>());
                                     }
@@ -4607,7 +4613,7 @@ namespace GestureSample.Views.Tests
             bool askOnlyTarget,
             TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode,
             bool memorizeBoth = true,
-            bool keepLeftAtBottom = false)
+            bool keepLeftAtBottom = false, GripAnchorHand? anchorHand = null)
         {
             _pendingTwoHandCombinationSettings = () =>
             {
@@ -4617,6 +4623,7 @@ namespace GestureSample.Views.Tests
                 keyboard.RandomizeTwoHandCombinationSizes = randomizeSizes;
                 keyboard.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 10);
                 keyboard.KeepLeftHandAtBottom = keepLeftAtBottom;
+                keyboard.TwoHandCombinationAnchorHand = anchorHand ?? GripAnchorHand.Left;
                 keyboard.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
                 keyboard.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
                 keyboard.MemorizeBothTwoHandStates = memorizeBoth;
@@ -7432,6 +7439,7 @@ namespace GestureSample.Views.Tests
                     Grid.SetRow(keyboardControlBar, 1);
 
                     bool showStageSideControls =
+                        _config.KeyboardConfig.SupportsGripChildAssistance ||
                         _config.KeyboardConfig.IsTwoHandCombinationMemorize ||
                         (_config.KeyboardConfig.IsPrecisionShiftExercise &&
                          _config.KeyboardConfig.PrecisionShiftBothHands);
@@ -7442,17 +7450,18 @@ namespace GestureSample.Views.Tests
                         // cannot change the keyboard's width or height.
                         Button settingsButton = new()
                         {
-                            Text = "⚙︎",
+                            Text = "⚙\uFE0E",
                             FontSize = 22,
                             CharacterSpacing = 0,
                             WidthRequest = 44,
                             HeightRequest = 44,
                             Padding = 0,
-                            CornerRadius = 0,
-                            BackgroundColor = Colors.Transparent,
-                            TextColor = Color.FromArgb("#A94F16"),
-                            BorderWidth = 0,
-                            Opacity = 0.62,
+                            CornerRadius = 22,
+                            BackgroundColor = Colors.White,
+                            TextColor = Color.FromArgb("#2D2530"),
+                            BorderColor = Color.FromArgb("#E9E1DC"),
+                            BorderWidth = 1,
+                            Opacity = 1,
                             HorizontalOptions = LayoutOptions.End,
                             VerticalOptions = LayoutOptions.Start,
                             Margin = new Thickness(0, 12, 12, 0),
@@ -7461,6 +7470,19 @@ namespace GestureSample.Views.Tests
                         };
                         settingsButton.Clicked += async (_, _) =>
                         {
+                            if (_config.KeyboardConfig.SupportsGripChildAssistance)
+                            {
+                                await Navigation.PushAsync(new ContentPage
+                                {
+                                    Title = AppLanguage.Text("Options for young children", true),
+                                    FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
+                                        ? FlowDirection.RightToLeft : FlowDirection.LeftToRight,
+                                    Padding = 20,
+                                    BackgroundColor = Color.FromArgb("#FFF9F4"),
+                                    Content = new ScrollView { Content = new GestureSample.Maui.Views.GripChildOptionsView() }
+                                });
+                                return;
+                            }
                             if (_config.KeyboardConfig.IsTwoHandCombinationMemorize)
                             {
                                 await Navigation.PushAsync(new GestureSample.Views.TwoHandCombinationSetupPage(
@@ -7562,6 +7584,33 @@ namespace GestureSample.Views.Tests
                 _btnHelp.Clicked += async (_, __) =>
                 {
                     if(_tutorialRunning) return; // prevent multiple simultaneous tutorials
+                    if (_config.KeyboardConfig.SupportsGripChildAssistance &&
+                        GripChildPreferences.HandTutorial && _taskMainHost != null &&
+                        _gamePlay is BitArrayGamePlay handGamePlay)
+                    {
+                        _tutorialRunning = true;
+                        SetPlayUiState(PlayUiState.Tutorial);
+                        _taskMainHost.SetHelpTurnCuesEnabled(true);
+                        _taskMainHost.SetTutorialMode(true);
+                        try
+                        {
+                            await MarkCurrentKeyboardQuestionTutorialUsedAsync();
+                            await _taskMainHost.ShowGripHandTutorialAsync(handGamePlay.GetTutorialQuestionBits());
+                        }
+                        finally
+                        {
+                            _taskMainHost.SetTutorialMode(false);
+                            _tutorialRunning = false;
+                            if (_isPageVisible)
+                            {
+                                SetKeyboardInteractionEnabled(true);
+                                if (_pianoKeyboard is PianoKeyboardSync handKeyboard)
+                                    handKeyboard.NotifyQuestionReadyForInput();
+                                RestoreReadyForInputState();
+                            }
+                        }
+                        return;
+                    }
                     if (_config.KeyboardConfig?.IsTwoHandCombinationMemorize == true &&
                         (_config.KeyboardConfig.MemorizeBothTwoHandStates ||
                          _config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud) &&

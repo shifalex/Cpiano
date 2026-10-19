@@ -23,7 +23,9 @@ internal sealed class TutorialConceptHeading : Label
     public void SetConcept(string source)
     {
         _source = source;
-        Text = AppLanguage.Text(source, gripping: true);
+        // These tutorial pages use Hebrew copy by default, including their headings.
+        var language = LanguagePreferences.Get(gripping: true);
+        Text = AppLanguage.Translate(source, language == InterfaceLanguage.English ? InterfaceLanguage.Hebrew : language);
         FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
             ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
     }

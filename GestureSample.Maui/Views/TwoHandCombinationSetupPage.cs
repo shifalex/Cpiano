@@ -18,6 +18,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     private readonly CheckBox _askOnlyTarget = new();
     private readonly CheckBox _memorizeBoth = new();
     private readonly CheckBox _keepLeftAtBottom = new();
+    private readonly Picker _anchorHand = new() { Title = "Anchor hand" };
     private readonly bool _easyStage;
     private readonly Picker _magnitudeVocabulary = new()
     {
@@ -37,6 +38,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             TwoHandCombinationOptions.Hard, memorizeBoth: false).KeyboardConfig;
         _easyStage = current.IsEasyTwoHandCombinationStage;
         _keepLeftAtBottom.IsChecked = current.KeepLeftHandAtBottom;
+        _anchorHand.SelectedIndex = (int)current.TwoHandCombinationAnchorHand;
         Title = _easyStage ? "Easy grip changes settings" : "Hard grip changes settings";
         BackgroundColor = Color.FromArgb("#FFF9F4");
         _animate.IsChecked = current.AnimateTwoHandCombinations;
@@ -82,6 +84,10 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             (TwoHandCombinationOptions.MuchSmaller, "⇘", "Much smaller", "Several rows"),
             (TwoHandCombinationOptions.LittleBigger, "↗", "A little bigger", "One row"),
             (TwoHandCombinationOptions.MuchBigger, "⇗", "Much bigger", "Several rows"));
+        if (!_easyStage)
+            AddGroup(body, "Raise the whole", current,
+                (TwoHandCombinationOptions.RaiseBothEqually, "⇈", "Raise both equally", "7−3 → 9−5: keep the difference"),
+                (TwoHandCombinationOptions.RaiseAnchorOnly, "↥", "Raise the anchor only", "7−3 → 9−3: keep the subtracted part's size"));
         body.Add(PracticeCard());
 
         Label warning = new() { Text = "Choose at least one exercise.", TextColor = Colors.Firebrick,
@@ -108,6 +114,10 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
     {
         FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
             ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        int anchor = _anchorHand.SelectedIndex;
+        _anchorHand.Title = AppLanguage.Text("Anchor hand", true);
+        _anchorHand.ItemsSource = new[] { "Left", "Right", "Both" }.Select(text => AppLanguage.Text(text, true)).ToArray();
+        _anchorHand.SelectedIndex = anchor;
         int selected = _magnitudeVocabulary.SelectedIndex;
         _magnitudeVocabulary.Title = AppLanguage.Text("Magnitude wording", true);
         _magnitudeVocabulary.ItemsSource = new[] { "Intuitive", "By a little / by a lot", "By exact number" }
@@ -198,7 +208,10 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         v.Add(ToggleRow("MEMORIZE BOTH", "Recall the first grip, then the second. Tap the title to hear the question.", _memorizeBoth));
         v.Add(ToggleRow("Quick movement animations", "Normal question color, no tutorial pause", _animate));
         v.Add(ToggleRow("Vary interval sizes", "Keep the bottom anchor while changing proportions", _vary));
-        v.Add(ToggleRow("Keep left hand at the bottom", "Prefer the same left-hand size between questions. Move the right hand when needed.", _keepLeftAtBottom));
+        if (_easyStage)
+            v.Add(ToggleRow("Keep left hand at the bottom", "Prefer the same left-hand size between questions. Move the right hand when needed.", _keepLeftAtBottom));
+        else
+            v.Add(new VerticalStackLayout { Spacing = 3, Children = { new Label { Text = "Anchor hand", FontAttributes = FontAttributes.Bold, TextColor = Ink }, new Label { Text = "The anchor grip stays unchanged between combinations. Both practices either hand.", FontSize = 12, TextColor = Ink.WithAlpha(.62f) }, _anchorHand } });
         v.Add(ToggleRow("Read instruction aloud", "Speak the transformation shown above the keyboard", _readAloud));
         v.Add(ToggleRow("Show first state only", "Show the first state, then fade it without showing the second", _askOnlyTarget));
         v.Add(new VerticalStackLayout { Spacing = 3, Children =
@@ -221,7 +234,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
             _vary.IsChecked, (int)Math.Round(_rows.Value), (int)Math.Round(_seconds.Value),
             _readAloud.IsChecked, _askOnlyTarget.IsChecked,
             (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex), _memorizeBoth.IsChecked,
-            _easyStage, _keepLeftAtBottom.IsChecked);
+            _easyStage, _keepLeftAtBottom.IsChecked, _easyStage ? null : (GripAnchorHand)Math.Max(0, _anchorHand.SelectedIndex));
         SimpleViewCellsPage replacement = new(config);
         if (_exercisePage != null && Navigation.NavigationStack.Contains(_exercisePage))
         {
@@ -250,7 +263,7 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
         exercise.ApplyTwoHandCombinationSettings(selected, _animate.IsChecked, _vary.IsChecked,
             (int)Math.Round(_seconds.Value), _readAloud.IsChecked, _askOnlyTarget.IsChecked,
             (TwoHandMagnitudeVocabularyMode)Math.Max(0, _magnitudeVocabulary.SelectedIndex), _memorizeBoth.IsChecked,
-            _keepLeftAtBottom.IsChecked);
+            _keepLeftAtBottom.IsChecked, _easyStage ? null : (GripAnchorHand)Math.Max(0, _anchorHand.SelectedIndex));
         await Navigation.PopAsync();
     }
 
