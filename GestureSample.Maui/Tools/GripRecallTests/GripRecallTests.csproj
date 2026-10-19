@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Models/PianoKeyboard/Core/GripAnswerTiming.cs" Link="GripAnswerTiming.cs" />
     <Compile Include="../../Models/PartPartWholeGameplay/EasyGripIntro.cs" Link="EasyGripIntro.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/GripInputGate.cs" Link="GripInputGate.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/GripPresentationClock.cs" Link="GripPresentationClock.cs" />

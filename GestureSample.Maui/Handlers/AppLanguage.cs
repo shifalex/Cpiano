@@ -7,14 +7,21 @@ public static class AppLanguage
 {
     // English source strings remain stable keys; never translate persisted game identifiers.
     private static readonly Dictionary<string, string[]> Translations = Catalog.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-        .Select(line => line.TrimEnd('\r').Split('|')).ToDictionary(parts => parts[0], parts => parts, StringComparer.OrdinalIgnoreCase);
+        // Capitalization distinguishes labels (Left) from instruction cues (LEFT).
+        .Select(line => line.TrimEnd('\r').Split('|')).ToDictionary(parts => parts[0], parts => parts, StringComparer.Ordinal);
+
+    // Preserve case-insensitive lookup for callers whose capitalization differs from the catalog.
+    private static readonly Dictionary<string, string[]> CaseInsensitiveTranslations = Translations.Values
+        .GroupBy(parts => parts[0], StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
     public static string Text(string text, bool gripping = false) => Translate(text, LanguagePreferences.Get(gripping: gripping));
 
     public static string Translate(string text, InterfaceLanguage language)
     {
         if (string.IsNullOrEmpty(text) || language == InterfaceLanguage.English) return text;
-        if (Translations.TryGetValue(text, out var words)) return words[(int)language];
+        if (Translations.TryGetValue(text, out var words) || CaseInsensitiveTranslations.TryGetValue(text, out words))
+            return words[(int)language];
         if (text.StartsWith("USER SETTINGS (", StringComparison.Ordinal))
             return Translate("USER SETTINGS", language) + text[13..];
         if (text.StartsWith("Gripping - ", StringComparison.Ordinal))
@@ -110,6 +117,8 @@ public static class AppLanguage
 
     private const string Catalog = """
 Segment length|אורך קטע|Длина отрезка
+Hold the correct grip to answer|להחזיק את האחיזה הנכונה כדי לענות|Удерживать правильный хват для ответа
+Grip only: skip watch-then-click|אחיזה בלבד: ללא שלב צפייה והמתנה ללחיצה|Только хват: без ожидания перед нажатием
 Compare two grips|משווים שתי אחיזות|Сравниваем два хвата
 Add|חבר|Прибавь
 Subtract|חסר|Вычти
@@ -225,6 +234,15 @@ What do you want to work on?|מה תרצו לתרגל?|Что вы хотите 
 Mix any exercises. Reopen this from the smiley row.|שלבו תרגילים כרצונכם. ניתן לפתוח שוב משורת הסמיילים.|Сочетайте любые упражнения. Откройте настройки снова из строки смайликов.
 Select all|בחירת הכל|Выбрать всё
 Clear|ניקוי|Снять выбор
+Anchor hand|יד עוגן|Опорная рука
+Left|שמאל|Левая
+Right|ימין|Правая
+Both|שתיהן|Обе
+Raise the whole|העלאת השלם|Поднять целое
+Raise both equally|העלאת שניהם במידה שווה|Поднять оба одинаково
+Raise the anchor only|העלאת העוגן בלבד|Поднять только опору
+7−3 → 9−5: keep the difference|7−3 → 9−5: שמרו על ההפרש|7−3 → 9−5: сохранить разность
+7−3 → 9−3: keep the subtracted part's size|7−3 → 9−3: שמרו על גודל החלק המחוסר|7−3 → 9−3: сохранить размер вычитаемой части
 Practice feel|אופן התרגול|Параметры практики
 Quick movement animations|הנפשות תנועה מהירות|Быстрые анимации движения
 Normal question color, no tutorial pause|צבע שאלה רגיל, ללא הפסקת הדרכה|Обычный цвет вопроса, без обучающей паузы
@@ -240,6 +258,17 @@ Intuitive|אינטואיטיבי|Интуитивно
 By a little / by a lot|בקצת / בהרבה|Немного / намного
 By exact number|במספר מדויק|Точное число
 Number-line height|גובה ציר המספרים|Высота числовой прямой
+Show our grip hand when tapping ?|הדגמה עם היד שלנו בלחיצה על סימן השאלה|Показывать нашу руку при нажатии ?
+How long is the left grip compared with the right grip?|מה אורך האחיזה משמאל ביחס לזו שמימין?|Какова длина левого хвата по сравнению с правым?
+How long is the right grip compared with the left grip?|מה אורך האחיזה מימין ביחס לזו שמשמאל?|Какова длина правого хвата по сравнению с левым?
+Are the lengths close together or far apart?|האורכים קרובים או רחוקים זה מזה?|Длины близки или сильно отличаются?
+Where is the smaller grip aligned with the larger grip?|איפה האחיזה הקטנה מוצמדת ביחס לגדולה?|Где меньший хват выровнен относительно большего?
+Options for young children|אפשרויות לילדים קטנים|Настройки для малышей
+For Copy a grip, Remember a grip and Remember two grips. Changes apply to the next exercise.|להעתקת אחיזה, זכירת אחיזה וזכירת שתי אחיזות. השינויים יחולו מהתרגיל הבא.|Для копирования и запоминания одного или двух хватов. Изменения со следующего задания.
+Always start at the bottom|תמיד מתחילים מלמטה|Всегда начинать снизу
+Keep the base finger visible during recall|להשאיר את אצבע הבסיס גלויה בזמן הזכירה|Показывать нижний палец при запоминании
+Color pressed keys: green for correct, red for retry|צבעי הקלידים: ירוק לנכון, אדום לניסיון נוסף|Цвет нажатых клавиш: зелёный — верно, красный — повторить
+Start answering immediately with a faint grip guide|להתחיל מיד עם אחיזה מנחה חלשה ברקע|Отвечать сразу с бледной подсказкой хвата
 Memorize each position|זכירת כל מיקום|Время запоминания позиции
 No exercises selected|לא נבחרו תרגילים|Упражнения не выбраны
 exercises selected|תרגילים נבחרו|упражнений выбрано

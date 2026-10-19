@@ -1,4 +1,4 @@
-﻿using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Layouts;
 using System;
 using System.Collections.Generic;
@@ -90,6 +90,8 @@ namespace GestureSample.Maui.Models
 
             public float Radius { get; set; } = 8f;
 
+            public Action<ICanvas>? DrawChildAssistance { get; set; }
+            public Action<ICanvas>? DrawTutorialHands { get; set; }
             public void Draw(ICanvas canvas, RectF dirtyRect)
             {
                 if (KeyRects == null || KeyRects.Length == 0)
@@ -102,6 +104,8 @@ namespace GestureSample.Maui.Models
                     shiftKeys: 0f,
                     alpha: StaticAlpha
                 );
+
+                DrawChildAssistance?.Invoke(canvas);
 
                 // 2️⃣ animation layer (shifted / cursor)
                 DrawAnimBits(
@@ -120,6 +124,7 @@ namespace GestureSample.Maui.Models
 
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
                 DrawHoldHint(canvas);
+                DrawTutorialHands?.Invoke(canvas);
             }
 
             private void DrawHoldHint(ICanvas canvas)
@@ -691,6 +696,25 @@ namespace GestureSample.Maui.Models
 
         public KeyboardOverlayHost(PianoKeyboardReadOnly keyboard)
         {
+            _patternDrawable.DrawChildAssistance = canvas =>
+            {
+                if (keyboard is not PianoKeyboard piano || !keyboard.Config.SupportsGripChildAssistance || IsTutorialMode)
+                    return;
+                bool[] target = piano.GripAssistanceTarget;
+                bool[] pressed = piano.ToBitArray();
+                int columns = Math.Max(1, keyboard.Config.KeysInRow);
+                for (int i = 0; i < Math.Min(target.Length, _patternDrawable.KeyRects.Length); i++)
+                {
+
+                    bool feedback = GestureSample.Maui.Handlers.GripChildPreferences.ColorFeedback &&
+                        i < pressed.Length && pressed[i];
+                    if (!feedback) continue;
+                    Color color = target[i] ? Colors.LimeGreen : Colors.Red;
+                    RectF rect = _patternDrawable.KeyRects[i];
+                    canvas.FillColor = color;
+                    canvas.FillRoundedRectangle(rect, 6);
+                }
+            };
             Keyboard = keyboard;
             _patternDrawable.KeyboardColumns = Math.Max(1, keyboard.Config?.KeysInRow ?? 1);
             Children.Add(Keyboard);
@@ -708,7 +732,14 @@ namespace GestureSample.Maui.Models
             };
             Children.Add(_inputShield);
 
+            _patternDrawable.DrawTutorialHands = DrawGripTutorialHands;
             Keyboard.InstallOverlay(_patternDrawable);
+            Keyboard.PropertyChanged += (_, e) =>
+            {
+                if (keyboard.Config.SupportsGripChildAssistance &&
+                    e.PropertyName == nameof(PianoKeyboard.Sum))
+                    Keyboard.InvalidateOverlay();
+            };
             if (keyboard is PianoKeyboardSync syncKeyboard)
             {
                 syncKeyboard.HoldHintRequested += ShowHoldHint;
@@ -738,6 +769,7 @@ namespace GestureSample.Maui.Models
         {
             if (isOn) CancelHoldHint();
             IsTutorialMode = isOn;
+            Keyboard.InvalidateOverlay();
             if (Keyboard is PianoKeyboard interactive && interactive.GripGate != null)
                 interactive.SetExternalInputBlocked(isOn);
 

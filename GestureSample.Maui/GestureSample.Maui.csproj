@@ -3,19 +3,17 @@
 	<PropertyGroup>
 		<TargetFrameworks>net8.0-ios;net8.0-android</TargetFrameworks>
 
-
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">
 			$(TargetFrameworks);net8.0-windows10.0.19041.0
 		</TargetFrameworks>
-
 
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">
 			$(TargetFrameworks);net8.0-maccatalyst
 		</TargetFrameworks>
 
-
 		<Platforms>AnyCPU;ARM64</Platforms>
 	</PropertyGroup>
+
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<RootNamespace>GestureSample.Maui</RootNamespace>
@@ -24,14 +22,10 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>annotations</Nullable>
 
-		<!-- Display name -->
 		<ApplicationTitle>Cpiano</ApplicationTitle>
-
-		<!-- App Identifier -->
 		<ApplicationId>com.companyname.gesturesample.maui</ApplicationId>
 		<ApplicationIdGuid>e9e0a3cc-b04c-490d-a506-479ce5920e60</ApplicationIdGuid>
 
-		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
@@ -41,79 +35,73 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 
-
-
 		<AssemblyName>GestureSample</AssemblyName>
 	</PropertyGroup>
-	<UsingTask TaskName="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\CodeTaskFactory\Microsoft.Build.Tasks.CodeTaskFactory.dll" />
-	<PropertyGroup Condition="'$(TargetFramework)'=='net8.0-ios'">
+
+	<UsingTask TaskName="RoslynCodeTaskFactory"
+			   AssemblyFile="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v16.0\CodeTaskFactory\Microsoft.Build.Tasks.CodeTaskFactory.dll" />
+
+	<!-- iOS development signing -->
+	<PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-ios'">
 		<ProvisioningType>automatic</ProvisioningType>
 		<CodesignKey>Apple Development: Created via API (8LC2PPNR53)</CodesignKey>
-		<CodesignProvision>VS: WildCard Development</CodesignProvision>
+		<CodesignProvision>VS: com.companyname.gesturesample.maui Development</CodesignProvision>
+
+		<!-- Do not generate an IPA locally -->
+		<BuildIpa>false</BuildIpa>
+		<ArchiveOnBuild>false</ArchiveOnBuild>
 	</PropertyGroup>
 
+	<!-- iOS Debug -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' == 'net8.0-ios'">
+		<MtouchDebug>true</MtouchDebug>
+		<EnableSGenConc>true</EnableSGenConc>
+	</PropertyGroup>
 
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|AnyCPU'">
+	<!-- iOS Release -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(TargetFramework)' == 'net8.0-ios'">
+		<MtouchDebug>false</MtouchDebug>
+		<EnableSGenConc>true</EnableSGenConc>
 		<MtouchLink>Full</MtouchLink>
-		<EnableSGenConc>True</EnableSGenConc>
-		<BuildIpa>True</BuildIpa>
-		<MtouchUseLlvm>True</MtouchUseLlvm>
-		<IpaIncludeArtwork>True</IpaIncludeArtwork>
+		<IpaIncludeArtwork>true</IpaIncludeArtwork>
 	</PropertyGroup>
 
-
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|ARM64'">
-	  <MtouchLink>Full</MtouchLink>
-	  <EnableSGenConc>True</EnableSGenConc>
-	  <BuildIpa>True</BuildIpa>
-	  <MtouchUseLlvm>True</MtouchUseLlvm>
-	  <IpaIncludeArtwork>True</IpaIncludeArtwork>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|AnyCPU'">
-		<EnableSGenConc>True</EnableSGenConc>
-		<BuildIpa>True</BuildIpa>
-		<MtouchLink>Full</MtouchLink>
-		<IpaIncludeArtwork>True</IpaIncludeArtwork>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|ARM64'">
-	  <EnableSGenConc>True</EnableSGenConc>
-	  <BuildIpa>True</BuildIpa>
-	  <MtouchLink>Full</MtouchLink>
-	  <IpaIncludeArtwork>True</IpaIncludeArtwork>
-	</PropertyGroup>
+	<!-- Android -->
 	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
 		<TargetSdkVersion>34</TargetSdkVersion>
 		<MinSdkVersion>21</MinSdkVersion>
 	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
 	</ItemGroup>
+
+	<!-- MAUI Resources -->
 	<ItemGroup>
-		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#3167E3" />
+		<MauiIcon Include="Resources\AppIcon\appicon.svg"
+				  ForegroundFile="Resources\AppIcon\appiconfg.svg"
+				  Color="#3167E3" />
 
-		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#F7F8FC" BaseSize="160,160" />
+		<MauiSplashScreen Include="Resources\Splash\splash.svg"
+						  Color="#F7F8FC"
+						  BaseSize="160,160" />
 
-		<!-- Images -->
 		<MauiImage Include="Resources\Images\*" />
-		<MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
+		<MauiImage Update="Resources\Images\dotnet_bot.svg"
+				   BaseSize="168,208" />
 
-		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 
-		<!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
-		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+		<MauiAsset Include="Resources\Raw\**"
+				   LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
 	<ItemGroup Condition="Exists('supabase.local.json')">
-		<EmbeddedResource Include="supabase.local.json" LogicalName="supabase.local.json" />
+		<EmbeddedResource Include="supabase.local.json"
+						  LogicalName="supabase.local.json" />
 	</ItemGroup>
 
+	<!-- Excluded source files -->
 	<ItemGroup>
 		<Compile Remove="Tools\**\*.cs" />
 		<Compile Remove="Models\configLoader.cs" />
@@ -124,8 +112,7 @@
 		<MauiXaml Remove="Views\SplashPagecs.xaml" />
 	</ItemGroup>
 
-
-
+	<!-- Packages -->
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="Enums.NET" Version="5.0.0" />
@@ -140,6 +127,7 @@
 		<PackageReference Include="Supabase" Version="1.1.1" />
 	</ItemGroup>
 
+	<!-- XAML configuration -->
 	<ItemGroup>
 		<Compile Update="Views\RecordsUser.xaml.cs">
 			<DependentUpon>RecordsUser.xaml</DependentUpon>
@@ -171,7 +159,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Update="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+		<PackageReference Update="Microsoft.Extensions.DependencyInjection"
+						  Version="8.0.0" />
 	</ItemGroup>
+
+	<!-- Optional local-only settings -->
+	<Import Project="Local.Build.props"
+			Condition="Exists('Local.Build.props')" />
 
 </Project>

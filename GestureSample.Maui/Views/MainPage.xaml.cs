@@ -3042,7 +3042,7 @@ namespace GestureSample.Views
             TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive,
             bool memorizeBoth = true,
             bool easyStage = false,
-            bool keepLeftAtBottom = false)
+            bool keepLeftAtBottom = false, GripAnchorHand? anchorHand = null)
         {
             GameConfig config = CreatePrecisionCopyConfig(
                 easyStage ? "Remember grip changes — Easy" : "Remember grip changes — Hard",
@@ -3055,6 +3055,7 @@ namespace GestureSample.Views
             config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 10);
             config.KeyboardConfig.IsEasyTwoHandCombinationStage = easyStage;
             config.KeyboardConfig.KeepLeftHandAtBottom = keepLeftAtBottom;
+                config.KeyboardConfig.TwoHandCombinationAnchorHand = anchorHand ?? GripAnchorHand.Left;
             config.KeyboardConfig.SecondsPressingToAnswer = 1;
             config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
             config.KeyboardConfig.IsTwoHandCombinationMemorize = true;

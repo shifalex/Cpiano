@@ -39,6 +39,7 @@ public sealed class LanguageSettingsView : VerticalStackLayout
             catch { _voiceStatus.Text = T("Narration is unavailable on this device."); }
             finally { _preview.IsEnabled = true; }
         };
+        if (_gripping) Children.Add(new GripChildOptionsView());
         Reload();
     }
 
@@ -49,6 +50,7 @@ public sealed class LanguageSettingsView : VerticalStackLayout
         _loading = true;
         FlowDirection = LanguagePreferences.Get(gripping: _gripping) == InterfaceLanguage.Hebrew
             ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+        foreach (var options in Children.OfType<GripChildOptionsView>()) options.Reload();
         _heading.Text = T("Language");
         _textLabel.Text = T("Text language");
         _voiceLabel.Text = T("Narration language");

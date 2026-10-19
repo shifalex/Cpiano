@@ -9,8 +9,8 @@ public sealed record GripRelationshipTrial(TrainingGrip Left, TrainingGrip Right
 {
     // Compare lengths, independently of either grip's vertical position.
     public int LengthDifference => Math.Abs(Left.Length - Right.Length);
-    // Difference 3 is deliberately not classified: this tutorial uses 0–2 and 4 only.
-    public bool? LengthsAreClose => LengthDifference <= 2 ? true : LengthDifference == 4 ? false : null;
+    public bool? LengthsAreClose => LengthDifference == 1 && Smaller.Length > 4 ? true
+        : Larger.Length > 2 * Smaller.Length && LengthDifference >= 3 ? false : null;
     public string CompareLength(bool left)
     {
         int difference = left ? Left.Length - Right.Length : Right.Length - Left.Length;
@@ -30,7 +30,7 @@ public sealed record GripRelationshipTrial(TrainingGrip Left, TrainingGrip Right
         new GripRelationshipTrial(new(1, 4), new(2, 2)),
         new GripRelationshipTrial(new(1, 6), new(1, 7)),
         new GripRelationshipTrial(new(1, 6), new(1, 8)),
-        new GripRelationshipTrial(new(1, 4), new(1, 8)),
+        new GripRelationshipTrial(new(1, 2), new(1, 7)),
         new GripRelationshipTrial(new(0, 6), new(5, 7)),
         new GripRelationshipTrial(new(0, 6), new(5, 6))
     };

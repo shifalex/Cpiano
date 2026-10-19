@@ -7,6 +7,18 @@ void Check(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 
+foreach (bool stageImmediate in new[] { false, true })
+{
+    Check(!GripAnswerTiming.AllowsImmediate(true, true, stageImmediate), "Hold option overrides stage immediate acceptance");
+    Check(GripAnswerTiming.AllowsImmediate(true, false, stageImmediate), "Disabling hold permits immediate child answers");
+    Check(GripAnswerTiming.AllowsImmediate(false, true, stageImmediate) == stageImmediate, "Other stages preserve their timing");
+}
+Check(!GripAnswerTiming.HasHeldLongEnough(null, 2), "An unstarted hold cannot submit");
+Check(!GripAnswerTiming.HasHeldLongEnough(1.999, 2), "Correct grip must wait for full hold duration");
+Check(GripAnswerTiming.HasHeldLongEnough(2, 2), "Full hold permits submission");
+Check(!GripAnswerTiming.HasHeldLongEnough(0, 0), "Zero timer cannot bypass required hold");
+Check(GripAnswerTiming.HasHeldLongEnough(1, 0), "Zero timer uses one second when hold required");
+
 var gate = new GripInputGate();
 int nudges = 0;
 gate.PrematurePress += () => nudges++;

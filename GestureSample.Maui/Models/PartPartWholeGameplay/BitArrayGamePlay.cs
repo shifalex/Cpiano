@@ -1854,6 +1854,19 @@ namespace GestureSample.Maui.Models
                     Config.KeyboardConfig.PrecisionPinchMaxInterval,
                     1,
                     Math.Max(1, Config.KeyboardConfig.Rows - 1));
+                if (Config.KeyboardConfig.SupportsGripChildAssistance &&
+                    GestureSample.Maui.Handlers.GripChildPreferences.StartAtBottom)
+                {
+                    int firstHand = Config.KeyboardConfig.PrecisionShiftBothHands ? 0 : random.Next(0, 2);
+                    int lastHand = Config.KeyboardConfig.PrecisionShiftBothHands ? 1 : firstHand;
+                    for (int hand = firstHand; hand <= lastHand; hand++)
+                    {
+                        int upper = random.Next(1, maxInterval + 1);
+                        pinch[hand] = true;
+                        pinch[upper * Config.KeyboardConfig.KeysInRow + hand] = true;
+                    }
+                    return pinch;
+                }
                 bool moveUpperOnly = Config.KeyboardConfig.IsPrecisionShiftExercise &&
                                      Config.KeyboardConfig.PrecisionPinchMoveOptions == PrecisionPinchMoveOptions.MoveUpper;
                 if (Config.KeyboardConfig.PrecisionShiftBothHands)
@@ -2493,7 +2506,9 @@ namespace GestureSample.Maui.Models
                 (21, TwoHandCombinationOptions.DecreaseUpperByOne),
                 (22, TwoHandCombinationOptions.SubtrahendOneStepSmaller),
                 (23, TwoHandCombinationOptions.LessThanHalf)
-                ,(24, TwoHandCombinationOptions.ThroughTenParts)
+                ,(24, TwoHandCombinationOptions.ThroughTenParts),
+                (25, TwoHandCombinationOptions.RaiseBothEqually),
+                (26, TwoHandCombinationOptions.RaiseAnchorOnly)
             };
             TwoHandCombinationOptions enabled = Config.KeyboardConfig.TwoHandCombinationOptions;
             bool easy = Config.KeyboardConfig.IsEasyTwoHandCombinationStage;
@@ -2736,6 +2751,19 @@ namespace GestureSample.Maui.Models
                         linkedKind = TwoHandCombinationOptions.Split;
                     }
                     break;
+                case 25: // Increase whole and subtracted part equally; preserve the difference.
+                case 26: // Increase whole; carry the same-size part to its new upper edge.
+                    int raisedWhole = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(5, rows) : Math.Min(7, rows - 1);
+                    int raisedPart = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(2, raisedWhole - 1) : 3;
+                    int raise = Config.KeyboardConfig.RandomizeTwoHandCombinationSizes
+                        ? random.Next(1, Math.Min(3, rows - raisedWhole) + 1)
+                        : Math.Min(2, rows - raisedWhole);
+                    first = ((0, raisedWhole - 1), (raisedWhole - raisedPart, raisedWhole - 1));
+                    second = ((0, raisedWhole + raise - 1),
+                        (raisedWhole - raisedPart + (combination == 26 ? raise : 0), raisedWhole + raise - 1));
+                    break;
                 default: // Whole + half -> whole + one less than half.
                     int lessWholeSize = RandomEvenCombinationSize(random, rows, minimum: 6);
                     first = ((0, lessWholeSize - 1), (0, (lessWholeSize / 2) - 1));
@@ -2754,16 +2782,6 @@ namespace GestureSample.Maui.Models
             if (startBothAtBottom && first.Right.Lower != 0 && second.Right.Lower == 0 &&
                 second.Left.Lower == 0)
                 (first, second) = (second, first);
-
-            // Randomize which physical hand carries each interval, without changing
-            // the mathematical relationship between the two displayed combinations.
-            if (!oneStepIntro && !Config.KeyboardConfig.KeepLeftHandAtBottom && random.Next(2) == 0)
-            {
-                first = (first.Right, first.Left);
-                second = (second.Right, second.Left);
-                if (linkedTarget is { } target)
-                    linkedTarget = (target.Right, target.Left);
-            }
 
             // Stage 5.1 normally begins at the physical bottom so its intervals have
             // a stable origin. A future dedicated exercise may explicitly opt out.
@@ -2790,6 +2808,18 @@ namespace GestureSample.Maui.Models
                     preferenceAttempt < 12)
                     return GenerateTwoHandCombinationPair(random, preferenceAttempt + 1, selectedCombination.Option);
                 _preferredCombinationLeftSize = leftSize;
+            }
+
+            // Anchor means the grip that is unchanged between the two states.
+            bool rightAnchor = Config.KeyboardConfig.TwoHandCombinationAnchorHand == GripAnchorHand.Right ||
+                (Config.KeyboardConfig.TwoHandCombinationAnchorHand == GripAnchorHand.Both && random.Next(2) == 0);
+            bool invariantOnRight = first.Left != second.Left && first.Right == second.Right;
+            if (!oneStepIntro && !Config.KeyboardConfig.KeepLeftHandAtBottom && rightAnchor != invariantOnRight)
+            {
+                first = (first.Right, first.Left);
+                second = (second.Right, second.Left);
+                if (linkedTarget is { } rightAnchorTarget)
+                    linkedTarget = (rightAnchorTarget.Right, rightAnchorTarget.Left);
             }
 
             bool[] firstBits = BuildTwoHandCombinationBits(first.Left, first.Right, rows);
@@ -3629,6 +3659,8 @@ namespace GestureSample.Maui.Models
             TwoHandCombinationOptions.DecreaseLowerByOne => "DECREASE LOWER BY ONE",
             TwoHandCombinationOptions.DecreaseUpperByOne => "DECREASE UPPER BY ONE",
             TwoHandCombinationOptions.SubtrahendOneStepSmaller => "SUBTRACT ONE LESS",
+            TwoHandCombinationOptions.RaiseBothEqually => "RAISE BOTH EQUALLY",
+            TwoHandCombinationOptions.RaiseAnchorOnly => "RAISE THE ANCHOR ONLY",
             _ => string.Empty
         };
 
