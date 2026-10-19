@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Models/PianoKeyboard/Core/PrecisionGlideMoves.cs" Link="PrecisionGlideMoves.cs" />
+    <Compile Include="../../Models/PianoKeyboard/Core/PrecisionGlideMotion.cs" Link="PrecisionGlideMotion.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/GripAnswerTiming.cs" Link="GripAnswerTiming.cs" />
     <Compile Include="../../Models/PartPartWholeGameplay/EasyGripIntro.cs" Link="EasyGripIntro.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/GripInputGate.cs" Link="GripInputGate.cs" />

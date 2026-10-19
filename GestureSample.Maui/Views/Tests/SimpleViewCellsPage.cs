@@ -2320,9 +2320,11 @@ namespace GestureSample.Views.Tests
                             {
                                 _taskMainHost.SetStaticOverlayAlpha(KeyboardOverlayHost.DefaultStaticOverlayAlpha);
                                 _taskMainHost.SetStaticBits(((BitArrayGamePlay)_gamePlay).BitArrayQuestion);
+                                if (newExercise) _taskMainHost.NotifyNextCombinationVisible();
                                 _taskMainHost.SetPrecisionPinchGuideVisible(
                                     _config.KeyboardConfig.IsPrecisionPinchExercise &&
-                                    _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+                                    _config.KeyboardConfig.ShowPrecisionPinchGuideLine,
+                                    _config.KeyboardConfig.ShowPrecisionPinchXorLine);
 
                                 int memorizeDelay = _config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds;
                                 if (_config.KeyboardConfig.SupportsGripChildAssistance && GripChildPreferences.GripOnly)
@@ -7789,22 +7791,34 @@ namespace GestureSample.Views.Tests
                         Padding = 0,
                         CornerRadius = 14,
                         BackgroundColor = Colors.Black.WithAlpha(0.25f),
-                        TextColor = Color.FromArgb("#D65345"),
+                        TextColor = !_config.KeyboardConfig.ShowPrecisionPinchGuideLine ? Colors.Gray :
+                            Color.FromArgb(_config.KeyboardConfig.ShowPrecisionPinchXorLine ? "#28B463" : "#D65345"),
                         HorizontalOptions = LayoutOptions.Start,
                         VerticalOptions = LayoutOptions.Center,
                         Margin = Thickness.Zero
                     };
                     btnGuideLine.Clicked += (_, _) =>
                     {
-                        _config.KeyboardConfig.ShowPrecisionPinchGuideLine =
-                            !_config.KeyboardConfig.ShowPrecisionPinchGuideLine;
-                        btnGuideLine.TextColor = Color.FromArgb("#D65345");
+                        // Red guides -> red guides with delayed green XOR -> hidden.
+                        if (!_config.KeyboardConfig.ShowPrecisionPinchGuideLine)
+                            _config.KeyboardConfig.ShowPrecisionPinchGuideLine = true;
+                        else if (!_config.KeyboardConfig.ShowPrecisionPinchXorLine)
+                            _config.KeyboardConfig.ShowPrecisionPinchXorLine = true;
+                        else
+                        {
+                            _config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+                            _config.KeyboardConfig.ShowPrecisionPinchXorLine = false;
+                        }
+                        btnGuideLine.TextColor = !_config.KeyboardConfig.ShowPrecisionPinchGuideLine ? Colors.Gray :
+                            Color.FromArgb(_config.KeyboardConfig.ShowPrecisionPinchXorLine ? "#28B463" : "#D65345");
                         _taskMainHost?.SetPrecisionPinchGuideVisible(
-                            _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+                            _config.KeyboardConfig.ShowPrecisionPinchGuideLine,
+                            _config.KeyboardConfig.ShowPrecisionPinchXorLine);
                     };
                     leftOverlayButtons.Add(btnGuideLine);
                     _taskMainHost?.SetPrecisionPinchGuideVisible(
-                        _config.KeyboardConfig.ShowPrecisionPinchGuideLine);
+                        _config.KeyboardConfig.ShowPrecisionPinchGuideLine,
+                        _config.KeyboardConfig.ShowPrecisionPinchXorLine);
 
                     if (_config.KeyboardConfig.IsVerticalPrecisionPinchExercise &&
                         DeviceInfo.Current.Idiom == DeviceIdiom.Tablet)

@@ -1,4 +1,4 @@
-﻿using MR.Gestures;
+using MR.Gestures;
 using MvvmCross.Base;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
@@ -42,6 +42,15 @@ namespace GestureSample.Maui.Models
         private int? _draggingKeyIndex;
         private Color _draggingKeyColor = Colors.Transparent;
         private readonly Dictionary<MR.Gestures.Button, MR.Gestures.Button> _glidingPrecisionKeys = new();
+        private readonly PrecisionGlideMotion _glideMotion = new();
+        private readonly Dictionary<int, int> _pendingPrecisionTargets = new();
+
+        private void ClearPrecisionGlides()
+        {
+            _glidingPrecisionKeys.Clear();
+            _glideMotion.Clear();
+            _pendingPrecisionTargets.Clear();
+        }
         private bool UsesNativePrecisionPanFallback =>
             _pianoConfig.IsPrecisionPinchExercise &&
             !_pianoConfig.PrecisionShiftBothHands &&
@@ -70,7 +79,7 @@ namespace GestureSample.Maui.Models
             GripGate?.SetBlocked(blocked);
             if (blocked)
             {
-                _glidingPrecisionKeys.Clear();
+                ClearPrecisionGlides();
                 _draggingKeyIndex = null;
                 _draggingKeyColor = Colors.Transparent;
             }
@@ -546,7 +555,7 @@ After:
         public virtual void PianoInit()
         {
             IsEnabled = true;
-            _glidingPrecisionKeys.Clear();
+            ClearPrecisionGlides();
             _addend1 = 0;
             _addend2 = 0;
             if(_soundService!=null)
@@ -573,7 +582,7 @@ After:
 
         public new void PianoInit(bool[] array)
         {
-            _glidingPrecisionKeys.Clear();
+            ClearPrecisionGlides();
             base.PianoInit(array);
             RecalculateKeyboardStateFromColors();
             AddDummies();
@@ -581,7 +590,7 @@ After:
 
         public new void PianoInit(Color[] array)
         {
-            _glidingPrecisionKeys.Clear();
+            ClearPrecisionGlides();
             base.PianoInit(array);
             RecalculateKeyboardStateFromColors();
             AddDummies();
@@ -880,11 +889,9 @@ After:
 
             if (_pianoConfig.IsPrecisionPinchExercise)
             {
-                // Do not use BaseGestureEventArgs.Touches here: it is the global set
-                // of screen touches and is not bound to this key. TotalDistance is
-                // the displacement of the pan owned by e.Sender, so anchor it to the
-                // originating key's real layout rectangle. Scaling by ViewPosition
-                // keeps the displacement correct after the key-height control changes.
+                // Use only the displacement owned by this key's recognizer.
+                // TotalDistance may restart when the recognizer's touch set changes;
+                // incremental movement keeps the finger at its current location.
                 if (e.Sender is MR.Gestures.Button origin &&
                     _glidingPrecisionKeys.ContainsKey(origin))
                 {
@@ -894,11 +901,9 @@ After:
                     double scaleY = e.ViewPosition.Height > 0 && origin.Height > 0
                         ? origin.Height / e.ViewPosition.Height
                         : 1;
-                    (double originX, double originY) = GetAbsolutePosition(origin);
-                    Point targetPoint = new(
-                        originX + (origin.Width / 2) + (e.TotalDistance.X * scaleX),
-                        originY + (origin.Height / 2) + (e.TotalDistance.Y * scaleY));
-                    await GlidePrecisionKeyAsync(origin, targetPoint);
+                    if (_glideMotion.Move(Convert.ToInt32(origin.CommandParameter),
+                        e.DeltaDistance.X * scaleX, e.DeltaDistance.Y * scaleY, out var point))
+                        await GlidePrecisionKeyAsync(origin, new Point(point.X, point.Y));
                 }
                 return;
             }
@@ -938,12 +943,8 @@ After:
             MR.Gestures.Button origin,
             PanUpdatedEventArgs args)
         {
-            if (_externalInputBlocked)
-                return;
-
-            if (!_glidingPrecisionKeys.ContainsKey(origin))
-                return;
-
+            if (_externalInputBlocked) return;
+            if (!_glidingPrecisionKeys.ContainsKey(origin)) return;
             if (args.StatusType is GestureStatus.Completed or GestureStatus.Canceled)
             {
                 await CompletePrecisionGlideAsync(origin);
@@ -973,16 +974,27 @@ After:
                 return;
 
             int targetIndex = GetKeyIndexAt(targetPoint);
+            int originKey = Convert.ToInt32(origin.CommandParameter);
             if (targetIndex < 0 || !IsSamePrecisionHand(current, targetIndex))
+            {
+                _pendingPrecisionTargets.Remove(originKey);
                 return;
+            }
 
-            MR.Gestures.Button target = btnKeys[targetIndex];
-            if (target == current || target.BackgroundColor != COLOR_FREE)
-                return;
-
-            target.BackgroundColor = current.BackgroundColor;
-            current.BackgroundColor = COLOR_FREE;
-            _glidingPrecisionKeys[origin] = target;
+            _pendingPrecisionTargets[originKey] = targetIndex;
+            var origins = _glidingPrecisionKeys.Keys.ToDictionary(key => Convert.ToInt32(key.CommandParameter));
+            var positions = _glidingPrecisionKeys.ToDictionary(pair => Convert.ToInt32(pair.Key.CommandParameter),
+                pair => Array.IndexOf(btnKeys, pair.Value));
+            var occupied = Enumerable.Range(0, btnKeys.Length).Where(index => btnKeys[index].BackgroundColor != COLOR_FREE);
+            var moves = PrecisionGlideMoves.Plan(positions, _pendingPrecisionTargets, occupied,
+                (from, to) => GetPrecisionHandBucket(from) == GetPrecisionHandBucket(to));
+            if (moves.Count == 0) return;
+            foreach (var move in moves)
+            {
+                btnKeys[move.To].BackgroundColor = btnKeys[move.From].BackgroundColor;
+                btnKeys[move.From].BackgroundColor = COLOR_FREE;
+                _glidingPrecisionKeys[origins[move.Origin]] = btnKeys[move.To];
+            }
             RecalculateKeyboardStateFromColors();
             OnPropertyChanged(nameof(Addend1));
             OnPropertyChanged(nameof(Addend2));
@@ -993,11 +1005,10 @@ After:
 
         private async Task CompletePrecisionGlideAsync(MR.Gestures.Button origin)
         {
-            if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current))
-                return;
-
-            if (GripGate != null && !GripGate.Release(Convert.ToInt32(origin.CommandParameter)))
-                return;
+            _pendingPrecisionTargets.Remove(Convert.ToInt32(origin.CommandParameter));
+            _glideMotion.End(Convert.ToInt32(origin.CommandParameter));
+            if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current)) return;
+            if (GripGate != null && !GripGate.Release(Convert.ToInt32(origin.CommandParameter))) return;
 
             if (await OnBeforeKeyUpAsync())
                 return;
@@ -1120,7 +1131,21 @@ After:
 
             KeyPressStarted?.Invoke();
             if (_pianoConfig.IsPrecisionPinchExercise && e.Sender is MR.Gestures.Button pressedKey)
+            {
                 _glidingPrecisionKeys[pressedKey] = pressedKey;
+                var touches = ConvertScreenTouchesToLayout(e.Touches, pressedKey, e.ViewPosition);
+                (double x, double y) = GetAbsolutePosition(pressedKey);
+                Point start = new(x + pressedKey.Width / 2, y + pressedKey.Height / 2);
+                foreach (int index in e.TriggeringTouches ?? Array.Empty<int>())
+                {
+                    if (index >= 0 && index < touches.Length && IsOver(touches[index], pressedKey))
+                    {
+                        start = touches[index];
+                        break;
+                    }
+                }
+                _glideMotion.Begin(Convert.ToInt32(pressedKey.CommandParameter), start.X, start.Y);
+            }
 
             await OnKey(e, true);
 
@@ -1147,20 +1172,17 @@ After:
 
             // A cancelled MR callback can hand the contact to the native pan.
             // Keep it registered until that pan (or a real Up) releases the key.
+            _pendingPrecisionTargets.Remove(Convert.ToInt32(releasedKey.CommandParameter));
+            _glideMotion.End(Convert.ToInt32(releasedKey.CommandParameter));
             if (GripGate != null && !GripGate.Release(Convert.ToInt32(releasedKey.CommandParameter)))
                 return;
-            if (_externalInputBlocked)
-                return;
-
+            if (_externalInputBlocked) return;
             if (_pianoConfig.IsPrecisionPinchExercise &&
                 _glidingPrecisionKeys.Remove(releasedKey, out MR.Gestures.Button? glidedKey))
             {
                 releasedKey = glidedKey;
             }
-
-            if (await OnBeforeKeyUpAsync())
-                return;
-
+            if (await OnBeforeKeyUpAsync()) return;
             await OnKey(e, false, releasedKey);
             if (Config.IsNumberVoice || Config.IsVoice)
             {
@@ -1277,7 +1299,7 @@ After:
 
 
             OnPropertyChanged(nameof(Addend1)); OnPropertyChanged(nameof(Addend2)); OnPropertyChanged(nameof(Sum));
-            EnsureAllKeyTextIsBlack();
+            NormalizePianoKeyVisual(sender);
             RefreshSecondArrowLeftTraceOverlay();
             //_gamePlay.addend1 = Addend1; _gamePlay.addend2 = Addend2;
             int keyNumber = 0;
@@ -1302,10 +1324,12 @@ After:
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 NormalizePianoKeyVisual(sender);
-                EnsureAllKeyTextIsBlack();
             });
 
-            ScheduleNormalizeAllPianoKeyVisuals();
+            if (_pianoConfig.EnableSecondArrowLeftTrace)
+                ScheduleNormalizeAllPianoKeyVisuals();
+            else
+                ScheduleNormalizePianoKeyVisuals(sender);
             await OnKeyStateChangedAsync(isDown);
             if (saveStateTask != null)
                 await saveStateTask;

@@ -66,6 +66,8 @@ namespace GestureSample.Maui.Models
             public bool UseFlipInterpolation { get; set; }
             public bool ShowFlipAxis { get; set; }
             public bool ShowPrecisionPinchGuide { get; set; }
+            public bool ShowPrecisionPinchXor { get; set; }
+            public bool PrecisionPinchXorReady { get; set; }
             public bool ShowSharedBoundaryGuide { get; set; }
             public bool ShowPrecisionLearningSign { get; set; }
             public int[] PrecisionLearningDeltas { get; set; } = new int[2];
@@ -360,6 +362,30 @@ namespace GestureSample.Maui.Models
                     float guideBottom = selected.Max(item => item.Rect.Bottom);
                     canvas.DrawLine(guideX, guideTop, guideX, guideBottom);
 
+                }
+
+                if (ShowPrecisionPinchXor && PrecisionPinchXorReady && columns == 2)
+                {
+                    var hands = selectedKeys.GroupBy(item => item.Column).ToArray();
+                    if (hands.Length == 2)
+                    {
+                        var intervals = hands.Select(hand => (
+                            Top: hand.Min(item => item.Rect.Top),
+                            Bottom: hand.Max(item => item.Rect.Bottom))).ToArray();
+                        float centerX = (KeyRects.Min(rect => rect.Left) +
+                                         KeyRects.Max(rect => rect.Right)) / 2f;
+                        float[] edges = intervals.SelectMany(interval =>
+                            new[] { interval.Top, interval.Bottom }).Distinct().OrderBy(y => y).ToArray();
+                        canvas.StrokeColor = Color.FromArgb("#28B463");
+                        for (int i = 0; i + 1 < edges.Length; i++)
+                        {
+                            float middle = (edges[i] + edges[i + 1]) / 2f;
+                            if ((middle > intervals[0].Top && middle < intervals[0].Bottom) ^
+                                (middle > intervals[1].Top && middle < intervals[1].Bottom))
+                                canvas.DrawLine(centerX, edges[i], centerX, edges[i + 1]);
+                        }
+                        canvas.StrokeColor = Color.FromArgb("#D65345");
+                    }
                 }
 
                 if (ShowSharedBoundaryGuide && columns == 2)
@@ -784,9 +810,10 @@ namespace GestureSample.Maui.Models
             _inputShield.ZIndex = 999999;
         }
 
-        public void SetPrecisionPinchGuideVisible(bool visible)
+        public void SetPrecisionPinchGuideVisible(bool visible, bool showXor = false)
         {
             _patternDrawable.ShowPrecisionPinchGuide = visible;
+            _patternDrawable.ShowPrecisionPinchXor = visible && showXor;
             Keyboard.InvalidateOverlay();
         }
 
@@ -849,9 +876,22 @@ namespace GestureSample.Maui.Models
 
 
         // persistent question / answer state
+        private int _precisionGripVersion;
+
         public void SetStaticBits(bool[] bits)
         {
             _patternDrawable.StaticBits = bits ?? Array.Empty<bool>();
+            _patternDrawable.PrecisionPinchXorReady = false;
+            int version = ++_precisionGripVersion;
+            Dispatcher.StartTimer(TimeSpan.FromMilliseconds(500), () =>
+            {
+                if (version == _precisionGripVersion)
+                {
+                    _patternDrawable.PrecisionPinchXorReady = true;
+                    Keyboard.InvalidateOverlay();
+                }
+                return false;
+            });
             // Ensure we have real key geometry. If layout not ready yet,
             // run again next UI tick.
             if (TrySyncOverlay())
@@ -1264,18 +1304,12 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
 
             _syncSeq++;
             LogSync(reason + " (before)");
-
-            // Android often needs a frame or two
             await Task.Yield();
-            await Task.Delay(16);   // 1 frame
-            await Task.Delay(16);   // 2nd frame (often the one that fixes X/Y)
-
+            await Task.Delay(16);
+            await Task.Delay(16);
             bool ok = TrySyncOverlay();
             LogSync(reason + $" (after) ok={ok}");
-
-            if (ok)
-                Keyboard.InvalidateOverlay();
-
+            if (ok) Keyboard.InvalidateOverlay();
             _syncPending = false;
         }
 
@@ -1283,7 +1317,6 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
         {
             var keys = Keyboard.KeyButtons;
             if (keys == null || keys.Count == 0) return false;
-
             if (keys[0].Width <= 0 || keys[0].Height <= 0) return false;
 
             GraphicsView? overlay = Keyboard.OverlayView;
