@@ -9,6 +9,11 @@ void Check(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 var firstUser = new TestUser { Id = Guid.NewGuid() };
+// Startup initializes the entire catalog, including labels and uppercase cues.
+Check(AppLanguage.Translate("Left", InterfaceLanguage.Russian) == "Левая", "Left label survives catalog initialization");
+Check(AppLanguage.Translate("LEFT", InterfaceLanguage.Russian) == "СЛЕВА", "Uppercase left cue has its own translation");
+Check(AppLanguage.Translate("Right", InterfaceLanguage.Russian) == "Правая", "Right label has its own translation");
+Check(AppLanguage.Translate("RIGHT", InterfaceLanguage.Russian) == "СПРАВА", "Uppercase right cue has its own translation");
 ServiceHelper.Session.ActiveUser = firstUser;
 Check(LanguagePreferences.Get() == InterfaceLanguage.English, "Existing users default to English");
 LanguagePreferences.Set(InterfaceLanguage.Hebrew, false, false);

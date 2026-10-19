@@ -9,7 +9,9 @@ namespace GestureSample.Maui.Models
         private int _secondsPressingToAnswerSetting;
         private int _secondsToAnswer;
         protected virtual bool IS_WHOLE_TIMER => _secondsPressingToAnswerSetting < 0;
-        protected virtual int SECONDS_TO_ANSWER => _secondsToAnswer;
+        private bool RequiresGripHold => _pianoConfig.SupportsGripChildAssistance &&
+            GestureSample.Maui.Handlers.GripChildPreferences.RequireHold;
+        protected virtual int SECONDS_TO_ANSWER => RequiresGripHold ? Math.Max(1, _secondsToAnswer) : _secondsToAnswer;
         public Func<ExerciseCheckResult, Task>? CheckCompletedAsync { get; set; }
         public event Action<double>? SequenceFirstProgressChanged;
         public virtual bool SupportsAnswerTimeTuner => true;
@@ -190,6 +192,14 @@ namespace GestureSample.Maui.Models
             if (_isChecking || IsAnswerInputBlocked || IsQuestionPreviewPending || !CanSubmitCurrentSequenceState())
                 return;
 
+            // Every automatic submission path must respect the requested hold,
+            // including legacy immediate acceptance and key-release shortcuts.
+            if (RequiresGripHold && (!HasActiveTimedAnswer() ||
+                !GripAnswerTiming.HasHeldLongEnough(
+                    _pressStartUtc.HasValue ? (DateTime.UtcNow - _pressStartUtc.Value).TotalSeconds : null,
+                    SECONDS_TO_ANSWER)))
+                return;
+
             _isChecking = true;
             CancelHoldHint();
             timer.Stop();
@@ -205,7 +215,11 @@ namespace GestureSample.Maui.Models
                 ResetProgressVisual();
 
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
-                if (GripGate != null && checkResult.IsCorrect) SetExternalInputBlocked(true);
+                if (GripGate != null && checkResult.IsCorrect)
+                {
+                    GripGate.RememberCorrectAnswerHold();
+                    SetExternalInputBlocked(true);
+                }
                 if (CheckCompletedAsync != null)
                     await CheckCompletedAsync(checkResult);
             }
@@ -284,7 +298,11 @@ namespace GestureSample.Maui.Models
             if (!isDown)
                 return;
 
-            if (!_pianoConfig.AllowImmediateCorrectPrecisionAnswer ||
+            bool acceptWithoutHolding = GripAnswerTiming.AllowsImmediate(
+                _pianoConfig.SupportsGripChildAssistance,
+                GestureSample.Maui.Handlers.GripChildPreferences.RequireHold,
+                _pianoConfig.AllowImmediateCorrectPrecisionAnswer);
+            if (!acceptWithoutHolding ||
                 !_gamePlay.IsCloseEnough(this, allowedDifferences: 0))
             {
                 return;
