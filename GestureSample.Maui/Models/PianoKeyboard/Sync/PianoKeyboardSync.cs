@@ -26,6 +26,7 @@ namespace GestureSample.Maui.Models
         private bool _isChecking = false;
         private bool _isLifecycleActive = true;
         private bool _isTickRunning;
+        private readonly GripRetryState _gripRetry = new();
         private bool _sequenceFirstRecognized;
         private string? _lastSequenceCueSignature;
         private DateTime? _holdGestureStartedUtc;
@@ -148,6 +149,11 @@ namespace GestureSample.Maui.Models
                         ResetProgressVisual();
                         return;
                     }
+                    if (GripGate != null && !_gripRetry.CanTime(ToBitArray()))
+                    {
+                        ResetProgressVisual();
+                        return;
+                    }
 
                     _pressStartUtc ??= DateTime.UtcNow;
 
@@ -214,7 +220,9 @@ namespace GestureSample.Maui.Models
                 // Hide progress immediately so feedback can appear on lblStatus
                 ResetProgressVisual();
 
+                bool[] submittedGrip = GripGate != null ? ToBitArray() : Array.Empty<bool>();
                 ExerciseCheckResult checkResult = await _gamePlay.EvaluateAsync(this);
+                if (GripGate != null && !checkResult.IsCorrect) _gripRetry.Reject(submittedGrip);
                 if (GripGate != null && checkResult.IsCorrect)
                 {
                     GripGate.RememberCorrectAnswerHold();
@@ -268,6 +276,7 @@ namespace GestureSample.Maui.Models
             {
                 return;
             }
+            if (GripGate != null) _gripRetry.CanTime(ToBitArray());
 
             UpdateHoldHint(isDown);
 
@@ -518,6 +527,7 @@ namespace GestureSample.Maui.Models
 
         public void ResetSequenceRecognition()
         {
+            _gripRetry.Reset();
             // Acceptance lasts until the next exercise or a replay of the demonstration.
             _sequenceFirstRecognized = false;
             _lastSequenceCueSignature = null;
@@ -604,6 +614,7 @@ namespace GestureSample.Maui.Models
 
         private void ResetSyncState()
         {
+            _gripRetry.Reset();
             CancelHoldHint();
             _incorrectQuickTapCount = 0;
             _lastHoldHintUtc = null;

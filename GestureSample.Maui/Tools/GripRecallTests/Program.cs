@@ -130,6 +130,19 @@ for (int rows = 7; rows <= 12; rows++)
                 Check(Math.Abs(pair.Initial - previous) <= 1, "Left-hand height changes at most one row between exercises");
             }
 var motion = new PrecisionGlideMotion();
+var retry = new GripRetryState();
+var wrongGrip = new[] { true, false, true, false };
+retry.Reject(wrongGrip);
+for (int frame = 0; frame < 120; frame++)
+    Check(!retry.CanTime(wrongGrip), "An unchanged rejected hold cannot restart the timer or resubmit");
+Check(retry.CanTime(new[] { true, false, false, true }), "Correcting a held grip permits a fresh timed attempt");
+retry.Reject(wrongGrip);
+Check(retry.CanTime(new bool[4]) && retry.CanTime(wrongGrip), "Releasing then retrying is a new attempt");
+retry.Reject(wrongGrip);
+wrongGrip[0] = false;
+Check(!retry.CanTime(new[] { true, false, true, false }), "The rejected snapshot is independent of later touch edits");
+retry.Reset();
+Check(retry.CanTime(new[] { true, false, true, false }), "A new question clears retry suppression");
 double graceNow = 1000;
 var graceGate = new GripInputGate(() => graceNow);
 graceGate.SetBlocked(false);
