@@ -4258,6 +4258,13 @@ namespace GestureSample.Maui.Models
             }
 
             // move-by configuration
+            if (CurrentOperation == Operation.MoveBy && Config.KeyboardConfig.FixedMoveByDistance > 0)
+            {
+                moveByLength = Config.KeyboardConfig.FixedMoveByDistance;
+                // A one-hand pattern moves intact into the opposite half.
+                moveBydir = start == 0 ? Direction.Right : Direction.Left;
+                return;
+            }
             moveBydir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
             moveByLength = r.Next(1, BitArrayQuestion.Length);
             if (CurrentOperation is Operation.MoveBy && Config.OnlyToTen)
