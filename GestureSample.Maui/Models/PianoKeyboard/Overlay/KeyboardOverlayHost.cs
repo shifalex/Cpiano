@@ -82,6 +82,12 @@ namespace GestureSample.Maui.Models
 
 
             public RectF[] KeyRects { get; set; } = Array.Empty<RectF>();
+            public bool[] XorDifferences = Array.Empty<bool>();
+            public int XorScanColumn = -1;
+            public float XorScanAlpha = 1f;
+            public bool XorCombinedRows;
+            public bool XorShowMarkers;
+            public bool XorMarkerAtTop;
             public bool[] HoldHintBits { get; set; } = Array.Empty<bool>();
             public float HoldHintProgress { get; set; }
             public float HoldHintAlpha { get; set; }
@@ -127,6 +133,50 @@ namespace GestureSample.Maui.Models
                 DrawCursor(canvas); // uses CursorIndex (anim-only)
                 DrawHoldHint(canvas);
                 DrawTutorialHands?.Invoke(canvas);
+                DrawXorColumns(canvas);
+            }
+
+            private void DrawXorColumns(ICanvas canvas)
+            {
+                canvas.SaveState();
+                for (int i = 0; i < XorDifferences.Length && i < KeyRects.Length; i++)
+                {
+                    bool different = XorDifferences[i];
+                    if (!different && i != XorScanColumn) continue;
+                    RectF key = KeyRects[i];
+                    float markerY = XorMarkerAtTop ? key.Top + 12 : key.Bottom - 12;
+                    if (XorCombinedRows && i + XorDifferences.Length < KeyRects.Length)
+                    {
+                        RectF other = KeyRects[i + XorDifferences.Length];
+                        markerY = (Math.Min(key.Bottom, other.Bottom) + Math.Max(key.Top, other.Top)) / 2;
+                        float left = Math.Min(key.Left, other.Left);
+                        float top = Math.Min(key.Top, other.Top);
+                        key = new RectF(left, top, Math.Max(key.Right, other.Right) - left,
+                            Math.Max(key.Bottom, other.Bottom) - top);
+                    }
+                    float alpha = different ? 1f : XorScanAlpha;
+                    // An inset outline leaves the existing key fills untouched.
+                    RectF outline = new(key.X + 4, key.Y + 4, Math.Max(1, key.Width - 8), Math.Max(1, key.Height - 8));
+                    canvas.StrokeColor = Colors.White.WithAlpha(alpha);
+                    canvas.StrokeSize = 6;
+                    canvas.DrawRoundedRectangle(outline, 5);
+                    canvas.StrokeColor = Color.FromArgb(different ? "#00695C" : "#455A64").WithAlpha(alpha);
+                    canvas.StrokeSize = 3;
+                    canvas.DrawRoundedRectangle(outline, 5);
+                    if (!different || !XorShowMarkers) continue;
+                    float x = key.Center.X;
+                    var check = new PathF();
+                    check.MoveTo(x - 7, markerY);
+                    check.LineTo(x - 2, markerY + 5);
+                    check.LineTo(x + 8, markerY - 7);
+                    canvas.StrokeColor = Colors.White;
+                    canvas.StrokeSize = 7;
+                    canvas.DrawPath(check);
+                    canvas.StrokeColor = Color.FromArgb("#00695C");
+                    canvas.StrokeSize = 3;
+                    canvas.DrawPath(check);
+                }
+                canvas.RestoreState();
             }
 
             private void DrawHoldHint(ICanvas canvas)
@@ -226,6 +276,7 @@ namespace GestureSample.Maui.Models
                     {
                         PointF pinned = baseAtTop ? upperCenter : lowerCenter;
                         float halfPin = Math.Max(9, lowerRect.Width * 0.22f);
+                        canvas.StrokeColor = Colors.Red.WithAlpha(0.95f * signAlpha);
                         canvas.DrawLine(pinned.X - halfPin, pinned.Y, pinned.X + halfPin, pinned.Y);
                     }
 
@@ -313,7 +364,7 @@ namespace GestureSample.Maui.Models
                 head.LineTo(tip.X - (dx * headLength) + (px * headWidth), tip.Y - (dy * headLength) + (py * headWidth));
                 head.LineTo(tip.X - (dx * headLength) - (px * headWidth), tip.Y - (dy * headLength) - (py * headWidth));
                 head.Close();
-                canvas.FillColor = Colors.DodgerBlue.WithAlpha(alpha);
+                canvas.FillColor = Colors.Red.WithAlpha(alpha);
                 canvas.FillPath(head);
             }
 
@@ -932,6 +983,7 @@ namespace GestureSample.Maui.Models
         // clear only animation layer
         public void ClearAnim()
         {
+            ClearXorColumns();
             foreach (var animation in _presentationAnimations.Values.ToArray()) animation.Cancel();
             _patternDrawable.AnimBits = Array.Empty<bool>();
             _patternDrawable.AnimTargets = Array.Empty<int>();
@@ -1032,6 +1084,26 @@ namespace GestureSample.Maui.Models
             }
 
             await DelayPresentationAsync(TimeSpan.FromMilliseconds(holdMs));
+        }
+
+        public void ShowXorColumns(bool[] differences, int scanColumn = -1, bool combinedRows = false,
+            bool showMarkers = true, bool markerAtTop = false, float scanAlpha = 1f)
+        {
+            TrySyncOverlay();
+            _patternDrawable.XorDifferences = differences.ToArray();
+            _patternDrawable.XorScanColumn = scanColumn;
+            _patternDrawable.XorScanAlpha = scanAlpha;
+            _patternDrawable.XorCombinedRows = combinedRows;
+            _patternDrawable.XorShowMarkers = showMarkers;
+            _patternDrawable.XorMarkerAtTop = markerAtTop;
+            Keyboard.InvalidateOverlay();
+        }
+
+        public void ClearXorColumns()
+        {
+            _patternDrawable.XorDifferences = Array.Empty<bool>();
+            _patternDrawable.XorScanColumn = -1;
+            Keyboard.InvalidateOverlay();
         }
 
         public void ShowHighlightedBits(
@@ -1674,7 +1746,7 @@ public async Task EnsureOverlaySyncedAsync(int maxTries = 20)
                 })
                 .Concat(Enumerable.Repeat(-1, Math.Max(0, 2 - Math.Min(2, columns))))
                 .ToArray();
-            _patternDrawable.AnimAlpha = 0.20f;
+            _patternDrawable.AnimAlpha = 0.60f;
             _patternDrawable.AnimColor = Colors.Yellow;
             _patternDrawable.PrecisionLearningSignAlpha = 1f;
             _patternDrawable.PrecisionLearningArrowAlpha = 0;

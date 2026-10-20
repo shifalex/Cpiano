@@ -941,6 +941,28 @@ namespace GestureSample.Views
         }
     })),
 
+            new PageConfig("One operation", "Dyslexia - Mirror or Shift by 4", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Dyslexia - Mirror or Shift by 4",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Mirror, Operation.MoveBy },
+        isOnlyKeyboard = true,
+        IsOnlyOneHand = true,
+        OnlyToTen = true,
+        MinSum = 2,
+        MaxSum = 3,
+        SecondsTillNextExercise = 1,
+        SecondsTillAllowInput = 0,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer = 1,
+            IsHelpNeeded = true,
+            KeysInRow = 8,
+            FixedMoveByDistance = 4
+        }
+    })),
+
             new PageConfig("One operation", "And", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "And",
@@ -992,6 +1014,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
@@ -1005,6 +1028,7 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),

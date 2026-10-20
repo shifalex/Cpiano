@@ -1007,8 +1007,12 @@ After:
         {
             _pendingPrecisionTargets.Remove(Convert.ToInt32(origin.CommandParameter));
             _glideMotion.End(Convert.ToInt32(origin.CommandParameter));
+            // A question transition clears the glide map while fingers may still
+            // be held. Their native pan completion must still release the gate,
+            // otherwise the previous-answer eye can remain visible indefinitely.
+            bool acceptedRelease = GripGate?.Release(Convert.ToInt32(origin.CommandParameter)) ?? true;
             if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current)) return;
-            if (GripGate != null && !GripGate.Release(Convert.ToInt32(origin.CommandParameter))) return;
+            if (!acceptedRelease) return;
 
             if (await OnBeforeKeyUpAsync())
                 return;

@@ -1,4 +1,4 @@
-﻿using GestureSample.Debugging;
+using GestureSample.Debugging;
 using GestureSample.Maui;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Data.SQLite;
@@ -608,6 +608,7 @@ namespace GestureSample.Views.Tests
         private string? _tutorialStepCounterText;
         private View _keyboardArrowPromptView;
         private Grid _customProgressHost;
+        private Border? _keyboardWidthButton;
         private Border _customProgressFill;
         private Border _calmAttemptIndicator;
         private Label _calmAttemptIndicatorLabel;
@@ -985,6 +986,8 @@ namespace GestureSample.Views.Tests
             _customProgressFill = new Border
             {
                 WidthRequest = 0,
+                AnchorX = 0,
+                ScaleX = 0,
                 HeightRequest = 55,
                 Padding = 0,
                 StrokeThickness = 0,
@@ -1096,7 +1099,11 @@ namespace GestureSample.Views.Tests
 
             double progress = Math.Clamp(_pianoPressProgress.Progress, 0, 1);
             _customProgressFill.BackgroundColor = _pianoPressProgress.ProgressColor;
-            _customProgressFill.WidthRequest = hostWidth * progress;
+            // Keep timer ticks out of the layout pass. Only a host resize changes
+            // the measured width; progress itself is a render-only transform.
+            if (hostWidth > 0 && Math.Abs(_customProgressFill.WidthRequest - hostWidth) > 0.5)
+                _customProgressFill.WidthRequest = hostWidth;
+            _customProgressFill.ScaleX = progress;
             _customProgressFill.IsVisible = _customProgressHost.IsVisible && progress > 0;
 
             if (_calmAttemptIndicator != null && useCalmAttemptIndicator)
@@ -4317,69 +4324,63 @@ namespace GestureSample.Views.Tests
             for (int i = 0; i < bitCount; i++)
                 differences[i] = question[i] ^ question2[i];
 
-            if (!differences.Any(bit => bit))
-                return true;
-
-            if (_config.UsesCombinedLogicalKeyboard)
-            {
-                if (_task1Host == null || _keyboardTask1 == null)
-                    return false;
-
-                _task1Host.SyncOverlay();
-                await _task1Host.EnsureOverlaySyncedAsync();
-
-                int combinedLength = Math.Max(_keyboardTask1.KeyCount, bitCount * 2);
-                bool[] combinedDifferences = new bool[combinedLength];
-                for (int i = 0; i < bitCount; i++)
-                {
-                    if (!differences[i])
-                        continue;
-
-                    if (i < combinedDifferences.Length)
-                        combinedDifferences[i] = true;
-                    if (i + bitCount < combinedDifferences.Length)
-                        combinedDifferences[i + bitCount] = true;
-                }
-
-                await _task1Host.FadeInHighlightedBitsThenClearAsync(
-                    combinedDifferences,
-                    Colors.Yellow,
-                    targetAlpha: 0.58f,
-                    fadeInMs: ScaleTutorialMs(1000u),
-                    highlightBand: KeyboardOverlayHost.HighlightBand.TowardMiddleBetweenRows,
-                    animName: "XorQuestionCombinedFadeIn");
-
-                return true;
-            }
-
-            if (_task1Host == null || _task2Host == null)
+            bool combined = _config.UsesCombinedLogicalKeyboard;
+            if (_task1Host == null || (!combined && _task2Host == null))
                 return false;
 
             _task1Host.SyncOverlay();
-            _task2Host.SyncOverlay();
-            await Task.WhenAll(
-                _task1Host.EnsureOverlaySyncedAsync(),
-                _task2Host.EnsureOverlaySyncedAsync());
+            await _task1Host.EnsureOverlaySyncedAsync();
+            if (!combined)
+            {
+                _task2Host.SyncOverlay();
+                await _task2Host.EnsureOverlaySyncedAsync();
+            }
 
-            await Task.WhenAll(
-                _task2Host.FadeInHighlightedBitsThenClearAsync(
-                    differences,
-                    Colors.Yellow,
-                    targetAlpha: 0.58f,
-                    fadeInMs: ScaleTutorialMs(1000u),
-                    highlightBand: KeyboardOverlayHost.HighlightBand.UpperRowBottomThird,
-                    animName: "XorQuestionTopFadeIn"),
-                _task1Host.FadeInHighlightedBitsThenClearAsync(
-                    differences,
-                    Colors.Yellow,
-                    targetAlpha: 0.58f,
-                    fadeInMs: ScaleTutorialMs(1000u),
-                    highlightBand: KeyboardOverlayHost.HighlightBand.LowerRowTopThird,
-                    animName: "XorQuestionBottomFadeIn"));
-
+            bool[] revealed = new bool[bitCount];
+            string previousInstruction = _lblAction.Text;
+            void ShowColumns(int scanColumn = -1, float alpha = 1f)
+            {
+                _task1Host.ShowXorColumns(revealed, scanColumn, combinedRows: combined,
+                    markerAtTop: !combined, scanAlpha: alpha);
+                if (!combined)
+                    _task2Host.ShowXorColumns(revealed, scanColumn, showMarkers: false, scanAlpha: alpha);
+            }
+            try
+            {
+                _lblAction.Text = "Compare the two keys in each column";
+                for (int column = 0; column < bitCount; column++)
+                {
+                    ShowColumns(column);
+                    await Task.Delay(ScaleTutorialMs(400));
+                    if (differences[column])
+                    {
+                        revealed[column] = true;
+                        ShowColumns(column);
+                        await Task.Delay(ScaleTutorialMs(300));
+                    }
+                    else
+                    {
+                        for (int step = 1; step <= 4; step++)
+                        {
+                            ShowColumns(column, 1f - step / 4f);
+                            await Task.Delay(ScaleTutorialMs(60));
+                        }
+                    }
+                }
+                ShowColumns();
+                _lblAction.Text = differences.Any(bit => bit)
+                    ? "Choose the columns where only one key is active"
+                    : "The columns all match: no keys to choose";
+                await Task.Delay(ScaleTutorialMs(1800));
+            }
+            finally
+            {
+                _task1Host.ClearXorColumns();
+                _task2Host?.ClearXorColumns();
+                _lblAction.Text = previousInstruction;
+            }
             return true;
         }
-
         private static int GetVisibleArrowSplitFirstCount(BitArrayGamePlay gp, int tutorialStepCount)
         {
             if (tutorialStepCount <= 1)
@@ -7432,8 +7433,9 @@ namespace GestureSample.Views.Tests
                     }
                     else
                     {
-                        grid.Add(_taskMainHost);
-                        Grid.SetRow(_taskMainHost, 2);
+                        View keyboardStage = BuildResizableKeyboardStage();
+                        grid.Add(keyboardStage);
+                        Grid.SetRow(keyboardStage, 2);
                     }
                     View keyboardControlBar = BuildKeyboardControlBar();
                     keyboardControlBar.IsVisible = !_config.KeyboardConfig.HideMainKeyboard || _isArrowLabelRetryHelpVisible;
@@ -7913,6 +7915,8 @@ namespace GestureSample.Views.Tests
 
                 }
 
+                if (!_config.KeyboardConfig.IsPrecisionPinchExercise && _keyboardWidthButton != null)
+                    rightOverlayButtons.Add(_keyboardWidthButton);
                 if (HasDedicatedKeyboardTutorial())
                     rightOverlayButtons.Add(_btnHelp);
 
@@ -8094,6 +8098,113 @@ namespace GestureSample.Views.Tests
             return vslDecompositionDashboard;
         }
 
+
+        private View BuildResizableKeyboardStage()
+        {
+            Slider widthSlider = new() { Minimum = 12, Maximum = 280, Value = 105 };
+            Border widthPanel = new()
+            {
+                IsVisible = false, InputTransparent = true,
+                Padding = new Thickness(8, 2), Margin = new Thickness(8, 40, 8, 0),
+                BackgroundColor = Colors.White.WithAlpha(0.94f),
+                Stroke = Colors.Gray, StrokeThickness = 1,
+                HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Start,
+                ZIndex = 101, Content = widthSlider
+            };
+            Microsoft.Maui.Controls.Shapes.Path resizeIcon = new()
+            {
+                Data = (Geometry)new PathGeometryConverter().ConvertFromInvariantString(
+                    "M 1,7 L 17,7 M 5,3 L 1,7 L 5,11 M 13,3 L 17,7 L 13,11"),
+                Stroke = Colors.White, StrokeThickness = 1.35,
+                StrokeLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round,
+                WidthRequest = 18, HeightRequest = 14, Aspect = Stretch.Uniform,
+                HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+            Border resizeButton = new()
+            {
+                WidthRequest = 34, HeightRequest = 34, Padding = 0,
+                Margin = Thickness.Zero, StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = 17 },
+                BackgroundColor = Colors.Transparent,
+                HorizontalOptions = LayoutOptions.End, VerticalOptions = LayoutOptions.Center,
+                ZIndex = 102, Content = resizeIcon,
+                AutomationId = "KeyboardKeyWidthButton"
+            };
+            SemanticProperties.SetDescription(resizeButton, "Adjust keyboard key width");
+            _keyboardWidthButton = resizeButton;
+            void SetWidthPanelVisible(bool visible)
+            {
+                widthPanel.IsVisible = visible;
+                widthPanel.InputTransparent = !visible;
+            }
+            TapGestureRecognizer resizeTap = new();
+            resizeTap.Tapped += (_, _) => SetWidthPanelVisible(!widthPanel.IsVisible);
+            resizeButton.GestureRecognizers.Add(resizeTap);
+            _pianoKeyboard.KeyPressStarted += () => SetWidthPanelVisible(false);
+            foreach (MR.Gestures.Button keyButton in _pianoKeyboard.KeyButtons)
+                keyButton.Down += (_, _) => SetWidthPanelVisible(false);
+            Grid stage = new()
+            {
+                HorizontalOptions = LayoutOptions.Fill, VerticalOptions = LayoutOptions.Fill
+            };
+            Grid keyboardBackdrop = new()
+            {
+                BackgroundColor = Colors.Black,
+                HorizontalOptions = LayoutOptions.Fill,
+                VerticalOptions = LayoutOptions.Fill,
+                Children = { _taskMainHost }
+            };
+            stage.Add(keyboardBackdrop, 0, 0);
+            stage.Add(widthPanel, 0, 0);
+            _taskMainHost.HorizontalOptions = LayoutOptions.Center;
+            double lastAppliedKeyWidth = -1;
+            bool widthInitialized = false;
+            bool updatingSliderRange = false;
+            void ApplyWidth()
+            {
+                if (stage.Width <= 0 || updatingSliderRange) return;
+                double spacing = Math.Max(0, _pianoKeyboard.ColumnDefinitions.Count - 1) * _pianoKeyboard.ColumnSpacing;
+                double chrome = spacing + (_config.KeyboardConfig.KeysInRow <= 10 ? 5 : 0);
+                double maximumKeyWidth = Math.Clamp((stage.Width - chrome) / _config.KeyboardConfig.KeysInRow, 12, 280);
+                updatingSliderRange = true;
+                try
+                {
+                    widthSlider.Maximum = Math.Max(12.01, maximumKeyWidth);
+                    if (!widthInitialized)
+                    {
+                        // Match the question keyboard's natural key width on entry.
+                        double questionWidth = _keyboardTask1?.ActualKeyWidth > 0
+                            ? _keyboardTask1.ActualKeyWidth
+                            : _keyboardTask1?.MAX_KEY_WIDTH ?? _pianoKeyboard.MAX_KEY_WIDTH;
+                        widthSlider.Value = Math.Clamp(questionWidth, 12, maximumKeyWidth);
+                        widthInitialized = true;
+                    }
+                }
+                finally { updatingSliderRange = false; }
+                double keyWidth = Math.Clamp(widthSlider.Value, 12, maximumKeyWidth);
+                if (Math.Abs(keyWidth - lastAppliedKeyWidth) < 0.5) return;
+                lastAppliedKeyWidth = keyWidth;
+                double width = _pianoKeyboard.SetExactKeyWidth(keyWidth);
+                _taskMainHost.WidthRequest = width;
+                _taskMainHost.MaximumWidthRequest = width;
+                _taskMainHost.SyncOverlay();
+                void ResizeQuestion(PianoKeyboardReadOnly keyboard, KeyboardOverlayHost host)
+                {
+                    if (keyboard == null || host == null) return;
+                    double questionWidth = keyboard.SetExactKeyWidth(keyWidth);
+                    host.HorizontalOptions = LayoutOptions.Center;
+                    host.WidthRequest = questionWidth;
+                    host.MaximumWidthRequest = questionWidth;
+                    host.SyncOverlay();
+                }
+                ResizeQuestion(_keyboardTask1, _task1Host);
+                ResizeQuestion(_keyboardTask2, _task2Host);
+            }
+            widthSlider.ValueChanged += (_, _) => ApplyWidth();
+            stage.SizeChanged += (_, _) => ApplyWidth();
+            return stage;
+        }
 
         private View BuildHorizontalPrecisionMainKeyboard()
         {
@@ -9205,6 +9316,22 @@ namespace GestureSample.Views.Tests
 
                     Preferences.Default.Set(preferenceKey, args.NewValue);
                     widthStatus.Text = $"Preferred {dimensionName} saved ({args.NewValue:0})";
+                };
+            }
+
+            if (!_config.KeyboardConfig.IsPrecisionPinchExercise)
+            {
+                task1View = new Grid
+                {
+                    BackgroundColor = Colors.Black,
+                    HorizontalOptions = LayoutOptions.Fill,
+                    Children = { task1View }
+                };
+                task2View = new Grid
+                {
+                    BackgroundColor = Colors.Black,
+                    HorizontalOptions = LayoutOptions.Fill,
+                    Children = { task2View }
                 };
             }
 
