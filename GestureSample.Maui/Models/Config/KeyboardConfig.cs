@@ -495,6 +495,7 @@
 
         public int KeysInRow { get; set; } = 10;
         public bool AllowKeyWidthAdjustment { get; set; } = false;
+        public int FixedMoveByDistance { get; set; } = 0;
         public bool IsPrecisionPinchExercise { get; set; } = false;
         public bool SupportsGripChildAssistance => IsVerticalPrecisionPinchExercise &&
             !IsPrecisionShiftExercise && !IsPrecisionPinchSequenceMemorize &&
