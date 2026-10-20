@@ -10,7 +10,6 @@ namespace GestureSample.Maui.Models
         private readonly IAudioManager _audioManager;
         private readonly Dictionary<int, IAudioPlayer> _players = new();
         private readonly Dictionary<int, string> _playerFileNames = new();
-        private IAudioPlayer Player = null;
         private int _currentNumber = -1;
         public int Mode { get; set; } = 1; //1-play each, 2-play till stop, 3-change what plays
 
