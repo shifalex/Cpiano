@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Models/PianoKeyboard/Snapshots/RecordedShiftArrow.cs" Link="RecordedShiftArrow.cs" />
+    <Compile Include="../../Models/PianoKeyboard/Core/KeyboardReplayTransitions.cs" Link="KeyboardReplayTransitions.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/GripRetryState.cs" Link="GripRetryState.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/PrecisionGlideMoves.cs" Link="PrecisionGlideMoves.cs" />
     <Compile Include="../../Models/PianoKeyboard/Core/PrecisionGlideMotion.cs" Link="PrecisionGlideMotion.cs" />

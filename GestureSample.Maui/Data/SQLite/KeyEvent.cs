@@ -25,6 +25,10 @@ namespace GestureSample.Maui.Data.SQLite
         public DateTime EventTime { get; set; }
         public double? RelativeX { get; set; }
         public double? RelativeY { get; set; }
+        public string? ContactId { get; set; }
+        public int? FromKeyNumber { get; set; }
+        public long EventSequence { get; set; }
+        public double? ElapsedMs { get; set; }
 
         [Ignore]
         public string EventTypeText => EventType switch
@@ -33,6 +37,7 @@ namespace GestureSample.Maui.Data.SQLite
             1 => "Down",
             2 => "Check",
             3 => "Reset",
+            4 => "Glide",
             _ => EventType.ToString()
         };
 

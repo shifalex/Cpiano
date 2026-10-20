@@ -1348,7 +1348,8 @@ namespace GestureSample.Maui.Models
                 submittedKeyboard,
                 submittedTime,
                 result ? 1 : 0,
-                pianoKeyboard.GetCurrentColors());
+                pianoKeyboard.GetCurrentColors(),
+                BitArrayCorrectAnswer);
 
             if (savedAttempt != null)
                 await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
@@ -4170,8 +4171,10 @@ namespace GestureSample.Maui.Models
                 GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
-                keyboard1 = BitArrayQuestion,
-                keyboard2 = BitArrayQuestion2,
+                keyboard1 = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeFirstPreview() : BitArrayQuestion.ToArray(),
+                keyboard2 = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeSecondPreview() : BitArrayQuestion2?.ToArray() ?? Array.Empty<bool>(),
                 Op = CurrentOperation,
                 dir = dir,
                 KeyboardRows = Config.KeyboardConfig?.Rows ?? 1,
@@ -4181,7 +4184,9 @@ namespace GestureSample.Maui.Models
                 InitialKeyboardState = GetInitialKeyboardState(),
                 InitialKeyboardColors = GetInitialKeyboardColors(),
                 QuestionKeyboardColors = GetQuestionKeyboardColors(),
-                QuestionPromptText = GetKeyboardQuestionPromptText()
+                QuestionPromptText = GetKeyboardQuestionPromptText(),
+                TargetKeyboard = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeSecondPreview() : BitArrayCorrectAnswer?.ToArray()
             };
 
             if (UsesOnKeyboardArrowExercise())
@@ -4199,6 +4204,14 @@ namespace GestureSample.Maui.Models
             {
                 s.MoveByLength = moveByLength;
                 s.MoveByDirection = moveBydir;
+                if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                    s.QuestionArrowsJson = System.Text.Json.JsonSerializer.Serialize(new[] { true, false }
+                        .Select(left => new RecordedShiftArrow
+                        {
+                            LeftSide = left, Delta = GetPrecisionShiftSideDelta(left),
+                            IsVertical = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical,
+                            BaseAtTop = GetPrecisionShiftSideBaseAtTop(left), IsShift = IsPrecisionShiftSideGenericShift(left)
+                        }).Where(arrow => arrow.Delta != 0).ToArray());
             }
 
             await _keyboardQuestionRepository.SaveAsync(s);

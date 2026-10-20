@@ -20,6 +20,7 @@ public partial class ShowDataXamlKeyboard
     {
         var q = item.Question;
         string name = item.IsGripCombinationStage ? "Grip combinations"
+            : q.HasGripQuestionPreview && q.Op == Operation.MoveBy ? "Grip arrows"
             : q.IsSpecialArrowPrompt ? "Complex arrows"
             : q.HasArrowPrompt ? "Arrows"
             : Regex.Replace(q.Op.ToString(), "(?<=[a-z])([A-Z])", " $1");
@@ -55,8 +56,11 @@ public partial class ShowDataXamlKeyboard
     private static string QuestionDescription(MainItem item)
     {
         var q = item.Question;
-        if (q.HasPromptText)
+        if (q.ShowQuestionPromptText)
             return q.QuestionPromptText!.Replace("\r", " ").Replace("\n", " ");
+        if (q.HasGripQuestionPreview)
+            return q.Op == Operation.MoveBy ? "Grip movement"
+                : q.HasVisibleSecondQuestionKeyboard ? "First → Second" : "Grip pattern";
         if (q.HasArrowPrompt)
             return $"Start {q.aboveNumber} · {(q.dir == Direction.Right ? "→" : "←")} {q.length}";
         if (q.HasMoveByPrompt)
