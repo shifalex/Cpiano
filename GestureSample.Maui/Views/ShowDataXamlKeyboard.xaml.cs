@@ -932,13 +932,13 @@ namespace GestureSample.Views
             Question.Op == Operation.Copy &&
             Question.KeyboardKeysInRow == 2 &&
             Question.KeyboardRows > 1;
-        public bool ShowQuestionCode => !IsGripCombinationStage;
-        public bool ShowPpwState => HasPpwState && !IsGripCombinationStage;
+        public bool ShowQuestionCode => Question?.ShowQuestionDetails == true;
+        public bool ShowPpwState => HasPpwState && Question?.ShowQuestionDetails == true;
         public string PpwOpText => Question?.IsSpecialArrowPrompt == true ? Operation.Sum.ToDString() : (PpwState?.Op == Operation.Copy ? string.Empty : PpwState?.OpDString ?? string.Empty);
         public bool HasReplay => SubItems != null && SubItems.Count > 0;
         public bool HasCombinedReplay => CombinedSubItems != null && CombinedSubItems.Count > (SubItems?.Count ?? 0);
         public bool HasTimingSummary => !string.IsNullOrWhiteSpace(TimingSummaryText);
-        public bool HasComplexArrowEquation => !string.IsNullOrWhiteSpace(ComplexArrowEquationText);
+        public bool HasComplexArrowEquation => Question?.ShowQuestionDetails == true && !string.IsNullOrWhiteSpace(ComplexArrowEquationText);
         public string ComplexArrowEquationText => BuildComplexArrowEquationText(Question);
         public string ReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - {Question.AttemptText}";
         public string CombinedReplayTitle => Question == null ? "Replay" : $"Question {Question.QuestionNumber} - All Trials";

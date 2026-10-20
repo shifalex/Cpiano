@@ -42,6 +42,12 @@ namespace GestureSample.Maui.Data.SupaBase
         public int KeyboardKeysInRow { get; set; } = 10;
         public bool ShowNumbersOnKeys { get; set; } = false;
         public string? QuestionPromptText { get; set; }
+        public string? TargetKeyboardJson { get; set; }
+        public string? QuestionArrowsJson { get; set; }
+        public string? QuestionKeyboardColorsJson { get; set; }
+        public string? QuestionKeyboardColorsJson2 { get; set; }
+        public string? SubmittedKeyboardColorsJson { get; set; }
+        public string? InitialKeyboardColorsJson { get; set; }
 
         [NewtonsoftJsonIgnore]
         public Color RowBackgroundColor { get; set; } = Colors.White;

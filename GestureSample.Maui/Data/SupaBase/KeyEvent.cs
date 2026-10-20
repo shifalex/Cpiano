@@ -25,5 +25,9 @@ namespace GestureSample.Maui.Data.SupaBase
         public DateTime EventTime { get; set; }
         public double? RelativeX { get; set; }
         public double? RelativeY { get; set; }
+        public string? ContactId { get; set; }
+        public int? FromKeyNumber { get; set; }
+        public long EventSequence { get; set; }
+        public double? ElapsedMs { get; set; }
     }
 }
