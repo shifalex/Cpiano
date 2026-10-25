@@ -1,4 +1,4 @@
-﻿namespace GestureSample.Maui
+namespace GestureSample.Maui
 {
     public enum GripAnchorHand { Left, Right, Both }
 
@@ -654,6 +654,8 @@
         public GroupByColorLayoutMode GroupByColorLayoutMode { get; set; } = GroupByColorLayoutMode.Free;
         public ArrowLabelExerciseMode ArrowLabelExerciseMode { get; set; } = ArrowLabelExerciseMode.None;
         public int MaxArrowLabelDistance { get; set; } = 0;
+        public CustomArrowQuestionKind[]? CustomArrowQuestionKinds { get; set; }
+        public SpecificArrowQuestion? SpecificArrowQuestion { get; set; }
         public bool EnableArrowLabelRetry { get; set; } = false;
         public ArrowLabelRetryMode ArrowLabelRetryMode { get; set; } = ArrowLabelRetryMode.None;
         public bool UseKeyboardQuestionAfterArrowLabelHelp { get; set; } = false;

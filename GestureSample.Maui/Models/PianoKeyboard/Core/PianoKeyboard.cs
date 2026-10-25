@@ -1262,6 +1262,7 @@ After:
         {
             if (!_pianoConfig.EnableSecondArrowLeftTrace ||
                 _gamePlay is not BitArrayGamePlay bitArrayGamePlay ||
+                bitArrayGamePlay.IsOrdinalArrowTutorial() ||
                 btnKeys == null)
             {
                 return;

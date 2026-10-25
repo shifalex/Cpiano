@@ -116,6 +116,108 @@ public static class AppLanguage
     }
 
     private const string Catalog = """
+Keyboard arrow · variable length|חץ על המקלדת · אורך משתנה|Стрелка на клавиатуре · переменная длина
+Keyboard arrow · fixed length|חץ על המקלדת · אורך קבוע|Стрелка на клавиатуре · фиксированная длина
+Keyboard arrow · ordinal|חץ על המקלדת · Ordinal|Стрелка на клавиатуре · порядковая
+Arrow Label · destination missing|Arrow Label · יעד חסר|Подпись стрелки · неизвестен конец
+Arrow Label · distance missing|Arrow Label · מרחק חסר|Подпись стрелки · неизвестно расстояние
+Arrow Label · start missing|Arrow Label · התחלה חסרה|Подпись стрелки · неизвестно начало
+Ordinal arrow|חץ Ordinal|Порядковая стрелка
+What is missing?|מה חסר בשאלה?|Что неизвестно?
+Destination|יעד|Конечная точка
+Starting point|נקודת התחלה|Начальная точка
+The keyboard always has ten keys. Numbers wrap around modulo ten.|במקלדת תמיד עשרה קלידים. המספרים נעטפים במודולו עשר.|На клавиатуре всегда десять клавиш. Числа переходят по модулю десять.
+For a ten-key keyboard, choose a distance from 1 to 10.|במקלדת של עשרה קלידים בחרו מרחק מ־1 עד 10.|Для клавиатуры из десяти клавиш выберите расстояние от 1 до 10.
+Color trail is turned off for ordinal arrows.|שביל הצבע כבוי בחצי Ordinal.|Цветной след отключён для порядковых стрелок.
+Crossing ten needs a maximum length of at least two.|למעבר דרך עשר נדרש אורך מרבי של לפחות 2.|Для перехода через десять нужна максимальная длина не менее двух.
+Custom arrow - specific question|תרגול חצים — שאלה לחזרה|Стрелки — точное задание
+Custom arrow - mixed practice|תרגול חצים מעורב|Смешанная практика стрелок
+Starting point and crossing ten are available for keyboard arrows.|בחירת נקודת התחלה ומעבר דרך עשר זמינות לחצים על המקלדת.|Выбор начала и переход через десять доступны для стрелок на клавиатуре.
+Custom arrow practice|תרגול חצים מותאם|Своя практика стрелок
+Choose a mix or one exact question|בחירת ערבוב או שאלה מסוימת|Выбрать смесь или точное задание
+Mix the questions you need, or repeat one exact question.|בחרו אילו שאלות לערבב, או חזרו על שאלה מסוימת.|Выберите типы заданий или повторяйте одно точное задание.
+Mix selected question types|ערבוב סוגי שאלות|Смешать выбранные типы
+One specific question|שאלה מסוימת אחת|Одно точное задание
+Question type|סוג השאלה|Тип задания
+Starting key|קליד התחלה|Начальная клавиша
+Destination key|קליד היעד|Конечная клавиша
+Distance|מרחק|Расстояние
+Find the destination|מציאת היעד|Найди конечную точку
+Edit practice|עריכת התרגול|Изменить практику
+This practice repeats the exact question you chose.|התרגול חוזר על השאלה המסוימת שבחרת.|Практика повторяет выбранное точное задание.
+Choose at least one question type.|בחרו לפחות סוג שאלה אחד.|Выберите хотя бы один тип задания.
+Choose a valid question type.|בחרו סוג שאלה תקין.|Выберите допустимый тип задания.
+Choose a maximum length between 1 and 10.|בחרו אורך מרבי בין 1 ל־10.|Выберите максимальную длину от 1 до 10.
+Choose one question type for a specific question.|לשאלה מסוימת יש לבחור סוג שאלה אחד.|Для точного задания выберите один тип.
+Choose two different keys from 1 to 20.|בחרו שני קלידים שונים מ־1 עד 20.|Выберите две разные клавиши от 1 до 20.
+The destination may be to the left or right of the start.|היעד יכול להיות משמאל או מימין לנקודת ההתחלה.|Конечная точка может быть слева или справа от начальной.
+Listening|צליל והקראה|Звук и озвучивание
+Keyboard helpers|עזרי מקלדת|Подсказки клавиатуры
+Arrow movement|תנועת החץ|Движение стрелки
+What would you like to hear?|מה רוצים לשמוע?|Что вы хотите слышать?
+Quiet|ללא צליל|Без звука
+Key sounds|צלילי הקלידים|Звуки клавиш
+Spoken numbers|הקראת מספרים|Озвучивание чисел
+Sounds and numbers|צלילים ומספרים|Звуки и числа
+Color trail|שביל צבע|Цветной след
+Show key numbers|הצגת מספרי הקלידים|Показывать номера клавиш
+The color trail is available in ordinal practice.|שביל הצבע זמין בתרגול Ordinal.|Цветной след доступен в порядковой практике.
+How far can the arrow move?|עד כמה החץ יכול לנוע?|Как далеко может двигаться стрелка?
+Full keyboard|כל המקלדת|Вся клавиатура
+Where should the next arrow start?|מאיפה יתחיל החץ הבא?|Откуда начнётся следующая стрелка?
+Continue from previous answer|המשך מהתשובה הקודמת|Продолжить с предыдущего ответа
+From an edge|מאחד הקצוות|От края
+Crossing ten|מעבר דרך עשר|Переход через десять
+Any movement|ללא הגבלה|Любое движение
+Stay within ten|בתוך העשר|В пределах десятка
+Cross ten|מעבר דרך עשר|Через десять
+Key sound|צליל הקלידים|Звук клавиш
+Off|כבוי|Выключено
+Sound and reading|צליל והקראה|Звук и озвучивание
+Four consecutive successes advance to the next step.|ארבע הצלחות רצופות מעבירות לשלב הבא.|Четыре правильных ответа подряд переводят на следующий шаг.
+Progression or mixed practice|התקדמות או תרגול מעורב|Постепенная или смешанная практика
+Move through the steps at your own pace, or jump straight to mixed practice.|מתקדמים בשלבים בקצב שלך, או עוברים ישר לתרגול מעורב.|Проходите шаги в своём темпе или сразу переходите к смешанной практике.
+Progression|התקדמות|Постепенная практика
+Everything mixed|הכול מעורבב|Всё вперемешку
+Continue progression|המשך במסלול|Продолжить по шагам
+Mixed practice is always available. It does not change your place in the progression.|התרגול המעורב תמיד זמין ואינו משנה את המקום שלך במסלול.|Смешанная практика всегда доступна и не меняет вашу позицию в последовательности.
+Start progression from the beginning|התחלת המסלול מחדש|Начать последовательность сначала
+Continue from|ממשיכים מ־|Продолжить с
+Next step|השלב הבא|Следующий шаг
+Reset to defaults|איפוס לברירות המחדל|Сбросить настройки
+Apply settings to restart the current practice.|החלת ההגדרות תתחיל מחדש את התרגול הנוכחי.|Применение настроек перезапустит текущую практику.
+Arrow practice options|אפשרויות תרגול חצים|Настройки практики стрелок
+Your options are remembered for each stage on this device.|האפשרויות נשמרות לכל שלב במכשיר זה.|Настройки каждого этапа сохраняются на этом устройстве.
+Sound|צליל|Звук
+Read key numbers|הקראת מספרי הקלידים|Озвучивать номера клавиш
+Numbers on keys|מספרים על הקלידים|Номера на клавишах
+Maximum arrow length|אורך חץ מרבי|Максимальная длина стрелки
+No limit|ללא הגבלה|Без ограничения
+Starting position|נקודת התחלה|Начальная позиция
+Continue from last spot|המשך מהנקודה הקודמת|Продолжать с предыдущей позиции
+Only edges|רק בקצוות|Только от краёв
+Random start|התחלה אקראית|Случайное начало
+Ten boundary|גבול העשר|Граница десятка
+None|ללא|Нет
+ToTen|עד עשר|До десяти
+ThroughTen|מעבר דרך עשר|С переходом через десять
+Accumulating color, starting position and ten boundary apply to arrows on the keyboard.|צבע מצטבר, נקודת התחלה וגבול העשר חלים על חצים על המקלדת.|Накопление цвета, начальная позиция и граница десятка применяются к стрелкам на клавиатуре.
+Unable to start practice. Please try again.|לא ניתן להתחיל את התרגול. נסו שוב.|Не удалось начать практику. Попробуйте ещё раз.
+1 · Variable length|1 · אורך משתנה|1 · Переменная длина
+2 · Fixed length|2 · אורך קבוע|2 · Фиксированная длина
+3 · Ordinal|3 · מיקום סודר|3 · Порядковые позиции
+Variable length|אורך משתנה|Переменная длина
+Fixed length|אורך קבוע|Фиксированная длина
+Accumulating color|צבע מצטבר|Накопление цвета
+Count to ten with reading|ספירה עד עשר עם הקראה|Счёт до десяти с озвучиванием
+Count through ten with reading|ספירה מעבר לעשר עם הקראה|Счёт с переходом через десять с озвучиванием
+Ordinal with key numbers|מיקום סודר עם מספרים על הקלידים|Порядковые позиции с номерами клавиш
+Arrow Label|תוויות חצים|Подписи стрелок
+Start and distance|נקודת התחלה ומרחק|Начало и расстояние
+Find the distance|מציאת המרחק|Найди расстояние
+Find the starting point|מציאת נקודת ההתחלה|Найди начальную точку
+Test activities|פעילויות בדיקה|Тестовые упражнения
+More practice|תרגול נוסף|Дополнительная практика
 Segment length|אורך קטע|Длина отрезка
 Hold the correct grip to answer|להחזיק את האחיזה הנכונה כדי לענות|Удерживать правильный хват для ответа
 Grip only: skip watch-then-click|אחיזה בלבד: ללא שלב צפייה והמתנה ללחיצה|Только хват: без ожидания перед нажатием
