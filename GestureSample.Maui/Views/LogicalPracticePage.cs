@@ -21,6 +21,7 @@ public static class LogicalPracticePage
     {
         var page = new ContentPage { Title = AppLanguage.Text(activity + " settings"), BackgroundColor = Color.FromArgb("#F7F8FC") };
         var content = new VerticalStackLayout { Padding = 20, Spacing = 14, MaximumWidthRequest = 720 };
+        content.Add(new StageNavigationSettingsView(activity));
         void Heading(string text) => content.Add(new Label { Text = AppLanguage.Text(text), FontSize = 17, TextColor = Colors.Black });
         Heading("Number of keys");
         var keys = new Picker { ItemsSource = Enumerable.Range(4, 13).Select(n => n.ToString()).ToArray(), SelectedIndex = Math.Clamp(Preferences.Default.Get(key + "keys", 6), 4, 16) - 4 };

@@ -755,6 +755,18 @@ namespace GestureSample.Maui.Models
         public int ArrowLabelSumValue => _arrowLabelEndValue;
         public int ArrowLabelDistanceValue => _arrowLabelDistance;
         public bool ArrowLabelMovesLeft => UsesArrowLabelExercise() && _arrowLabelEndValue < _arrowLabelStartValue;
+        public bool UseRedForArrowTraceKey(int pressedKey)
+        {
+            if (!UsesArrowLabelExercise())
+                return ArrowTracePressColor.UseRed(dir == Direction.Left, aboveNumber, length, pressedKey, Config.OnlyThrougTen);
+
+            bool displayedRtl = ArrowLabelMovesLeft ||
+                (Config.KeyboardConfig.SpecificArrowQuestion == null &&
+                 GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.EndAndLengthWithMissingStart) ||
+                (IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode()) && UsesRtlComplexThroughTenPrompt());
+            return ArrowTracePressColor.UseRedForLabel(displayedRtl,
+                _arrowLabelStartValue, _arrowLabelEndValue, pressedKey, Config.OnlyThrougTen);
+        }
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
         public MissingValueTargetFlags CurrentArrowLabelMissingTarget => GetCurrentArrowLabelMissingTarget();
         public bool UsesRtlComplexPrompt => UsesRtlComplexThroughTenPrompt();
@@ -2316,8 +2328,26 @@ namespace GestureSample.Maui.Models
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
         }
 
+        private XorQuestionPair? _nextXorQuestion;
+
+        public void PreserveNextXorQuestion(bool[] first, bool[] second)
+        {
+            _nextXorQuestion = new(first.ToArray(), second.ToArray());
+        }
+
         private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
         {
+            if (CurrentOperation == Operation.ExclusiveOr && _nextXorQuestion is { } saved)
+            {
+                _nextXorQuestion = null;
+                var pair = Config.XorSingleDifferenceOnly && saved.First.Zip(saved.Second, (a, b) => a != b).Count(different => different) != 1
+                    ? XorSingleDifferenceSequence.Next(r, saved.First.Length, saved.First, saved.Second)
+                    : saved;
+                BitArrayQuestion = pair.First.ToArray();
+                BitArrayQuestion2 = pair.Second.ToArray();
+                BuildCorrectAnswer();
+                return;
+            }
             if (Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true)
             {
                 ResolveSequenceMemorizeQuestion(r);
@@ -3496,6 +3526,16 @@ namespace GestureSample.Maui.Models
         private void GenerateNewQuestion(Random r)
         {
             ResolveCurrentArrowVariant(r);
+
+            if (CurrentOperation == Operation.ExclusiveOr && Config.XorSingleDifferenceOnly)
+            {
+                var pair = XorSingleDifferenceSequence.Next(r, BitArrayQuestion.Length,
+                    _prevBitArrayQuestion, _prevBitArrayQuestion2);
+                BitArrayQuestion = pair.First;
+                BitArrayQuestion2 = pair.Second;
+                BuildCorrectAnswer();
+                return;
+            }
 
             if (UsesArrowLabelExercise())
             {

@@ -8,7 +8,7 @@ public static class CopyPracticePage
     public static Page CreatePractice() => CreatePractice(Operation.Copy);
 
     public static Page CreateMirrorPractice() => CreatePractice(Operation.Mirror);
-    public static Page CreateXorPractice() => CreatePractice(Operation.ExclusiveOr);
+    public static Page CreateXorPractice() => XorPracticePage.CreatePractice();
 
     private static Page CreatePractice(Operation operation)
     {

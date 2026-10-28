@@ -818,6 +818,9 @@ After:
             sender.BackgroundColor = TraceSecondColor;
         }
 
+        protected bool IsActivePressColor(Color color) => color == COLOR_PRESSED ||
+            (_pianoConfig.EnableSecondArrowLeftTrace && color == REMOVE_COLOR);
+
         protected virtual bool InnerKeyDown(MR.Gestures.Button sender)
         {
             if (TryBeginColorDrag(sender))
@@ -880,7 +883,7 @@ After:
             }
             else
             {
-                sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
+                sender.BackgroundColor = IsActivePressColor(sender.BackgroundColor) ? COLOR_FREE : COLOR_PRESSED;
             }
             return false;
         }
@@ -1278,14 +1281,13 @@ After:
                 return;
             }
 
-            bool isRtl = bitArrayGamePlay.dir == Direction.Left;
             Color traceColor = SECOND_ARROW_TRACE_YELLOW;
 
             for (int i = 0; i < pressedKeys.Length; i++)
             {
                 if (pressedKeys[i])
                 {
-                    btnKeys[i].BackgroundColor = isRtl
+                    btnKeys[i].BackgroundColor = bitArrayGamePlay.UseRedForArrowTraceKey(i + 1)
                         ? REMOVE_COLOR
                         : COLOR_PRESSED;
                 }

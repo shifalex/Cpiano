@@ -54,7 +54,8 @@ public partial class MainPage
         Section(right, "Two-keyboard operations", items.Where(item => !assigned.Contains(item)
             && !sequences.Contains(item.Title)
             && !item.Title.StartsWith("Group By Color", StringComparison.Ordinal)
-            && !item.Title.Contains("Experimental", StringComparison.Ordinal)));
+            && !item.Title.Contains("Experimental", StringComparison.Ordinal))
+            .OrderBy(item => item.Title == "XOR" ? 0 : 1));
         Section(right, "Special sequences", items.Where(item => sequences.Contains(item.Title)));
         Section(left, "Experimental", items.Where(item => !assigned.Contains(item)));
         var tracks = new Grid
