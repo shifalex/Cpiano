@@ -10,8 +10,8 @@
             Children.Add(img = new Image { Source = imageFile, WidthRequest = 120, HeightRequest = 120 });
             Children.Add(layout = new StackLayout
             {
-                HorizontalOptions = LayoutOptions.CenterAndExpand,
-                VerticalOptions = LayoutOptions.EndAndExpand,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.End,
                 Padding = new Thickness(0, 0, 0, 15),
                 Children =
                 {

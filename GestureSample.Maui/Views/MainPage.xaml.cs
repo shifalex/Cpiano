@@ -1,36 +1,94 @@
-﻿using GestureSample.Maui;
+using GestureSample.Maui;
 using GestureSample.Views.Tests;
 using GestureSample.Maui.Data;
 using GestureSample.Maui.Handlers;
 using GestureSample.Maui.Views;
+using GestureSample.Maui.Views.CustomStages;
 using GestureSample.Views;
 using GestureSample.Maui.Models;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 namespace GestureSample.Views
 {
     public partial class MainPage
     {
-        private PageConfig[] AllPages = new PageConfig[]
+        public enum AppMode { Piano, PPW, Combined }
+
+        // Configure the menu here. These flags apply to the entire navigation tree.
+        public static AppMode Mode { get; set; } = AppMode.Combined;
+        public static bool AllowTest { get; set; } = true;
+
+        private readonly string _menuKey;
+        private ScrollView? _grippingScroll;
+        private ToolbarItem? _languageToolbar;
+        private readonly List<(Label Label, string Key)> _grippingLabels = new();
+        private InterfaceLanguage? _displayLanguage;
+        private bool _isNavigating;
+        private readonly Dictionary<string, MainPage> _submenus = new();
+        private PageConfig[]? _allPages;
+        private PageConfig[] AllPages => _allPages ??= CreateAllPages();
+
+        // Share definitions within a navigation tree, without sharing mutable titles globally.
+        private static PageConfig[] CreateAllPages() => new PageConfig[]
         {
 
 
 			// main page
-            new PageConfig(null, "->", null, true),
+            new PageConfig(null, "Arrows on Keyboard", null, true),
             new PageConfig(null, "+ -", null),
             new PageConfig(null, "X : ", null),
+            new PageConfig(null, "Weighted Keyboard", null, true),
             new PageConfig(null, "+-X:- mixed advanced ", null),
             new PageConfig(null, "&& ||", null, true),
+            new PageConfig(null, "Gripping", null),
             new PageConfig(null, "Data", null),
 
-            new PageConfig(null, string.Format("Switch User({0})",ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name),  () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig(null, GetUserSettingsTitle(), () => new SwitchUserPage { BindingContext = new ViewModels.MarksViewModel() }),
 
             new PageConfig(null, "Tutorial", null, true),
+            new PageConfig(null, "Custom stages", null),
+
+            new PageConfig("Custom stages", "PPW Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.PPWScheme)),
+            new PageConfig("Custom stages", "Weighted Keyboard Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.WeightedKeyboard)),
+            new PageConfig("Custom stages", "Arrow Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Arrow)),
+            new PageConfig("Custom stages", "Logical Stage Builder", () => new CustomStageEditorPage(GestureSample.Maui.Models.CustomStages.CustomStageKind.Logical)),
+            new PageConfig("Custom stages", "Stage Flows", () => new CustomStageFlowPage()),
+
+            new PageConfig("Gripping", "Copy a grip", () =>
+                new SimpleViewCellsPage(CreatePrecisionCopyConfig("Copy a grip", false, false, false, showGuideLine: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.HandOverKeyboard),
+            new PageConfig("Gripping", "Remember a grip", () =>
+                new SimpleViewCellsPage(CreatePrecisionMemorizeConfig(sequence: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.OneHand),
+            new PageConfig("Gripping", "Remember two grips", () =>
+                new SimpleViewCellsPage(CreateTwoHandCopyMemorizeConfig()), menuSection: "Coordination", menuIcon: GrippingMenuIcon.TwoHands),
+            new PageConfig("Gripping", "Remember grip changes — Easy", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
+                    TwoHandCombinationOptions.Easy, memorizeSeconds: 4, readInstructionAloud: false,
+                    easyStage: true, keepLeftAtBottom: true)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.RightHandMoving),
+            new PageConfig("Gripping", "אורך האחיזה · טסט אנימציה", () => new IntervalAnimationPage(), menuSection: "Coordination", menuIcon: GrippingMenuIcon.HandOverKeyboard, isTest: true),
+            new PageConfig("Gripping", "Remember grip changes — Hard", () =>
+                new SimpleViewCellsPage(CreateTwoHandCombinationMemorizeConfig(
+                    TwoHandCombinationOptions.Hard, memorizeBoth: false)), menuSection: "Coordination", menuIcon: GrippingMenuIcon.ChangingHands),
+
+            new PageConfig("Gripping", "Learn the arrows", () =>
+                new SimpleViewCellsPage(CreatePrecisionSignLearningConfig()), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.ShiftDown),
+            new PageConfig("Gripping", "Arrows from bottom", () =>
+                new SimpleViewCellsPage(CreatePrecisionShiftConfig("Arrows from bottom", true, 3,
+                    PrecisionPinchMoveOptions.All, rows: 7, maxPinchInterval: 5,
+                    continueFromPrevious: false, grammarExercise: true)), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.UpperUpAndDown),
+            new PageConfig("Gripping", "Arrow combinations", () =>
+                new SimpleViewCellsPage(CreateGripTransformationPracticeConfig()), menuSection: "Symbolic", menuIcon: GrippingMenuIcon.UpperUpAndShiftUp),
+
+            new PageConfig("Gripping", "Synchronous process test", () =>
+                new SimpleViewCellsPage(CreateSynchronousProcessTestConfig()), menuSection: "Development", isTest: true),
+            new PageConfig("Gripping", "Arrow design lab", () =>
+                new SimpleViewCellsPage(CreatePrecisionArrowDesignLabConfig()), menuSection: "Development", isTest: true),
 
             //OLD MENU
             //
             //
             new PageConfig(null, "new Keyboard", null),
             new PageConfig(null, "new Number", null),
-            new PageConfig(null, "Bits", null),
+           // new PageConfig(null, "Bits", null),
 
 
             new PageConfig("new Keyboard", "Spatial decomposition required new combinations Blind to 5", () => new SimpleViewCellsPage(new GameConfig
@@ -136,6 +194,50 @@ namespace GestureSample.Views
         }
 
     })),*/
+   new PageConfig("new Number", "decomposition of 10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition of 10",
+        MinAddend = 1, MaxAddend=9, MinSum=10, MaxSum=10, VariableTypes= VariableTypes.OneNoSum,
+
+        NumberOfTasksToWin=20,
+        NumberOfMistakesToLose=3
+    })),
+   new PageConfig("new Number", "decomposition till 10", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "decomposition till 10",
+        MinAddend = 1, MaxAddend=9, MinSum=2, MaxSum=10, VariableTypes= VariableTypes.OneNoSum,
+        RepeatingTimesOfSum=4,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=3
+    })),
+   new PageConfig("new Number", "First Tower", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "First Tower",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 1,
+        MaxAddend = 9,
+        MaxSum=10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.TwoLinesTwoAddends,
+        isLargerAddend1 = true,
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
+    new PageConfig("new Number", "Only through 10 Tower", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Only through 10 Tower",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 1,
+        MaxAddend = 10,
+        MinSum=11,
+        MaxSum=20,
+        isLargerAddend1 = true,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.TwoLinesTwoAddends,
+
+        NumberOfTasksToWin=60,
+        NumberOfMistakesToLose=5
+    })),
     new PageConfig("new Number", "decomposition game Till 10 With keyboard Only Yellow", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "decomposition game Till 10 With keyboard Only Yellow",
@@ -159,14 +261,6 @@ namespace GestureSample.Views
             IsMulticolor = true
         }
     })),
-    new PageConfig("new Number", "Benchmarks", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Benchmarks",
-        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
-        OnlyCloseTriad=true,
-        DefaultTriad= new PPWObject(30, 30, 60),
-        ShowPrev=true
-    })),
      new PageConfig("new Number", "From PPW to keyboard", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "From PPW to keyboard",
@@ -176,7 +270,7 @@ namespace GestureSample.Views
             ImposeEdges =true
         }
     }){
-     
+
      }),
 
      new PageConfig("new Number", "From Keyboard to PPW SYNC", () => new SimpleViewCellsPage(new GameConfig
@@ -262,6 +356,73 @@ namespace GestureSample.Views
             AddendsNum = 3,
             AllowRemoval = true,
             KeyboardOnlyForHelp = true
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW to Keyboard - Add Missing Part", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW to Keyboard - Add Missing Part",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartPressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.AddSecondColor
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW to Keyboard - Remove From Whole", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW to Keyboard - Remove From Whole",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.WholePressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.RemoveWithRed
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW Help - Move Colored Parts", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW Help - Move Colored Parts",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.SumOnly,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeyboardOnlyForHelp = true,
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartsColored,
+            EnableColorDrag = true
+        }
+    })),
+
+    new PageConfig("new Keyboard", "PPW Help - Add And Move Missing Part", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "PPW Help - Add And Move Missing Part",
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneNoSum,
+        UIQuestionType = UIQuestionType.ThreeTexts,
+        KeyboardConfig = new KeyboardConfig
+        {
+            KeyboardOnlyForHelp = true,
+            PpwKeyboardSeedMode = PpwKeyboardSeedMode.VisiblePartPressed,
+            ColorInteractionMode = KeyboardColorInteractionMode.AddSecondColor,
+            EnableColorDrag = true
         }
     })),
 
@@ -364,264 +525,91 @@ namespace GestureSample.Views
 
 
 
-            new PageConfig("&& ||", "One operation", null),
-            new PageConfig("One operation", "Copy - One hand - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Copy -one hand",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.Copy },
-        OnlyToTen = true,
-        IsOnlyOneHand = true,
-        IncludeTutorials = true,
-        
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Copy - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Copy",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.Copy },
-        IncludeTutorials = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-    new PageConfig("One operation", "Shift by - One hand - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by - One hand",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        IsOnlyOneHand = true,
-        IncludeTutorials = true,
-        isOnlyKeyboard = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
 
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Shift by - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
+
+    new PageConfig("&& ||", "Copy", () => CopyPracticePage.CreatePractice()),
+    new PageConfig("&& ||", "Shift by", () => LogicalPracticePage.CreateShift()),
+    new PageConfig("&& ||", "Group To Side", () => LogicalPracticePage.CreateGroup()),
+    new PageConfig("&& ||", "Mixed", () => LogicalPracticePage.CreateMixed()),
+    new PageConfig("&& ||", "Group By Color", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Shift by",
+        GameName = "Group by color",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        isOnlySequence = false,
-        IncludeTutorials = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            
-            KeysInRow = 6
-        }
-    })),
-        
-    new PageConfig("One operation", "Group To Side - TUTORAIL SPECIAL!!!", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Group to side",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
+        OperationList = new() { Operation.GroupByColor },
         isOnlySequence = false,
         OnlyToTen = true,
-        IncludeTutorials = true,
-        isOnlyKeyboard = true,
+        MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-    new PageConfig("One operation", "Copy - One hand", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Copy -one hand",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.Copy },
-        OnlyToTen = true,
-        IsOnlyOneHand = true,
-        isOnlyKeyboard = true,
-
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Copy", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Copy",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.Copy },
-        isOnlyKeyboard = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-    new PageConfig("One operation", "Shift by - One Finger", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by -  - One Finger",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        IsOnlyOneHand = true,
-        isOnlyKeyboard = true,
-        MaxSum =1,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Shift by - Two Fingers", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by - Two Fingers",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        isOnlySequence = false,
-        isOnlyKeyboard = true,
-        MinSum=2,
-        MaxSum=2,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Shift by - Structure", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by - Structure",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        isOnlySequence = false,
-        isOnlyKeyboard = true,
-        MinSum=3,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
-            KeysInRow = 8
-        }
-    })),
-
-    new PageConfig("One operation", "Group To Side", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Group to side",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
-        isOnlySequence = false,
-        OnlyToTen = true,
-        MinSum =2,
-        isOnlyKeyboard = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-    new PageConfig("One operation", "Shift by - One Finger - FAR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by - One hand",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        IsOnlyOneHand = true,
-        MaxSum =1,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Shift by - Two Fingers - FAR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        isOnlySequence = false,
-        MinSum=2,
-        MaxSum=2,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Shift by - Structure - FAR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Shift by",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.MoveBy },
-        OnlyToTen = true,
-        isOnlySequence = false,
-        MinSum=2,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            GroupByColorAllowSameSideTargets = true,
             KeysInRow = 6
         }
     })),
 
-    new PageConfig("One operation", "Group To Side - FAR", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("&& ||", "Group By Color - Commutativity", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Group to side",
+        GameName = "Group by color - commutativity",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() {Operation.SequenceLTR, Operation.SequenceRTL, Operation.Split },
-        isOnlySequence = false,
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
         OnlyToTen = true,
-        MinSum =2,
+        MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            ImposeEdges = true,
+            GroupByColorLayoutMode = GroupByColorLayoutMode.CommutativityEdges
         }
     })),
 
-             new PageConfig("One operation", "Mirror - one hand", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("&& ||", "Group By Color - Associativity", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Mirror - one hand",
+        GameName = "Group by color - associativity",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() { Operation.Mirror },
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
         OnlyToTen = true,
-        IsOnlyOneHand = true,
-        isOnlyKeyboard = true,
+        MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            ImposeEdges = true,
+            GroupByColorColorCount = 3,
+            GroupByColorCounts = new[] { 3, 2, 2 },
+            GroupByColorLayoutMode = GroupByColorLayoutMode.AssociativityEdges
         }
     })),
 
-        new PageConfig("One operation", "Mirror", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("&& ||", "Group By Color - 3 colors", () => new SimpleViewCellsPage(new GameConfig
     {
-        GameName = "Mirror",
+        GameName = "Group by color - 3 colors",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = new() { Operation.Mirror },
+        OperationList = new() { Operation.GroupByColor },
+        isOnlySequence = true,
         OnlyToTen = true,
-        isOnlyKeyboard = true,
+        MinSum = 2,
         KeyboardConfig = new KeyboardConfig
         {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
+            SyncType = SyncType.None,
+            IsHelpNeeded = true,
+            IsMulticolor = true,
+            KeysInRow = 10,
+            GroupByColorColorCount = 3,
+            GroupByColorAllowSameSideTargets = true
         }
     })),
-        new PageConfig("One operation", "Quantity", () => new SimpleViewCellsPage(new GameConfig
+
+    new PageConfig("&& ||", "Mirror", () => CopyPracticePage.CreateMirrorPractice()),
+        new PageConfig("&& ||", "Quantity", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Quantity",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -633,7 +621,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Not", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("&& ||", "Not", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -642,10 +630,11 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Copy-Not", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("&& ||", "Copy-Not", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Copy-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -664,10 +653,11 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            IsHelpNeeded = true,
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Not-Not", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("&& ||", "Not-Not", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Not-Not",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -679,7 +669,8 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
-            
+            IsHelpNeeded = true,
+
             KeysInRow = 6
         },
          Plan = new ExercisePlan
@@ -697,7 +688,7 @@ namespace GestureSample.Views
     Loop = true
         }
     })),
-              new PageConfig("One operation", "Mirror-Mirror", () => new SimpleViewCellsPage(new GameConfig
+              new PageConfig("&& ||", "Mirror-Mirror", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Mirror-Mirror",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -710,6 +701,7 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
             SecondsPressingToAnswer=1,
+            IsHelpNeeded = true,
             KeysInRow = 6
         },
          Plan = new ExercisePlan
@@ -728,7 +720,29 @@ namespace GestureSample.Views
         }
     })),
 
-            new PageConfig("One operation", "And", () => new SimpleViewCellsPage(new GameConfig
+            new PageConfig("&& ||", "Dyslexia - Mirror or Shift by 4", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Dyslexia - Mirror or Shift by 4",
+        UIQuestionType = UIQuestionType.LogicalKeyboards,
+        OperationList = new() { Operation.Mirror, Operation.MoveBy },
+        isOnlyKeyboard = true,
+        IsOnlyOneHand = true,
+        OnlyToTen = true,
+        MinSum = 2,
+        MaxSum = 3,
+        SecondsTillNextExercise = 1,
+        SecondsTillAllowInput = 0,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer = 1,
+            IsHelpNeeded = true,
+            KeysInRow = 8,
+            FixedMoveByDistance = 4
+        }
+    })),
+
+            new PageConfig("&& ||", "And", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "And",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -742,7 +756,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "Or", () => new SimpleViewCellsPage(new GameConfig
+             new PageConfig("&& ||", "Or", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Or",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -755,7 +769,7 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-              new PageConfig("One operation", "Sum", () => new SimpleViewCellsPage(new GameConfig
+              new PageConfig("&& ||", "Sum", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Sum",
         UIQuestionType = UIQuestionType.LogicalKeyboards,
@@ -768,111 +782,26 @@ namespace GestureSample.Views
             KeysInRow = 6
         }
     })),
-             new PageConfig("One operation", "XOR Special colors", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "XOR",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.ExclusiveOr },
-        OnlyToTen = true,
-        TwoKeybordsOnOne = true,
-        IsSpecialColor = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-              new PageConfig("One operation", "XOR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "XOR",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.ExclusiveOr },
-        OnlyToTen = true,
-        TwoKeybordsOnOne = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Or-And-XOR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Or-And-XOR",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.ExclusiveOr },
-        OnlyToTen = true,
-        DenyStrangeOrSameGroups = true,
-        TwoKeybordsOnOne = true,
-        SecondsTillNextExercise = 1,
-        SecondsTillAllowInput =0,
-        Plan = new ExercisePlan
-{
-    Seed = 123, // optional
-    Steps = new()
-    {
-        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.ExclusiveOr, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
-    },
-    Loop = true
-},
+             new PageConfig("&& ||", "XOR", () => CopyPracticePage.CreateXorPractice()),
+             new PageConfig("&& ||", "Or-And-XOR", () => OrAndXorPracticePage.CreatePractice()),
 
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            SecondsPressingToAnswer=1,
-            KeysInRow = 6
-        }
-    })),
-
-              new PageConfig("One operation", "XOR - FAR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "XOR",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.ExclusiveOr },
-        OnlyToTen = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-             new PageConfig("One operation", "Or-And-Neutralise - FAR", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Or-And-Neutralise",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList =new()  {Operation.ExclusiveOr },
-        OnlyToTen = true,
-        DenyStrangeOrSameGroups = true,
-        Plan = new ExercisePlan
-{
-    Seed = 123, // optional
-    Steps = new()
-    {
-        new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.Or,  UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.And, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain },
-        new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, OpMode = PlanOpMode.Fixed, Operation = Operation.ExclusiveOr, UseSecondOperandFromPermutation = true, PermutationPolicy = PermutationPolicy.ConstantForChain }
-    },
-    Loop = true
-},
-
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            KeysInRow = 6
-        }
-    })),
-
-            new PageConfig("Data", "Show Data",  () => new ShowDataXaml { BindingContext = new ViewModels.MarksViewModel() }),
+            new PageConfig("Data", "Show Data",  () =>
+            {
+                var activeUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
+                Page page = activeUser?.IsTeacher == true || activeUser?.Name == "Alex"
+                    ? new ShowDataXaml(true)
+                    : new ShowDataChooserPage();
+                page.BindingContext = new ViewModels.MarksViewModel();
+                return page;
+            }),
             //new PageConfig("Data", "Show Data Teacher",  () => new ShowDataXaml(true) { BindingContext = new ViewModels.MarksViewModel() }),
-            new PageConfig("Data", "Show Data Keyboard",  () => new ShowDataXamlKeyboard { BindingContext = new ViewModels.MarksViewModel() }, true),
             new PageConfig("Data", "Show Personal Record",  () => new RecordsUser { BindingContext = new ViewModels.MarksViewModel() }),
 
             // Views
 
             #region Tutorial
-            
-  
+
+
     new PageConfig("Tutorial", "one number small async", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number small async",
@@ -939,12 +868,12 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-
-            TextBoxesQuantity = 1
+            TextBoxesQuantity = 1,
+            AllowSumHeaderVisibilityToggle = true
         }
     })),
 
-    new PageConfig("Tutorial", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Weighted Keyboard", "Weighted one number Abacus", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "one number",
         UIQuestionType = UIQuestionType.OneText,
@@ -953,13 +882,47 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
-            TextBoxesQuantity = 1,
+            SecondsPressingToAnswer=-2,
             WeightsArray = new[] { 10,10,10,10,50, 5, 1, 1,1,1 },
-            ShowNumbersOnKeys = true
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle,
+            AllowSumHeaderVisibilityToggle = true
         }
     })),
 
-    new PageConfig("Tutorial", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Weighted Keyboard", "Weighted Till 150", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "one number",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =150, MaxAddend=140,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            SecondsPressingToAnswer=-2,
+            WeightsArray = new[] { 1,2,2,5,20,20,50,50 },
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle,
+            AllowSumHeaderVisibilityToggle = true
+        }
+    })),
+     new PageConfig("Weighted Keyboard", "Weighted one number binary bit array -EASY", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted one number binary bit array",
+        UIQuestionType = UIQuestionType.OneText,
+        MaxSum =35, MaxAddend=32,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            TextBoxesQuantity = 1,
+            WeightsArray = new[] { 1, 2, 4,8,16, 32 },
+            SecondsPressingToAnswer=-1,
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle
+        }
+    })),
+    new PageConfig("Weighted Keyboard", "Weighted one number binary bit array", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Weighted one number binary bit array",
         UIQuestionType = UIQuestionType.OneText,
@@ -968,9 +931,60 @@ namespace GestureSample.Views
         {
             SyncType = SyncType.Sync,
 
+            WeightsArray = new[] { 1, 2, 4,8,16,32,64,128,256,512 },
+            SecondsPressingToAnswer=-2,
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle
+        }
+    })),
+      new PageConfig("Weighted Keyboard", "Weighted Multiplication -EASY", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted Multiplication",
+        UIQuestionType = UIQuestionType.OneText,
+        MinAddend = 2,
+        MaxAddend = 10,
+        MinAddend2 = 2,
+        MaxAddend2 = 5,
+        MinSum = 4,
+        MaxSum = 25,
+        OperationList = new() { Operation.Multiplication },
+        DefaultTriad = new PPWObject(2, 2, 4),
+        VariableTypes = VariableTypes.TwoNoSum,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
             TextBoxesQuantity = 1,
-            WeightsArray = new[] { 512,256,128,64,32, 1, 2, 4,8,16 },
-            ShowNumbersOnKeys = true
+            SecondsPressingToAnswer=-1,
+            WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
+            UseDynamicMultiplicationWeights = true,
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle
+        }
+    })),
+
+    new PageConfig("Weighted Keyboard", "Weighted Multiplication", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Weighted Multiplication",
+        UIQuestionType = UIQuestionType.OneText,
+        MinAddend = 2,
+        MaxAddend = 10,
+        MinAddend2 = 2,
+        MaxAddend2 = 10,
+        MinSum = 4,
+        MaxSum = 100,
+        OperationList = new() { Operation.Multiplication },
+        DefaultTriad = new PPWObject(2, 2, 4),
+        VariableTypes = VariableTypes.TwoNoSum,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+
+            SecondsPressingToAnswer=-1,
+            WeightsArray = new[] { 2,2,2,2,2, 2,2,2,2,2 },
+            UseDynamicMultiplicationWeights = true,
+            ShowNumbersOnKeys = true,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Middle
         }
     })),
 
@@ -999,21 +1013,7 @@ namespace GestureSample.Views
             IsArrowLengthDynamic = true
         }
     })),
-    new PageConfig("Tutorial", "First ->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "First ->",
-         UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.BackAndForth,
-        MaxAddend=5,
-        MaxSum=10,
-        OnlyToTen=true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            SecondsPressingToAnswer  = 5,
-            IsArrow = true
-        }
-    })),
+
     new PageConfig("Tutorial", "Till 10 ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Till 10 ->",
@@ -1046,23 +1046,7 @@ namespace GestureSample.Views
             ShowNumbersOnKeys = true
         }
     })),
-    new PageConfig("Tutorial", "Till 10 -> With Voice", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Till 10 -> With Voice",
-         UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.BackAndForth,
-        MaxAddend=9,
-        MaxSum=10,
-        OnlyToTen=true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            SecondsPressingToAnswer  = 3,
-            IsArrow = true,
-            IsVoice = true,
-            ShowNumbersOnKeys = true
-        }
-    })),
+
     new PageConfig("Tutorial", "One hand practice Edges ->", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "One hand practice ->",
@@ -1152,7 +1136,8 @@ namespace GestureSample.Views
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true
+            IsArrow = true,
+            UsePermutationTraceColors = true
         }
     })),
     new PageConfig("Tutorial", "+- Till 20 with sync keyboard help", () => new SimpleViewCellsPage(new GameConfig
@@ -1168,298 +1153,437 @@ namespace GestureSample.Views
             #endregion
 
             #region Arrow
-            new PageConfig("->", "Ordinal With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("Arrows on Keyboard", "First -> variable length", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "First -> variable length",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=5,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
+            MaxArrowLabelDistance = 4,
+            IsArrow = true,
+            IsArrowLengthDynamic = true,
+            EnableSecondArrowLeftTrace = true
+        }
+    })),
+    new PageConfig("Arrows on Keyboard", "First ->", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "First ->",
+         UIQuestionType=UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.BackAndForth,
+        MaxAddend=5,
+        MaxSum=10,
+        OnlyToTen=true,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            SecondsPressingToAnswer  = 5,
+            MaxArrowLabelDistance = 3,
+            IsArrow = true,
+            IsArrowLengthDynamic = false,
+            EnableSecondArrowLeftTrace = true
+        }
+    })),
+
+            new PageConfig("Arrows on Keyboard", "Ordinal With Key Numbers", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
     {
         GameName = "Arrow Sync one number Ordinal With Key Numbers",
          UIQuestionType=UIQuestionType.OnlyKeyboard,
+        MaxAddend = 9,
+        MaxSum = 20,
         KeyboardConfig = new KeyboardConfig
         {
             SyncType = SyncType.Sync,
-            IsArrow = true,
-            //ShowNumbersOnKeys = true,
-            ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=2
-        }
-    })),
-
-    /*new PageConfig("->", "Cyclical Right With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
-    {
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalRight,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            ShowNumbersOnKeys = true
-        }
-    })),*/
-    
-    new PageConfig("->", "Cyclical->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Cyclical Right",
-         UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalRight,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true
-        }
-    })),
-    /*new PageConfig("->", "Cyclical Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
-    {
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            ShowNumbersOnKeys = true
-        }
-    })),*/
-    new PageConfig("->", "<-Cyclical", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Cyclical Left",
-         UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true
-        }
-    })),
-    /*new PageConfig("->", "Cyclical Mixed With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
-    {
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalMixed,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            ShowNumbersOnKeys = true
-        }
-    })),*/
-    new PageConfig("->", "<-Cyclical->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Cyclical Mixed",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalMixed,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer=3
-        }
-    })),
-    new PageConfig("->", "Cyclical Mixed Ordinal", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Cyclical Mixed Ordinal",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.CyclicalMixed,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            //ShowNumbersOnKeys = true,
-            ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=2
-        }
-    })),
-
-    new PageConfig("->", "<-Only through-> EASY LONG", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> EASY LONG",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11, MinAddend=5, MinAddend2 =1, MaxAddend2=9,
-        MaxSum=15,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 4,
-            IsArrowLengthDynamic = true
-        }
-    })),
-    new PageConfig("->", "<-Only through-> EASY", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> EASY",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11, MinAddend=5, MinAddend2 =1, MaxAddend2=9,
-        MaxSum=15,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 4
-        }
-    })),
-    new PageConfig("->", "<-Only through-> HARD LONG", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> HARD LONG",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=16,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 4,
-            IsArrowLengthDynamic = true
-        }
-    })),
-     new PageConfig("->", "<-Only through-> HARD", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> HARD",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=16,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 4
-        }
-    })),
-    new PageConfig("->", "<-Only through->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through->",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = 2
-        }
-    })),
-
-    new PageConfig("->", "FURIOUS build up", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "FURIOUS build up",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,
-        MaxSum=15,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = -2
-        }
-    })),
-    new PageConfig("->", "<-Only through-> FAST", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> FAST",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = -4
-        }
-    })),
-    new PageConfig("->", "<-Only through-> FURIOUS", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "<-Only through-> FURIOUS",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.Random,
-        OnlyThrougTen = true,
-        MaxAddend = 10,MinSum=11,
-        MaxSum=20,
-        KeyboardConfig = new KeyboardConfig
-        {
-
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            SecondsPressingToAnswer = -2
-        }
-    })),
-    /*new PageConfig("->", "From Left With Key Numbers", () => new SimpleViewCellsPage(new GameConfig
-    {
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.FromLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            ShowNumbersOnKeys = true
-        }
-    })),*/
-    new PageConfig("->", "-> ->", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "From Left",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.FromLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true
-        }
-    })),
-    new PageConfig("->", "<- <-", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName =  "To Left",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.ToLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true
-        }
-    })),
-    new PageConfig("->", "From Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "From Left Ordinal",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.FromLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
-            IsArrow = true,
-            ShowNumbersOnKeys = true,
-            ArrowType=ArrowType.Rounded
-        }
-    })),
-    new PageConfig("->", "To Left Ordinal", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "To Left Ordinal",
-        UIQuestionType=UIQuestionType.OnlyKeyboard,
-        QuestionOrder = QuestionOrder.ToLeft,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync,
+            MaxArrowLabelDistance = 4,
             IsArrow = true,
             ShowNumbersOnKeys = true,
             ArrowType=ArrowType.Rounded,
-            SecondsPressingToAnswer=1
-        } 
+            SecondsPressingToAnswer=2,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
     })),
+    new PageConfig("Arrows on Keyboard", "Experimental Arrow Vocabulary", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Experimental Arrow Vocabulary",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        QuestionOrder = QuestionOrder.FromLeft,
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 1,
+        MaxSum = 10,
+        OnlyToTen = true,
+        IncludeTutorials = true,
+        NumberOfTasksToWin = 20,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            IsArrow = true,
+            IsArrowLengthDynamic = true,
+            ShowNumbersOnKeys = true,
+            SecondsPressingToAnswer = 2,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowMovementModes = ArrowMovementModeFlags.All,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label", () => ArrowLabelPathPage.CreatePractice()),
+    new PageConfig("Arrows on Keyboard", "Custom arrow practice", () => new CustomArrowPracticePage()),
+    /*
+    new PageConfig("Arrows on Keyboard", "Arrow Label - ordinal", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - ordinal",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            ShowNumbersOnKeys = true,
+            SecondsPressingToAnswer = 2,
+            ArrowType = ArrowType.Rounded,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.OrdinalStartAndLength,
+            MaxArrowLabelDistance = 4,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - distance numpad", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - distance numpad",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),*/
+
+    new PageConfig("Arrows on Keyboard", "Arrow Label - distance numpad retry EASY", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - distance numpad retry EASY",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            ShowNumbersOnKeys = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 4,
+            EnableArrowLabelRetry = true,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.ShowKeyboardHelp,
+            UseKeyboardQuestionAfterArrowLabelHelp = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend1 | MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - distance numpad retry", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - distance numpad retry",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            ShowNumbersOnKeys = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 0,
+            EnableArrowLabelRetry = true,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.ShowKeyboardHelp,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend1 | MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - mixed missing distance and end", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - mixed missing distance and end",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - mixed missing distance and end piano", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - mixed missing distance and end piano",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 10,
+        OnlyThrougTen = true,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            KeysInRow = 10,
+            WithoutZero = true,
+            ShowNumbersOnKeys = false,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.StartAndLength,
+            MaxArrowLabelDistance = 4,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.OnKeyboard | ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.Addend2 | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - complex through 10", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - complex through 10",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 20,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 2,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToNextTen,
+            MaxArrowLabelDistance = 9,
+            UseFixedComplexMiddle = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - complex through 10 retry", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - complex through 10 retry",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 20,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 2,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToNextTen,
+            MaxArrowLabelDistance = 9,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.RevealComplexThroughTen,
+            UseFixedComplexMiddle = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - rtl complex through 10 retry", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - rtl complex through 10 retry",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 20,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 2,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToNextTen,
+            MaxArrowLabelDistance = 9,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.RevealComplexThroughTen,
+            UseFixedComplexMiddle = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Addend1,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - complex close tens numpad", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - complex close tens numpad",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 90,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 9,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen,
+            MaxArrowLabelDistance = 9,
+            AllowRtlComplexPrompts = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - complex close tens numpad retry", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - complex close tens numpad retry",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 1,
+        MaxSum = 90,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 9,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen,
+            MaxArrowLabelDistance = 9,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.RevealComplexThroughTen,
+            AllowRtlComplexPrompts = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
+    new PageConfig("Arrows on Keyboard", "Arrow Label - 2 digit complex retry", () => ArrowPracticeOptionsPage.CreatePracticePage(new GameConfig
+    {
+        GameName = "Arrow Label - 2 digit complex retry",
+        UIQuestionType = UIQuestionType.OnlyKeyboard,
+        OperationList = new() { Operation.Copy },
+        MinSum = 10,
+        MaxSum = 90,
+        NumberOfTasksToWin = -1,
+        NumberOfMistakesToLose = -1,
+        HideCheckAndNextButtons = true,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        KeyboardConfig = new KeyboardConfig
+        {
+            SyncType = SyncType.Sync,
+            Rows = 9,
+            KeysInRow = 10,
+            WithoutZero = true,
+            KeyboardOnlyForHelp = true,
+            HideMainKeyboard = true,
+            SecondsPressingToAnswer = 2,
+            ArrowLabelExerciseMode = ArrowLabelExerciseMode.ComplexBridgeToAnyNextTen,
+            MaxArrowLabelDistance = 89,
+            ArrowLabelRetryMode = ArrowLabelRetryMode.RevealComplexThroughTen,
+            AllowLearnerChosenComplexMiddle = true,
+            AllowedArrowPromptKinds = ArrowPromptKindFlags.SpecialPrompt,
+            AllowedArrowRouteKinds = ArrowRouteKindFlags.Cardinal,
+            SpecialArrowMissingTargets = MissingValueTargetFlags.TotalDistance | MissingValueTargetFlags.Sum,
+            ArrowFeedbackMode = ArrowFeedbackMode.CorrectResponse,
+            KeyLabelVerticalPosition = KeyLabelVerticalPosition.Top
+        }
+    }), isTest: true),
             #endregion
 
             #region Logic
-            new PageConfig("&& ||", "Sync Hand To Keyboard", () => new SimpleViewCellsPage(new GameConfig
+            new PageConfig("&& ||", "Sync Hand To Keyboard (Experimental)", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Sync Hand To Keyboard",
         UIQuestionType = UIQuestionType.CanvasesHands,
@@ -1472,35 +1596,27 @@ namespace GestureSample.Views
         }
     })),
 
-    new PageConfig("&& ||", "Sync Keyboard To Keyboard", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Sync Keyboard To Keyboard",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = GameConfig.Operations.BitArray,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync
-        }
-    })),
-    new PageConfig("&& ||", "Logic", () => new SimpleViewCellsPage(new GameConfig
-    {
-        GameName = "Logic",
-        UIQuestionType = UIQuestionType.LogicalKeyboards,
-        OperationList = GameConfig.Operations.Logical.Concat(GameConfig.Operations.BitArray).ToList(),
-        OnlyToTen = true,
-        KeyboardConfig = new KeyboardConfig
-        {
-            SyncType = SyncType.Sync
-        }
-    })),
-
-
-
+    new PageConfig("&& ||", "Mixed two keyboards", () => LogicalPracticePage.CreateTwoKeyboardMixed()),
 
             #endregion
 
             #region +-
-        
+
+    new PageConfig("+ -", "Level 0   - +-1", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 0",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 0,
+        MaxAddend = 9,
+        MinAddend2 = 0,
+        MaxAddend2 = 1,
+        MaxSum=10,
+        isLargerAddend1 = true,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 2,
+        NumberOfTasksToWin=40,
+        NumberOfMistakesToLose=5
+    })),    
     new PageConfig("+ -", "Level 1   - Sum<10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 1",
@@ -1508,10 +1624,45 @@ namespace GestureSample.Views
         MinAddend = 2,
         MaxAddend = 9,
         MaxSum=10,
+        NumericInputMode = NumericInputMode.ChoiceKeyboard,
         VariableTypes = VariableTypes.OneCanBeSum,
-        RepeatingTimesOfTriad = 3,
+        RepeatingTimesOfTriad = 4,
+        UseDistortedVariantInRepeatSequence = true,
         NumberOfTasksToWin=60,
         NumberOfMistakesToLose=5
+    })),
+    new PageConfig("+ -", "Level 1N - Sum minus larger addend", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 1N - Sum minus larger addend",
+        OperationList = new() { Operation.Sum },
+        MinAddend = -8,
+        MaxAddend = 9,
+        MinSum = 1,
+        MaxSum = 10,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 2,
+        UseSumMinusLargerAddendRepeatSequence = true,
+        NumberOfTasksToWin = 40,
+        NumberOfMistakesToLose = 5
+    })),
+    new PageConfig("+ -", "Level 1M - Minus missing result", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 1M - Minus missing result",
+        UIQuestionType = UIQuestionType.SimpleEquation,
+        OperationList = new() { Operation.Minus },
+        MinAddend = 0,
+        MaxAddend = 10,
+        MinAddend2 = -10,
+        MaxAddend2 = 10,
+        MinSum = 0,
+        MaxSum = 10,
+        HiddenValueCount = 1,
+        AllowedMissingValueTargets = MissingValueTargetFlags.Addend2,
+        NumericInputMode = NumericInputMode.AppKeypad,
+        EnforceOperationLabel = true,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5
     })),
      new PageConfig("+ -", "Level 1.1 - No repetition", () => new SimpleViewCellsPage(new GameConfig
     {
@@ -1549,6 +1700,7 @@ namespace GestureSample.Views
         NumberOfTasksToWin=40,
         NumberOfMistakesToLose=5
     })),
+
     new PageConfig("+ -", "Level 2.2 - Only through 10, Helping Lines Through 10", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 2.2",
@@ -1557,6 +1709,7 @@ namespace GestureSample.Views
         MaxAddend = 9,
         MaxSum=20,
         OnlyThrougTen = true,
+        isLargerAddend1 = true,
         VariableTypes = VariableTypes.OneCanBeSum,
         isHelpThroughTen = true,
         RepeatingTimesOfTriad = 1,
@@ -1589,6 +1742,46 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
+
+    new PageConfig("+ -", "Level 2.5 - Equation rules", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 2.5",
+        UIQuestionType = UIQuestionType.SimpleEquation,
+        OperationList = new() { Operation.Sum, Operation.Minus },
+        MinAddend = 1,
+        MaxAddend = 9,
+        MinSum = 2,
+        MaxSum = 10,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        EnforceOperationLabel = true,
+        NumberOfTasksToWin = 30,
+        NumberOfMistakesToLose = 5,
+        Plan = new ExercisePlan
+        {
+            Steps = new()
+            {
+                new ExercisePlanStep { Kind = PlanStepKind.NewQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Sum, OpMode = PlanOpMode.Fixed },
+                new ExercisePlanStep { Kind = PlanStepKind.RepeatQuestion, Operation = Operation.Minus, OpMode = PlanOpMode.Fixed }
+            },
+            Loop = true
+        }
+    })),
+
+    new PageConfig("+ -", "Level 2.5 - till 20 - three addends", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 2.5",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 2,
+        MaxAddend = 19,
+        MaxSum=20,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        UIQuestionType = UIQuestionType.ThreeAddends,
+        RepeatingTimesOfTriad = 1,
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
+    })),
+
     new PageConfig("+ -", "Level 3   - BIG+small, Only through, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3",
@@ -1620,7 +1813,16 @@ namespace GestureSample.Views
         NumberOfTasksToWin=30,
         NumberOfMistakesToLose=4
     })),
-    new PageConfig("+ -", "Level 3.2 - Sum<100, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
+
+    new PageConfig("new Number", "Level 3.2 - Benchmarks", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 3.2",
+        MinAddend = 1, MaxAddend=40, MaxSum=90, VariableTypes= VariableTypes.OneCanBeSum,
+        OnlyCloseTriad=true,
+        DefaultTriad= new PPWObject(30, 30, 60),
+        ShowPrev=true
+    })),
+    new PageConfig("+ -", "Level 3.3 - Sum<100, Helping text boxes", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.2",
         MaxAddend=100, 
@@ -1642,11 +1844,25 @@ namespace GestureSample.Views
         NumberOfTasksToWin=20,
         NumberOfMistakesToLose=3
     })),*/
-    new PageConfig("+ -", "Level 3.3 - free practice", () => new SimpleViewCellsPage(new GameConfig
+    new PageConfig("+ -", "Level 3.3 - Only through till 100", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Level 3.3",
+        OperationList = new() { Operation.Sum},
+        MinAddend = 12,
+        MaxAddend = 89,
+        MinAddend2 = 2,
+        MaxAddend2 = 89,
+        MaxSum=100,
+        OnlyThrougTen = true,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        RepeatingTimesOfTriad = 1,
+        NumberOfTasksToWin=30,
+        NumberOfMistakesToLose=4
+    })),
+    new PageConfig("+ -", "Level 3.4 - free practice", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName = "Level 3.4",
-        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum, isHelpEntries=false,
-        OnlyThrougTen = true
+        MaxAddend=100, MaxSum=100, VariableTypes= VariableTypes.OneCanBeSum
     })),
 
     new PageConfig("+ -", "Level 4   - Sum<200", () => new SimpleViewCellsPage(new GameConfig
@@ -1752,6 +1968,21 @@ namespace GestureSample.Views
         NumberOfMistakesToLose=3,
         EnforceOperationLabel=true
     })),
+    new PageConfig("X : ", "Benchmarks", () => new SimpleViewCellsPage(new GameConfig
+    {
+        GameName = "Multiplication Benchmarks",
+        OperationList = new() { Operation.Multiplication },
+        MinAddend = 2,
+        MaxAddend = 12,
+        MaxAddend2 = 12,
+        MinSum = 4,
+        MaxSum = 144,
+        VariableTypes = VariableTypes.OneCanBeSum,
+        OnlyCloseTriad = true,
+        DefaultTriad = new PPWObject(2, 5, 10),
+        ShowPrev = true,
+        EnforceOperationLabel = true
+    })),
     new PageConfig("+-X:- mixed advanced ", "Level 1 - Mixed Addition Multiplication Negatives", () => new SimpleViewCellsPage(new GameConfig
     {
         GameName =  "Mixed - Level 1",
@@ -1794,16 +2025,321 @@ namespace GestureSample.Views
 
         };
 
+        private static ExercisePlan CreateTransformativePrecisionCopyPlan() => new()
+        {
+            Loop = false,
+            Steps = new()
+            {
+                new ExercisePlanStep
+                {
+                    Kind = PlanStepKind.NewQuestion,
+                    Operation = Operation.Copy,
+                    OpMode = PlanOpMode.Fixed
+                },
+                new ExercisePlanStep
+                {
+                    Kind = PlanStepKind.UsePrevAnswer,
+                    Repeat = 10000,
+                    Operation = Operation.Copy,
+                    OpMode = PlanOpMode.Fixed
+                }
+            }
+        };
+
+        private static GameConfig CreatePrecisionCopyConfig(
+            string name,
+            bool bothHands,
+            bool copyOtherHand,
+            bool transformative,
+            bool showGuideLine = true)
+        {
+            return new GameConfig
+            {
+                GameName = $"Gripping - {name}",
+                UIQuestionType = UIQuestionType.LogicalKeyboards,
+                OperationList = new() { Operation.Copy },
+                IsOnlyOneHand = !bothHands,
+                isOnlyKeyboard = true,
+                IncludeTutorials = false,
+                NumberOfTasksToWin = 20,
+                // Gripping is calibration/practice: mistakes should provide feedback,
+                // not end the stage with a loss. Finish after 20 correct responses.
+                NumberOfMistakesToLose = -1,
+                Plan = transformative ? CreateTransformativePrecisionCopyPlan() : null,
+                KeyboardConfig = new KeyboardConfig
+                {
+                    SyncType = SyncType.Sync,
+                    SecondsPressingToAnswer = 1,
+                    IsHelpNeeded = true,
+                    Rows = 7,
+                    KeysInRow = 2,
+                    AllowKeyWidthAdjustment = true,
+                    IsPrecisionPinchExercise = true,
+                    ShowPrecisionPinchGuideLine = showGuideLine,
+                    AllowImmediateCorrectPrecisionAnswer = true,
+                    IsTransformativePrecisionCopyExercise = transformative,
+                    CopyPrecisionPinchToOtherHand = copyOtherHand,
+                    IsVerticalPrecisionPinchExercise = true,
+                    PrecisionShiftBothHands = bothHands,
+                    PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    SeparatePrecisionPinchColumnsOnTablet = !bothHands,
+                    UseFullHandTutorial = false
+                }
+            };
+        }
+
+        private static GameConfig CreatePrecisionShiftConfig(
+            string name,
+            bool bothHands,
+            int maxDistance,
+            PrecisionPinchMoveOptions moveOptions,
+            bool synchronizeHands = false,
+            bool staggerHandsInitially = false,
+            int rows = 7,
+            int maxPinchInterval = int.MaxValue,
+            int newPinchPercent = 25,
+            bool continueFromPrevious = true,
+            bool grammarExercise = false,
+            int moveLowerPercent = -1,
+            bool preferBothHandsOnBottom = false)
+        {
+            return new GameConfig
+            {
+                GameName = name,
+                UIQuestionType = UIQuestionType.LogicalKeyboards,
+                OperationList = new() { Operation.MoveBy },
+                IsOnlyOneHand = !bothHands,
+                isOnlyKeyboard = true,
+                NumberOfTasksToWin = 20,
+                // Gripping is calibration/practice: mistakes should provide feedback,
+                // not end the stage with a loss. Finish after 20 correct responses.
+                NumberOfMistakesToLose = -1,
+                Plan = continueFromPrevious
+                    ? new ExercisePlan
+                    {
+                        Loop = false,
+                        Steps = new()
+                        {
+                            new ExercisePlanStep
+                            {
+                                Kind = PlanStepKind.NewQuestion,
+                                Operation = Operation.MoveBy,
+                                OpMode = PlanOpMode.Fixed
+                            },
+                            new ExercisePlanStep
+                            {
+                                Kind = PlanStepKind.UsePrevAnswer,
+                                Repeat = 10000,
+                                Operation = Operation.MoveBy,
+                                OpMode = PlanOpMode.Fixed
+                            }
+                        }
+                    }
+                    : null,
+                KeyboardConfig = new KeyboardConfig
+                {
+                    SyncType = SyncType.Sync,
+                    SecondsPressingToAnswer = 1,
+                    IsHelpNeeded = true,
+                    Rows = rows,
+                    KeysInRow = 2,
+                    AllowKeyWidthAdjustment = true,
+                    IsPrecisionPinchExercise = true,
+                    IsVerticalPrecisionPinchExercise = true,
+                    IsPrecisionShiftExercise = true,
+                    PrecisionShiftBothHands = bothHands,
+                    PrecisionShiftAxis = PrecisionShiftAxis.Vertical,
+                    SeparatePrecisionPinchColumnsOnTablet = !bothHands,
+                    PrecisionPinchMoveOptions = moveOptions,
+                    PrecisionMoveLowerPercent = moveLowerPercent,
+                    PrecisionShiftSynchronizeHands = synchronizeHands,
+                    PrecisionShiftStaggerHandsInitially = staggerHandsInitially,
+                    PreferBothHandsOnBottom = preferBothHandsOnBottom,
+                    IsPrecisionGrammarExercise = grammarExercise,
+                    PrecisionShiftNewPinchPercent = Math.Clamp(newPinchPercent, 0, 100),
+                    PrecisionShiftMinDistance = 1,
+                    PrecisionShiftMaxDistance = Math.Max(1, maxDistance),
+                    PrecisionPinchMaxInterval = maxPinchInterval
+                }
+            };
+        }
+
+        private static GameConfig CreatePrecisionMemorizeConfig(bool sequence, int sequenceMaxDistance = 1)
+        {
+            GameConfig config = CreatePrecisionCopyConfig(
+                sequence ? "Sequence memorize" : "Remember a grip",
+                bothHands: false,
+                copyOtherHand: false,
+                transformative: false);
+
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
+            config.KeyboardConfig.SecondsPressingToAnswer = 1;
+            config.KeyboardConfig.AllowImmediateCorrectPrecisionAnswer = sequence;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+
+            if (sequence)
+            {
+                // Both items are presented as COPY prompts. Their relationship is
+                // encoded in the generated pinches, so no movement arrows are shown.
+                config.OperationList = new() { Operation.Copy };
+                config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
+                config.KeyboardConfig.PrecisionPinchSequenceSecondMaxDistance =
+                    Math.Clamp(sequenceMaxDistance, 1, 3);
+                config.Plan = null;
+            }
+
+            return config;
+        }
+
+        private static GameConfig CreatePrecisionSignLearningConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Learn the arrows",
+                bothHands: false,
+                maxDistance: 3,
+                moveOptions: PrecisionPinchMoveOptions.All,
+                continueFromPrevious: false,
+                moveLowerPercent: 20);
+            config.IncludeTutorials = true;
+            config.KeyboardConfig.IsPrecisionSignLearningExercise = true;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+            return config;
+        }
+
+        private static GameConfig CreateGripTransformationPracticeConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Arrow combinations",
+                bothHands: true,
+                maxDistance: 1,
+                moveOptions: PrecisionPinchMoveOptions.ShiftWhole | PrecisionPinchMoveOptions.MoveUpper,
+                rows: 8,
+                maxPinchInterval: 3,
+                continueFromPrevious: false,
+                preferBothHandsOnBottom: true);
+            config.KeyboardConfig.IsGripTransformationPracticeExercise = true;
+            return config;
+        }
+
+        private static GameConfig CreateTwoHandCopyMemorizeConfig()
+        {
+            GameConfig config = CreatePrecisionCopyConfig(
+                "Remember two grips",
+                bothHands: true,
+                copyOtherHand: false,
+                transformative: false,
+                showGuideLine: true);
+            config.KeyboardConfig.Rows = Math.Max(7, GetExpandedPrecisionRows());
+            config.KeyboardConfig.PrecisionPinchMaxInterval = 5;
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = 2;
+            config.KeyboardConfig.SecondsPressingToAnswer = 1;
+            config.KeyboardConfig.IsTwoHandCopyMemorize = true;
+            // Hand Shapes has one target combination, so confirm it with the
+            // visible hold-progress bar instead of accepting it immediately.
+            config.KeyboardConfig.AllowImmediateCorrectPrecisionAnswer = false;
+            config.Plan = null;
+            return config;
+        }
+
+        private static GameConfig CreateSynchronousProcessTestConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Synchronous two-hand process",
+                bothHands: true,
+                maxDistance: 1,
+                moveOptions: PrecisionPinchMoveOptions.All,
+                rows: Math.Max(7, GetExpandedPrecisionRows()),
+                maxPinchInterval: 5,
+                continueFromPrevious: false);
+            config.KeyboardConfig.IsPrecisionSynchronousProcessExercise = true;
+            config.KeyboardConfig.ShowPrecisionPinchGuideLine = false;
+            return config;
+        }
+
+        internal static GameConfig CreateTwoHandCombinationMemorizeConfig(
+            TwoHandCombinationOptions combinations = TwoHandCombinationOptions.Default,
+            bool animate = true,
+            bool randomizeSizes = true,
+            int rows = 8,
+            int memorizeSeconds = 2,
+            bool readInstructionAloud = true,
+            bool askOnlyTarget = false,
+            TwoHandMagnitudeVocabularyMode magnitudeVocabularyMode = TwoHandMagnitudeVocabularyMode.Intuitive,
+            bool memorizeBoth = true,
+            bool easyStage = false,
+            bool keepLeftAtBottom = false, GripAnchorHand? anchorHand = null)
+        {
+            GameConfig config = CreatePrecisionCopyConfig(
+                easyStage ? "Remember grip changes — Easy" : "Remember grip changes — Hard",
+                bothHands: true,
+                copyOtherHand: false,
+                transformative: false);
+            config.KeyboardConfig.Rows = combinations.HasFlag(TwoHandCombinationOptions.HalfOfHalf)
+                ? Math.Clamp(Math.Max(8, rows), 8, 12)
+                : Math.Clamp(rows, 7, 12);
+            config.KeyboardConfig.PrecisionPinchMemorizeDelaySeconds = Math.Clamp(memorizeSeconds, 1, 10);
+            config.KeyboardConfig.IsEasyTwoHandCombinationStage = easyStage;
+            config.KeyboardConfig.KeepLeftHandAtBottom = keepLeftAtBottom;
+                config.KeyboardConfig.TwoHandCombinationAnchorHand = anchorHand ?? GripAnchorHand.Left;
+            config.KeyboardConfig.SecondsPressingToAnswer = 1;
+            config.KeyboardConfig.IsPrecisionPinchSequenceMemorize = true;
+            config.KeyboardConfig.IsTwoHandCombinationMemorize = true;
+            config.KeyboardConfig.TwoHandCombinationOptions = combinations == TwoHandCombinationOptions.None
+                ? TwoHandCombinationOptions.Default
+                : combinations;
+            config.KeyboardConfig.AnimateTwoHandCombinations = animate;
+            config.KeyboardConfig.RandomizeTwoHandCombinationSizes = randomizeSizes;
+            config.KeyboardConfig.ReadTwoHandCombinationInstructionAloud = readInstructionAloud;
+            config.KeyboardConfig.AskOnlyTwoHandCombinationTarget = askOnlyTarget;
+            config.KeyboardConfig.MemorizeBothTwoHandStates = memorizeBoth;
+            config.KeyboardConfig.TwoHandMagnitudeVocabularyMode = magnitudeVocabularyMode;
+            config.Plan = null;
+            return config;
+        }
+
+        private static int GetExpandedPrecisionRows()
+        {
+            DeviceIdiom idiom = DeviceInfo.Current.Idiom;
+            return idiom == DeviceIdiom.Tablet || idiom == DeviceIdiom.Desktop ? 7 : 5;
+        }
+
+        private static int GetAdvancedPrecisionRows() =>
+            Math.Clamp(PrecisionArrowDesignSettings.Load().AdvancedStageKeyCount, 6, 12);
+
+        private static GameConfig CreatePrecisionArrowDesignLabConfig()
+        {
+            GameConfig config = CreatePrecisionShiftConfig(
+                "Arrow design lab",
+                bothHands: false,
+                maxDistance: 3,
+                moveOptions: PrecisionPinchMoveOptions.All,
+                rows: GetAdvancedPrecisionRows());
+            config.NumberOfTasksToWin = 1000;
+            config.KeyboardConfig.IsPrecisionArrowDesignLab = true;
+            return config;
+        }
+
 
         #region MainPage code
         private readonly UserRepository _userRepo;
+        private readonly BackgroundSyncService _backgroundSyncService;
+        private readonly SyncToolbarStatusController _syncToolbarStatusController;
         private double _screenSize;
         private bool _hasNavigatedToSplash = false;
 
         public MainPage(string title, IEnumerable<PageConfig> contents)
+            : this(title, contents, null)
         {
+        }
+
+        private MainPage(string title, IEnumerable<PageConfig> contents, PageConfig[]? allPages)
+        {
+            _menuKey = title;
+            _allPages = allPages;
 
             _userRepo = ServiceHelper.GetService<UserRepository>();
+            _backgroundSyncService = ServiceHelper.GetService<BackgroundSyncService>();
+            _syncToolbarStatusController = new SyncToolbarStatusController(this, _backgroundSyncService);
             var displayInfo = DeviceDisplay.MainDisplayInfo;
             double widthInches = displayInfo.Width / displayInfo.Density;
             double heightInches = displayInfo.Height / displayInfo.Density;
@@ -1828,15 +2364,273 @@ namespace GestureSample.Views
 
 
             Title = title;
-            contents ??= AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
-            BindingContext = contents;
+            IEnumerable<PageConfig> resolvedContents =
+                contents ?? AllPages.Where(pc => pc.Parent == null && (_screenSize>=1100 || !pc.IsLargeScreenOnly));
+            List<PageConfig> materializedContents = resolvedContents.Where(IsMenuItemVisible).ToList();
+            if (string.Equals(title, "One operation", StringComparison.OrdinalIgnoreCase))
+                ReorderOneOperationMenu(materializedContents);
+
+            if (title == "Arrows on Keyboard")
+            {
+                Console.WriteLine($"Arrow menu items ({materializedContents.Count}): {string.Join(" | ", materializedContents.Select(pc => pc.Title))}");
+            }
 
             InitializeComponent();
+            if (string.Equals(title, "Gripping", StringComparison.OrdinalIgnoreCase))
+                ConfigureGrippingMenu(materializedContents);
+            else if (title == "One operation")
+                ConfigureLogicalMenu(materializedContents);
+            else if (title == "Weighted Keyboard")
+                ConfigureWeightedMenu(materializedContents);
+            else if (title == "Arrows on Keyboard")
+                ConfigureArrowMenu(materializedContents);
+            else
+                BindingContext = materializedContents;
+            RefreshMenuLanguage();
+        }
+
+        private void ConfigureGrippingMenu(IReadOnlyCollection<PageConfig> items)
+        {
+            if (_grippingScroll != null) return;
+            Title = AppLanguage.Text("Gripping", true);
+            MenuSubtitleLabel.Text = AppLanguage.Text("Choose a gripping activity", true);
+            FlowDirection = LanguagePreferences.Get(gripping: true) == InterfaceLanguage.Hebrew
+                ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            if (_languageToolbar == null)
+            {
+                _languageToolbar = new ToolbarItem();
+                _languageToolbar.Clicked += async (_, _) =>
+                {
+                    var settings = new LanguageSettingsView(gripping: true);
+                    var page = new ContentPage { Content = new ScrollView { Content = settings }, Padding = 20 };
+                    void Refresh() { page.Title = AppLanguage.Text("Gripping settings", true); }
+                    settings.LanguageChanged += (_, _) => Refresh();
+                    Refresh();
+                    await Navigation.PushAsync(page);
+                };
+                ToolbarItems.Add(_languageToolbar);
+            }
+            _languageToolbar.Text = AppLanguage.Text("Gripping settings", true);
+            MenuCollectionView.IsVisible = false;
+            // The gripping cards replace the collection entirely.
+            MenuCollectionView.RemoveBinding(ItemsView.ItemsSourceProperty);
+            MenuCollectionView.ItemsSource = null;
+            VerticalStackLayout coordination = BuildGrippingSection(
+                "Grip practice",
+                "Build control, memory, and coordination",
+                items.Where(item => item.MenuSection == "Coordination"),
+                Color.FromArgb("#C65A24"));
+            VerticalStackLayout symbolic = BuildGrippingSection(
+                "Grip language",
+                "Learn the signs and rules for changing a grip",
+                items.Where(item => item.MenuSection == "Symbolic"),
+                Color.FromArgb("#2D7373"));
+
+            Grid tracks = new()
+            {
+                ColumnSpacing = 14,
+                RowSpacing = 14,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(new GridLength(1.45, GridUnitType.Star)),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                RowDefinitions =
+                {
+                    new RowDefinition(GridLength.Auto),
+                    new RowDefinition(GridLength.Auto)
+                }
+            };
+            tracks.Add(coordination, 0, 0);
+            tracks.Add(symbolic, 1, 0);
+            if (items.Any(item => item.MenuSection == "Development"))
+            {
+                tracks.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                var development = BuildGrippingSection("Development", "Test activities",
+                    items.Where(item => item.MenuSection == "Development"), Color.FromArgb("#7C68D9"));
+                tracks.Add(development, 0, 2);
+                Grid.SetColumnSpan(development, 2);
+            }
+
+            bool? wasTwoColumns = null;
+            void ApplyResponsiveColumns(double width)
+            {
+                if (width <= 0) return;
+                bool useTwoColumns = width >= 720;
+                if (wasTwoColumns == useTwoColumns) return;
+                wasTwoColumns = useTwoColumns;
+                tracks.ColumnDefinitions[0].Width = useTwoColumns
+                    ? new GridLength(1.45, GridUnitType.Star)
+                    : GridLength.Star;
+                tracks.ColumnDefinitions[1].Width = useTwoColumns
+                    ? GridLength.Star
+                    : new GridLength(0);
+                Grid.SetColumn(coordination, 0);
+                Grid.SetRow(coordination, 0);
+                Grid.SetColumn(symbolic, useTwoColumns ? 1 : 0);
+                Grid.SetRow(symbolic, useTwoColumns ? 0 : 1);
+            }
+
+            ApplyResponsiveColumns(DeviceDisplay.MainDisplayInfo.Width /
+                                   DeviceDisplay.MainDisplayInfo.Density);
+            tracks.SizeChanged += (_, _) => ApplyResponsiveColumns(tracks.Width);
+
+            ScrollView scroll = new()
+            {
+                Content = tracks,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Default
+            };
+            PageLayout.Add(scroll, 0, 1);
+            _grippingScroll = scroll;
+        }
+
+        private VerticalStackLayout BuildGrippingSection(
+            string title,
+            string subtitle,
+            IEnumerable<PageConfig> items,
+            Color accent)
+        {
+            VerticalStackLayout stack = new() { Spacing = 10 };
+            stack.Add(new Label
+            {
+                Text = AppLanguage.Text(title, true),
+                FontFamily = "OpenSansSemibold",
+                FontSize = 22,
+                TextColor = accent
+            });
+            stack.Add(new Label
+            {
+                Text = AppLanguage.Text(subtitle, true),
+                FontSize = 13,
+                TextColor = Color.FromArgb("#6F7280"),
+                Margin = new Thickness(0, -4, 0, 4)
+            });
+            _grippingLabels.Add(((Label)stack.Children[0], title));
+            _grippingLabels.Add(((Label)stack.Children[1], subtitle));
+
+            foreach (PageConfig item in items)
+            {
+                Label arrow = new()
+                {
+                    Text = "›",
+                    FontSize = 22,
+                    TextColor = accent.WithAlpha(0.72f),
+                    VerticalTextAlignment = TextAlignment.Center
+                };
+                Border icon = new()
+                {
+                    WidthRequest = 44,
+                    HeightRequest = 44,
+                    Padding = 0,
+                    StrokeThickness = 0,
+                    BackgroundColor = accent,
+                    StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 13 },
+                    Content = new GraphicsView
+                    {
+                        Drawable = new GrippingMenuIconDrawable(item.MenuIcon),
+                        WidthRequest = 36,
+                        HeightRequest = 36,
+                        HorizontalOptions = LayoutOptions.Center,
+                        VerticalOptions = LayoutOptions.Center,
+                        InputTransparent = true
+                    }
+                };
+                Label titleLabel = new()
+                {
+                    Text = item.DisplayTitle,
+                    FontFamily = "OpenSansSemibold",
+                    FontSize = 17,
+                    TextColor = Color.FromArgb("#20232B"),
+                    VerticalTextAlignment = TextAlignment.Center
+                };
+                _grippingLabels.Add((titleLabel, item.Title));
+                Grid cardContent = new()
+                {
+                    ColumnSpacing = 12,
+                    ColumnDefinitions =
+                    {
+                        new ColumnDefinition(new GridLength(44)),
+                        new ColumnDefinition(GridLength.Star),
+                        new ColumnDefinition(GridLength.Auto)
+                    }
+                };
+                cardContent.Add(icon, 0, 0);
+                cardContent.Add(titleLabel, 1, 0);
+                cardContent.Add(arrow, 2, 0);
+                Border card = new()
+                {
+                    BindingContext = item,
+                    BackgroundColor = Colors.White,
+                    Stroke = accent.WithAlpha(0.30f),
+                    StrokeThickness = 1.2,
+                    StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+                    Padding = new Thickness(10, 9),
+                    MinimumHeightRequest = 64,
+                    Content = cardContent
+                };
+                TapGestureRecognizer tap = new();
+                tap.Tapped += async (_, _) => await NavigateToMenuItem(item);
+                card.GestureRecognizers.Add(tap);
+                stack.Add(card);
+            }
+
+            return stack;
+        }
+
+        private bool IsMenuItemVisible(PageConfig item)
+        {
+            if (item.Parent == "&& ||" && item.Title == "Quantity") return false;
+            if (item.IsTest && !AllowTest) return false;
+            if (_screenSize < 1100 && item.IsLargeScreenOnly) return false;
+
+            // Containers stay visible only when they contain an activity for this mode.
+            if (item.PageConstructor == null)
+                return AllPages.Any(child => child.Parent == item.Title && IsMenuItemVisible(child));
+
+            string category = item.Parent ?? item.Title;
+            while (AllPages.FirstOrDefault(page => page.Title == category && page.Parent != null) is PageConfig parent)
+                category = parent.Parent;
+
+            bool isPpw = category is "+ -" or "X : " or "+-X:- mixed advanced " or "new Number"
+                || item.Title == "Show Personal Record";
+            return Mode == AppMode.Combined || (Mode == AppMode.PPW ? isPpw : !isPpw);
+        }
+
+        private static void ReorderOneOperationMenu(List<PageConfig> items)
+        {
+            int copyIndex = items.FindIndex(item =>
+                string.Equals(item.Title, "Copy", StringComparison.OrdinalIgnoreCase));
+            if (copyIndex < 0)
+                return;
+
+            PageConfig? notItem = items.FirstOrDefault(item =>
+                string.Equals(item.Title, "Not", StringComparison.OrdinalIgnoreCase));
+            PageConfig? mirrorItem = items.FirstOrDefault(item =>
+                string.Equals(item.Title, "Mirror", StringComparison.OrdinalIgnoreCase));
+
+            if (notItem != null)
+                items.Remove(notItem);
+            if (mirrorItem != null)
+                items.Remove(mirrorItem);
+
+            copyIndex = items.FindIndex(item =>
+                string.Equals(item.Title, "Copy", StringComparison.OrdinalIgnoreCase));
+            int insertionIndex = copyIndex + 1;
+            if (notItem != null)
+                items.Insert(insertionIndex++, notItem);
+            if (mirrorItem != null)
+                items.Insert(insertionIndex, mirrorItem);
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _syncToolbarStatusController.Attach();
+            CurrentUserSession currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+            currentUserSession.ActiveUserChanged -= OnActiveUserChanged;
+            currentUserSession.ActiveUserChanged += OnActiveUserChanged;
+            RefreshUserSettingsTitle();
+            RefreshMenuLanguage();
 
 
             // Check if navigation to SplashPage is needed
@@ -1850,7 +2644,64 @@ namespace GestureSample.Views
                     await Navigation.PushAsync(new SplashPage());
                 });
             }
-            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Name);
+            else Console.WriteLine("Main Page Appearing" + ServiceHelper.GetService<CurrentUserSession>().ActiveUser?.Name);
+
+
+        }
+
+        protected override void OnDisappearing()
+        {
+            CurrentUserSession currentUserSession = ServiceHelper.GetService<CurrentUserSession>();
+            currentUserSession.ActiveUserChanged -= OnActiveUserChanged;
+            _syncToolbarStatusController.Detach();
+            base.OnDisappearing();
+        }
+
+        private static string GetUserSettingsTitle()
+        {
+            string userName = ServiceHelper.GetService<CurrentUserSession>()?.ActiveUser?.Name?.Trim();
+            return string.IsNullOrWhiteSpace(userName)
+                ? "USER SETTINGS"
+                : $"USER SETTINGS ({userName})";
+        }
+
+        private void OnActiveUserChanged(object sender, EventArgs e)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                RefreshUserSettingsTitle();
+                RefreshMenuLanguage();
+            });
+        }
+
+        private void RefreshMenuLanguage()
+        {
+            bool gripping = string.Equals(_menuKey, "Gripping", StringComparison.OrdinalIgnoreCase);
+            InterfaceLanguage language = LanguagePreferences.Get(gripping: gripping);
+            if (_displayLanguage == language) return;
+            _displayLanguage = language;
+
+            Title = AppLanguage.Translate(_menuKey == "One operation" ? "Logic" : _menuKey, language);
+            MenuSubtitleLabel.Text = AppLanguage.Translate(
+                gripping ? "Choose a gripping activity" : "Choose an activity to begin", language);
+            FlowDirection = language == InterfaceLanguage.Hebrew
+                ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            if (_languageToolbar != null)
+                _languageToolbar.Text = AppLanguage.Translate("Gripping settings", language);
+            foreach (var (label, key) in _grippingLabels)
+                label.Text = AppLanguage.Translate(key, language);
+            foreach (var (label, key) in _arrowLabels)
+                label.Text = AppLanguage.Translate(key, language);
+            if (!gripping && BindingContext is IEnumerable<PageConfig> items)
+                foreach (PageConfig item in items)
+                    item.RefreshDisplayTitle();
+        }
+
+        private void RefreshUserSettingsTitle()
+        {
+            PageConfig userSettings = AllPages.FirstOrDefault(page => page.IsUserSettings);
+            if (userSettings != null)
+                userSettings.Title = GetUserSettingsTitle();
         }
 
         protected override bool OnBackButtonPressed()
@@ -1859,7 +2710,7 @@ namespace GestureSample.Views
             int pageCount = Navigation.NavigationStack.Count;
 
             //TODO: change to work without the title hack. or at least make a Main Title string
-            if (pageCount > 1 && Title!= "Control Categories")
+            if (pageCount > 1 && _menuKey != "Control Categories")
             {
                 // We are NOT on the root page; 
                 // use the former (default) back function:
@@ -1880,30 +2731,50 @@ namespace GestureSample.Views
                 return true;
             }
         }
-        private async void ListItem_Tapped(object sender, ItemTappedEventArgs e)
+        private async void MenuItem_Tapped(object sender, TappedEventArgs e)
         {
-            var item = (PageConfig)e.Item;
+            if (sender is not BindableObject bindableObject ||
+                bindableObject.BindingContext is not PageConfig item)
+                return;
 
+            await NavigateToMenuItem(item);
+        }
+
+        private async Task NavigateToMenuItem(PageConfig item)
+        {
+            if (_isNavigating) return;
+            _isNavigating = true;
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 if (item.PageConstructor != null)
                 {
-                    // a sample page
                     var page = item.PageConstructor.Invoke();
-                    await Navigation.PushAsync(page);
+                    System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: construction {elapsed.ElapsedMilliseconds} ms");
+                    await Navigation.PushAsync(page, animated: false);
                 }
                 else
                 {
-                    // a menu page
-                    var subpage = item.Title;
-                    var contents = AllPages.Where(pc => pc.Parent == subpage && (_screenSize >=1100 || !pc.IsLargeScreenOnly));
-                    var page = new MainPage(subpage, contents);
-                    await Navigation.PushAsync(page);
+                    var subpage = item.Title == "&& ||" ? "One operation" : item.Title;
+                    // Cache only menus. Exercises still get fresh state on each selection.
+                    if (!_submenus.TryGetValue(subpage, out MainPage page))
+                    {
+                        var contents = AllPages.Where(pc => pc.Parent == item.Title && (_screenSize >= 1100 || !pc.IsLargeScreenOnly));
+                        page = new MainPage(subpage, contents, AllPages);
+                        _submenus.Add(subpage, page);
+                    }
+                    System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: construction {elapsed.ElapsedMilliseconds} ms");
+                    await Navigation.PushAsync(page, animated: false);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);
+            }
+            finally
+            {
+                System.Diagnostics.Debug.WriteLine($"[MenuTiming] {item.Title}: navigation total {elapsed.ElapsedMilliseconds} ms");
+                _isNavigating = false;
             }
         }
 
@@ -1911,20 +2782,82 @@ namespace GestureSample.Views
 
         #region class PageConfig
 
-        public class PageConfig
+        public class PageConfig : INotifyPropertyChanged
         {
             public string Parent { get; }
-            public string Title { get; }
+            private string _title;
+            public string Title
+            {
+                get => _title;
+                set
+                {
+                    if (_title == value)
+                        return;
+
+                    _title = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayTitle));
+                    OnPropertyChanged(nameof(IconGlyph));
+                    OnPropertyChanged(nameof(IconBackground));
+                    OnPropertyChanged(nameof(IsArrowCategory));
+                    OnPropertyChanged(nameof(HasGlyphIcon));
+                }
+            }
             public Func<Page> PageConstructor { get; }
+            public string MenuSection { get; }
+            public GrippingMenuIcon MenuIcon { get; }
+            public bool IsUserSettings => Title.StartsWith("USER SETTINGS", StringComparison.Ordinal);
 
             public bool IsLargeScreenOnly { get; }
+            public bool IsTest { get; }
+            public bool IsArrowCategory => Title == "Arrows on Keyboard";
+            public bool HasGlyphIcon => !IsArrowCategory;
+            public Microsoft.Maui.Graphics.IDrawable ArrowCategoryIcon { get; } = new ArrowMenuIconDrawable("First ->");
+            //public bool HasTutorial => Parent == "One operation" && PageConstructor != null;
+            public string DisplayTitle => AppLanguage.Text(Title, Parent == "Gripping");
+            public void RefreshDisplayTitle() => OnPropertyChanged(nameof(DisplayTitle));
+            public string IconGlyph => Title switch
+            {
+                "Arrows on Keyboard" => "↔",
+                "+ -" => "±",
+                "X : " => "×",
+                "Weighted Keyboard" => "♬",
+                "+-X:- mixed advanced " => "∑",
+                "&& ||" => "∧",
+                "Data" => "▥",
+                "Tutorial" => "★",
+                "Custom stages" => "◇",
+                _ when IsUserSettings => "●",
+                _ => Parent is null ? "○" : "›"
+            };
 
-            public PageConfig(string parent, string title, Func<Page> pageConstructor, bool largeScreenOnly = false)
+            public string IconBackground => Title switch
+            {
+                "Data" => "#40BFA3",
+                "Tutorial" => "#F0A640",
+                "Custom stages" => "#F47B62",
+                _ when IsUserSettings => "#7C68D9",
+                _ => "#3167E3"
+            };
+
+            public PageConfig(string parent, string title, Func<Page> pageConstructor,
+                bool largeScreenOnly = false, string menuSection = null, GrippingMenuIcon menuIcon = GrippingMenuIcon.OneHand,
+                bool isTest = false)
             {
                 Parent = parent;
                 Title = title;
                 PageConstructor = pageConstructor;
                 IsLargeScreenOnly = largeScreenOnly;
+                IsTest = isTest;
+                MenuSection = menuSection;
+                MenuIcon = menuIcon;
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
         }
 

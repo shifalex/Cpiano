@@ -13,7 +13,7 @@
 #pragma warning disable CS4014
             syncLbl.Tapping += (s, e) => { Log.Text = "Sync clear from outside"; cv.ClearContent(); };
 #pragma warning restore CS4014
-            var asyncLbl = new MR.Gestures.Label { Text = "Clear asynchronously", HorizontalOptions = LayoutOptions.CenterAndExpand, BackgroundColor = Colors.Silver };
+            var asyncLbl = new MR.Gestures.Label { Text = "Clear asynchronously", HorizontalOptions = LayoutOptions.Center, BackgroundColor = Colors.Silver };
             asyncLbl.Tapping += async (s, e) => { Log.Text = "Async clear from outside"; await cv.ClearContent(); };
             var fillLbl = new MR.Gestures.Label { Text = "Set Content", HorizontalOptions = LayoutOptions.End, BackgroundColor = Colors.Silver };
             fillLbl.Tapping += (s, e) => { Log.Text = "Set content from outside"; cv.SetContent(); };
