@@ -65,13 +65,20 @@
                                 StrokeThickness="0"
                                 StrokeShape="RoundRectangle 10"
                                 VerticalOptions="Center">
+                                <Grid>
+                                <GraphicsView
+                                    Drawable="{Binding ArrowCategoryIcon}"
+                                    IsVisible="{Binding IsArrowCategory}"
+                                    InputTransparent="True" />
                                 <Label
+                                    IsVisible="{Binding HasGlyphIcon}"
                                     Text="{Binding IconGlyph}"
                                     FontFamily="OpenSansSemibold"
                                     FontSize="17"
                                     TextColor="White"
                                     HorizontalTextAlignment="Center"
                                     VerticalTextAlignment="Center" />
+                                </Grid>
                             </Border>
                             <Label
                                 Grid.Column="1"

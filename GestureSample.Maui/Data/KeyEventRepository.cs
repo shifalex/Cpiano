@@ -1,4 +1,4 @@
-﻿using GestureSample.Maui.Data.SQLite;
+using GestureSample.Maui.Data.SQLite;
 using SQLite;
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace GestureSample.Maui.Data
             string gameId = GameId.ToString();
             return (await _database.Table<KeyEvent>().Where(state => state.GameId == gameId).ToListAsync())
                 .OrderBy(state => state.EventTime)
-                .ThenBy(state => state.id)
+                .ThenBy(state => state.EventSequence).ThenBy(state => state.id)
                 .ToList();
 
         }
@@ -47,7 +47,7 @@ namespace GestureSample.Maui.Data
                 .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber && state.AttemptNumber == 0)
                 .ToListAsync();
 
-            foreach (KeyEvent keyEvent in pendingEvents.OrderBy(state => state.EventTime).ThenBy(state => state.id))
+            foreach (KeyEvent keyEvent in pendingEvents.OrderBy(state => state.EventTime).ThenBy(state => state.EventSequence).ThenBy(state => state.id))
             {
                 keyEvent.AttemptNumber = attemptNumber;
                 await _database.UpdateAsync(keyEvent);
@@ -62,7 +62,7 @@ namespace GestureSample.Maui.Data
                                 state.AttemptNumber == attemptNumber)
                 .ToListAsync())
                 .OrderBy(state => state.EventTime)
-                .ThenBy(state => state.id)
+                .ThenBy(state => state.EventSequence).ThenBy(state => state.id)
                 .ToList();
         }
 
@@ -74,7 +74,7 @@ namespace GestureSample.Maui.Data
                                 state.AttemptNumber == 0)
                 .ToListAsync())
                 .OrderBy(state => state.EventTime)
-                .ThenBy(state => state.id)
+                .ThenBy(state => state.EventSequence).ThenBy(state => state.id)
                 .ToList();
         }
 
@@ -101,7 +101,7 @@ namespace GestureSample.Maui.Data
             if (keyEvents == null)
                 return;
 
-            foreach (KeyEvent keyEvent in keyEvents.OrderBy(item => item.EventTime).ThenBy(item => item.id))
+            foreach (KeyEvent keyEvent in keyEvents.OrderBy(item => item.EventTime).ThenBy(item => item.EventSequence).ThenBy(item => item.id))
             {
                 KeyEvent localKeyEvent = new()
                 {
@@ -113,7 +113,11 @@ namespace GestureSample.Maui.Data
                     Row = keyEvent.Row,
                     EventTime = keyEvent.EventTime,
                     RelativeX = keyEvent.RelativeX,
-                    RelativeY = keyEvent.RelativeY
+                    RelativeY = keyEvent.RelativeY,
+                    ContactId = keyEvent.ContactId,
+                    FromKeyNumber = keyEvent.FromKeyNumber,
+                    EventSequence = keyEvent.EventSequence,
+                    ElapsedMs = keyEvent.ElapsedMs
                 };
 
                 await _database.InsertAsync(localKeyEvent);

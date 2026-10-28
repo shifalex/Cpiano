@@ -44,12 +44,18 @@ namespace GestureSample.Maui.Models
         private readonly Dictionary<MR.Gestures.Button, MR.Gestures.Button> _glidingPrecisionKeys = new();
         private readonly PrecisionGlideMotion _glideMotion = new();
         private readonly Dictionary<int, int> _pendingPrecisionTargets = new();
+        private readonly Dictionary<MR.Gestures.Button, string> _recordedContacts = new();
+        private long _eventSequence;
+        private int _recordingQuestion = -1;
+        private long _recordingStarted;
+        private DateTime _recordingStartedAt;
 
         private void ClearPrecisionGlides()
         {
             _glidingPrecisionKeys.Clear();
             _glideMotion.Clear();
             _pendingPrecisionTargets.Clear();
+            _recordedContacts.Clear();
         }
         private bool UsesNativePrecisionPanFallback =>
             _pianoConfig.IsPrecisionPinchExercise &&
@@ -146,8 +152,17 @@ namespace GestureSample.Maui.Models
         
         //private readonly Data.RealmService _realmService;
 
-        protected async Task SaveStateAsync(int eventType, int key, int row = 0, double? relativeX = null, double? relativeY = null)
+        protected async Task SaveStateAsync(int eventType, int key, int row = 0, double? relativeX = null, double? relativeY = null,
+            string? contactId = null, int? fromKeyNumber = null)
         {
+            if (_recordingQuestion != _gamePlay._questionNumber)
+            {
+                _recordingQuestion = _gamePlay._questionNumber;
+                _recordingStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+                _recordingStartedAt = DateTime.Now;
+                _eventSequence = 0;
+            }
+            double elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(_recordingStarted).TotalMilliseconds;
 
 /* Unmerged change from project 'GestureSample.Maui (net7.0-ios)'
 Before:
@@ -159,16 +174,29 @@ After:
 */
             Data.SQLite.KeyEvent keyEvent = new()
             {
-                EventTime = DateTime.Now,
+                EventTime = _recordingStartedAt.AddMilliseconds(elapsedMs),
                 KeyNumber = key,
                 Row = row,
                 EventType = eventType,
                 RelativeX = relativeX,
                 RelativeY = relativeY,
+                ContactId = contactId,
+                FromKeyNumber = fromKeyNumber,
+                EventSequence = ++_eventSequence,
+                ElapsedMs = elapsedMs,
                 GameId= _gamePlay.GameId.ToString(),
                 QuestionNumber = _gamePlay._questionNumber
             };// = new ();
             await _keyEventRepository.SaveAsync(keyEvent);
+        }
+
+        private Task SaveContactReleaseAsync(MR.Gestures.Button origin, MR.Gestures.Button current)
+        {
+            if (!_recordedContacts.Remove(origin, out string? contactId))
+                return Task.CompletedTask;
+            int index = Array.IndexOf(btnKeys, current);
+            return SaveStateAsync(0, index + 1, index / Math.Max(1, _pianoConfig.KeysInRow),
+                contactId: contactId);
         }
 
         private static double Clamp01(double value)
@@ -790,6 +818,9 @@ After:
             sender.BackgroundColor = TraceSecondColor;
         }
 
+        protected bool IsActivePressColor(Color color) => color == COLOR_PRESSED ||
+            (_pianoConfig.EnableSecondArrowLeftTrace && color == REMOVE_COLOR);
+
         protected virtual bool InnerKeyDown(MR.Gestures.Button sender)
         {
             if (TryBeginColorDrag(sender))
@@ -852,7 +883,7 @@ After:
             }
             else
             {
-                sender.BackgroundColor = (sender.BackgroundColor != COLOR_PRESSED) ? COLOR_PRESSED : COLOR_FREE;
+                sender.BackgroundColor = IsActivePressColor(sender.BackgroundColor) ? COLOR_FREE : COLOR_PRESSED;
             }
             return false;
         }
@@ -923,14 +954,27 @@ After:
             if (btnKeys[targetIndex].BackgroundColor != COLOR_FREE)
                 return;
 
+            int fromIndex = _draggingKeyIndex.Value;
             btnKeys[targetIndex].BackgroundColor = _draggingKeyColor;
-            btnKeys[_draggingKeyIndex.Value].BackgroundColor = COLOR_FREE;
+            btnKeys[fromIndex].BackgroundColor = COLOR_FREE;
             _draggingKeyIndex = targetIndex;
+            Task recording = SaveStateAsync(4, targetIndex + 1,
+                targetIndex / Math.Max(1, _pianoConfig.KeysInRow), 0.5, 0.5,
+                e.Sender is MR.Gestures.Button dragOrigin ? _recordedContacts.GetValueOrDefault(dragOrigin) : null,
+                fromIndex + 1);
             RecalculateKeyboardStateFromColors();
+            await recording;
         }
 
-        private void OnKeyboardPanned(object? sender, MR.Gestures.PanEventArgs e)
+        private async void OnKeyboardPanned(object? sender, MR.Gestures.PanEventArgs e)
         {
+            if (!e.Cancelled && e.Sender is MR.Gestures.Button completedOrigin)
+            {
+                if (_pianoConfig.IsPrecisionPinchExercise)
+                    await CompletePrecisionGlideAsync(completedOrigin);
+                else if (_draggingKeyIndex is int index)
+                    await SaveContactReleaseAsync(completedOrigin, btnKeys[index]);
+            }
             // A completed pan may end the physical contact without a separate Up.
             if (!e.Cancelled && GripGate is { CanPlay: false } gate &&
                 e.Sender is MR.Gestures.Button origin)
@@ -995,12 +1039,17 @@ After:
                 btnKeys[move.From].BackgroundColor = COLOR_FREE;
                 _glidingPrecisionKeys[origins[move.Origin]] = btnKeys[move.To];
             }
+            // Queue every accepted transition before answer recognition can change questions.
+            Task[] recordings = moves.Select(move => SaveStateAsync(4, move.To + 1,
+                move.To / Math.Max(1, _pianoConfig.KeysInRow), 0.5, 0.5,
+                _recordedContacts.GetValueOrDefault(origins[move.Origin]), move.From + 1)).ToArray();
             RecalculateKeyboardStateFromColors();
             OnPropertyChanged(nameof(Addend1));
             OnPropertyChanged(nameof(Addend2));
             OnPropertyChanged(nameof(Sum));
             EnsureAllKeyTextIsBlack();
             await OnKeyStateChangedAsync(isDown: true);
+            await Task.WhenAll(recordings);
         }
 
         private async Task CompletePrecisionGlideAsync(MR.Gestures.Button origin)
@@ -1013,6 +1062,9 @@ After:
             bool acceptedRelease = GripGate?.Release(Convert.ToInt32(origin.CommandParameter)) ?? true;
             if (!_glidingPrecisionKeys.Remove(origin, out MR.Gestures.Button? current)) return;
             if (!acceptedRelease) return;
+
+            Task releaseRecording = SaveContactReleaseAsync(origin, current);
+            await releaseRecording;
 
             if (await OnBeforeKeyUpAsync())
                 return;
@@ -1134,6 +1186,9 @@ After:
                 return;
 
             KeyPressStarted?.Invoke();
+            if (e.Sender is MR.Gestures.Button contactOrigin &&
+                (_pianoConfig.IsPrecisionPinchExercise || EnablesColorDrag()))
+                _recordedContacts[contactOrigin] = Guid.NewGuid().ToString("N");
             if (_pianoConfig.IsPrecisionPinchExercise && e.Sender is MR.Gestures.Button pressedKey)
             {
                 _glidingPrecisionKeys[pressedKey] = pressedKey;
@@ -1167,6 +1222,7 @@ After:
         private async void OnUp(MR.Gestures.DownUpEventArgs e)
         {
             MR.Gestures.Button releasedKey = (MR.Gestures.Button)e.Sender;
+            MR.Gestures.Button origin = releasedKey;
             if (UsesNativePrecisionPanFallback &&
                 e.Cancelled &&
                 _glidingPrecisionKeys.ContainsKey(releasedKey))
@@ -1181,13 +1237,20 @@ After:
             if (GripGate != null && !GripGate.Release(Convert.ToInt32(releasedKey.CommandParameter)))
                 return;
             if (_externalInputBlocked) return;
+            if (_pianoConfig.IsPrecisionPinchExercise && !_glidingPrecisionKeys.ContainsKey(origin))
+                return;
+            if (EnablesColorDrag() && _draggingKeyIndex is int dragIndex)
+                releasedKey = btnKeys[dragIndex];
             if (_pianoConfig.IsPrecisionPinchExercise &&
                 _glidingPrecisionKeys.Remove(releasedKey, out MR.Gestures.Button? glidedKey))
             {
                 releasedKey = glidedKey;
             }
+            bool recordedContact = _recordedContacts.ContainsKey(origin);
+            if (recordedContact)
+                await SaveContactReleaseAsync(origin, releasedKey);
             if (await OnBeforeKeyUpAsync()) return;
-            await OnKey(e, false, releasedKey);
+            await OnKey(e, false, releasedKey, persist: !recordedContact);
             if (Config.IsNumberVoice || Config.IsVoice)
             {
                 Console.WriteLine(Convert.ToInt32(((MR.Gestures.Button)e.Sender).CommandParameter));
@@ -1202,6 +1265,7 @@ After:
         {
             if (!_pianoConfig.EnableSecondArrowLeftTrace ||
                 _gamePlay is not BitArrayGamePlay bitArrayGamePlay ||
+                bitArrayGamePlay.IsOrdinalArrowTutorial() ||
                 btnKeys == null)
             {
                 return;
@@ -1217,14 +1281,13 @@ After:
                 return;
             }
 
-            bool isRtl = bitArrayGamePlay.dir == Direction.Left;
             Color traceColor = SECOND_ARROW_TRACE_YELLOW;
 
             for (int i = 0; i < pressedKeys.Length; i++)
             {
                 if (pressedKeys[i])
                 {
-                    btnKeys[i].BackgroundColor = isRtl
+                    btnKeys[i].BackgroundColor = bitArrayGamePlay.UseRedForArrowTraceKey(i + 1)
                         ? REMOVE_COLOR
                         : COLOR_PRESSED;
                 }
@@ -1261,7 +1324,8 @@ After:
         private async Task OnKey(
             MR.Gestures.DownUpEventArgs e,
             bool isDown,
-            MR.Gestures.Button? keyOverride = null)
+            MR.Gestures.Button? keyOverride = null,
+            bool persist = true)
         {
             
             if (!IsEnabled) { return; }
@@ -1317,12 +1381,13 @@ After:
 
             (double? relativeX, double? relativeY) = GetRelativeTouch(e, sender);
             Task? saveStateTask = null;
-            if (prevColor != sender.BackgroundColor)
+            string? contactId = _recordedContacts.GetValueOrDefault((MR.Gestures.Button)e.Sender);
+            if (persist && (prevColor != sender.BackgroundColor || contactId != null))
             {
                 // Start persistence now, but do not make touch feedback, the hold
                 // timer, or sequence recognition wait for SQLite / remote I/O.
                 saveStateTask = SaveStateAsync(
-                    isDown ? 1 : 0, keyNumber, row, relativeX, relativeY);
+                    isDown ? 1 : 0, keyNumber, row, relativeX, relativeY, contactId);
             }
 
             MainThread.BeginInvokeOnMainThread(() =>

@@ -4,6 +4,9 @@ namespace GestureSample.Maui.Models
     {
         private bool _rebuildScheduled;
         private string? _lastSnapshotSignature;
+        private double _reviewKeyboardWidth;
+        private PianoKeyboardReadOnly? _snapshotKeyboard;
+        private double _arrowInset;
 
         public KeyboardSnapshotView()
         {
@@ -39,6 +42,26 @@ namespace GestureSample.Maui.Models
 
         public static readonly BindableProperty ReviewStyleProperty =
             BindableProperty.Create(nameof(ReviewStyle), typeof(bool), typeof(KeyboardSnapshotView), false, propertyChanged: OnSnapshotChanged);
+
+        public static readonly BindableProperty ShiftArrowsJsonProperty =
+            BindableProperty.Create(nameof(ShiftArrowsJson), typeof(string), typeof(KeyboardSnapshotView), default(string), propertyChanged: OnSnapshotChanged);
+
+        public static readonly BindableProperty ArrowStyleProperty =
+            BindableProperty.Create(nameof(ArrowStyle), typeof(ArrowType), typeof(KeyboardSnapshotView), ArrowType.Straight, propertyChanged: OnSnapshotChanged);
+        public static readonly BindableProperty MovementModeProperty =
+            BindableProperty.Create(nameof(MovementMode), typeof(ArrowMovementMode), typeof(KeyboardSnapshotView), ArrowMovementMode.Legacy, propertyChanged: OnSnapshotChanged);
+        public static readonly BindableProperty ShowKeyNumbersProperty =
+            BindableProperty.Create(nameof(ShowKeyNumbers), typeof(bool), typeof(KeyboardSnapshotView), false, propertyChanged: OnSnapshotChanged);
+
+        public ArrowType ArrowStyle { get => (ArrowType)GetValue(ArrowStyleProperty); set => SetValue(ArrowStyleProperty, value); }
+        public ArrowMovementMode MovementMode { get => (ArrowMovementMode)GetValue(MovementModeProperty); set => SetValue(MovementModeProperty, value); }
+        public bool ShowKeyNumbers { get => (bool)GetValue(ShowKeyNumbersProperty); set => SetValue(ShowKeyNumbersProperty, value); }
+
+        public string? ShiftArrowsJson
+        {
+            get => (string?)GetValue(ShiftArrowsJsonProperty);
+            set => SetValue(ShiftArrowsJsonProperty, value);
+        }
 
         public bool ReviewStyle
         {
@@ -129,6 +152,8 @@ namespace GestureSample.Maui.Models
             if (keyCount == 0)
             {
                 Content = null;
+                _snapshotKeyboard = null;
+                _lastSnapshotSignature = null;
                 return;
             }
 
@@ -151,7 +176,7 @@ namespace GestureSample.Maui.Models
                 Direction,
                 AboveNumber,
                 ArrowLength,
-                Compact) + $":{ReviewStyle}";
+                Compact) + $":{ReviewStyle}:{ShiftArrowsJson}:{ArrowStyle}:{MovementMode}:{ShowKeyNumbers}";
             if (_lastSnapshotSignature == snapshotSignature)
                 return;
 
@@ -163,7 +188,9 @@ namespace GestureSample.Maui.Models
                 Rows = Math.Max(1, rows),
                 IsArrow = hasArrow,
                 IsArrowLengthDynamic = hasArrow,
-                ShowNumbersOnKeys = Weights != null && Weights.Length > 0,
+                ArrowType = ArrowStyle,
+                ArrowMovementMode = MovementMode,
+                ShowNumbersOnKeys = ShowKeyNumbers || Weights != null && Weights.Length > 0,
                 WeightsArray = Weights?.ToArray()
             };
 
@@ -191,6 +218,8 @@ namespace GestureSample.Maui.Models
                 Scale = 1,
                 Margin = hasArrow ? new Thickness(0, 4, 0, 0) : Thickness.Zero
             };
+            _snapshotKeyboard = keyboard;
+            _arrowInset = 0;
 
             HeightRequest = keyboard.HeightRequest;
             MinimumHeightRequest = keyboard.HeightRequest;
@@ -210,11 +239,57 @@ namespace GestureSample.Maui.Models
                 // Keep recorded key colors intact; only remove the unused black canvas.
                 keyboard.BackgroundColor = Colors.Transparent;
                 keyboard.MinimumWidthRequest = 0;
-                MaximumWidthRequest = keysInRow == 2 ? 260 : 520;
-                HorizontalOptions = LayoutOptions.Center;
+                _reviewKeyboardWidth = Math.Min(keysInRow == 2 ? 260 : 520,
+                    Compact ? compactWidth : regularWidth);
+                // A centered star-column grid has no intrinsic width on Windows.
+                // Give the keyboard a measurable width, then fit it to the card.
+                keyboard.WidthRequest = Width > 0 ? Math.Min(Width, _reviewKeyboardWidth) : _reviewKeyboardWidth;
+                keyboard.HorizontalOptions = LayoutOptions.Center;
+                HorizontalOptions = LayoutOptions.Fill;
             }
 
-            Content = keyboard;
+            RecordedShiftArrow[] arrows = string.IsNullOrWhiteSpace(ShiftArrowsJson)
+                ? Array.Empty<RecordedShiftArrow>()
+                : System.Text.Json.JsonSerializer.Deserialize<RecordedShiftArrow[]>(ShiftArrowsJson) ?? Array.Empty<RecordedShiftArrow>();
+            arrows = arrows.Where(arrow => arrow.Delta != 0).ToArray();
+            if (arrows.Length == 0)
+            {
+                Content = keyboard;
+                return;
+            }
+
+            _arrowInset = arrows.All(arrow => arrow.IsVertical) ? 40 : 76;
+            keyboard.Margin = new Thickness(_arrowInset, keyboard.Margin.Top, _arrowInset, 0);
+            if (ReviewStyle)
+                keyboard.WidthRequest = Math.Max(1, (Width > 0 ? Math.Min(Width, _reviewKeyboardWidth) : _reviewKeyboardWidth) - 2 * _arrowInset);
+            var instructionLayout = new Grid();
+            instructionLayout.Children.Add(keyboard);
+            foreach (RecordedShiftArrow arrow in arrows)
+                instructionLayout.Children.Add(new GraphicsView
+                {
+                    Drawable = new PrecisionShiftInstructionDrawable
+                    {
+                        Delta = arrow.Delta, IsVertical = arrow.IsVertical,
+                        BaseAtTop = arrow.BaseAtTop, IsShift = arrow.IsShift
+                    },
+                    WidthRequest = _arrowInset - 4,
+                    HeightRequest = arrow.IsVertical ? Math.Min(keyboard.HeightRequest, 150) : 60,
+                    HorizontalOptions = arrow.LeftSide ? LayoutOptions.Start : LayoutOptions.End,
+                    VerticalOptions = LayoutOptions.Center,
+                    InputTransparent = true
+                });
+            Content = instructionLayout;
+        }
+
+        protected override void OnSizeAllocated(double width, double height)
+        {
+            base.OnSizeAllocated(width, height);
+            if (ReviewStyle && _snapshotKeyboard is PianoKeyboardReadOnly keyboard && width > 0)
+            {
+                double requestedWidth = Math.Max(1, Math.Min(width, _reviewKeyboardWidth) - 2 * _arrowInset);
+                if (Math.Abs(keyboard.WidthRequest - requestedWidth) > 0.5)
+                    keyboard.WidthRequest = requestedWidth;
+            }
         }
 
         private static string BuildSnapshotSignature(

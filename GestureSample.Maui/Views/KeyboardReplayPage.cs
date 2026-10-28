@@ -13,6 +13,7 @@ namespace GestureSample.Views
             public List<KeyEvent> MarkerEvents { get; init; } = new();
             public string EventLabel { get; init; } = string.Empty;
             public string TimerRegimeText { get; init; } = "Unknown";
+            public List<KeyEvent> GlideTrail { get; set; } = new();
         }
 
         private readonly IReadOnlyList<KeyEvent> _events;
@@ -31,12 +32,15 @@ namespace GestureSample.Views
         private readonly bool _usesSecondColorReplay;
         private readonly bool _usesRedRemovalReplay;
         private readonly bool _usesThreeColorReplay;
+        private readonly bool _usesColorDragReplay;
         private readonly KeyboardQuestion? _question;
         private readonly bool[]? _finalReplayState;
         private readonly string _initialTimerRegimeText;
         private readonly Dictionary<int, BoxView> _activeMarkers = new();
         private readonly Dictionary<int, Stack<int>> _activeMarkerTokensByKey = new();
         private readonly Dictionary<int, KeyEvent> _activeMarkerEventsByKey = new();
+        private readonly List<View> _glideTrailViews = new();
+        private readonly Dictionary<string, int> _contactColors = new();
         private readonly Color[] _markerPalette =
         {
             Colors.OrangeRed,
@@ -51,6 +55,7 @@ namespace GestureSample.Views
         private bool _slowReplayEnabled;
         private bool _isApplyingTimelineValue;
         private int _playbackVersion;
+        private CancellationTokenSource? _playbackCancellation;
         private int _currentFrameIndex;
         private List<ReplayFrame> _replayFrames = new();
         private List<KeyEvent>? _submitMarkerSnapshot;
@@ -64,14 +69,15 @@ namespace GestureSample.Views
             IReadOnlyList<TimerChangeEvent>? timerEvents = null)
         {
             Title = title;
-            _events = events?.OrderBy(item => item.EventTime).ThenBy(item => item.id).ToList() ?? new List<KeyEvent>();
+            _events = events?.OrderBy(item => item.EventTime).ThenBy(item => item.EventSequence).ThenBy(item => item.id).ToList() ?? new List<KeyEvent>();
             _timerEvents = timerEvents?.OrderBy(item => item.EventTime).ThenBy(item => item.Id).ToList() ?? new List<TimerChangeEvent>();
             _question = question;
             _finalReplayState = finalReplayState?.ToArray();
             _initialTimerRegimeText = string.IsNullOrWhiteSpace(timerRegimeText) ? "Unknown" : timerRegimeText;
 
             KeyboardConfig replayConfig = question?.CreateKeyboardConfig() ?? keyboardConfig ?? new KeyboardConfig();
-            _usesToggleReplayState = replayConfig.SyncType == SyncType.None;
+            _usesToggleReplayState = (keyboardConfig?.SyncType ?? replayConfig.SyncType) == SyncType.None;
+            _usesColorDragReplay = keyboardConfig?.EnableColorDrag == true;
             _usesColorReplay = replayConfig.IsMulticolor || replayConfig.ColorInteractionMode != KeyboardColorInteractionMode.Default;
             _usesSecondColorReplay = replayConfig.ColorInteractionMode == KeyboardColorInteractionMode.AddSecondColor;
             _usesRedRemovalReplay = replayConfig.ColorInteractionMode == KeyboardColorInteractionMode.RemoveWithRed;
@@ -195,6 +201,15 @@ namespace GestureSample.Views
             await ReplayAsync();
         }
 
+        protected override void OnDisappearing()
+        {
+            _playbackVersion++;
+            _playbackCancellation?.Cancel();
+            _isPlaying = false;
+            _replayButton.Text = "Replay";
+            base.OnDisappearing();
+        }
+
         private async Task ReplayAsync()
         {
             EnsureReplayFramesBuilt();
@@ -202,6 +217,7 @@ namespace GestureSample.Views
             if (_isPlaying)
             {
                 _playbackVersion++;
+                _playbackCancellation?.Cancel();
                 _isPlaying = false;
                 _replayButton.Text = "Replay";
                 return;
@@ -213,6 +229,8 @@ namespace GestureSample.Views
             _isPlaying = true;
             _replayButton.Text = "Stop";
             int playbackVersion = ++_playbackVersion;
+            using var cancellation = new CancellationTokenSource();
+            _playbackCancellation = cancellation;
 
             try
             {
@@ -229,8 +247,8 @@ namespace GestureSample.Views
 
                     ReplayFrame previousFrame = _replayFrames[Math.Max(0, frameIndex - 1)];
                     ReplayFrame nextFrame = _replayFrames[frameIndex];
-                    int delay = (int)Math.Clamp((nextFrame.Timestamp - previousFrame.Timestamp).TotalMilliseconds, 30, 900);
-                    await Task.Delay(GetReplayDelay(delay));
+                    int delay = (int)Math.Clamp((nextFrame.Timestamp - previousFrame.Timestamp).TotalMilliseconds, 0, int.MaxValue / 3);
+                    await Task.Delay(GetReplayDelay(delay), cancellation.Token);
 
                     if (playbackVersion != _playbackVersion)
                         return;
@@ -238,12 +256,19 @@ namespace GestureSample.Views
                     ApplyReplayFrame(frameIndex);
                 }
 
-                await Task.Delay(GetReplayDelay(500));
+                await Task.Delay(GetReplayDelay(500), cancellation.Token);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
             }
             finally
             {
-                _isPlaying = false;
-                _replayButton.Text = "Replay";
+                if (ReferenceEquals(_playbackCancellation, cancellation))
+                {
+                    _playbackCancellation = null;
+                    _isPlaying = false;
+                    _replayButton.Text = "Replay";
+                }
             }
         }
 
@@ -323,6 +348,21 @@ namespace GestureSample.Views
                 timerEventIndex++;
             }
 
+            int trailEventIndex = 0;
+            var recentGlides = new Queue<KeyEvent>();
+            foreach (ReplayFrame frame in frames)
+            {
+                while (trailEventIndex < _events.Count && _events[trailEventIndex].EventTime <= frame.Timestamp)
+                {
+                    KeyEvent item = _events[trailEventIndex++];
+                    if (item.EventType is 2 or 3) recentGlides.Clear();
+                    else if (item.EventType == 4) recentGlides.Enqueue(item);
+                }
+                while (recentGlides.Count > 0 &&
+                    (recentGlides.Count > 6 || (frame.Timestamp - recentGlides.Peek().EventTime).TotalMilliseconds > 800))
+                    recentGlides.Dequeue();
+                frame.GlideTrail = recentGlides.ToList();
+            }
             return frames;
         }
 
@@ -340,7 +380,7 @@ namespace GestureSample.Views
                 MarkerEvents = activeMarkersByKey
                     .SelectMany(item => item.Value.Reverse())
                     .OrderBy(item => item.EventTime)
-                    .ThenBy(item => item.id)
+                    .ThenBy(item => item.EventSequence).ThenBy(item => item.id)
                     .ToList(),
                 EventLabel = eventLabel,
                 TimerRegimeText = timerRegimeText
@@ -349,12 +389,30 @@ namespace GestureSample.Views
 
         private void ApplyEventToState(Color[] state, Dictionary<int, Stack<KeyEvent>> activeMarkersByKey, KeyEvent keyEvent)
         {
+            if (keyEvent.EventType == 4)
+            {
+                if (!KeyboardReplayTransitions.ApplyGlide(state, keyEvent.FromKeyNumber, keyEvent.KeyNumber, Colors.White))
+                    return;
+                KeyEvent? previous = null;
+                if (keyEvent.FromKeyNumber is int from && activeMarkersByKey.TryGetValue(from, out var source))
+                {
+                    previous = source.FirstOrDefault(item => keyEvent.ContactId == null || item.ContactId == keyEvent.ContactId);
+                    var remaining = source.Reverse().Where(item => !ReferenceEquals(item, previous)).ToList();
+                    if (remaining.Count == 0) activeMarkersByKey.Remove(from);
+                    else activeMarkersByKey[from] = new Stack<KeyEvent>(remaining);
+                }
+                if (!activeMarkersByKey.TryGetValue(keyEvent.KeyNumber, out var target))
+                    activeMarkersByKey[keyEvent.KeyNumber] = target = new Stack<KeyEvent>();
+                target.Push(keyEvent);
+                return;
+            }
             int keyIndex = keyEvent.KeyNumber - 1;
             if (keyIndex >= 0 && keyIndex < state.Length)
             {
                 if (keyEvent.EventType == 1)
                 {
-                    state[keyIndex] = GetNextReplayColor(state[keyIndex]);
+                    if (!_usesColorDragReplay || keyEvent.ContactId == null || ColorsMatch(state[keyIndex], Colors.White))
+                        state[keyIndex] = GetNextReplayColor(state[keyIndex]);
                 }
                 else if (keyEvent.EventType == 0)
                 {
@@ -403,6 +461,7 @@ namespace GestureSample.Views
             ClearActiveMarkers();
             foreach (KeyEvent markerEvent in frame.MarkerEvents)
                 AddActiveMarker(markerEvent);
+            RenderGlideTrail(frame.GlideTrail);
 
             _eventLabel.Text = frame.EventLabel;
             _timerRegimeLabel.Text = $"Answer Time: {frame.TimerRegimeText}";
@@ -419,6 +478,7 @@ namespace GestureSample.Views
                 return;
 
             _playbackVersion++;
+            _playbackCancellation?.Cancel();
             _isPlaying = false;
             _replayButton.Text = "Replay";
 
@@ -510,6 +570,8 @@ namespace GestureSample.Views
 
         private static string FormatEventLabel(KeyEvent keyEvent)
         {
+            if (keyEvent.EventType == 4)
+                return $"{keyEvent.EventTimeText}  Glide  key {keyEvent.FromKeyNumber} → {keyEvent.KeyNumber}";
             return $"{keyEvent.EventTimeText}  {keyEvent.EventTypeText}  key {keyEvent.KeyNumber}  x {keyEvent.RelativeXText}  y {keyEvent.RelativeYText}";
         }
 
@@ -591,17 +653,12 @@ namespace GestureSample.Views
                 Spacing = 8
             };
 
-            if (_question == null || (!_question.HasQuestionKeyboard && !_question.HasPromptText))
+            if (_question == null || (!_question.HasQuestionKeyboard && !_question.HasPromptText &&
+                !_question.HasTargetKeyboard && !_question.HasSubmittedKeyboard))
             {
                 promptLayout.IsVisible = false;
                 return promptLayout;
             }
-
-            promptLayout.Children.Add(new Label
-            {
-                Text = "Question",
-                FontAttributes = FontAttributes.Bold
-            });
 
             promptLayout.Children.Add(new HorizontalStackLayout
             {
@@ -618,7 +675,9 @@ namespace GestureSample.Views
                     },
                     new Label
                     {
-                        Text = $"{_question.ResultStatusText}  |  {_question.QuestionCodeText}",
+                        Text = _question.ShowQuestionDetails
+                            ? $"{_question.ResultStatusText}  |  {_question.QuestionCodeText}"
+                            : _question.ResultStatusText,
                         VerticalOptions = LayoutOptions.Center,
                         LineBreakMode = LineBreakMode.WordWrap
                     }
@@ -636,7 +695,7 @@ namespace GestureSample.Views
                 });
             }
 
-            if (_question.HasPromptText)
+            if (_question.ShowQuestionPromptText)
             {
                 promptLayout.Children.Add(new HorizontalStackLayout
                 {
@@ -673,13 +732,14 @@ namespace GestureSample.Views
                     {
                         new Label
                         {
-                            Text = _question.HasPromptText ? "Q Keyboard" : "Q",
+                            Text = _question.HasVisibleSecondQuestionKeyboard && _question.Op == Operation.Copy ? "First" : "Question",
                             FontAttributes = FontAttributes.Bold,
                             FontSize = 12
                         },
                         new KeyboardSnapshotView
                         {
                             KeyColors = _question.QuestionSnapshotColors,
+                            ShiftArrowsJson = _question.ReplayQuestionArrowsJson,
                             Weights = _question.KeyboardWeights,
                             KeysInRow = _question.KeyboardKeysInRow,
                             Rows = _question.KeyboardRows,
@@ -702,7 +762,7 @@ namespace GestureSample.Views
                     {
                         new Label
                         {
-                            Text = "Q2",
+                            Text = _question.Op == Operation.Copy ? "Second" : "Q2",
                             FontAttributes = FontAttributes.Bold,
                             FontSize = 12,
                             VerticalOptions = LayoutOptions.Center
@@ -720,7 +780,23 @@ namespace GestureSample.Views
                 });
             }
 
+            AddSnapshot("Target", _question.TargetKeyboardSnapshotColors);
+            AddSnapshot("Submitted answer", _question.SubmittedKeyboardSnapshotColors);
             return promptLayout;
+
+            void AddSnapshot(string label, Color[]? colors)
+            {
+                promptLayout.Children.Add(new Label { Text = label, FontAttributes = FontAttributes.Bold, FontSize = 12 });
+                if (colors == null || colors.Length == 0)
+                    promptLayout.Children.Add(new Label { Text = "No saved snapshot", TextColor = Colors.DimGray, FontSize = 12 });
+                else
+                    promptLayout.Children.Add(new KeyboardSnapshotView
+                    {
+                        KeyColors = colors, Weights = _question.KeyboardWeights,
+                        KeysInRow = _question.KeyboardKeysInRow, Rows = _question.KeyboardRows,
+                        Compact = false, HorizontalOptions = LayoutOptions.Fill
+                    });
+            }
         }
 
         private void UpdateMarkers(KeyEvent keyEvent)
@@ -749,6 +825,12 @@ namespace GestureSample.Views
                 return;
 
             BoxView marker = CreateMarker(_nextMarkerToken);
+            if (keyEvent.ContactId is string contactId)
+            {
+                if (!_contactColors.TryGetValue(contactId, out int colorIndex))
+                    _contactColors[contactId] = colorIndex = _contactColors.Count;
+                marker.Color = _markerPalette[colorIndex % _markerPalette.Length];
+            }
             int token = _nextMarkerToken++;
 
             _activeMarkers[token] = marker;
@@ -809,7 +891,7 @@ namespace GestureSample.Views
         {
             return _submitMarkerSnapshot?
                 .OrderBy(item => item.EventTime)
-                .ThenBy(item => item.id)
+                .ThenBy(item => item.EventSequence).ThenBy(item => item.id)
                 .LastOrDefault();
         }
 
@@ -834,7 +916,7 @@ namespace GestureSample.Views
                                    item.KeyNumber == keyIndex + 1 &&
                                    (!finalAttemptNumber.HasValue || item.AttemptNumber == finalAttemptNumber.Value))
                     .OrderBy(item => item.EventTime)
-                    .ThenBy(item => item.id)
+                    .ThenBy(item => item.EventSequence).ThenBy(item => item.id)
                     .LastOrDefault();
 
                 if (finalDownEvent != null)
@@ -851,7 +933,7 @@ namespace GestureSample.Views
                                finalState[item.KeyNumber - 1] &&
                                (!finalAttemptNumber.HasValue || item.AttemptNumber == finalAttemptNumber.Value))
                 .OrderBy(item => item.EventTime)
-                .ThenBy(item => item.id)
+                .ThenBy(item => item.EventSequence).ThenBy(item => item.id)
                 .LastOrDefault();
         }
 
@@ -884,6 +966,31 @@ namespace GestureSample.Views
             double markerY = keyButton.Y + (relativeY * keyButton.Height) - (marker.HeightRequest / 2);
 
             AbsoluteLayout.SetLayoutBounds(marker, new Rect(markerX, markerY, marker.WidthRequest, marker.HeightRequest));
+        }
+
+        private void RenderGlideTrail(IReadOnlyList<KeyEvent> glides)
+        {
+            foreach (View trail in _glideTrailViews) _overlayLayer.Children.Remove(trail);
+            _glideTrailViews.Clear();
+            foreach (KeyEvent glide in glides)
+            {
+                int from = (glide.FromKeyNumber ?? 0) - 1;
+                int to = glide.KeyNumber - 1;
+                if (from < 0 || to < 0 || from >= _replayKeyboard.KeyCount || to >= _replayKeyboard.KeyCount) continue;
+                var start = _replayKeyboard.KeyButtons[from];
+                var end = _replayKeyboard.KeyButtons[to];
+                var line = new Microsoft.Maui.Controls.Shapes.Line
+                {
+                    X1 = start.X + start.Width / 2, Y1 = start.Y + start.Height / 2,
+                    X2 = end.X + end.Width / 2, Y2 = end.Y + end.Height / 2,
+                    Stroke = new SolidColorBrush(glide.ContactId is string id && _contactColors.TryGetValue(id, out int color)
+                        ? _markerPalette[color % _markerPalette.Length] : Colors.OrangeRed),
+                    StrokeThickness = 3, Opacity = 0.45, InputTransparent = true
+                };
+                AbsoluteLayout.SetLayoutBounds(line, new Rect(0, 0, _replayKeyboard.Width, _replayKeyboard.Height));
+                _overlayLayer.Children.Add(line);
+                _glideTrailViews.Add(line);
+            }
         }
     }
 }

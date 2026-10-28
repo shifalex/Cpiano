@@ -1,4 +1,4 @@
-﻿using GestureSample.Maui.Data;
+using GestureSample.Maui.Data;
 using GestureSample.Views.Tests;
 using GestureSample.Debugging;
 using Microsoft.Maui.Graphics;
@@ -74,6 +74,7 @@ namespace GestureSample.Maui.Models
         private int _arrowLabelStartValue;
         private int _arrowLabelEndValue;
         private int _arrowLabelDistance;
+        private int? _previousArrowLabelEnd;
         private int? _arrowLabelMiddleValue;
         private bool _usesRtlComplexPrompt;
         private ArrowLabelExerciseMode _activeArrowLabelExerciseMode = ArrowLabelExerciseMode.None;
@@ -111,7 +112,8 @@ namespace GestureSample.Maui.Models
         {
             KeyboardConfig? keyboardConfig = Config?.KeyboardConfig;
             return keyboardConfig != null &&
-                   (keyboardConfig.AllowedArrowPromptKinds != ArrowPromptKindFlags.None ||
+                   (keyboardConfig.CustomArrowQuestionKinds?.Length > 0 ||
+                    keyboardConfig.AllowedArrowPromptKinds != ArrowPromptKindFlags.None ||
                     keyboardConfig.AllowedArrowRouteKinds != ArrowRouteKindFlags.None ||
                     keyboardConfig.SpecialArrowMissingTargets != MissingValueTargetFlags.None);
         }
@@ -434,6 +436,23 @@ namespace GestureSample.Maui.Models
             if (keyboardConfig == null || !SupportsComposedArrowVariants())
                 return;
 
+            if (keyboardConfig.CustomArrowQuestionKinds is { Length: > 0 } customKinds)
+            {
+                var kind = customKinds[r.Next(customKinds.Length)];
+                _usesActiveOnKeyboardArrow = kind is CustomArrowQuestionKind.VariableLength or CustomArrowQuestionKind.FixedLength or CustomArrowQuestionKind.Ordinal;
+                _activeArrowType = kind == CustomArrowQuestionKind.Ordinal ? ArrowType.Rounded : ArrowType.Straight;
+                keyboardConfig.IsArrowLengthDynamic = kind == CustomArrowQuestionKind.VariableLength;
+                _activeArrowLabelExerciseMode = kind switch
+                {
+                    CustomArrowQuestionKind.Destination => ArrowLabelExerciseMode.StartAndLength,
+                    CustomArrowQuestionKind.Distance => ArrowLabelExerciseMode.StartAndEndWithMissingLength,
+                    CustomArrowQuestionKind.Start => ArrowLabelExerciseMode.EndAndLengthWithMissingStart,
+                    _ => ArrowLabelExerciseMode.None
+                };
+                SetActiveArrowLabelMissingTarget(GetMissingTargetForPromptMode(_activeArrowLabelExerciseMode));
+                return;
+            }
+
             ArrowPromptKindFlags promptKinds = keyboardConfig.AllowedArrowPromptKinds == ArrowPromptKindFlags.None
                 ? ArrowPromptKindFlags.OnKeyboard
                 : keyboardConfig.AllowedArrowPromptKinds;
@@ -517,7 +536,9 @@ namespace GestureSample.Maui.Models
         private int GetKeyboardIndexForValue(int value)
         {
             bool withoutZero = Config?.KeyboardConfig?.WithoutZero ?? false;
-            return withoutZero ? value - 1 : value;
+            int index = withoutZero ? value - 1 : value;
+            int keys = Math.Max(1, (Config?.KeyboardConfig?.Rows ?? 1) * (Config?.KeyboardConfig?.KeysInRow ?? 10));
+            return (index % keys + keys) % keys;
         }
 
         private int GetMaxArrowLabelDistance(int maxPossibleDistance)
@@ -540,7 +561,27 @@ namespace GestureSample.Maui.Models
             _arrowLabelMiddleValue = null;
             _usesRtlComplexPrompt = false;
 
-            switch (GetCurrentArrowLabelExerciseMode())
+            if (Config.KeyboardConfig.SpecificArrowQuestion is { } specific)
+            {
+                _arrowLabelStartValue = specific.Start;
+                _arrowLabelEndValue = specific.End;
+                _arrowLabelDistance = specific.Distance;
+                dir = specific.MovesLeft ? Direction.Left : Direction.Right;
+            }
+            else if (!IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode()) &&
+                (Config.TenBoundaryModes != TenBoundaryMode.None || Config.KeyboardConfig.ImposeEdges ||
+                 Config.QuestionOrder is QuestionOrder.CyclicalLeft or QuestionOrder.CyclicalRight or QuestionOrder.CyclicalMixed))
+            {
+                bool continuing = Config.QuestionOrder is QuestionOrder.CyclicalLeft or QuestionOrder.CyclicalRight or QuestionOrder.CyclicalMixed;
+                var selected = ArrowLabelMovement.Next(r, minValue, Math.Max(maxValue, Config.MaxSum),
+                    Config.KeyboardConfig.MaxArrowLabelDistance, Config.OnlyToTen, Config.OnlyThroughTen,
+                    Config.KeyboardConfig.ImposeEdges, continuing ? _previousArrowLabelEnd : null);
+                _arrowLabelStartValue = selected.Start;
+                _arrowLabelEndValue = selected.End;
+                _arrowLabelDistance = selected.Distance;
+                dir = selected.MovesLeft ? Direction.Left : Direction.Right;
+            }
+            else switch (GetCurrentArrowLabelExerciseMode())
             {
                 case ArrowLabelExerciseMode.ComplexBridgeToNextTen:
                 {
@@ -683,10 +724,12 @@ namespace GestureSample.Maui.Models
                 SetActiveArrowLabelMissingTarget(MissingValueTargetFlags.TotalDistance);
             }
 
+            dir = ArrowLabelMovesLeft ? Direction.Left : Direction.Right;
             CapturePrimaryArrowLabelPromptMode();
             ApplyArrowLabelPpwState(revealMissingValue: false);
 
-            int answerStartValue = _arrowLabelStartValue + 1;
+            _previousArrowLabelEnd = _arrowLabelEndValue;
+            int answerStartValue = Math.Min(_arrowLabelStartValue, _arrowLabelEndValue) + 1;
             int answerFromIndex = GetKeyboardIndexForValue(answerStartValue);
             BitArrayQuestion = GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.OrdinalStartAndLength
                 ? GenerateSequenceArrayQuestion(GetKeyboardIndexForValue(_arrowLabelEndValue), 1)
@@ -711,6 +754,19 @@ namespace GestureSample.Maui.Models
 
         public int ArrowLabelSumValue => _arrowLabelEndValue;
         public int ArrowLabelDistanceValue => _arrowLabelDistance;
+        public bool ArrowLabelMovesLeft => UsesArrowLabelExercise() && _arrowLabelEndValue < _arrowLabelStartValue;
+        public bool UseRedForArrowTraceKey(int pressedKey)
+        {
+            if (!UsesArrowLabelExercise())
+                return ArrowTracePressColor.UseRed(dir == Direction.Left, aboveNumber, length, pressedKey, Config.OnlyThrougTen);
+
+            bool displayedRtl = ArrowLabelMovesLeft ||
+                (Config.KeyboardConfig.SpecificArrowQuestion == null &&
+                 GetCurrentArrowLabelExerciseMode() == ArrowLabelExerciseMode.EndAndLengthWithMissingStart) ||
+                (IsComplexArrowLabelPromptMode(GetCurrentArrowLabelExerciseMode()) && UsesRtlComplexThroughTenPrompt());
+            return ArrowTracePressColor.UseRedForLabel(displayedRtl,
+                _arrowLabelStartValue, _arrowLabelEndValue, pressedKey, Config.OnlyThrougTen);
+        }
         public ArrowLabelExerciseMode CurrentArrowLabelExerciseMode => GetCurrentArrowLabelExerciseMode();
         public MissingValueTargetFlags CurrentArrowLabelMissingTarget => GetCurrentArrowLabelMissingTarget();
         public bool UsesRtlComplexPrompt => UsesRtlComplexThroughTenPrompt();
@@ -899,6 +955,14 @@ namespace GestureSample.Maui.Models
             int fromIndex = 0, lengthIndexes = 1;
             int keys = BitArrayQuestion.Length;
             bool isOrdinal = GetCurrentArrowType() == ArrowType.Rounded;
+
+            if (Config.KeyboardConfig.SpecificArrowQuestion is { } specific)
+            {
+                aboveNumber = SpecificArrowQuestion.KeyNumber(specific.Start, keys);
+                length = specific.Distance;
+                dir = specific.MovesLeft ? Direction.Left : Direction.Right;
+                return (specific.KeyboardFromIndex(keys), length);
+            }
 
             // initial direction and fallback factors
             dir = r.Next(0, 2) == 0 ? Direction.Right : Direction.Left;
@@ -1348,7 +1412,8 @@ namespace GestureSample.Maui.Models
                 submittedKeyboard,
                 submittedTime,
                 result ? 1 : 0,
-                pianoKeyboard.GetCurrentColors());
+                pianoKeyboard.GetCurrentColors(),
+                BitArrayCorrectAnswer);
 
             if (savedAttempt != null)
                 await FinalizeKeyboardAttemptAsync(savedAttempt, submittedTime);
@@ -2212,6 +2277,11 @@ namespace GestureSample.Maui.Models
             string distanceText = missingTarget is (MissingValueTargetFlags.Addend2 or MissingValueTargetFlags.TotalDistance) ? "?" : _arrowLabelDistance.ToString();
             string endText = missingTarget == MissingValueTargetFlags.Sum ? "?" : _arrowLabelEndValue.ToString();
 
+            if (Config.KeyboardConfig.SpecificArrowQuestion != null || ArrowLabelMovesLeft)
+                return ArrowLabelMovesLeft
+                    ? $"   {distanceText}\n<---|\n{endText}      {startText}"
+                    : $"   {distanceText}\n{arrowLine}\n{startText}      {endText}";
+
             return GetCurrentArrowLabelExerciseMode() switch
             {
                 ArrowLabelExerciseMode.StartAndLength =>
@@ -2258,8 +2328,26 @@ namespace GestureSample.Maui.Models
             CurrentOperation = Config.OperationList[r.Next(Config.OperationList.Count)];
         }
 
+        private XorQuestionPair? _nextXorQuestion;
+
+        public void PreserveNextXorQuestion(bool[] first, bool[] second)
+        {
+            _nextXorQuestion = new(first.ToArray(), second.ToArray());
+        }
+
         private void ResolveQuestionSource(Random r, ExercisePlanStep? step)
         {
+            if (CurrentOperation == Operation.ExclusiveOr && _nextXorQuestion is { } saved)
+            {
+                _nextXorQuestion = null;
+                var pair = Config.XorSingleDifferenceOnly && saved.First.Zip(saved.Second, (a, b) => a != b).Count(different => different) != 1
+                    ? XorSingleDifferenceSequence.Next(r, saved.First.Length, saved.First, saved.Second)
+                    : saved;
+                BitArrayQuestion = pair.First.ToArray();
+                BitArrayQuestion2 = pair.Second.ToArray();
+                BuildCorrectAnswer();
+                return;
+            }
             if (Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true)
             {
                 ResolveSequenceMemorizeQuestion(r);
@@ -3439,6 +3527,16 @@ namespace GestureSample.Maui.Models
         {
             ResolveCurrentArrowVariant(r);
 
+            if (CurrentOperation == Operation.ExclusiveOr && Config.XorSingleDifferenceOnly)
+            {
+                var pair = XorSingleDifferenceSequence.Next(r, BitArrayQuestion.Length,
+                    _prevBitArrayQuestion, _prevBitArrayQuestion2);
+                BitArrayQuestion = pair.First;
+                BitArrayQuestion2 = pair.Second;
+                BuildCorrectAnswer();
+                return;
+            }
+
             if (UsesArrowLabelExercise())
             {
                 GenerateArrowLabelExercise(r);
@@ -3931,6 +4029,10 @@ namespace GestureSample.Maui.Models
             {
                 ArrowLabelExerciseMode mode = GetCurrentArrowLabelExerciseMode();
 
+                if (Config.KeyboardConfig.SpecificArrowQuestion != null || ArrowLabelMovesLeft)
+                    return new SpecificArrowQuestion(_arrowLabelStartValue, _arrowLabelEndValue).GetLabelAnswerKeys().Select(GetKeyboardIndexForValue)
+                        .Where(index => index >= 0 && index < keyCount).ToList();
+
                 if (mode == ArrowLabelExerciseMode.OrdinalStartAndLength)
                 {
                     bool leftToRight = Config?.QuestionOrder != QuestionOrder.ToLeft;
@@ -4170,8 +4272,10 @@ namespace GestureSample.Maui.Models
                 GameId = this.GameId.ToString(),
                 QuestionNumber = _questionNumber,
                 Time = DateTime.Now,
-                keyboard1 = BitArrayQuestion,
-                keyboard2 = BitArrayQuestion2,
+                keyboard1 = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeFirstPreview() : BitArrayQuestion.ToArray(),
+                keyboard2 = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeSecondPreview() : BitArrayQuestion2?.ToArray() ?? Array.Empty<bool>(),
                 Op = CurrentOperation,
                 dir = dir,
                 KeyboardRows = Config.KeyboardConfig?.Rows ?? 1,
@@ -4181,7 +4285,9 @@ namespace GestureSample.Maui.Models
                 InitialKeyboardState = GetInitialKeyboardState(),
                 InitialKeyboardColors = GetInitialKeyboardColors(),
                 QuestionKeyboardColors = GetQuestionKeyboardColors(),
-                QuestionPromptText = GetKeyboardQuestionPromptText()
+                QuestionPromptText = GetKeyboardQuestionPromptText(),
+                TargetKeyboard = Config.KeyboardConfig?.IsPrecisionPinchSequenceMemorize == true
+                    ? GetSequenceMemorizeSecondPreview() : BitArrayCorrectAnswer?.ToArray()
             };
 
             if (UsesOnKeyboardArrowExercise())
@@ -4199,6 +4305,14 @@ namespace GestureSample.Maui.Models
             {
                 s.MoveByLength = moveByLength;
                 s.MoveByDirection = moveBydir;
+                if (Config.KeyboardConfig?.IsPrecisionShiftExercise == true)
+                    s.QuestionArrowsJson = System.Text.Json.JsonSerializer.Serialize(new[] { true, false }
+                        .Select(left => new RecordedShiftArrow
+                        {
+                            LeftSide = left, Delta = GetPrecisionShiftSideDelta(left),
+                            IsVertical = Config.KeyboardConfig.PrecisionShiftAxis == PrecisionShiftAxis.Vertical,
+                            BaseAtTop = GetPrecisionShiftSideBaseAtTop(left), IsShift = IsPrecisionShiftSideGenericShift(left)
+                        }).Where(arrow => arrow.Delta != 0).ToArray());
             }
 
             await _keyboardQuestionRepository.SaveAsync(s);

@@ -43,6 +43,28 @@ namespace GestureSample.Maui.Data.SQLite
         public int KeyboardKeysInRow { get; set; } = 10;
         public bool ShowNumbersOnKeys { get; set; } = false;
         public string? QuestionPromptText { get; set; }
+        public string? TargetKeyboardJson { get; set; }
+        public string? QuestionArrowsJson { get; set; }
+
+        [Ignore]
+        public string? ReplayQuestionArrowsJson => QuestionArrowsJson ?? (Op == Operation.MoveBy
+            ? JsonSerializer.Serialize(RecordedShiftArrow.Infer(keyboard1, TargetKeyboard, KeyboardKeysInRow, KeyboardRows)) : null);
+
+        [Ignore]
+        public bool[]? TargetKeyboard
+        {
+            get => string.IsNullOrWhiteSpace(TargetKeyboardJson) ? null : JsonSerializer.Deserialize<bool[]>(TargetKeyboardJson);
+            set => TargetKeyboardJson = value == null ? null : JsonSerializer.Serialize(value);
+        }
+
+        [Ignore]
+        public bool HasTargetKeyboard => TargetKeyboard is { Length: > 0 };
+
+        [Ignore]
+        public bool MissingTargetKeyboard => !HasTargetKeyboard;
+
+        [Ignore]
+        public Color[]? TargetKeyboardSnapshotColors => BuildColorsFromBits(TargetKeyboard);
 
         [Ignore]
         public Color RowBackgroundColor { get; set; } = Colors.White;
@@ -192,7 +214,14 @@ namespace GestureSample.Maui.Data.SQLite
 
         [Ignore]
         public bool HasVisibleSecondQuestionKeyboard =>
-            HasSecondQuestionKeyboard && GameConfig.Operations.LogicalDual.Contains(Op);
+            HasSecondQuestionKeyboard && (GameConfig.Operations.LogicalDual.Contains(Op) ||
+                (Op == Operation.Copy && keyboard2.Any(bit => bit)));
+
+        [Ignore]
+        public string PrimaryQuestionLabel => HasVisibleSecondQuestionKeyboard && Op == Operation.Copy ? "First" : "Question";
+
+        [Ignore]
+        public string SecondQuestionLabel => Op == Operation.Copy ? "Second" : "Second question";
 
         [Ignore]
         public string SubmittedTimeText => SubmittedTime.HasValue ? SubmittedTime.Value.ToString("HH:mm:ss.fff") : "-";
@@ -237,6 +266,15 @@ namespace GestureSample.Maui.Data.SQLite
         public bool HasPromptText => !string.IsNullOrWhiteSpace(QuestionPromptText);
 
         [Ignore]
+        public bool HasGripQuestionPreview => HasQuestionKeyboard && KeyboardKeysInRow == 2 && KeyboardRows > 1;
+
+        [Ignore]
+        public bool ShowQuestionDetails => !HasGripQuestionPreview;
+
+        [Ignore]
+        public bool ShowQuestionPromptText => HasPromptText && ShowQuestionDetails;
+
+        [Ignore]
         public bool IsSpecialArrowPrompt =>
             HasPromptText &&
             (QuestionPromptText!.Contains("|--->", StringComparison.Ordinal) ||
@@ -249,10 +287,10 @@ namespace GestureSample.Maui.Data.SQLite
         public bool ShowSeparateQuestionKeyboard => !ShowCombinedArrowKeyboard && HasQuestionKeyboard;
 
         [Ignore]
-        public bool ShowSeparateSubmittedKeyboard => !ShowCombinedArrowKeyboard && HasSubmittedKeyboard;
+        public bool ShowSeparateSubmittedKeyboard => (!ShowCombinedArrowKeyboard || HasTargetKeyboard) && HasSubmittedKeyboard;
 
         [Ignore]
-        public bool ShowPrimaryQuestionKeyboard => ShowSeparateQuestionKeyboard && !HasInitialKeyboardState;
+        public bool ShowPrimaryQuestionKeyboard => ShowSeparateQuestionKeyboard && (!HasInitialKeyboardState || HasVisibleSecondQuestionKeyboard);
 
         [Ignore]
         public bool ShowInitialKeyboardPreview => !ShowCombinedArrowKeyboard && HasInitialKeyboardState;
