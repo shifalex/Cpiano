@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Handlers/ArrowPracticePreferences.cs" Link="ArrowPracticePreferences.cs" />
+    <Compile Include="../../Handlers/StageNavigationPreferences.cs" Link="StageNavigationPreferences.cs" />
+    <Compile Include="../../Models/ExerciseReviewHistory.cs" Link="ExerciseReviewHistory.cs" />
+    <Compile Include="../../Models/XorSingleDifferenceSequence.cs" Link="XorSingleDifferenceSequence.cs" />
+    <Compile Include="../../Handlers/ArrowLabelProgression.cs" Link="ArrowLabelProgression.cs" />
+    <Compile Include="../../Models/CustomArrowPractice.cs" Link="CustomArrowPractice.cs" />
+    <Compile Include="../../Models/ArrowLabelMovement.cs" Link="ArrowLabelMovement.cs" />
+    <Compile Include="../../Models/ArrowTracePressColor.cs" Link="ArrowTracePressColor.cs" />
+    <Compile Include="../../Handlers/CustomArrowPracticePreferences.cs" Link="CustomArrowPracticePreferences.cs" />
+  </ItemGroup>
+</Project>

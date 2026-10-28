@@ -59,8 +59,14 @@ namespace GestureSample.Maui.Data.SQLite
             await EnsureColumnAsync("QuestionAnswerPart", "RecordedAt", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeX", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "RelativeY", "REAL").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "ContactId", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "FromKeyNumber", "INTEGER").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "EventSequence", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyEvent", "ElapsedMs", "REAL").ConfigureAwait(false);
             await EnsureColumnAsync("KeyEvent", "AttemptNumber", "INTEGER NOT NULL DEFAULT 0").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "SubmittedKeyboardJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "TargetKeyboardJson", "TEXT").ConfigureAwait(false);
+            await EnsureColumnAsync("KeyboardQuestion", "QuestionArrowsJson", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "SubmittedTime", "TEXT").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "MoveByLength", "INTEGER").ConfigureAwait(false);
             await EnsureColumnAsync("KeyboardQuestion", "MoveByDirectionJson", "TEXT").ConfigureAwait(false);

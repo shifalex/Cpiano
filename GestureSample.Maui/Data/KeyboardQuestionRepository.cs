@@ -44,7 +44,7 @@ namespace GestureSample.Maui.Data
                 .ToList();
         }
 
-        public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus, Color[]? submittedKeyboardColors = null)
+        public async Task<KeyboardQuestion?> SaveSubmittedSnapshotAsync(string gameId, int questionNumber, bool[] submittedKeyboard, DateTime submittedTime, int resultStatus, Color[]? submittedKeyboardColors = null, bool[]? targetKeyboard = null)
         {
             List<KeyboardQuestion> questions = await _database.Table<KeyboardQuestion>()
                 .Where(state => state.GameId == gameId && state.QuestionNumber == questionNumber)
@@ -64,6 +64,7 @@ namespace GestureSample.Maui.Data
                 pendingQuestion.AttemptNumber = nextAttemptNumber;
                 pendingQuestion.SubmittedKeyboard = submittedKeyboard?.ToArray();
                 pendingQuestion.SubmittedKeyboardColors = submittedKeyboardColors?.ToArray();
+                if (targetKeyboard != null) pendingQuestion.TargetKeyboard = targetKeyboard.ToArray();
                 pendingQuestion.SubmittedTime = submittedTime;
                 pendingQuestion.ResultStatus = resultStatus;
                 await _database.UpdateAsync(pendingQuestion);
@@ -76,6 +77,7 @@ namespace GestureSample.Maui.Data
 
             KeyboardQuestion attemptQuestion = CloneAttemptQuestion(sourceQuestion, nextAttemptNumber, submittedKeyboard, submittedTime, resultStatus, wasTutorialUsed: false);
             attemptQuestion.SubmittedKeyboardColors = submittedKeyboardColors?.ToArray();
+            if (targetKeyboard != null) attemptQuestion.TargetKeyboard = targetKeyboard.ToArray();
             await _database.InsertAsync(attemptQuestion);
             return attemptQuestion;
         }
@@ -289,6 +291,8 @@ namespace GestureSample.Maui.Data
                 KeyboardKeysInRow = sourceQuestion.KeyboardKeysInRow,
                 ShowNumbersOnKeys = sourceQuestion.ShowNumbersOnKeys,
                 QuestionPromptText = sourceQuestion.QuestionPromptText,
+                TargetKeyboardJson = sourceQuestion.TargetKeyboardJson,
+                QuestionArrowsJson = sourceQuestion.QuestionArrowsJson,
                 keyboard1 = sourceQuestion.keyboard1?.ToArray(),
                 keyboard2 = sourceQuestion.keyboard2?.ToArray(),
                 QuestionKeyboardColors = sourceQuestion.QuestionKeyboardColors?.ToArray(),

@@ -1156,6 +1156,56 @@ namespace GestureSample.Maui.Models
             return count;
         }
 
+        // Paint historical visuals without resetting answer state, counters or saved colors.
+        public Action CaptureVisualReviewRestore()
+        {
+            var keyColors = GetCurrentColors();
+            var keyText = btnKeys.Select(key => key.Text).ToArray();
+            var captions = _keyCaptionLabels?.Select(label => label.Text).ToArray();
+            var arrow1 = Arrow1;
+            var arrow2 = Arrow2;
+            var above = AboveNumber;
+            var length = ArrowLength;
+            var direction = Direction;
+            var movement = CurrentArrowMovementMode;
+            var overlayColors = _traceOverlayViews?.Select(view => (view.BackgroundColor, view.IsVisible, view.Opacity)).ToArray();
+            var secondaryColors = _traceOverlaySecondaryViews?.Select(view => (view.BackgroundColor, view.IsVisible, view.Opacity)).ToArray();
+            return () =>
+            {
+                for (int i = 0; i < Math.Min(keyColors.Length, btnKeys.Length); i++)
+                {
+                    btnKeys[i].BackgroundColor = keyColors[i];
+                    btnKeys[i].Text = keyText[i];
+                }
+                if (captions != null && _keyCaptionLabels != null)
+                    for (int i = 0; i < Math.Min(captions.Length, _keyCaptionLabels.Length); i++)
+                        _keyCaptionLabels[i].Text = captions[i];
+                if (overlayColors != null && _traceOverlayViews != null)
+                    for (int i = 0; i < Math.Min(overlayColors.Length, _traceOverlayViews.Length); i++)
+                    {
+                        _traceOverlayViews[i].BackgroundColor = overlayColors[i].BackgroundColor;
+                        _traceOverlayViews[i].IsVisible = overlayColors[i].IsVisible;
+                        _traceOverlayViews[i].Opacity = overlayColors[i].Opacity;
+                    }
+                if (secondaryColors != null && _traceOverlaySecondaryViews != null)
+                    for (int i = 0; i < Math.Min(secondaryColors.Length, _traceOverlaySecondaryViews.Length); i++)
+                    {
+                        _traceOverlaySecondaryViews[i].BackgroundColor = secondaryColors[i].BackgroundColor;
+                        _traceOverlaySecondaryViews[i].IsVisible = secondaryColors[i].IsVisible;
+                        _traceOverlaySecondaryViews[i].Opacity = secondaryColors[i].Opacity;
+                    }
+                AboveNumber = above;
+                ArrowLength = length;
+                Direction = direction;
+                CurrentArrowMovementMode = movement;
+                RemoveArrows();
+                Arrow1 = arrow1;
+                Arrow2 = arrow2;
+                if (arrow1 != null) Children.Add(arrow1);
+                if (arrow2 != null) Children.Add(arrow2);
+            };
+        }
+
         public Color[] GetCurrentColors()
         {
             Color[] snapshot = new Color[btnKeys.Length];

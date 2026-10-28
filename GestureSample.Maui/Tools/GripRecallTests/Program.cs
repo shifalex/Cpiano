@@ -1,6 +1,24 @@
 using GestureSample.Maui.Models;
 
 int checks = 0;
+bool[] arrowSource = new bool[14], arrowTarget = new bool[14];
+arrowSource[4] = arrowSource[12] = true;
+arrowTarget[0] = arrowTarget[8] = true;
+var recordedArrows = RecordedShiftArrow.Infer(arrowSource, arrowTarget, 2, 7);
+Check(recordedArrows.Length == 1 && recordedArrows[0].LeftSide && recordedArrows[0].IsVertical &&
+    recordedArrows[0].Delta == -2 && recordedArrows[0].IsShift, "Saved vertical grip shift recovers its down arrow and distance");
+Check(RecordedShiftArrow.Infer(arrowSource, arrowSource, 2, 7).Length == 0, "Stationary grip has no movement arrow");
+Check(RecordedShiftArrow.Infer(arrowSource, null, 2, 7).Length == 0, "Missing historical target does not invent an arrow");
+var replayState = new[] { "left", "right", "free", "free" };
+Check(KeyboardReplayTransitions.ApplyGlide(replayState, 2, 4, "free"), "Right finger glide is accepted");
+Check(KeyboardReplayTransitions.ApplyGlide(replayState, 1, 3, "free"), "Left finger glide is accepted");
+Check(replayState.SequenceEqual(new[] { "free", "free", "left", "right" }), "Two glides preserve each finger's state");
+Check(KeyboardReplayTransitions.ApplyGlide(replayState, 3, 1, "free"), "A glide can return to an earlier key");
+Check(!KeyboardReplayTransitions.ApplyGlide(replayState, null, 2, "free"), "Missing legacy glide source is ignored");
+Check(!KeyboardReplayTransitions.ApplyGlide(replayState, 1, 1, "free"), "Same-key glide cannot erase state");
+Check(!KeyboardReplayTransitions.ApplyGlide(replayState, 1, 5, "free"), "Out of range glide is ignored");
+Check(replayState.SequenceEqual(new[] { "left", "free", "free", "right" }), "Invalid glide leaves state intact");
+
 void Check(bool condition, string message)
 {
     checks++;

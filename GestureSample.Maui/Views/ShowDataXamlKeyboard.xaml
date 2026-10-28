@@ -105,7 +105,7 @@
                                     </Frame>
                                 </Grid>
                                 <Label Text="{Binding ComplexArrowEquationText}" FontSize="14" FontAttributes="Bold" TextColor="DarkSlateGray" LineBreakMode="WordWrap" IsVisible="{Binding HasComplexArrowEquation}" />
-                                <HorizontalStackLayout Spacing="8" IsVisible="{Binding Question.HasPromptText}">
+                                <HorizontalStackLayout Spacing="8" IsVisible="{Binding Question.ShowQuestionPromptText}">
                                     <Label Text="Q" FontAttributes="Bold" FontSize="12" VerticalOptions="Center" />
                                     <Label Text="{Binding Question.QuestionPromptText}" FontSize="16" FontAttributes="Bold" VerticalOptions="Center" LineBreakMode="NoWrap" />
                                 </HorizontalStackLayout>
@@ -136,8 +136,8 @@
                                     </Border>
                                     <Border PropertyChanged="OnSnapshotPanelPropertyChanged" BackgroundColor="{StaticResource Canvas}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 16" Padding="16" IsVisible="{Binding Question.ShowPrimaryQuestionKeyboard}">
                                         <VerticalStackLayout Spacing="12">
-                                            <Label Text="Target" FontAttributes="Bold" FontSize="12" VerticalOptions="Center" TextColor="{StaticResource MutedInk}" />
-                                            <local:KeyboardSnapshotView KeyColors="{Binding Question.QuestionSnapshotColors}" KeysInRow="{Binding Question.KeyboardKeysInRow}" Rows="{Binding Question.KeyboardRows}" Weights="{Binding Question.KeyboardWeights}" AboveNumber="{Binding Question.aboveNumber}" ArrowLength="{Binding Question.length}" Direction="{Binding Question.dir}" Compact="False" InputTransparent="True" ReviewStyle="True" HorizontalOptions="Center" />
+                                            <Label Text="{Binding Question.PrimaryQuestionLabel}" FontAttributes="Bold" FontSize="12" VerticalOptions="Center" TextColor="{StaticResource MutedInk}" />
+                                            <local:KeyboardSnapshotView KeyColors="{Binding Question.QuestionSnapshotColors}" ShiftArrowsJson="{Binding Question.ReplayQuestionArrowsJson}" KeysInRow="{Binding Question.KeyboardKeysInRow}" Rows="{Binding Question.KeyboardRows}" Weights="{Binding Question.KeyboardWeights}" AboveNumber="{Binding Question.aboveNumber}" ArrowLength="{Binding Question.length}" Direction="{Binding Question.dir}" Compact="False" InputTransparent="True" ReviewStyle="True" HorizontalOptions="Center" />
                                         </VerticalStackLayout>
                                     </Border>
                                     <Border PropertyChanged="OnSnapshotPanelPropertyChanged" BackgroundColor="{StaticResource Canvas}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 16" Padding="16" IsVisible="{Binding Question.ShowInitialKeyboardPreview}">
@@ -148,8 +148,15 @@
                                     </Border>
                                     <Border PropertyChanged="OnSnapshotPanelPropertyChanged" BackgroundColor="{StaticResource Canvas}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 16" Padding="16" IsVisible="{Binding Question.HasVisibleSecondQuestionKeyboard}">
                                         <VerticalStackLayout Spacing="12">
-                                            <Label Text="Second target" FontAttributes="Bold" FontSize="12" VerticalOptions="Center" TextColor="{StaticResource MutedInk}" />
+                                            <Label Text="{Binding Question.SecondQuestionLabel}" FontAttributes="Bold" FontSize="12" VerticalOptions="Center" TextColor="{StaticResource MutedInk}" />
                                             <local:KeyboardSnapshotView KeyColors="{Binding Question.SecondQuestionSnapshotColors}" KeysInRow="{Binding Question.KeyboardKeysInRow}" Rows="{Binding Question.KeyboardRows}" Weights="{Binding Question.KeyboardWeights}" InputTransparent="True" Compact="False" ReviewStyle="True" HorizontalOptions="Center" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                    <Border PropertyChanged="OnSnapshotPanelPropertyChanged" BackgroundColor="{StaticResource Canvas}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 16" Padding="16">
+                                        <VerticalStackLayout Spacing="12">
+                                            <Label Text="Target" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource MutedInk}" />
+                                            <local:KeyboardSnapshotView KeyColors="{Binding Question.TargetKeyboardSnapshotColors}" KeysInRow="{Binding Question.KeyboardKeysInRow}" Rows="{Binding Question.KeyboardRows}" Weights="{Binding Question.KeyboardWeights}" Compact="False" InputTransparent="True" ReviewStyle="True" HorizontalOptions="Center" IsVisible="{Binding Question.HasTargetKeyboard}" />
+                                            <Label Text="No saved target snapshot" IsVisible="{Binding Question.MissingTargetKeyboard}" FontSize="12" TextColor="{StaticResource MutedInk}" />
                                         </VerticalStackLayout>
                                     </Border>
                                     <Border PropertyChanged="OnSnapshotPanelPropertyChanged" BackgroundColor="{StaticResource Canvas}" Stroke="{StaticResource Outline}" StrokeShape="RoundRectangle 16" Padding="16" IsVisible="{Binding Question.ShowSeparateSubmittedKeyboard}">
