@@ -63,6 +63,7 @@ public static class OrAndXorPracticePage
         row.Add(toggle, 1);
         var content = new VerticalStackLayout { Padding = 20, Spacing = 16 };
         content.Add(row);
+        content.Add(new StageNavigationSettingsView("Or-And-XOR"));
         var apply = new Button { Text = AppLanguage.Text("Apply settings"), AutomationId = "OrAndXorApplySettings" };
         bool applying = false;
         apply.Clicked += async (_, _) =>

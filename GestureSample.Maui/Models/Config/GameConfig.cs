@@ -460,6 +460,7 @@ public static string ToDString<TEnum>(this TEnum enumValue) where TEnum : struct
                     AllowedGroupCombinations = GroupCombinationMode.None;
             }
         }
+        public bool XorSingleDifferenceOnly { get; set; } = false;
         public bool TwoKeybordsOnOne
         {
             get => LogicalKeyboardLayout.HasFlag(LogicalKeyboardLayoutFlags.CombinedOnSingleKeyboard);

@@ -689,7 +689,7 @@ namespace GestureSample.Maui.Models
                 return true;
             }
 
-            if (sender.BackgroundColor == COLOR_PRESSED)
+            if (IsActivePressColor(sender.BackgroundColor))
             {
                 if (pressCounter[keyIndex] == 0)
                 {

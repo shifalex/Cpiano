@@ -423,5 +423,21 @@ BOTH HANDS|שתי הידיים|ОБЕ РУКИ
 Synchronous two-hand process|תהליך מסונכרן בשתי ידיים|Синхронный процесс двумя руками
 Sync is already running.|הסנכרון כבר פועל.|Синхронизация уже выполняется.
 No active user to sync.|אין משתמש פעיל לסנכרון.|Нет активного пользователя для синхронизации.
+Exercise navigation|ניווט בין שאלות|Навигация по заданиям
+Stage settings|הגדרות השלב|Настройки этапа
+Advance only with <|מעבר לשאלה הבאה רק בלחיצה על <|Переход вперёд только по кнопке <
+Advance only with the next button|מעבר לשאלה הבאה רק בלחיצה על כפתור ההמשך|Переход вперёд только по кнопке следующего задания
+Wait after solving. Previous exercises are read-only; the double arrow returns to the current exercise.|המתנה אחרי הפתרון. שאלות קודמות מוצגות לצפייה בלבד; החץ הכפול מחזיר לשאלה הנוכחית.|Ожидать после решения. Предыдущие задания доступны только для просмотра; двойная стрелка возвращает к текущему.
+Wait after solving. Previous exercises are read-only; << returns to the current exercise.|המתנה אחרי הפתרון. שאלות קודמות מוצגות לצפייה בלבד; << מחזיר לשאלה הנוכחית.|Ожидать после решения. Предыдущие задания доступны только для просмотра; << возвращает к текущему.
+Previous solution|פתרון קודם|Предыдущее решение
+Next exercise|השאלה הבאה|Следующее задание
+Return to current exercise|חזרה לשאלה הנוכחית|Вернуться к текущему заданию
+Solved · press < to continue|נפתר · להמשך לחצו <|Решено · нажмите < для продолжения
+Current exercise|השאלה הנוכחית|Текущее задание
+Previous solution · read only|פתרון קודם · לצפייה בלבד|Предыдущее решение · только просмотр
+Second keyboard|המקלדת השנייה|Вторая клавиатура
+Solution|פתרון|Решение
+One difference|הבדל יחיד|Одно различие
+Standard colors|צבעים רגילים|Обычные цвета
 """;
 }

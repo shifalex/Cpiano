@@ -46,6 +46,17 @@ namespace GestureSample.Maui.Models
         public static readonly BindableProperty ShiftArrowsJsonProperty =
             BindableProperty.Create(nameof(ShiftArrowsJson), typeof(string), typeof(KeyboardSnapshotView), default(string), propertyChanged: OnSnapshotChanged);
 
+        public static readonly BindableProperty ArrowStyleProperty =
+            BindableProperty.Create(nameof(ArrowStyle), typeof(ArrowType), typeof(KeyboardSnapshotView), ArrowType.Straight, propertyChanged: OnSnapshotChanged);
+        public static readonly BindableProperty MovementModeProperty =
+            BindableProperty.Create(nameof(MovementMode), typeof(ArrowMovementMode), typeof(KeyboardSnapshotView), ArrowMovementMode.Legacy, propertyChanged: OnSnapshotChanged);
+        public static readonly BindableProperty ShowKeyNumbersProperty =
+            BindableProperty.Create(nameof(ShowKeyNumbers), typeof(bool), typeof(KeyboardSnapshotView), false, propertyChanged: OnSnapshotChanged);
+
+        public ArrowType ArrowStyle { get => (ArrowType)GetValue(ArrowStyleProperty); set => SetValue(ArrowStyleProperty, value); }
+        public ArrowMovementMode MovementMode { get => (ArrowMovementMode)GetValue(MovementModeProperty); set => SetValue(MovementModeProperty, value); }
+        public bool ShowKeyNumbers { get => (bool)GetValue(ShowKeyNumbersProperty); set => SetValue(ShowKeyNumbersProperty, value); }
+
         public string? ShiftArrowsJson
         {
             get => (string?)GetValue(ShiftArrowsJsonProperty);
@@ -165,7 +176,7 @@ namespace GestureSample.Maui.Models
                 Direction,
                 AboveNumber,
                 ArrowLength,
-                Compact) + $":{ReviewStyle}:{ShiftArrowsJson}";
+                Compact) + $":{ReviewStyle}:{ShiftArrowsJson}:{ArrowStyle}:{MovementMode}:{ShowKeyNumbers}";
             if (_lastSnapshotSignature == snapshotSignature)
                 return;
 
@@ -177,7 +188,9 @@ namespace GestureSample.Maui.Models
                 Rows = Math.Max(1, rows),
                 IsArrow = hasArrow,
                 IsArrowLengthDynamic = hasArrow,
-                ShowNumbersOnKeys = Weights != null && Weights.Length > 0,
+                ArrowType = ArrowStyle,
+                ArrowMovementMode = MovementMode,
+                ShowNumbersOnKeys = ShowKeyNumbers || Weights != null && Weights.Length > 0,
                 WeightsArray = Weights?.ToArray()
             };
 

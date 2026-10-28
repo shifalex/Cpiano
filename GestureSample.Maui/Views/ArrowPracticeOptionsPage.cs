@@ -136,6 +136,7 @@ public sealed class ArrowPracticeOptionsPage : ContentPage
         bool exactQuestion = keyboard.SpecificArrowQuestion != null;
         FlowDirection = LanguagePreferences.Get() == InterfaceLanguage.Hebrew ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         var content = new VerticalStackLayout { Spacing = 14, Padding = 20, MaximumWidthRequest = 720 };
+        content.Add(new StageNavigationSettingsView(stage.GameName));
         string stageCaption = keyboard.CustomArrowQuestionKinds?.Length > 0 ? "Custom arrow practice"
             : !onKeyboard ? "Arrow Label" : keyboard.ArrowType == ArrowType.Rounded ? "Ordinal with key numbers"
             : keyboard.IsArrowLengthDynamic == true ? "Variable length" : "Fixed length";

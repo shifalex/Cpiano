@@ -162,4 +162,114 @@ for (int i = 0; i < 100; i++)
     var question = ArrowLabelMovement.Next(movementRandom, 1, 20, 4, false, false, true, null);
     Check(SpecificArrowQuestion.KeyNumber(question.Start) is 1 or 10, "Edges selection must start at an edge of the ten-key keyboard");
 }
-Console.WriteLine($"Passed {checks} arrow preference, progression and customization checks.");
+var review = new GestureSample.Maui.Models.ExerciseReviewHistory<string>();
+Check(!review.CanMoveBack(false), "An empty session must not offer previous solutions");
+Check(!review.MoveBack(false) && !review.IsReviewing, "Going back from an empty session must leave the live question selected");
+review.AddCompleted("solution 1");
+Check(!review.CanMoveBack(true), "The first solved question must not appear as its own predecessor");
+Check(review.MoveBack(false) && review.Current == "solution 1", "An unanswered live question can review the preceding solution");
+Check(review.DistanceFromLive(false) == 1, "One step back must not offer the << shortcut");
+review.MoveForward(false);
+Check(!review.IsReviewing && review.Count == 1, "Returning forward must restore the live question without adding history");
+review.AddCompleted("solution 2");
+review.AddCompleted("solution 3");
+Check(review.MoveBack(true) && review.Current == "solution 2", "Back from a solved current question must skip its own saved copy");
+Check(review.DistanceFromLive(true) == 1, "The previous solution is one step from the completed live question");
+Check(review.MoveBack(true) && review.Current == "solution 1", "Back can traverse more than one completed question");
+Check(review.DistanceFromLive(true) == 2, "Two steps back must offer <<");
+Check(!review.MoveBack(true) && review.Current == "solution 1", "Back must stop at the earliest solution");
+review.ReturnToLive();
+Check(!review.IsReviewing && review.Count == 3, "<< must return directly to live without removing or replaying solutions");
+Check(review.MoveBack(false) && review.Current == "solution 3", "After generating a new question, the last solution becomes the predecessor");
+review.MoveBack(false);
+Check(review.Current == "solution 2" && review.DistanceFromLive(false) == 2, "History distance must include the unanswered live question");
+review.MoveForward(false);
+Check(review.Current == "solution 3", "Forward in history must show the next stored solution");
+review.MoveForward(false);
+Check(!review.IsReviewing, "Forward after the latest stored solution must return to the unchanged live question");
+review.MoveForward(false);
+Check(!review.IsReviewing && review.Count == 3, "Forward at live must never create an exercise or append history");
+
+for (int count = 1; count <= 30; count++)
+    foreach (bool completed in new[] { false, true })
+    {
+        var history = new GestureSample.Maui.Models.ExerciseReviewHistory<int>();
+        for (int i = 0; i < count; i++) history.AddCompleted(i);
+        int steps = count - (completed ? 1 : 0);
+        for (int distance = 1; distance <= steps; distance++)
+        {
+            Check(history.MoveBack(completed), "Every stored predecessor must be reachable");
+            Check(history.Current == steps - distance, "Review must preserve chronological order");
+            Check(history.DistanceFromLive(completed) == distance, "The return-to-live shortcut must use the exact distance");
+        }
+        Check(!history.CanMoveBack(completed), "Review may not navigate before the session");
+        for (int i = 0; i < steps; i++) history.MoveForward(completed);
+        Check(!history.IsReviewing && history.Count == count, "A history round trip must preserve all snapshots and return to live");
+    }
+
+LanguagePreferences.UserId = user;
+Check(!StageNavigationPreferences.IsManual("Copy"), "Automatic advance must remain the default");
+StageNavigationPreferences.SetManual("Copy -one hand", true);
+Check(StageNavigationPreferences.IsManual("Copy"), "Manual advance must persist across Copy progression levels");
+Check(!StageNavigationPreferences.IsManual("Mirror"), "Another activity must keep independent navigation settings");
+StageNavigationPreferences.SetManual("Shift by - Two Fingers", true);
+Check(StageNavigationPreferences.IsManual("Shift by - Structure"), "Shift progression must share navigation settings");
+StageNavigationPreferences.SetManual("Or-And-Neutralise", true);
+Check(StageNavigationPreferences.IsManual("Or-And-XOR"), "Near and Far sequence variants must share navigation settings");
+LanguagePreferences.UserId = otherUser;
+Check(!StageNavigationPreferences.IsManual("Copy"), "Another user must keep independent navigation settings");
+LanguagePreferences.UserId = null;
+Check(!StageNavigationPreferences.IsManual("Copy"), "Guest navigation settings must remain independent");
+LanguagePreferences.UserId = user;
+StageNavigationPreferences.SetManual("Copy", false);
+Check(!StageNavigationPreferences.IsManual("Copy -one hand"), "Turning manual advance off must survive reopening");
+
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRed(true, 8, 3, 8, false), "RTL: pressing the starting key 8 must be red");
+Check(!GestureSample.Maui.Models.ArrowTracePressColor.UseRed(true, 8, 3, 9, false), "RTL: pressing 9 beyond the starting quantity 8 must be yellow");
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRed(true, 2, 4, 9, false), "RTL wrapping through ten must remain red after reaching high-numbered keys");
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRed(true, 8, 3, 9, true), "RTL through-ten mode must use red");
+foreach (bool rtl in new[] { false, true })
+    foreach (bool through in new[] { false, true })
+        for (int start = 1; start <= 10; start++)
+            for (int distance = 1; distance <= 9; distance++)
+                for (int pressed = 1; pressed <= 10; pressed++)
+                {
+                    bool expectedRed = rtl && (through || start - distance < 1 || pressed <= start);
+                    Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRed(rtl, start, distance, pressed, through) == expectedRed,
+                        "Press color must respect direction, starting quantity and wraparound for every key");
+                }
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(true, 7, 10, 9, false), "Missing-start RTL prompt 7..10: key 9 must be red despite the stored addition direction");
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(true, 7, 10, 10, false), "Missing-start RTL prompt 7..10: key 10 must be red");
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(true, 8, 5, 8, false), "Descending label: pressing the starting quantity is red");
+Check(!GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(true, 8, 5, 9, false), "Descending label: a key outside the starting quantity is yellow");
+Check(GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(true, 12, 8, 9, false), "RTL label across ten must be red after physical-key wraparound");
+Check(!GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(false, 7, 10, 9, false), "The same numbers in an LTR prompt must remain yellow");
+Check(!GestureSample.Maui.Models.ArrowTracePressColor.UseRedForLabel(false, 8, 12, 1, true), "LTR label through ten must remain unchanged");
+var xorRandom = new Random(923);
+for (int keyCount = 2; keyCount <= 16; keyCount++)
+{
+    GestureSample.Maui.Models.XorQuestionPair? previousPair = null;
+    for (int question = 0; question < 200; question++)
+    {
+        bool[]? firstBefore = previousPair?.First.ToArray();
+        bool[]? secondBefore = previousPair?.Second.ToArray();
+        var pair = GestureSample.Maui.Models.XorSingleDifferenceSequence.Next(xorRandom, keyCount, previousPair?.First, previousPair?.Second);
+        Check(pair.First.Length == keyCount && pair.Second.Length == keyCount, "XOR stage zero must respect the keyboard size");
+        Check(pair.First.Zip(pair.Second, (a, b) => a != b).Count(value => value) == 1, "Every XOR stage-zero answer must contain exactly one key");
+        Check(!ReferenceEquals(pair.First, pair.Second), "The two XOR source patterns must be independent snapshots");
+        if (previousPair != null)
+        {
+            bool sameFirst = previousPair.First.SequenceEqual(pair.First);
+            bool sameSecond = previousPair.Second.SequenceEqual(pair.Second);
+            Check(sameFirst ^ sameSecond, "Only one of the two previous source patterns may change");
+            Check(previousPair.First.SequenceEqual(firstBefore!) && previousPair.Second.SequenceEqual(secondBefore!), "Generating the next XOR question must not mutate previous patterns");
+        }
+        previousPair = pair;
+    }
+}
+bool[] fullFirst = { true, false, true, false, true, false };
+bool[] fullSecond = { false, true, false, true, false, true };
+var simplified = GestureSample.Maui.Models.XorSingleDifferenceSequence.Next(xorRandom, 6, fullFirst, fullSecond);
+Check(simplified.First.SequenceEqual(fullFirst) ^ simplified.Second.SequenceEqual(fullSecond), "Entering stage zero from a full XOR question must retain one source pattern");
+Check(simplified.First.Zip(simplified.Second, (a, b) => a != b).Count(value => value) == 1, "Entering stage zero must simplify to exactly one difference");
+Console.WriteLine($"Passed {checks} preference, progression, customization, exercise-review, arrow-color and XOR checks.");

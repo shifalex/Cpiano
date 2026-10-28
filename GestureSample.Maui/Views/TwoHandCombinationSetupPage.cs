@@ -54,6 +54,8 @@ public sealed class TwoHandCombinationSetupPage : ContentPage
 
         VerticalStackLayout body = new() { Padding = new Thickness(18, 18, 18, 32), Spacing = 13 };
         body.Add(Hero());
+        if (exercisePage is SimpleViewCellsPage navigationStage)
+            body.Add(new StageNavigationSettingsView(navigationStage.NavigationSettingsStageName));
         var languageSettings = new LanguageSettingsView(gripping: true);
         languageSettings.LanguageChanged += (_, _) => RefreshLanguage();
         body.Add(languageSettings);
