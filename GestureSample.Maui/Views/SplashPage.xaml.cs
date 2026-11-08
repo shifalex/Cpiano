@@ -6,56 +6,66 @@ namespace GestureSample.Maui.Views;
 
 public partial class SplashPage : ContentPage
 {
-    private readonly UserRepository _userRepo;
+    private UserRepository? _userRepo;
+    private bool _isInitialized;
 
     public SplashPage()
     {
-        Console.WriteLine("Splash constructing..");
-        _userRepo = ServiceHelper.GetService<UserRepository>();
-
-        Console.WriteLine("User repo succeeded..");
+        CrashLog.Write("Splash constructing");
         InitializeComponent();
 
-        Console.WriteLine("Initialize succeeded..");
+        CrashLog.Write("Splash InitializeComponent succeeded");
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        Console.WriteLine("Splash appearing");
-
-        var users = await _userRepo.GetUsersAsync();
-
-
-
-        if (users.Count == 0)
-        {
-            await Navigation.PushAsync(new CreateUserPage(firstUser: true));
+        if (_isInitialized)
             return;
-        }
-        var currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
 
-        if (currentUser == null)
+        _isInitialized = true;
+
+        try
         {
-            Console.WriteLine("Connecting user");
-            await ServiceHelper.GetService<CurrentUserSession>().LoadUserAsync(users[0].Id);
-            currentUser = ServiceHelper.GetService<CurrentUserSession>().ActiveUser;
-            currentUser.LastLoginTime = DateTime.Now;
-            Console.WriteLine("User Connected");
-            await _userRepo.UpdateAsync(currentUser);
+            CrashLog.Write("Splash appearing");
 
-            Console.WriteLine("User Updated");
+            _userRepo ??= ServiceHelper.GetService<UserRepository>();
+            CrashLog.Write("UserRepository resolved");
 
+            var users = await _userRepo.GetUsersAsync();
+
+            if (users.Count == 0)
+            {
+                await Navigation.PushAsync(new CreateUserPage(firstUser: true));
+                return;
+            }
+
+            var session = ServiceHelper.GetService<CurrentUserSession>();
+            var currentUser = session.ActiveUser;
+
+            if (currentUser == null)
+            {
+                CrashLog.Write("Connecting user");
+                await session.LoadUserAsync(users[0].Id);
+                currentUser = session.ActiveUser;
+
+                if (currentUser != null)
+                {
+                    currentUser.LastLoginTime = DateTime.Now;
+                    await _userRepo.UpdateAsync(currentUser);
+                    CrashLog.Write("User updated");
+                }
+            }
+
+            CrashLog.Write("Going to MainPage");
+            Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
         }
-
-
-        // Go to the main page
-
-        Console.WriteLine("Going to Main page now");
-        //await Navigation.PopToRootAsync(new MainPage("Control Categories", null));
-        //await Navigation.PushAsync(new MainPage("Control Categories", null));
-        Application.Current.MainPage = new NavigationPage(new MainPage("Control Categories", null));
-
+        catch (Exception ex)
+        {
+            _isInitialized = false;
+            CrashLog.WriteException("Splash startup failed", ex);
+            await DisplayAlert("Startup Error", $"Could not initialize user data. Log: {CrashLog.GetPath()}", "OK");
+        }
     }
 }

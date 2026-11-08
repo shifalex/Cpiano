@@ -19,7 +19,7 @@ namespace GestureSample.Maui.Data.SQLite
         public int QuestionNumber { get; set; }
         public string GameId { get; set; }
         public DateTime Time { get; set; } = DateTime.Now;
-        public Guid UserId { get; set; } = ServiceHelper.GetService<CurrentUserSession>().ActiveUser.Id;
+        public Guid UserId { get; set; } = Guid.Empty;
         public int ResultStatus { get; set; } = 0;
 
 
