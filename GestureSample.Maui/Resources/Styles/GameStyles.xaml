@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Color x:Key="GamePageBackgroundColor">#FFF8EF</Color>
+    <Color x:Key="GameCardBackgroundColor">#FFFDF8</Color>
+    <Color x:Key="GameCardBorderColor">#E8DCC8</Color>
+
+    <Color x:Key="GameNumericEntryBackgroundColor">#FFFFFF</Color>
+    <Color x:Key="GameNumericEntryTextColor">#1F2937</Color>
+    <Color x:Key="GameNumericEntryActiveBackgroundColor">#FFF9D6</Color>
+    <Color x:Key="GameNumericEntryDisabledBackgroundColor">#E5E7EB</Color>
+    <Color x:Key="GameNumericEntryDisabledTextColor">#6B7280</Color>
+
+    <Style x:Key="GameNumericEntryStyle" TargetType="Entry">
+        <Setter Property="BackgroundColor" Value="{StaticResource GameNumericEntryBackgroundColor}" />
+        <Setter Property="TextColor" Value="{StaticResource GameNumericEntryTextColor}" />
+        <Setter Property="FontFamily" Value="OpenSansRegular" />
+        <Setter Property="MinimumHeightRequest" Value="48" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+</ResourceDictionary>

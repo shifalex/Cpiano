@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-				xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-				xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
-				x:Class="GestureSample.Views.ShowDataXaml">
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 xmlns:mr="clr-namespace:MR.Gestures;assembly=MR.Gestures"
+			 x:Class="GestureSample.Views.ShowDataXaml">
+    <ContentPage.Resources>
+        <Style x:Key="ShowDataPickerStyle" TargetType="Picker">
+            <Setter Property="FontFamily" Value="Georgia" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextColor" Value="#342048" />
+            <Setter Property="TitleColor" Value="#8B7D9C" />
+            <Setter Property="BackgroundColor" Value="Transparent" />
+        </Style>
+        <Style x:Key="ShowDataFilterLabelStyle" TargetType="Label">
+            <Setter Property="FontFamily" Value="Georgia" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontAttributes" Value="Bold" />
+            <Setter Property="CharacterSpacing" Value="1.5" />
+            <Setter Property="TextColor" Value="#8A789B" />
+        </Style>
+    </ContentPage.Resources>
     <Grid>
         <!-- Define Row Definitions -->
         <Grid.RowDefinitions>
@@ -12,57 +28,139 @@
             <!-- For Header Grid -->
             <RowDefinition Height="*" />
             <!-- For CollectionView -->
-            <RowDefinition Height="Auto" />
-            <!-- For SAve button -->
         </Grid.RowDefinitions>
 
         <!-- Pickers -->
-        <StackLayout Orientation="Vertical" Grid.Row="0" Padding="10,10,10,0">
-            <!-- User selection -->
-            <Picker x:Name="UserPicker" Title="Select a User" ItemsSource="{Binding Users}" SelectedIndexChanged="OnUserPickerSelectedIndexChanged" FontFamily="Courier New" />
-            <!-- Date selection -->
-            <Picker x:Name="DatePicker" Title="Select a Date" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged" FontFamily="Courier New"/>
-            <Picker x:Name="GamePicker" Title="Select a Game" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged" FontFamily="Courier New"/>
+        <StackLayout x:Name="PickerPanel" Orientation="Vertical" Grid.Row="0" Padding="8,8,8,0" Spacing="6">
+            <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="USER" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                    <Picker x:Name="UserPicker" Title="Pick a user" ItemsSource="{Binding Users}" SelectedIndexChanged="OnUserPickerSelectedIndexChanged" Style="{StaticResource ShowDataPickerStyle}" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="DATE" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                    <Picker x:Name="DatePicker" Title="Pick a day" ItemsSource="{Binding GameDates}" SelectedIndexChanged="OnDatePickerSelectedIndexChanged" Style="{StaticResource ShowDataPickerStyle}"/>
+                </VerticalStackLayout>
+            </Border>
+            <Border Stroke="#D9CBEA" StrokeThickness="1" StrokeShape="RoundRectangle 16" BackgroundColor="#FFFDFE" Padding="12,7,12,5">
+                <VerticalStackLayout Spacing="1">
+                    <Label Text="GAME" Style="{StaticResource ShowDataFilterLabelStyle}" />
+                    <Picker x:Name="GamePicker" Title="Pick a session" ItemsSource="{Binding GameIdentifiersFiltered}" SelectedIndexChanged="OnPickerSelectedIndexChanged" Style="{StaticResource ShowDataPickerStyle}"/>
+                </VerticalStackLayout>
+            </Border>
         </StackLayout>
 
         <!-- Header Grid -->
-        <Grid Grid.Row="1" ColumnDefinitions="45,90,15,220" Padding="5" BackgroundColor="MediumPurple" HorizontalOptions="FillAndExpand">
-            <Label Grid.Column="0" Text="#" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="1" Text="Seconds" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
-            <Label Grid.Column="3" Text="Question" FontSize="Large" TextColor="White" FontAttributes="Bold" HorizontalOptions="Center" VerticalOptions="Center" />
+        <Grid x:Name="HeaderGrid" Grid.Row="1" ColumnDefinitions="40,54,14,*" Padding="6,4" BackgroundColor="MediumPurple" HorizontalOptions="FillAndExpand" ColumnSpacing="2">
+            <Label Grid.Column="0" Text="#" FontSize="16" TextColor="White" FontAttributes="Bold" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" />
+            <Label Grid.Column="1" Text="Seconds" FontSize="16" TextColor="White" FontAttributes="Bold" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" />
+            <Label Grid.Column="3" Text="Question" FontSize="16" TextColor="White" FontAttributes="Bold" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" />
         </Grid>
 
         <!-- CollectionView -->
-        <CollectionView x:Name="StateList" Grid.Row="2" Margin="0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
+        <CollectionView x:Name="StateList" Grid.Row="2" Margin="4,0,0,0" HorizontalOptions="FillAndExpand" VerticalOptions="FillAndExpand">
             <CollectionView.ItemTemplate>
                 <DataTemplate>
-                    <Frame BorderColor="Gray" CornerRadius="5" Padding="2" Margin="2" BackgroundColor="{Binding RowBackgroundColor}">
-                        <Grid ColumnDefinitions="52,70,33,60,20,60,20,60" Padding="2" HorizontalOptions="FillAndExpand">
-                            <Label Grid.Column="0" Text="{Binding QuestionNumber}" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding TimeColor}">
-                                <Label Text="{Binding TimeOnTask, StringFormat='{}{0:0.00 }'}" HorizontalOptions="Center" VerticalOptions="Center" />
+                    <Frame BorderColor="Gray" CornerRadius="5" Padding="1" Margin="2,1" BackgroundColor="{Binding RowBackgroundColor}">
+                        <Grid ColumnDefinitions="36,50,12,40,12,40,12,40"
+                              RowDefinitions="Auto,Auto,Auto"
+                              Padding="2,1,1,1"
+                              ColumnSpacing="2"
+                              HorizontalOptions="Fill">
+                            <Label Grid.Row="0" Grid.Column="0" Text="{Binding QuestionNumber}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontAttributes="Bold" FontSize="16" />
+                            <Frame Grid.Row="0" Grid.Column="1" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding TimeColor}">
+                                <Label Text="{Binding TimeOnTask, StringFormat='{}{0:0.00 }'}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
                             </Frame>
-                            <!-- Additional Columns -->
-                            <Label Grid.Column="2" Text="" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend1Color}">
-                                <Label Text="{Binding Addend1}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label Grid.Row="0" Grid.Column="2" Text="" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontAttributes="Bold" FontSize="16" />
+                            <Frame Grid.Row="0" Grid.Column="3" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding Addend1Color}">
+                                <Label Text="{Binding Addend1}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
                             </Frame>
-                            <Label Grid.Column="4" Text="{Binding OpDString}" HorizontalOptions="Center" VerticalOptions="Center" />
-                            <Frame Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding Addend2Color}">
-                                <Label Text="{Binding Addend2}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label Grid.Row="0" Grid.Column="4" Text="{Binding OpDString}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
+                            <Frame Grid.Row="0" Grid.Column="5" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding Addend2Color}">
+                                <Label Text="{Binding Addend2}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
                             </Frame>
-                            <Label Grid.Column="6" Text="=" HorizontalOptions="Center" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Frame Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="2" BackgroundColor="{Binding SumColor}">
-                                <Label Text="{Binding Sum}" HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Label Grid.Row="0" Grid.Column="6" Text="=" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontAttributes="Bold" FontSize="16" />
+                            <Frame Grid.Row="0" Grid.Column="7" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding SumColor}">
+                                <Label Text="{Binding Sum}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
                             </Frame>
+
+                            <Label Grid.Row="1"
+                                   Grid.Column="1"
+                                   Grid.ColumnSpan="7"
+                                   Text="{Binding ComplexArrowPathText}"
+                                   FontSize="13"
+                                   FontAttributes="Bold"
+                                   TextColor="DarkSlateGray"
+                                   LineBreakMode="NoWrap"
+                                   Margin="0,6,0,0"
+                                   IsVisible="{Binding HasComplexArrowPathText}" />
+
+                            <Grid Grid.Row="1"
+                                  Grid.Column="3"
+                                  Grid.ColumnSpan="5"
+                                  ColumnDefinitions="44,16,44,16,44"
+                                  Margin="0,6,0,0"
+                                  IsVisible="{Binding HasSecondaryPpw}">
+                                <Frame Grid.Column="0" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding SecondaryAddend1BackgroundColor}">
+                                    <Label Text="{Binding SecondaryAddend1Text}" TextColor="{Binding SecondaryAddend1TextColor}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="1" Text="{Binding OpDString}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
+                                <Frame Grid.Column="2" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding SecondaryAddend2BackgroundColor}">
+                                    <Label Text="{Binding SecondaryAddend2Text}" TextColor="{Binding SecondaryAddend2TextColor}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
+                                </Frame>
+                                <Label Grid.Column="3" Text="=" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontAttributes="Bold" FontSize="16" />
+                                <Frame Grid.Column="4" BorderColor="Black" CornerRadius="5" Padding="1" BackgroundColor="{Binding SecondarySumBackgroundColor}">
+                                    <Label Text="{Binding SecondarySumText}" TextColor="{Binding SecondarySumTextColor}" HorizontalOptions="Start" HorizontalTextAlignment="Start" VerticalOptions="Center" FontSize="16" />
+                                </Frame>
+                            </Grid>
+
+                            <VerticalStackLayout Grid.Row="2"
+                                                 Grid.Column="3"
+                                                 Grid.ColumnSpan="5"
+                                                 Margin="0,6,0,0"
+                                                 Spacing="4"
+                                                 IsVisible="{Binding HasHelperRows}"
+                                                 BindableLayout.ItemsSource="{Binding HelperRows}">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <HorizontalStackLayout HorizontalOptions="Start"
+                                                               Spacing="4"
+                                                               BindableLayout.ItemsSource="{Binding Parts}">
+                                            <BindableLayout.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Frame BorderColor="Black"
+                                                           CornerRadius="5"
+                                                           Padding="1"
+                                                           BackgroundColor="{Binding BackgroundColor}">
+                                                        <Label Text="{Binding ValueText}"
+                                                               TextColor="{Binding TextColor}"
+                                                               HorizontalOptions="Start"
+                                                               HorizontalTextAlignment="Start"
+                                                               VerticalOptions="Center"
+                                                               FontSize="16" />
+                                                    </Frame>
+                                                </DataTemplate>
+                                            </BindableLayout.ItemTemplate>
+                                        </HorizontalStackLayout>
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
                         </Grid>
                     </Frame>
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-
-
-        <Button Text="SAVE" Clicked="OnDampButtonClicked" x:Name="btnSave" IsVisible="{Binding isSaveVisible}" Grid.Row="3" />
+        <Grid x:Name="LoadingOverlay"
+              Grid.RowSpan="3"
+              BackgroundColor="#CCFFFFFF"
+              ZIndex="20">
+            <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center" Spacing="10">
+                <ActivityIndicator IsRunning="True" Color="#6F4B82" />
+                <Label Text="Loading data…" FontFamily="Georgia" TextColor="#342048" />
+            </VerticalStackLayout>
+        </Grid>
     </Grid>
     
 </ContentPage>
